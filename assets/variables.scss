@@ -1,0 +1,12 @@
+// Ref: https://github.com/nuxt-community/vuetify-module#customvariables
+//
+// The variables you want to modify
+// $font-size-root: 20px;
+
+$card-border-radius: 7px !important;
+$root-border-radius: 7px !important;
+$shadow-key-umbra-opacity: rgba(36, 34, 41, 0.08);
+$shadow-key-penumbra-opacity: rgba(0, 0, 0, 0.07);
+$shadow-key-ambient-opacity: rgba(0, 0, 0, 0.05);
+
+@import "~vuetify/src/styles/styles.sass"

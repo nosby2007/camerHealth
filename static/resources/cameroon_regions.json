@@ -1,0 +1,155 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 1,
+        "region_name": "Adamaoua",
+        "region_name_fr": "Adamaoua",
+        "capital": "Ngaoundéré",
+        "population": 1105673,
+        "area": 63653
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[6.1, 6.2], [6.5, 6.8], [7.1, 7.2], [7.5, 7.0], [7.2, 6.5], [6.8, 6.1], [6.1, 6.2]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 2,
+        "region_name": "Centre",
+        "region_name_fr": "Centre",
+        "capital": "Yaoundé",
+        "population": 2569424,
+        "area": 68953
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[11.2, 3.5], [11.8, 3.8], [12.2, 4.2], [12.0, 4.8], [11.5, 4.5], [11.2, 3.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 3,
+        "region_name": "East",
+        "region_name_fr": "Est",
+        "capital": "Bertoua",
+        "population": 786725,
+        "area": 109002
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[13.5, 2.0], [14.5, 2.5], [15.0, 3.0], [14.8, 4.0], [14.0, 3.5], [13.5, 2.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 4,
+        "region_name": "Far North",
+        "region_name_fr": "Extrême-Nord",
+        "capital": "Maroua",
+        "population": 3729287,
+        "area": 102372
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[13.5, 10.0], [14.5, 10.5], [15.0, 10.8], [15.2, 10.5], [15.0, 10.0], [14.0, 9.5], [13.5, 10.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 5,
+        "region_name": "Littoral",
+        "region_name_fr": "Littoral",
+        "capital": "Douala",
+        "population": 3512000,
+        "area": 20248
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[9.5, 3.5], [10.0, 3.8], [10.2, 4.2], [10.0, 4.5], [9.5, 4.2], [9.5, 3.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 6,
+        "region_name": "North",
+        "region_name_fr": "Nord",
+        "capital": "Garoua",
+        "population": 2331869,
+        "area": 66053
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[13.2, 7.5], [14.0, 8.0], [14.5, 8.5], [14.3, 9.0], [13.8, 8.5], [13.2, 7.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 7,
+        "region_name": "North-West",
+        "region_name_fr": "Nord-Ouest",
+        "capital": "Bamenda",
+        "population": 1894000,
+        "area": 17300
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[9.8, 5.5], [10.5, 6.2], [10.8, 6.5], [10.5, 6.8], [10.0, 6.2], [9.8, 5.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 8,
+        "region_name": "West",
+        "region_name_fr": "Ouest",
+        "capital": "Bafoussam",
+        "population": 1817000,
+        "area": 13872
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[9.8, 5.0], [10.5, 5.5], [11.0, 5.8], [10.8, 6.2], [10.2, 5.8], [9.8, 5.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 9,
+        "region_name": "South",
+        "region_name_fr": "Sud",
+        "capital": "Ebolowa",
+        "population": 550000,
+        "area": 47193
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[11.0, 2.0], [12.0, 2.5], [12.5, 3.0], [12.2, 3.5], [11.5, 3.0], [11.0, 2.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region_id": 10,
+        "region_name": "South-West",
+        "region_name_fr": "Sud-Ouest",
+        "capital": "Buéa",
+        "population": 1300000,
+        "area": 24557
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[9.0, 4.0], [9.8, 4.5], [10.2, 5.0], [9.8, 5.3], [9.2, 4.8], [9.0, 4.0]]]
+      }
+    }
+  ]
+}

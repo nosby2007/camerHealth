@@ -1,0 +1,134 @@
+{
+  "app": {
+    "stage": "PRODUCTION",
+    "name": "CameroHealth"
+  },
+  "titles": {
+    "dashboard": "TABLEAU DE BORD",
+    "live_status": "SURVEILLANCE INTÉGRÉE DES MALADIES - CAMEROUN",
+    "surveillance": "SURVEILLANCE",
+    "reports": "RAPPORTS",
+    "maps": "CARTE MÉDICALE"
+  },
+  "login": "CONNEXION",
+  "logout": "DÉCONNEXION",
+  "refresh": "ACTUALISER",
+  "diseases": {
+    "select": "Sélectionner la maladie",
+    "malaria": "Paludisme",
+    "cholera": "Choléra",
+    "monkeypox": "Variole du singe",
+    "tb": "Tuberculose",
+    "measles": "Rougeole",
+    "polio": "Polio"
+  },
+  "covid_stages": {
+    "quarantined": "Testés",
+    "confirmed": "Confirmés",
+    "hospitalized": "Hospitalisés",
+    "hospitalized_icu": "Hospitalisés (Réanimation)",
+    "hospitalized_stable": "Stables",
+    "hospitalized_critical": "Critiques",
+    "recovered": "Guéris",
+    "dead": "Décédés",
+    "active": "Cas actifs",
+    "suspected": "Suspects"
+  },
+  "disease_stages": {
+    "cases": "Cas",
+    "deaths": "Décès",
+    "recovered": "Guéris",
+    "hospitalized": "Hospitalisés",
+    "suspected": "Suspects",
+    "confirmed": "Confirmés",
+    "under_treatment": "Sous traitement",
+    "discharged": "Sortis"
+  },
+  "calendar": {
+    "days": "Jours",
+    "hour": "Heure",
+    "month": "Mois",
+    "hours": "Heures"
+  },
+  "chart_titles": {
+    "monthly": "Mensuel",
+    "daily": "Quotidien",
+    "hourly": "Cas par heure de la journée",
+    "total": "Total",
+    "confirmed": "Confirmés",
+    "total_by_age_and_sex": "Cas par âge et sexe",
+    "cases_by_region": "Cas par région (Top 20)",
+    "cases_by_zone": "Cas par zone",
+    "last_7_days": "7 derniers jours",
+    "last_30_days": "30 derniers jours"
+  },
+  "menu": {
+    "dashboard": "Tableau de bord",
+    "cases": "Cas",
+    "surveillance": "Surveillance",
+    "map": "Carte médicale",
+    "reports": "Rapports",
+    "global_data": "Données globales",
+    "languages": "Langues",
+    "bulk_sms": "SMS de masse",
+    "settings": "Paramètres",
+    "alerts": "Alertes",
+    "clinical": "Données Cliniques",
+    "patients": "Registre des Patients",
+    "visits": "Journal des Visites",
+    "field_input": "Rapports des Formations Sanitaires"
+  },
+  "lang": {
+    "french": "Français",
+    "english": "Anglais"
+  },
+  "regions": {
+    "adamawa": "Adamaoua",
+    "center": "Centre",
+    "east": "Est",
+    "far_north": "Extrême-Nord",
+    "littoral": "Littoral",
+    "north": "Nord",
+    "north_west": "Nord-Ouest",
+    "west": "Ouest",
+    "south": "Sud",
+    "south_west": "Sud-Ouest"
+  },
+  "alerts": {
+    "title": "Alertes d'éclosion",
+    "threshold_exceeded": "Seuil dépassé",
+    "increasing_trend": "Tendance à la hausse",
+    "district": "District",
+    "cases_above_baseline": "Cas au-dessus de la ligne de base",
+    "no_alerts": "Aucune alerte"
+  },
+  "statistics": {
+    "total_cases": "Total des cas",
+    "total_deaths": "Total des décès",
+    "total_recovered": "Total guéris",
+    "active_cases": "Cas actifs",
+    "critical_condition": "État critique",
+    "hospitalization_rate": "Taux d'hospitalisation",
+    "mortality_rate": "Taux de létalité",
+    "recovery_rate": "Taux de guérison"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "no_data": "Aucune donnée disponible",
+    "error": "Erreur",
+    "retry": "Réessayer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "date": "Date",
+    "region": "Région",
+    "district": "District",
+    "health_facility": "Formation sanitaire"
+  },
+  "footer": {
+    "copyright": "© {year} Équipe de réponse sanitaire du Cameroun"
+  }
+}

@@ -1,0 +1,138 @@
+<template>
+  <v-card elevation="0" hover tile>
+    <v-card-title>{{ $t('chart_titles.total') }}</v-card-title>
+    <apexchart
+      ref="donut"
+      width="100%"
+      height="252"
+      type="donut"
+      :options="getChartOptions"
+      :series="getSeries"
+    ></apexchart>
+  </v-card>
+</template>
+
+<script>
+import { mapState, mapGetters, mapActions } from "vuex";
+export default {
+  props: {
+    chartdata: {
+      type: Object,
+      default: () => {
+        return {};
+      }
+    }
+  },
+  data: function() {
+    return {
+      labels: [
+        this.$t('covid_stages.quarantined'),
+        this.$t('covid_stages.confirmed'),
+        this.$t('covid_stages.hospitalized'),
+        this.$t('covid_stages.hospitalized_icu'),
+        this.$t('covid_stages.recovered'),
+        this.$t('covid_stages.dead')
+      ],
+      chartOptions: {
+        dataLabels: {
+          formatter: function(val, opts) {
+            return opts.w.globals.series[opts.seriesIndex];
+          }
+        },
+        colors : ['#499ebf', '#f26666', '#f2a81d', '#484c7f', '#50bfa0', '#122a40'],
+        animations: {
+          enabled: false
+        },
+        labels: [
+          this.$t('covid_stages.quarantined'),
+          this.$t('covid_stages.confirmed'),
+          this.$t('covid_stages.hospitalized'),
+          this.$t('covid_stages.hospitalized_icu'),
+          this.$t('covid_stages.recovered'),
+          this.$t('covid_stages.dead')
+        ],
+        plotOptions: {
+          pie: {
+            customScale: 0.9,
+            offsetX: 0,
+            offsetY: 0,
+            expandOnClick: true,
+            dataLabels: {
+              offset: 0,
+              minAngleToShowLabel: 10
+            },
+            donut: {
+              size: "58%",
+              background: "transparent",
+              labels: {
+                show: true,
+                name: {
+                  show: true,
+                  fontSize: "22px",
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 600,
+                  color: undefined,
+                  offsetY: -10
+                },
+                value: {
+                  show: true,
+                  fontSize: "16px",
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 400,
+                  color: undefined,
+                  offsetY: 16,
+                  formatter: function(val) {
+                    return val;
+                  }
+                },
+                total: {
+                  show: true,
+                  showAlways: false,
+                  label: this.$t('chart_titles.total'),
+                  fontSize: "14px",
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 600,
+                  color: "#373d3f"
+                }
+              }
+            }
+          }
+        },
+        legend: {
+          position: "right"
+        }
+      },
+      series: [],
+      xaxis: {
+        type: "category"
+      }
+    };
+  },
+  methods: {
+    updateChart() {}
+  },
+  computed: {
+    getChartOptions() {
+      if (this.chartdata && this.chartdata.xaxis) {
+        return {
+          ...this.chartOptions,
+          xaxis: this.chartdata.xaxis,
+          theme: {
+            mode: this.$vuetify.theme.dark ? "dark" : "light",
+            palette: "palette6"
+          }
+        };
+      }
+
+      return this.chartOptions;
+    },
+    getSeries() {
+      return this.chartdata && this.chartdata.series
+        ? this.chartdata.series
+        : [];
+    }
+  }
+};
+</script>
+
+<style></style>
