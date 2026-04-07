@@ -1,9 +1,9 @@
 # Contributing
 
-As this is time critical project, contributors are advised on working the unfinished parts, and create better flexible ui elements.
+CameroHealth is a national disease surveillance dashboard built for Cameroon's Ministry of Public Health (MINSANTE).
 
-At this time we don't have requirements written up so we need you to identify gaps and propose features/fixes.
+Contributions are welcome! Here's how to get involved:
 
-1. Identify features/bugs and create a GitHub issue (whether you're a developer or not). Put as much info as you can in the ticket. Enough detail/context so new comers can jump in and pick up the ticket
-2. Run this past the project leads or ask for some input on the slack channel
-3. If you can, work on the issue and create a pull request for it
+1. Identify features or bugs and open a GitHub issue with as much detail as possible
+2. Discuss with the project leads — **koumbo-ryans** or **DengningSamuel**
+3. Fork the repo, work on the issue, and submit a pull request

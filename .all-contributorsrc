@@ -6,99 +6,30 @@
   "commit": false,
   "contributors": [
     {
-      "login": "yohane55",
-      "name": "Yohannes Ejigu",
-      "avatar_url": "https://avatars0.githubusercontent.com/u/9741727?v=4",
-      "profile": "https://github.com/yohane55",
+      "login": "koumbo-ryans",
+      "name": "Koumbo Ryans",
+      "avatar_url": "https://avatars.githubusercontent.com/koumbo-ryans",
+      "profile": "https://github.com/koumbo-ryans",
       "contributions": [
-        "code"
+        "code",
+        "design",
+        "projectManagement"
       ]
     },
     {
-      "login": "helomberhane",
-      "name": "Helom Berhane",
-      "avatar_url": "https://avatars3.githubusercontent.com/u/8413152?v=4",
-      "profile": "https://github.com/helomberhane",
+      "login": "DengningSamuel",
+      "name": "Dengning Samuel",
+      "avatar_url": "https://avatars.githubusercontent.com/DengningSamuel",
+      "profile": "https://github.com/DengningSamuel",
       "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "yohannesHL",
-      "name": "Yohannes Libanos",
-      "avatar_url": "https://avatars1.githubusercontent.com/u/9559892?v=4",
-      "profile": "https://github.com/yohannesHL",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "rkassa",
-      "name": "Robel Kassa",
-      "avatar_url": "https://avatars1.githubusercontent.com/u/201428?v=4",
-      "profile": "https://github.com/rkassa",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "tekleayele",
-      "name": "Tekle Ayele",
-      "avatar_url": "https://avatars1.githubusercontent.com/u/20665149?v=4",
-      "profile": "https://www.javaonlinecompiler.com",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "abelhbeyene",
-      "name": "Abel",
-      "avatar_url": "https://avatars1.githubusercontent.com/u/12272815?v=4",
-      "profile": "https://github.com/abelhbeyene",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "nabebe",
-      "name": "Nati Abebe",
-      "avatar_url": "https://avatars2.githubusercontent.com/u/17017927?v=4",
-      "profile": "https://github.com/nabebe",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "gedion",
-      "name": "Gedion Woldeselassie",
-      "avatar_url": "https://avatars3.githubusercontent.com/u/1224206?v=4",
-      "profile": "https://github.com/gedion",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "rtezera1",
-      "name": "Robel Tezera",
-      "avatar_url": "https://avatars1.githubusercontent.com/u/6413973?v=4",
-      "profile": "https://github.com/rtezera1",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "Howmuchadollarcost",
-      "name": "M_Y",
-      "avatar_url": "https://avatars3.githubusercontent.com/u/17015425?v=4",
-      "profile": "https://github.com/Howmuchadollarcost",
-      "contributions": [
-        "code"
+        "code",
+        "infra"
       ]
     }
   ],
   "contributorsPerLine": 7,
-  "projectName": "internal-dashboard",
-  "projectOwner": "africa-covid-19-response-toolkit",
+  "projectName": "Camero-Health",
+  "projectOwner": "koumbo-ryans",
   "repoType": "github",
   "repoHost": "https://github.com",
   "skipCi": true
