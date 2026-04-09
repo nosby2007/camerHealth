@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/_nuxt/(.*)", "dest": "/_nuxt/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
