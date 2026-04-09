@@ -113,12 +113,28 @@ export default {
       return sorted[0][0].toUpperCase();
     },
     recentPatients() { return [...this.hospitalPatients].reverse().slice(0, 8) },
-    chartSeries() { return [{ name: 'Visits', data: [12, 19, 14, 22, this.hospitalVisits.length, 0, 0] }] },
+    chartSeries() {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const currentDay = new Date().getDay();
+      const last7Days = Array.from({length: 7}, (_, i) => (currentDay - 6 + i + 7) % 7);
+      
+      const counts = last7Days.map(dayIdx => {
+        return this.hospitalVisits.filter(v => new Date(v.createdAt).getDay() === dayIdx).length;
+      });
+      
+      return [{ name: 'Visits', data: counts }];
+    },
     chartOptions() {
       return {
         chart: { type: 'bar', toolbar: { show: false } },
         colors: ['#00A99D'],
-        xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], labels: { style: { fontWeight: 700, colors: '#6B7280' } } },
+        xaxis: { 
+          categories: Array.from({length: 7}, (_, i) => {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            return days[(new Date().getDay() - 6 + i + 7) % 7];
+          }), 
+          labels: { style: { fontWeight: 700, colors: '#6B7280' } } 
+        },
         plotOptions: { bar: { columnWidth: '40%', borderRadius: 0 } },
         grid: { borderColor: '#F1F5F9' }
       }

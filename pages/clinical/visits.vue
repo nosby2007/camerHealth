@@ -163,9 +163,9 @@
     <div id="medical-report-print" class="printable-only">
        <div class="print-header d-flex justify-space-between align-center border-bottom pb-6 mb-8">
           <div>
-             <div class="text-h6 font-weight-black gov-text-primary uppercase">REPUBLIC OF CAMEROON</div>
+             <div class="text-h6 font-weight-black gov-text-primary uppercase">CameroHealth</div>
              <div class="text-caption font-weight-bold grey--text uppercase">MINISTRY OF PUBLIC HEALTH</div>
-             <div class="text-caption font-weight-bold grey--text uppercase">NATIONAL HEALTH INTELLIGENCE SYSTEM (NIHIS)</div>
+             <div class="text-caption font-weight-bold grey--text uppercase">Digitalising Health, Improving Care</div>
           </div>
           <div class="text-right">
              <div class="text-h6 font-weight-black error--text uppercase">CLINICAL INCIDENT REPORT</div>

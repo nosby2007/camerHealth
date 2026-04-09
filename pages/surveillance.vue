@@ -174,24 +174,35 @@ export default {
     getTables() {
        if (!this.currentMedicalFacilities || this.currentMedicalFacilities.length === 0) return [];
        const f = this.currentMedicalFacilities[0];
+       const regionVisits = this.$store.getters['clinical/getVisits'].filter(v => v.region === this.currentRegion.name);
+       const regionField = this.$store.getters['clinical/getFieldReports'].filter(r => r.region === this.currentRegion.name);
+       
        return [[
          { key: "Resource Status", value: f.status || 'Active', color: '#00A99D' },
-         { key: "Regional Bed Capacity", value: f.total_beds, color: '#003366' },
-         { key: "Available Capacity", value: f.available_beds, color: '#003366' },
-         { key: "Mechanical Ventilators", value: f.available_ventilators || '0', color: '#003366' }
+         { key: "Regional Cases", value: regionVisits.length + regionField.reduce((a, r) => a + (parseInt(r.cases) || 0), 0), color: '#B91C1C' },
+         { key: "Regional Bed Capacity", value: f.total_beds || 'N/A', color: '#003366' },
+         { key: "Critical Severity cases", value: regionVisits.filter(v => v.severity === 'Critical').length, color: '#003366' }
        ]];
     },
     getRegionRecords() {
-      const features = this.administrativeZoneDataAll.features || [];
+      const features = (this.administrativeZoneDataAll && this.administrativeZoneDataAll.features) || [];
+      const visits = this.$store.getters['clinical/getVisits'];
+      const field = this.$store.getters['clinical/getFieldReports'];
+      
       this.regionRecords = [];
-      this.regionOverlayRecords = _map(features, (data, index) => {
-        let regionRecord = { adminRegion3Id: data.properties.region_id, name: data.properties.region_name, totalCases: Math.floor(Math.random() * 20) };
+      this.regionOverlayRecords = _map(features, (data) => {
+        const regionName = data.properties.region_name;
+        const vCount = visits.filter(v => v.region === regionName).length;
+        const fCount = field.filter(r => r.region === regionName).reduce((a, r) => a + (parseInt(r.cases) || 0), 0);
+        
+        let regionRecord = { adminRegion3Id: data.properties.region_id, name: regionName, totalCases: vCount + fCount };
         this.regionRecords.push(regionRecord);
+        
         let coords = data.geometry.type === 'MultiPolygon' ? data.geometry.coordinates[0][0] : data.geometry.coordinates[0];
         return {
           adminRegion3Id: data.properties.region_id,
           paths: _map(coords, ld => ({ lat: parseFloat(ld[1]), lng: parseFloat(ld[0]) })),
-          fillColor: regionRecord.totalCases > 10 ? GOV_COLORS[2] : (regionRecord.totalCases > 5 ? GOV_COLORS[1] : GOV_COLORS[0])
+          fillColor: regionRecord.totalCases > 10 ? GOV_COLORS[2] : (regionRecord.totalCases > 2 ? GOV_COLORS[1] : GOV_COLORS[0])
         };
       });
     },

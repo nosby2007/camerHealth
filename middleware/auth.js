@@ -3,7 +3,7 @@
  *
  * TWO COMPLETELY SEPARATE AUTH FLOWS:
  *
- * ── MINISTRY LAYER (original, unchanged) ──────────────────────────────────────
+ * ── NATIONAL HEALTH STATISTICS (original, unchanged) ──────────────────────────────────────
  *   Entry : /ministry-login  (free-entry form → Cognito)
  *   Routes: /ministry, /surveillance, /maps, /reports
  *   Roles : PUBLIC_HEALTH_OFFICER, EPIDEMIOLOGIST

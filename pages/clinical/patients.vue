@@ -70,7 +70,7 @@
               <v-divider class="mb-8 grey lighten-4"></v-divider>
               
               <v-btn color="#00A99D" dark block height="54" tile depressed :disabled="!valid" @click="savePatient" class="font-weight-black text-caption ls-1">
-                COMMIT RECORD TO CENTRAL NIHIS DATABASE
+                COMMIT RECORD TO CENTRAL Digitalising Health, Improving Care DATABASE
                 <v-icon right small>mdi-check-bold</v-icon>
               </v-btn>
             </v-form>

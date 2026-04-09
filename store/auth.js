@@ -83,7 +83,7 @@ export const mutations = {
   SET_API_TOKEN(state, token) {
     state.apiToken = token
   },
-  // Ministry layer — uses original free-entry flow (Cognito-backed)
+  // National Health Statistics — uses original free-entry flow (Cognito-backed)
   set(state, user) {
     if (user) {
       state.isAuthenticated = true

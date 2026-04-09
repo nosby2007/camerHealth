@@ -9,7 +9,7 @@
         </v-avatar>
         <div class="line-height-1">
           <div class="text-caption font-weight-black grey--text text--lighten-1 ls-1 uppercase">CameroHealth</div>
-          <div class="text-subtitle-2 font-weight-black white--text uppercase ls-tight">NIHIS PORTAL</div>
+          <div class="text-subtitle-2 font-weight-black white--text uppercase ls-tight">Digitalising Health, Improving Care</div>
         </div>
       </div>
 
@@ -42,7 +42,7 @@
       </v-btn>
 
       <div class="ml-4 d-none d-md-flex flex-column">
-        <span class="text-caption font-weight-black grey--text text--darken-1 mb-n1 mt-1">REPUBLIC OF CAMEROON - {{ isClinical ? 'Clinical Layer' : 'National Layer' }}</span>
+        <span class="text-caption font-weight-black grey--text text--darken-1 mb-n1 mt-1">CameroHealth - {{ isClinical ? 'Clinical Layer' : 'National Health Statistics' }}</span>
         <span class="text-subtitle-2 font-weight-bold gov-primary--text">
           {{ isClinical ? institution : 'Ministry of Public Health - Surveillance Portal' }}
         </span>
@@ -122,11 +122,11 @@ export default {
       drawer: true,
       criticalAlert: null,
       navItems: [
-        // ── Ministry Layer ──
-        { icon: 'mdi-view-dashboard',   titleKey: 'menu.dashboard',   to: '/ministry',              roles: ['PUBLIC_HEALTH_OFFICER'] },
-        { icon: 'mdi-shield-search',    titleKey: 'menu.surveillance', to: '/surveillance',          roles: ['PUBLIC_HEALTH_OFFICER'] },
-        { icon: 'mdi-map',              titleKey: 'menu.map',          to: '/maps',                  roles: ['PUBLIC_HEALTH_OFFICER'] },
-        { icon: 'mdi-file-chart',       titleKey: 'menu.reports',      to: '/reports',               roles: ['PUBLIC_HEALTH_OFFICER'] },
+        // ── National Health Statistics ──
+        { icon: 'mdi-view-dashboard',   titleKey: 'menu.dashboard',   to: '/ministry',              roles: ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'] },
+        { icon: 'mdi-shield-search',    titleKey: 'menu.surveillance', to: '/surveillance',          roles: ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'] },
+        { icon: 'mdi-map',              titleKey: 'menu.map',          to: '/maps',                  roles: ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'] },
+        { icon: 'mdi-file-chart',       titleKey: 'menu.reports',      to: '/reports',               roles: ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'] },
         // ── Admin Layer ──
         { icon: 'mdi-shield-account',   titleKey: 'Admin Dashboard',   to: '/admin',                 roles: ['ADMIN'] },
         { icon: 'mdi-account-multiple', titleKey: 'Staff Accounts',    to: '/admin/staff',           roles: ['ADMIN'] },
@@ -168,7 +168,7 @@ export default {
     userRole() { return this.$store.state.auth.role || 'GUEST'; },
     institution() { return this.$store.state.auth.institution; },
     isClinical() { return ['ADMIN','DOCTOR','NURSE','LAB','IMAGING'].includes(this.userRole); },
-    isMinistry() { return this.userRole === 'PUBLIC_HEALTH_OFFICER'; },
+    isMinistry() { return ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'].includes(this.userRole); },
     currentLangName() { return this.$store.state.locale === 'fr' ? 'FRANÇAIS' : 'ENGLISH'; },
     filteredNavItems() { return this.navItems.filter(item => item.roles.includes(this.userRole)); }
   }

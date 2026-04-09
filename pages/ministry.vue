@@ -147,7 +147,7 @@
       <v-col cols="12">
         <v-card flat tile class="gov-card b-1 pa-10 shadow-sm">
            <h2 class="text-subtitle-1 font-weight-black gov-text-primary uppercase mb-1">{{ $t("chart_titles.hourly") }}</h2>
-           <p class="text-caption grey--text font-weight-medium mb-10 uppercase">Sovereign Longitudinal Analysis (24H Sweep)</p>
+           <p class="text-caption grey--text font-weight-medium mb-10 uppercase">Live Longitudinal Analysis (Data-Driven Insights)</p>
            <HourlyCasesLineChart :chartdata="getHourlyLiveStats" />
         </v-card>
       </v-col>
@@ -163,12 +163,11 @@ import HourlyCasesLineChart from "~/components/HourlyCasesLineChart";
 import TotalBarChart from "~/components/TotalBarChart.vue";
 import PieChart from "~/components/PieChart.vue";
 import Map from "@/components/Map";
-import pmoCases from "../resources/pmoCases.json";
-import pmoPatients from "../resources/pmoPatients.json";
 import _map from "lodash/map";
 import _orderBy from "lodash/orderBy";
 import _forEach from "lodash/forEach";
 import _uniqBy from "lodash/uniqBy";
+import _groupBy from "lodash/groupBy";
 import MomentTimezone from "moment-timezone";
 import { extendMoment } from "moment-range";
 
@@ -178,9 +177,9 @@ const roundValue = (value, decimals) => Number(Math.round(value + "e" + decimals
 function createHourlyGroupedRecords(records) {
   let hash = Object.create(null); let grouped = [];
   _forEach(records, r => {
-    var key = r.date_time_announced.slice(0, 13);
-    if (!hash[key]) { hash[key] = { cases: 1, time: key + ":00:00.000Z" }; grouped.push(hash[key]); }
-    hash[key].cases += 1;
+    var key = r.createdAt.slice(0, 13);
+    if (!hash[key]) { hash[key] = { cases: 0, time: key + ":00:00.000Z" }; grouped.push(hash[key]); }
+    hash[key].cases += (parseInt(r.cases) || 1);
   });
   return grouped;
 }
@@ -188,9 +187,9 @@ function createHourlyGroupedRecords(records) {
 function createDailyGroupedRecords(records) {
   let hash = Object.create(null); let grouped = [];
   _forEach(records, r => {
-    var key = r.date_time_announced.slice(0, 10);
-    if (!hash[key]) { hash[key] = { cases: 1, time: key + "T00:00:00.000Z" }; grouped.push(hash[key]); }
-    hash[key].cases += 1;
+    var key = r.createdAt.slice(0, 10);
+    if (!hash[key]) { hash[key] = { cases: 0, time: key + "T00:00:00.000Z" }; grouped.push(hash[key]); }
+    hash[key].cases += (parseInt(r.cases) || 1);
   });
   return grouped;
 }
@@ -209,75 +208,87 @@ export default {
       loading: false,
       labels: ["covid_stages.confirmed", "covid_stages.hospitalized", "covid_stages.recovered", "covid_stages.quarantined"],
       suffixesMap: { 0: ["covid_stages.confirmed", "covid_stages.dead"], 1: ["covid_stages.hospitalized_stable", "covid_stages.hospitalized_critical"], 2: ["covid_stages.recovered"], 3: ["covid_stages.quarantined"] },
-      hospitalizedPercentage: 0, finalOutcomePercentage: 0, regionRecords: [], showFieldData: false
+      hospitalizedPercentage: 0, finalOutcomePercentage: 0
     };
   },
   computed: {
     ...mapState('stats', ['disease']),
+    ...mapGetters('clinical', ['getPatients', 'getVisits', 'getFieldReports', 'getInpatients']),
     currentFocus() { return this.disease || 'General Surveillance' },
     getTotalStats() {
-      let totalCaseObj = { ...pmoCases[0] };
-      if (this.showFieldData) {
-        totalCaseObj.confirmed += this.$store.getters['clinical/getFieldReports'].reduce((acc, r) => acc + (parseInt(r.cases) || 0), 0);
-        totalCaseObj.deceased += this.$store.getters['clinical/getVisits'].filter(v => v.status === 'Deceased').length;
-      }
-      return { series: [[totalCaseObj.confirmed, totalCaseObj.deceased], [totalCaseObj.stable + totalCaseObj.critical, totalCaseObj.critical], [totalCaseObj.recovered], [totalCaseObj.tested]] };
+      const visits = this.getVisits;
+      const field = this.getFieldReports;
+      const confirmed = visits.filter(v => v.status === 'Confirmed').length + field.reduce((a, r) => a + (parseInt(r.cases) || 0), 0);
+      const dead = visits.filter(v => v.status === 'Deceased').length;
+      const hospitalized = this.getInpatients.length;
+      const critical = visits.filter(v => v.severity === 'Critical').length;
+      const recovered = visits.filter(v => v.status === 'Recovered').length;
+      const tested = this.getPatients.length;
+      
+      return { series: [[confirmed, dead], [hospitalized, critical], [recovered], [tested]] };
     },
     getTop20Regions() {
-      let woredaByTotalCases = _map(_uniqBy(this.regionRecords, "name"), r => {
-        let count = r.totalCases;
-        if (this.showFieldData) { count += this.$store.getters['clinical/getFieldReports'].filter(fr => fr.region === r.name).reduce((acc, fr) => acc + (parseInt(fr.cases) || 0), 0) }
-        return { country: r.name, count };
+      const allRegions = ['Far North', 'North', 'Adamawa', 'Centre', 'South', 'East', 'West', 'Littoral', 'South-West', 'North-West'];
+      let regionalData = allRegions.map(r => {
+        const vCount = this.getVisits.filter(v => v.region === r && v.status === 'Confirmed').length;
+        const fCount = this.getFieldReports.filter(f => f.region === r).reduce((a, fr) => a + (parseInt(fr.cases) || 0), 0);
+        return { name: r, count: vCount + fCount };
       });
-      let top10Woredas = _orderBy(woredaByTotalCases, ["count"], ["desc"]).slice(0, 20);
-      return { series: [{ name: "Cas Confirmés", data: _map(top10Woredas, "count") }], labels: _map(top10Woredas, "country") };
+      regionalData = _orderBy(regionalData, ["count"], ["desc"]);
+      return { series: [{ name: "Cas Confirmés", data: _map(regionalData, "count") }], labels: _map(regionalData, "name") };
     },
     getTotalByAgeGenderSeries() {
+      const patients = this.getPatients;
       const ageRanges = [[0, 4], [5, 14], [15, 34], [35, 44], [45, 54], [55, 64], [65, 74], [75, 84], [85, 120]];
-      const totalCases = pmoPatients.results.length || 1;
-      const getSeries = gender => ageRanges.map(range => {
-        const count = pmoPatients.results.filter(p => p.gender === gender && p.age >= range[0] && p.age <= range[1]).length;
-        return gender === "M" ? -count : count;
+      const total = patients.length || 1;
+      const getSeries = sex => ageRanges.map(range => {
+        const count = patients.filter(p => p.gender === sex && p.age >= range[0] && p.age <= range[1]).length;
+        return sex === "Male" ? -count : count;
       });
       return {
-        series: [{ name: "HOMMES", data: getSeries("M") }, { name: "FEMMES", data: getSeries("F") }],
+        series: [{ name: "HOMMES", data: getSeries("Male") }, { name: "FEMMES", data: getSeries("Female") }],
         labels: ["85+", "75-84", "65-74", "55-64", "45-54", "35-44", "15-34", "5-14", "0-4"],
-        formatter: val => Math.abs(Math.round((100 * val) / totalCases)) + "%",
+        formatter: val => Math.abs(Math.round((100 * val) / total)) + "%",
         grid: { xaxis: { lines: { show: false } } },
-        tooltip: { shared: false, y: { formatter: val => `${Math.abs(val)} Rapports` } }
+        tooltip: { shared: false, y: { formatter: val => `${Math.abs(val)} Patients` } }
       };
     },
     getHospitalizationStats() {
-      let totalCaseObj = { ...pmoCases[0] };
-      if (this.showFieldData) totalCaseObj.confirmed += this.$store.getters['clinical/getFieldReports'].reduce((acc, r) => acc + (parseInt(r.cases) || 0), 0);
-      let total = totalCaseObj.confirmed || 1;
-      this.hospitalizedPercentage = roundValue(totalCaseObj.critical / total, 3) * 100;
-      return [{ backgroundColor: ["#F5F7F6", "#C0392B", "#F4A300"], data: [total - (totalCaseObj.stable + totalCaseObj.critical), totalCaseObj.critical, totalCaseObj.stable] }];
+      const inpatients = this.getInpatients;
+      const total = this.getVisits.filter(v => v.status === 'Confirmed').length || 1;
+      const critical = this.getVisits.filter(v => v.severity === 'Critical').length;
+      const stable = inpatients.length - critical;
+      const outpatients = Math.max(0, total - (critical + stable));
+      
+      this.hospitalizedPercentage = roundValue((inpatients.length / total) * 100, 1);
+      return [{ backgroundColor: ["#F5F7F6", "#C0392B", "#F4A300"], data: [outpatients, critical, Math.max(0, stable)] }];
     },
     getFinalOutcomeStats() {
-      let totalCaseObj = { ...pmoCases[0] };
-      if (this.showFieldData) totalCaseObj.deceased += this.$store.getters['clinical/getVisits'].filter(v => v.status === 'Deceased').length;
-      let total = (totalCaseObj.deceased + totalCaseObj.recovered) || 1;
-      this.finalOutcomePercentage = roundValue(totalCaseObj.deceased / total, 3) * 100;
-      return [{ backgroundColor: ["#00A99D", "#C0392B"], data: [totalCaseObj.recovered, totalCaseObj.deceased] }];
+      const recovered = this.getVisits.filter(v => v.status === 'Recovered').length;
+      const deceased = this.getVisits.filter(v => v.status === 'Deceased').length;
+      const total = (recovered + deceased) || 1;
+      this.finalOutcomePercentage = roundValue((recovered / total) * 100, 1);
+      return [{ backgroundColor: ["#00A99D", "#C0392B"], data: [recovered, deceased] }];
     },
     getHourlyLiveStats() {
       const last24hours = timeOneDay();
-      const groupedHourlyRecords = createHourlyGroupedRecords(pmoPatients.results);
-      const casesPerHour = last24hours.map(hour => {
-        const record = groupedHourlyRecords.find(r => r.time === hour);
+      const combined = [...this.getVisits, ...this.getFieldReports];
+      const grouped = createHourlyGroupedRecords(combined);
+      const data = last24hours.map(hour => {
+        const record = grouped.find(r => r.time === hour);
         return record ? record.cases : 0;
       });
-      return { series: [{ name: "Incidents", data: casesPerHour }], xaxis: { categories: last24hours.map(h => moment(h).format("hA")) } };
+      return { series: [{ name: "Cas Signalés", data }], xaxis: { categories: last24hours.map(h => moment(h).format("hA")) } };
     },
     getLast30DayStats() {
-      const range = Array.from(moment.range(moment().subtract(30, "days"), moment()).by("day"));
-      const groupedDailyRecords = createDailyGroupedRecords(pmoPatients.results);
-      const casesPerDay = range.map(day => {
-        const record = groupedDailyRecords.find(r => r.time.slice(0, 10) === day.format("YYYY-MM-DD"));
+      const range = Array.from(moment.range(moment().subtract(30, "days"), moment()).by("day")).reverse();
+      const combined = [...this.getVisits, ...this.getFieldReports];
+      const grouped = createDailyGroupedRecords(combined);
+      const data = range.map(day => {
+        const record = grouped.find(r => r.time.slice(0, 10) === day.format("YYYY-MM-DD"));
         return record ? record.cases : 0;
       });
-      return { series: [{ name: "Surveillance Trend", data: casesPerDay.reverse() }] };
+      return { series: [{ name: "Surveillance Trend", data }] };
     }
   },
   methods: {
@@ -287,7 +298,6 @@ export default {
   },
   async mounted() {
     this.getStats();
-    this.regionRecords = [{ name: 'Adamaoua', totalCases: 45 }, { name: 'Centre', totalCases: 250 }, { name: 'Est', totalCases: 52 }, { name: 'Extrême-Nord', totalCases: 89 }, { name: 'Littoral', totalCases: 198 }, { name: 'Nord', totalCases: 67 }, { name: 'Nord-Ouest', totalCases: 104 }, { name: 'Ouest', totalCases: 112 }, { name: 'Sud', totalCases: 48 }, { name: 'Sud-Ouest', totalCases: 76 }];
   }
 };
 </script>

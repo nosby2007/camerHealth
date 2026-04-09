@@ -9,8 +9,8 @@
           <v-img src="/logo.png" contain></v-img>
         </v-avatar>
         <div>
-          <div class="text-caption font-weight-black ls-1 uppercase opacity-70">REPUBLIC OF CAMEROON</div>
-          <div class="text-h6 font-weight-black ls-tight uppercase">Health Intelligence Gateway</div>
+          <div class="text-caption font-weight-black ls-1 uppercase opacity-70">CameroHealth</div>
+          <div class="text-h6 font-weight-black ls-tight uppercase">Digitalising Health, Improving Care</div>
         </div>
       </div>
 
@@ -20,7 +20,7 @@
           <!-- Step 1: Role Selection -->
           <v-window-item :value="1">
             <h1 class="text-subtitle-1 font-weight-black gov-text-primary mb-8 uppercase text-center ls-1">
-              MINISTRY ACCESS — SELECT ROLE
+              HEALTH OFFICER ACCESS — SELECT ROLE
             </h1>
             <v-row>
               <v-col cols="12" sm="6">
@@ -75,7 +75,7 @@
         <v-icon x-small color="#C0392B" class="mb-1">mdi-shield-lock</v-icon>
         <div class="text-caption font-weight-black grey--text text--darken-1 uppercase ls-1 mb-1">Notice to Authorized Users</div>
         <p class="text-caption grey--text mb-0 opacity-60 font-weight-medium" style="font-size: 10px !important;">
-          This NIHIS-ST-2026 infrastructure is restricted to authorized Ministerial personnel.
+          This CameroHealth infrastructure is restricted to authorized Ministerial Personnel or Hospital Personnel.
           All sessions are audited under National Health Security Protocol.
         </p>
       </div>

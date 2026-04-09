@@ -47,8 +47,8 @@
                <span class="text-caption font-weight-black error--text">{{ infoWindowDetails.critical }}</span>
             </div>
             <div class="text-caption mt-2 pt-1 border-top grey--text opacity-60 italic" style="font-size: 9px !important;">
-               SÉCURITÉ NIHIS - MISE À JOUR: {{ lastUpdate }}
-            </div>
+                SÉCURITÉ Digitalising Health, Improving Care - MISE À JOUR: {{ lastUpdate }}
+             </div>
           </div>
         </GmapInfoWindow>
 

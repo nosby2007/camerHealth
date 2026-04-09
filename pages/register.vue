@@ -9,7 +9,7 @@
           <v-img src="/logo.png" contain></v-img>
         </v-avatar>
         <div>
-          <div class="text-caption font-weight-black ls-1 uppercase opacity-70">REPUBLIC OF CAMEROON — MINSANTE</div>
+          <div class="text-caption font-weight-black ls-1 uppercase opacity-70">CameroHealth</div>
           <div class="text-h6 font-weight-black ls-tight uppercase">New Facility Registration</div>
         </div>
       </div>
@@ -150,8 +150,10 @@
 
       <div class="pa-6 bg-grey lighten-4 text-center border-top">
         <v-icon x-small color="#C0392B" class="mb-1">mdi-shield-lock</v-icon>
+        <div class="text-caption font-weight-black grey--text text--darken-1 uppercase ls-1 mb-1">Notice to Authorized Users</div>
         <p class="text-caption grey--text mb-0 font-weight-medium" style="font-size:10px">
-          All credentials are hashed and stored locally. This system is restricted to authorized MINSANTE personnel.
+          This CameroHealth infrastructure is restricted to authorized Ministerial Personnel or Hospital Personnel.
+          All sessions are audited under National Health Security Protocol.
         </p>
       </div>
     </v-card>

@@ -9,9 +9,8 @@
           <v-avatar tile size="72" class="mb-6">
             <v-img src="/logo.png" contain></v-img>
           </v-avatar>
-          <div class="text-caption font-weight-black ls-2 uppercase grey--text mb-2">REPUBLIC OF CAMEROON — MINSANTE</div>
-          <h1 class="text-h4 font-weight-black gov-text-primary ls-tight uppercase mb-2">CameroHealth</h1>
-          <div class="text-caption font-weight-bold grey--text uppercase ls-1">National Integrated Health Intelligence System (NIHIS)</div>
+          <div class="text-caption font-weight-black ls-2 uppercase grey--text mb-2">CameroHealth</div>
+          <h1 class="text-h4 font-weight-black gov-text-primary ls-tight uppercase mb-2">Digitalising Health, Improving Care</h1>
         </div>
 
         <!-- Layer Selection -->
@@ -38,7 +37,7 @@
             </v-card>
           </v-col>
 
-          <!-- Ministry Layer -->
+          <!-- National Health Statistics -->
           <v-col cols="12" sm="6">
             <v-card
               flat tile
@@ -48,7 +47,7 @@
               <div class="layer-icon-wrap ministry mb-6 mx-auto">
                 <v-icon size="40" color="white">mdi-account-tie</v-icon>
               </div>
-              <div class="text-subtitle-1 font-weight-black gov-text-primary uppercase mb-2">Ministry Layer</div>
+              <div class="text-subtitle-1 font-weight-black gov-text-primary uppercase mb-2">National Health Statistics</div>
               <div class="text-caption grey--text font-weight-medium mb-6">
                 MINSANTE public health officers, national surveillance and epidemiology
               </div>
@@ -62,9 +61,11 @@
         <!-- Footer notice -->
         <div class="text-center mt-10">
           <v-icon x-small color="#C0392B" class="mr-1">mdi-shield-lock</v-icon>
-          <span class="text-caption grey--text font-weight-medium" style="font-size:10px">
-            Restricted to authorized MINSANTE and healthcare personnel. All sessions are audited.
-          </span>
+          <div class="text-caption font-weight-black grey--text text--darken-1 uppercase ls-1 mb-1">Notice to Authorized Users</div>
+          <p class="text-caption grey--text font-weight-medium mb-0" style="font-size:10px">
+            This CameroHealth infrastructure is restricted to authorized Ministerial Personnel or Hospital Personnel.
+            All sessions are audited under National Health Security Protocol.
+          </p>
         </div>
 
       </div>
