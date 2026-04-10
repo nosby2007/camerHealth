@@ -165,7 +165,9 @@ export const actions = {
     const clientId     = process.env.CLIENT_ID
     const clientSecret = process.env.CLIENT_SECRET
     if (!authUrl || !clientId || !clientSecret) return
-    const key = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+    const key = (process.server) 
+      ? Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+      : btoa(`${clientId}:${clientSecret}`)
     try {
       const res = await axios.post(authUrl, qs.stringify({ grant_type: 'client_credentials' }), {
         headers: { 'content-type': 'application/x-www-form-urlencoded;charset=utf-8', Authorization: `Basic ${key}` }

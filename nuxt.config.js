@@ -4,8 +4,12 @@ require("./config");
 
 export default {
   env: {
-    API_URL: process.env.API_URL || "http://localhost:9017",
-    GOOGLE_MAPS_API_KEY: process.env.VUE_APP_GOOGLE_MAPS_API_KEY
+    API_URL: process.env.API_URL || "https://api.minsante.gov.cm",
+    GOOGLE_MAPS_API_KEY: process.env.VUE_APP_GOOGLE_MAPS_API_KEY || 'AIzaSyCbJ9q4wE-kF96sFcMKiYPmBfiGw_MpvuY',
+    AUTH_URL: process.env.AUTH_URL || "https://auth.minsante.gov.cm/oauth/token",
+    CLIENT_ID: process.env.CLIENT_ID || "3j7mu7dum13sanbh6dke24u36h",
+    CLIENT_SECRET: process.env.CLIENT_SECRET || "314ebm8pfjvtqo8qv1palf3l2a38ktbbmuq2",
+    STATUS_AXIOS_URL: process.env.STATUS_AXIOS_URL || "https://api.minsante.gov.cm/stats"
   },
   mode: "spa",
   /*
