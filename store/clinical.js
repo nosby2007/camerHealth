@@ -108,7 +108,7 @@ export const actions = {
       createdAt: new Date().toISOString() 
     })
   },
-  logVisit({ commit, rootState }, visit) {
+  async logVisit({ commit, rootState, dispatch }, visit) {
     commit('ADD_VISIT', { 
       ...visit, 
       id: Date.now(), 
@@ -116,14 +116,44 @@ export const actions = {
       region: rootState.auth.region,
       createdAt: new Date().toISOString() 
     })
+    // Auto-sync anonymized data to Supabase
+    await dispatch('syncToSupabase', {
+      disease: visit.category || 'General',
+      region: rootState.auth.region || 'Unspecified',
+      facility_name: rootState.auth.institution || 'Unknown Facility',
+      case_count: 1
+    })
   },
-  reportFieldCase({ commit, rootState }, report) {
+  async reportFieldCase({ commit, rootState, dispatch }, report) {
     commit('ADD_FIELD_REPORT', { 
       ...report, 
       id: Date.now(), 
       institution: rootState.auth.institution,
       createdAt: new Date().toISOString() 
     })
+    // Auto-sync field case data
+    await dispatch('syncToSupabase', {
+      disease: report.disease,
+      region: report.region,
+      facility_name: rootState.auth.institution,
+      case_count: report.cases || 1
+    })
+  },
+  async syncToSupabase({ state }, payload) {
+    try {
+      await this.$supabase.from('health_telemetry').insert([
+        {
+          facility_name: payload.facility_name,
+          region: payload.region,
+          disease: payload.disease,
+          case_count: payload.case_count,
+          recorded_at: new Date().toISOString()
+        }
+      ])
+      console.log('Telemetric sync successful')
+    } catch (e) {
+      console.error('Telemetric sync failed:', e)
+    }
   },
   syncData({ commit }) {
     commit('SET_LAST_SYNC', new Date().toISOString())
@@ -205,8 +235,8 @@ export const actions = {
 
 export const getters = {
   // ROLE HELPERS
-  isClinical: (state, getters, rootState) => rootState.auth.role === 'CLINICAL_STAFF',
-  isMinistry: (state, getters, rootState) => rootState.auth.role === 'PUBLIC_HEALTH_OFFICER',
+  isClinical: (state, getters, rootState) => ['DOCTOR', 'NURSE', 'LAB', 'IMAGING', 'CLINICAL_STAFF'].includes(rootState.auth.role),
+  isMinistry: (state, getters, rootState) => ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'].includes(rootState.auth.role),
 
   // FILTERED DATA
   getPatients: (state, getters, rootState) => {

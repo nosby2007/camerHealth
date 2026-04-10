@@ -9,7 +9,9 @@ export default {
     AUTH_URL: process.env.AUTH_URL || "https://auth.minsante.gov.cm/oauth/token",
     CLIENT_ID: process.env.CLIENT_ID || "3j7mu7dum13sanbh6dke24u36h",
     CLIENT_SECRET: process.env.CLIENT_SECRET || "314ebm8pfjvtqo8qv1palf3l2a38ktbbmuq2",
-    STATUS_AXIOS_URL: process.env.STATUS_AXIOS_URL || "https://api.minsante.gov.cm/stats"
+    STATUS_AXIOS_URL: process.env.STATUS_AXIOS_URL || "https://api.minsante.gov.cm/stats",
+    SUPABASE_URL: process.env.SUPABASE_URL || "https://jgltrrvzcrylapnuyfyf.supabase.co",
+    SUPABASE_KEY: process.env.SUPABASE_KEY || "sb_publishable_CHBAlLp76qFuLpjBXnVIYQ_0316QP08"
   },
   mode: "spa",
   /*
@@ -48,6 +50,7 @@ export default {
     { src: "~/plugins/google-maps.js" },
     { src: "~/plugins/apex.chart.js" },
     { src: "~/plugins/i18n.js" },
+    { src: "~/plugins/supabase.js" },
     { src: "~/plugins/amplify.js", ssr: false },
     { src: "~/plugins/amplify.auth.js", mode: "client" },
     { src: "~/plugins/vue-json-to-csv.js" }
@@ -165,6 +168,12 @@ export default {
       if (ctx && ctx.isClient) {
         config.optimization.splitChunks.maxSize = 256000;
       }
+      // Add support for .mjs files in node_modules (required for Supabase/Webpack 4)
+      config.module.rules.push({
+        test: /\.mjs$/,
+        include: /node_modules/,
+        type: 'javascript/auto'
+      });
     },
     loaders: {
       scss: {
@@ -174,6 +183,10 @@ export default {
         }
       }
     },
-    transpile: [/^vue2-google-maps($|\/)/]
+    transpile: [
+      /^vue2-google-maps($|\/)/,
+      /@supabase/,
+      /iceberg-js/
+    ]
   }
 };

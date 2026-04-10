@@ -10,7 +10,7 @@ export const state = () => ({
 
 export const mutations = {
   // Custom mutations
-  SET_LANG (state, locale) {
+  SET_LANG(state, locale) {
     if (state.locales.includes(locale)) {
       state.locale = locale
     }
@@ -18,5 +18,5 @@ export const mutations = {
 };
 
 export const actions = {
-  nuxtServerInit() {}
+  nuxtServerInit() { }
 };

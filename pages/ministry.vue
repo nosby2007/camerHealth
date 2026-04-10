@@ -213,17 +213,22 @@ export default {
   },
   computed: {
     ...mapState('stats', ['disease']),
+    ...mapState('telemetry', { cloudRecords: 'records' }),
     ...mapGetters('clinical', ['getPatients', 'getVisits', 'getFieldReports', 'getInpatients']),
     currentFocus() { return this.disease || 'General Surveillance' },
     getTotalStats() {
       const visits = this.getVisits;
       const field = this.getFieldReports;
-      const confirmed = visits.filter(v => v.status === 'Confirmed').length + field.reduce((a, r) => a + (parseInt(r.cases) || 0), 0);
+      const cloudConfirmed = (this.cloudRecords || []).reduce((a, r) => a + (r.case_count || 1), 0);
+      const confirmed = visits.filter(v => v.status === 'Confirmed').length + 
+                        field.reduce((a, r) => a + (parseInt(r.cases) || 0), 0) +
+                        cloudConfirmed;
+
       const dead = visits.filter(v => v.status === 'Deceased').length;
       const hospitalized = this.getInpatients.length;
       const critical = visits.filter(v => v.severity === 'Critical').length;
       const recovered = visits.filter(v => v.status === 'Recovered').length;
-      const tested = this.getPatients.length;
+      const tested = this.getPatients.length + cloudConfirmed;
       
       return { series: [[confirmed, dead], [hospitalized, critical], [recovered], [tested]] };
     },
@@ -232,10 +237,11 @@ export default {
       let regionalData = allRegions.map(r => {
         const vCount = this.getVisits.filter(v => v.region === r && v.status === 'Confirmed').length;
         const fCount = this.getFieldReports.filter(f => f.region === r).reduce((a, fr) => a + (parseInt(fr.cases) || 0), 0);
-        return { name: r, count: vCount + fCount };
+        const cCount = (this.cloudRecords || []).filter(c => c.region === r).reduce((a, cr) => a + (cr.case_count || 1), 0);
+        return { name: r, count: vCount + fCount + cCount };
       });
       regionalData = _orderBy(regionalData, ["count"], ["desc"]);
-      return { series: [{ name: "Cas Confirmés", data: _map(regionalData, "count") }], labels: _map(regionalData, "name") };
+      return { series: [{ name: "Cas Confirmés (Total)", data: _map(regionalData, "count") }], labels: _map(regionalData, "name") };
     },
     getTotalByAgeGenderSeries() {
       const patients = this.getPatients;
@@ -293,7 +299,19 @@ export default {
   },
   methods: {
     ...mapActions("stats", ["loadStats"]),
-    async getStats() { this.loading = true; try { await this.loadStats(); this.loading = false; } catch (err) { this.loading = false; } },
+    ...mapActions("telemetry", ["fetchNationalData"]),
+    async getStats() { 
+      this.loading = true; 
+      try { 
+        await Promise.all([
+          this.loadStats(),
+          this.fetchNationalData()
+        ]);
+        this.loading = false; 
+      } catch (err) { 
+        this.loading = false; 
+      } 
+    },
     getCat(index) { return this.$t(this.labels[index]); }
   },
   async mounted() {

@@ -194,9 +194,17 @@ export default {
     getRegionStats(regionName) {
       const visits = this.getVisits.filter(v => v.region === regionName);
       const reports = this.getFieldReports.filter(r => r.region === regionName);
-      let total = visits.length + reports.reduce((acc, r) => acc + (parseInt(r.cases) || 0), 0);
+      const cloud = (this.$store.state.telemetry.records || []).filter(c => c.region === regionName);
+      
+      let total = visits.length + 
+                  reports.reduce((acc, r) => acc + (parseInt(r.cases) || 0), 0) +
+                  cloud.reduce((acc, r) => acc + (r.case_count || 1), 0);
+
       let critical = visits.filter(v => v.severity === 'Critical' || v.status === 'Confirmed').length;
-      if (this.activeLayer !== 'all') { total = visits.filter(v => v.type === this.activeLayer).length; }
+      if (this.activeLayer !== 'all') { 
+        total = visits.filter(v => v.type === this.activeLayer).length; 
+        // Note: cloud data is usually 'all' or by disease, for now we add to 'all'
+      }
       return { total, critical };
     },
     getRiskColor(count) {
