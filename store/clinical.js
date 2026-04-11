@@ -116,27 +116,13 @@ export const actions = {
       region: rootState.auth.region,
       createdAt: new Date().toISOString()
     })
-    // Auto-sync anonymized data to Supabase
-    await dispatch('syncToSupabase', {
-      disease: visit.category || 'General',
-      region: rootState.auth.region || 'Unspecified',
-      facility_name: rootState.auth.institution || 'Unknown Facility',
-      case_count: 1
-    })
   },
-  async reportFieldCase({ commit, rootState, dispatch }, report) {
+  async reportFieldCase({ commit, rootState }, report) {
     commit('ADD_FIELD_REPORT', {
       ...report,
       id: Date.now(),
       institution: rootState.auth.institution,
       createdAt: new Date().toISOString()
-    })
-    // Auto-sync field case data
-    await dispatch('syncToSupabase', {
-      disease: report.disease,
-      region: report.region,
-      facility_name: rootState.auth.institution,
-      case_count: report.cases || 1
     })
   },
   async syncToSupabase({ state }, payload) {
