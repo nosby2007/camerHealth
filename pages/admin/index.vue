@@ -15,6 +15,19 @@
           </div>
         </div>
       </v-col>
+      <v-spacer />
+      <v-col cols="12" md="auto">
+         <v-btn
+           color="#00A99D"
+           dark tile depressed height="48"
+           class="font-weight-black text-caption ls-1 px-8"
+           :loading="syncing"
+           @click="submitNationalReport"
+         >
+           <v-icon left>mdi-cloud-upload</v-icon>
+           SYNC TO NATIONAL
+         </v-btn>
+      </v-col>
     </v-row>
 
     <!-- Facility Info + Staff KPIs -->
@@ -99,6 +112,7 @@ export default {
   computed: {
     facility() { return this.$store.getters['facility/getFacility'] || {} },
     allStaff() { return this.$store.getters['facility/getAllStaff'] },
+    confirmedVisits() { return this.$store.getters['clinical/getVisits'].filter(v => v.status === 'Confirmed') },
     recentAudit() { return this.$store.getters['facility/getAuditLog'].slice(0, 6) },
     facilityRows() {
       const f = this.facility
@@ -136,10 +150,33 @@ export default {
       ]
     }
   },
+  data() {
+    return {
+      syncing: false
+    }
+  },
   methods: {
     fmt(ts) { return new Date(ts).toLocaleString() },
     actionColor(a) {
       return { FACILITY_REGISTERED: '#003366', ACCOUNT_CREATED: '#0B3D2E', ACCOUNT_DEACTIVATED: '#C0392B', PASSWORD_RESET: '#F4A300' }[a] || '#6B7280'
+    },
+    async submitNationalReport() {
+      this.syncing = true;
+      try {
+        const stats = {
+           facility_name: this.facility.name,
+           region: this.facility.region,
+           disease: 'Consolidated Facility Report',
+           case_count: this.confirmedVisits.length
+        }
+        await this.$store.dispatch('clinical/syncToSupabase', stats)
+        this.$toast.success('National Telemetry Synced Successfully')
+      } catch (err) {
+        console.error(err);
+        this.$toast.error('Sync failed. Check connection.')
+      } finally {
+        setTimeout(() => { this.syncing = false }, 1000)
+      }
     }
   }
 }

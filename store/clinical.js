@@ -88,8 +88,8 @@ export const mutations = {
     state.patients = loadFromLocalStorage('patients') || []
     state.visits = loadFromLocalStorage('visits') || []
     state.fieldReports = loadFromLocalStorage('fieldReports') || []
-    state.inpatients    = loadFromLocalStorage('inpatients')    || []
-    state.appointments  = loadFromLocalStorage('appointments')  || []
+    state.inpatients = loadFromLocalStorage('inpatients') || []
+    state.appointments = loadFromLocalStorage('appointments') || []
     state.medications = loadFromLocalStorage('medications') || []
     state.labOrders = loadFromLocalStorage('labOrders') || []
     state.imagingOrders = loadFromLocalStorage('imagingOrders') || []
@@ -100,21 +100,21 @@ export const mutations = {
 export const actions = {
   registerPatient({ commit, rootState }, patient) {
     const id = 'PAT-' + Math.random().toString(36).substr(2, 9).toUpperCase()
-    commit('ADD_PATIENT', { 
-      ...patient, 
-      id, 
+    commit('ADD_PATIENT', {
+      ...patient,
+      id,
       institution: rootState.auth.institution,
       region: rootState.auth.region,
-      createdAt: new Date().toISOString() 
+      createdAt: new Date().toISOString()
     })
   },
   async logVisit({ commit, rootState, dispatch }, visit) {
-    commit('ADD_VISIT', { 
-      ...visit, 
-      id: Date.now(), 
+    commit('ADD_VISIT', {
+      ...visit,
+      id: Date.now(),
       institution: rootState.auth.institution,
       region: rootState.auth.region,
-      createdAt: new Date().toISOString() 
+      createdAt: new Date().toISOString()
     })
     // Auto-sync anonymized data to Supabase
     await dispatch('syncToSupabase', {
@@ -125,11 +125,11 @@ export const actions = {
     })
   },
   async reportFieldCase({ commit, rootState, dispatch }, report) {
-    commit('ADD_FIELD_REPORT', { 
-      ...report, 
-      id: Date.now(), 
+    commit('ADD_FIELD_REPORT', {
+      ...report,
+      id: Date.now(),
       institution: rootState.auth.institution,
-      createdAt: new Date().toISOString() 
+      createdAt: new Date().toISOString()
     })
     // Auto-sync field case data
     await dispatch('syncToSupabase', {
@@ -140,19 +140,30 @@ export const actions = {
     })
   },
   async syncToSupabase({ state }, payload) {
+    const record = {
+      facility_name: payload.facility_name,
+      region: payload.region,
+      disease: payload.disease,
+      case_count: payload.case_count,
+      recorded_at: new Date().toISOString()
+    }
+    
+    console.log('--- SUPABASE SYNC ATTEMPT ---')
+    console.log('Payload:', record)
+
     try {
-      await this.$supabase.from('health_telemetry').insert([
-        {
-          facility_name: payload.facility_name,
-          region: payload.region,
-          disease: payload.disease,
-          case_count: payload.case_count,
-          recorded_at: new Date().toISOString()
-        }
-      ])
-      console.log('Telemetric sync successful')
+      const { data, error } = await this.$supabase.from('health_telemetry').insert([record])
+
+      if (error) {
+        console.error('❌ Supabase Error:', error.message, '| Hint:', error.hint || 'Check RLS Policies')
+        this.$toast.error(`Sync Blocked: ${error.message}`)
+        return
+      }
+
+      console.log('✅ Sync Successful:', data)
+      this.$toast.success('Synced to National Hub')
     } catch (e) {
-      console.error('Telemetric sync failed:', e)
+      console.error('❌ Critical system failure during sync:', e)
     }
   },
   syncData({ commit }) {
@@ -243,11 +254,11 @@ export const getters = {
     // Ministry users sees ONLY anonymized stats conceptually (handled in view)
     // For simplicity here, we filter by institution for clinical staff
     if (getters.isClinical) {
-       return state.patients.filter(p => p.institution === rootState.auth.institution)
+      return state.patients.filter(p => p.institution === rootState.auth.institution)
     }
     return state.patients
   },
-  
+
   getVisits: (state, getters, rootState) => {
     if (getters.isClinical) {
       return state.visits.filter(v => v.institution === rootState.auth.institution)
@@ -282,12 +293,12 @@ export const getters = {
   },
   isOffline: state => state.offlineMode,
   getViewMode: state => state.viewMode,
-  
+
   // Intelligence: Rule-based alerts for infectious diseases
   infectiousAlerts: (state, getters, rootState) => {
     const alerts = []
     const regions = ['Far North', 'North', 'Adamawa', 'Centre', 'South', 'East', 'West', 'Littoral', 'South-West', 'North-West']
-    
+
     // Check field reports for outbreaks
     state.fieldReports.forEach(report => {
       if (report.severity === 'High') {
@@ -309,13 +320,13 @@ export const getters = {
     const alerts = []
     const chronicVisits = state.visits.filter(v => v.type === 'Chronic')
     if (chronicVisits.length > 5) {
-       alerts.push({
-         id: 'chronic-trend',
-         type: 'warning',
-         title: 'Rising Chronic Trend',
-         message: 'Steady increase in chronic disease visits detected in the field layer.',
-         region: 'National'
-       })
+      alerts.push({
+        id: 'chronic-trend',
+        type: 'warning',
+        title: 'Rising Chronic Trend',
+        message: 'Steady increase in chronic disease visits detected in the field layer.',
+        region: 'National'
+      })
     }
     return alerts
   }
