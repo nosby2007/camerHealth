@@ -1,25 +1,22 @@
-
 <template>
-  <v-card flat tile outlined class="gov-kpi-card h-100 overflow-hidden">
-    <div class="gov-kpi-header" :style="{ backgroundColor: color }"></div>
-    <div class="pa-5">
-      <div class="d-flex justify-space-between align-start mb-4">
-        <div>
-          <div class="text-caption font-weight-black grey--text text--darken-1 text-uppercase ls-1 mb-1">{{ title }}</div>
-          <div class="text-h3 font-weight-black gov-text-primary lh-1 ls-tight mb-1">{{ primaryValue }}</div>
-          <div v-if="secondaryLabel" class="text-caption font-weight-bold grey--text uppercase">
-            {{ secondaryLabel }}
-            <span v-if="secondaryValue !== undefined" class="gov-text-secondary ml-1">{{ secondaryValue }}</span>
-          </div>
-        </div>
-        <div v-if="icon" class="gov-kpi-icon-wrap pa-2 bg-grey lighten-4">
-          <v-icon color="#003366">{{ icon }}</v-icon>
-        </div>
+  <v-card flat tile class="mission-geo-card h-100 overflow-hidden">
+    <div class="mission-card-accent" :style="{ backgroundColor: color }"></div>
+    <div class="pa-5 relative z-2">
+      <div class="d-flex justify-space-between align-center mb-6">
+        <div class="text-caption font-weight-black grey--text text-uppercase ls-2">{{ title }}</div>
+        <v-icon v-if="icon" small color="grey lighten-2">{{ icon }}</v-icon>
       </div>
       
-      <!-- Minimal Trend Sparkline (Green Accent) -->
-      <div v-if="chart && chart.data" class="mt-4 pt-4 border-top">
-         <apexchart type="line" height="40" :options="sparklineOptions" :series="chartSeries"></apexchart>
+      <div class="intelligence-grid">
+        <div class="text-h2 font-weight-black gov-text-primary ls-ultra-tight">{{ primaryValue }}</div>
+        <div v-if="secondaryValue !== undefined" class="metric-adornment pa-2 ml-4">
+          <div class="text-caption grey--text uppercase font-weight-black">{{ secondaryLabel }}</div>
+          <div class="text-h6 font-weight-black error--text mt-n1">{{ secondaryValue }}</div>
+        </div>
+      </div>
+
+      <div v-if="chart && chart.data" class="mt-6 mission-spark">
+         <apexchart type="area" height="35" :options="sparklineOptions" :series="chartSeries"></apexchart>
       </div>
     </div>
   </v-card>
@@ -41,8 +38,9 @@ export default {
     sparklineOptions() {
       return {
         chart: { sparkline: { enabled: true } },
-        stroke: { curve: 'smooth', width: 2, colors: [this.color === '#003366' ? '#00A99D' : this.color] },
-        tooltip: { fixed: { enabled: false }, x: { show: false }, y: { title: { formatter: () => '' } }, marker: { show: false } }
+        stroke: { curve: 'smooth', width: 2, colors: [this.color] },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.05 } },
+        tooltip: { enabled: false }
       }
     }
   }
@@ -50,24 +48,22 @@ export default {
 </script>
 
 <style scoped>
-.gov-kpi-card {
+.mission-geo-card {
   background: white !important;
   border: 1px solid #E5E7EB !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
-  border-radius: 0px !important;
-  transition: transform 0.2s ease;
-  &:hover { transform: translateY(-2px); }
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 92% 100%, 0 100%);
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
-
-.gov-kpi-header { height: 4px; width: 100%; position: absolute; top: 0; left: 0; }
-.gov-text-primary { color: #1B1F23 !important; }
-.gov-text-secondary { color: #00A99D !important; }
-.gov-kpi-icon-wrap { border: 1px solid #F1F5F9; border-radius: 0px; }
-.border-top { border-top: 1px solid #F1F5F9; }
-
-.lh-1 { line-height: 0.9 !important; }
-.ls-tight { letter-spacing: -1.5px !important; }
-.ls-1 { letter-spacing: 0.8px !important; }
+.mission-geo-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important; }
+.mission-card-accent { position: absolute; top: 0; left: 0; width: 4px; height: 100%; opacity: 0.8; }
+.intelligence-grid { display: flex; align-items: center; }
+.metric-adornment { border-left: 2px solid #F1F5F9; }
+.ls-ultra-tight { letter-spacing: -3px !important; line-height: 0.8; }
+.ls-2 { letter-spacing: 2px; }
+.z-2 { position: relative; z-index: 2; }
+.mission-spark { opacity: 0.8; filter: saturate(1.5); }
 .uppercase { text-transform: uppercase; }
+.gov-text-primary { color: #1B1F23 !important; }
 .h-100 { height: 100%; }
 </style>

@@ -1,39 +1,38 @@
 
 <template>
   <v-container fluid class="gov-dashboard pa-10">
-    <!-- Ministerial Header (Green Identity) -->
-    <v-row class="mb-10 no-gutters align-center">
-      <v-col cols="12" md="8">
-        <h1 class="text-h4 font-weight-black gov-text-primary mb-2 ls-tight text-uppercase">
-          {{ $t("titles.dashboard") }}
-        </h1>
-        <div class="d-flex align-center">
-          <v-icon x-small color="#00A99D" class="mr-2">mdi-shield-check</v-icon>
-          <span class="text-caption font-weight-bold grey--text text-uppercase ls-1">NATIONAL INTEGRATED DISEASE SURVEILLANCE & RESPONSE DATA</span>
-        </div>
-      </v-col>
-      <v-spacer />
-      <v-col cols="12" md="auto">
-        <div class="d-flex align-center">
-           <div class="gov-mode-panel pa-2 mr-4 b-1 shadow-sm">
-              <v-switch
-                v-model="showFieldData"
-                label="Integrated Field Surveillance Data"
-                color="#00A99D"
-                dense
-                class="mt-n1 text-caption font-weight-black"
-              ></v-switch>
-           </div>
-           
-           <DiseaseSelector />
-           
-           <v-btn tile depressed color="#00A99D" dark height="44" class="ml-4 px-6 font-weight-black text-caption ls-1" @click="getStats" :loading="loading">
-             <v-icon left size="18">mdi-sync</v-icon>
-             {{ $t("refresh").toUpperCase() }}
-           </v-btn>
-        </div>
-      </v-col>
-    </v-row>
+    <!-- High-Tension Intelligence Header -->
+    <div class="mission-header mb-12 d-flex align-center justify-space-between">
+      <div class="mission-branding">
+         <div class="text-h2 font-weight-black d-flex align-baseline ls-ultra-tight gov-text-primary">
+            DASH<span class="gov-text-secondary">BOARD</span>
+         </div>
+         <div class="mission-subtitle d-flex align-center mt-n2">
+            <div class="conduit-line mr-3"></div>
+            <span class="text-caption font-weight-black grey--text ls-2 uppercase">National Surveillance & Intelligence Hub</span>
+         </div>
+      </div>
+
+      <div class="mission-actions d-flex align-center">
+         <!-- The Sync-Orb (Extravagant Refresh) -->
+         <div class="sync-station mr-8" @click="getStats">
+            <div class="sync-orb-outer" :class="{ 'spinning': loading }">
+               <div class="sync-orb-inner">
+                  <v-icon color="white" size="24">{{ loading ? 'mdi-loading' : 'mdi-sync' }}</v-icon>
+               </div>
+               <div class="sync-pulse"></div>
+            </div>
+            <div class="text-center mt-2 text-caption font-weight-black gov-text-secondary ls-1">SYSTEM REFRESH</div>
+         </div>
+
+         <div class="command-controls pa-4 b-1 shadow-inner bg-white">
+            <div class="d-flex align-center">
+               <v-switch v-model="showFieldData" label="FIELD DATA" color="#00A99D" dense hide-details class="mt-0 mr-6 font-weight-black"></v-switch>
+               <DiseaseSelector />
+            </div>
+         </div>
+      </div>
+    </div>
 
     <!-- Key Performance Indicators (KPIs) -->
     <v-row class="mb-10">
@@ -337,4 +336,40 @@ export default {
 .opacity-60 { opacity: 0.6; }
 .italic { font-style: italic; }
 .gov-card { border: 1px solid #E5E7EB !important; background-color: white !important; border-radius: 0px !important; }
+.ls-ultra-tight { letter-spacing: -4px !important; }
+.ls-2 { letter-spacing: 2px !important; }
+.mission-subtitle { height: 20px; }
+.conduit-line { width: 40px; height: 2px; background: #00A99D; }
+
+/* Sync Orb Styles */
+.sync-station { cursor: pointer; transition: all 0.3s ease; }
+.sync-station:hover { transform: scale(1.05); }
+.sync-orb-outer { 
+   width: 64px; height: 64px; 
+   border: 2px solid #00A99D; border-radius: 50%; 
+   display: flex; align-items: center; justify-content: center; 
+   position: relative; 
+}
+.sync-orb-inner {
+   width: 48px; height: 48px; 
+   background: #00A99D; border-radius: 50%;
+   display: flex; align-items: center; justify-content: center;
+   z-index: 2;
+   box-shadow: 0 0 20px rgba(0,169,157,0.4);
+}
+.sync-pulse {
+   position: absolute; width: 100%; height: 100%;
+   border: 1px solid #00A99D; border-radius: 50%;
+   animation: orbit-pulse 2s infinite ease-out;
+}
+.spinning { animation: spin 1s linear infinite; }
+
+@keyframes orbit-pulse {
+   0% { transform: scale(1); opacity: 1; }
+   100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+.shadow-inner { box-shadow: inset 0 2px 4px rgba(0,0,0,0.06) !important; }
+.bg-white { background-color: white !important; }
 </style>
