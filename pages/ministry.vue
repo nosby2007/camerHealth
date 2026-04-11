@@ -4,10 +4,10 @@
     <!-- High-Tension Intelligence Header -->
     <div class="mission-header mb-12 d-flex align-center justify-space-between">
       <div class="mission-branding">
-         <div class="text-h2 font-weight-black d-flex align-baseline ls-ultra-tight gov-text-primary">
+         <div class="text-h2 font-weight-black d-flex align-baseline ls-ultra-tight gov-text-primary mb-2">
             DASH<span class="gov-text-secondary">BOARD</span>
          </div>
-         <div class="mission-subtitle d-flex align-center mt-n2">
+         <div class="mission-subtitle d-flex align-center">
             <div class="conduit-line mr-3"></div>
             <span class="text-caption font-weight-black grey--text ls-2 uppercase">National Surveillance & Intelligence Hub</span>
          </div>

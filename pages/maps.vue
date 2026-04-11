@@ -4,10 +4,10 @@
       <v-card elevation="0" hover tile style="height: 800px; border-top: 0px;">
         <GmapMap
           :center="{
-			     lat: 8.35,
-			     lng: 40.35
+			     lat: 7.37,
+			     lng: 12.35
 			    }"
-          :zoom="6.0"
+          :zoom="6.5"
           style="width: 100%; height: 800px;"
           ref="mapRef"
         >
