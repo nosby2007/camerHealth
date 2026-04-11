@@ -12,10 +12,11 @@
        <v-spacer />
        <div class="d-flex align-center mr-2">
           <div class="risk-legend mr-4 d-none d-md-flex">
-             <div class="legend-item"><span class="dot green"></span> Bas</div>
-             <div class="legend-item"><span class="dot amber"></span> Modéré</div>
-             <div class="legend-item"><span class="dot red"></span> Élevé</div>
-          </div>
+              <v-chip x-small color="#003366" dark class="mr-1">CENTRE</v-chip>
+              <v-chip x-small color="#C0392B" dark class="mr-1">WEST</v-chip>
+              <v-chip x-small color="#00A99D" dark class="mr-1">LITTORAL</v-chip>
+              <span class="text-caption grey--text font-weight-black ml-2">+7 MORE</span>
+           </div>
           <v-btn icon x-small @click="init"><v-icon x-small>mdi-refresh</v-icon></v-btn>
        </div>
     </v-card>
@@ -52,13 +53,23 @@
           </div>
         </GmapInfoWindow>
 
-        <!-- Static Infrastructure Markers (Towns & Hospitals) -->
-        <GmapMarker
-          v-for="(marker, index) in infrastructureMarkers"
-          :key="index"
-          :position="marker.position"
-          :icon="marker.icon"
-          :title="marker.title"
+        <!-- Infrastructure Intelligence (Rings instead of Pins) -->
+        <GmapCircle
+          v-for="(marker, index) in infrastructureIdentifiers"
+          :key="'circle-'+index"
+          :center="marker.position"
+          :radius="marker.radius"
+          :options="marker.options"
+          @click="onMarkerClick(marker)"
+        />
+        
+        <!-- Glowing Pulse Core -->
+        <GmapCircle
+          v-for="(marker, index) in infrastructureIdentifiers"
+          :key="'pulse-'+index"
+          :center="marker.position"
+          :radius="marker.radius / 5"
+          :options="marker.pulseOptions"
           @click="onMarkerClick(marker)"
         />
       </GmapMap>
@@ -76,7 +87,18 @@ import Util from "@/util/util";
 
 const CAMEROON_CENTER = { lat: 5.5, lng: 12.5 };
 const CAMEROON_BOUNDS = { north: 13.5, south: 1.5, east: 16.5, west: 8.5 };
-const RISK_COLORS = { low: "#166534", moderate: "#F4A300", high: "#C0392B" };
+const REGION_COLORS = {
+  'Centre': '#003366',
+  'Littoral': '#00A99D',
+  'West': '#C0392B',
+  'South-West': '#F4A300',
+  'North-West': '#1F7A5C',
+  'East': '#1B1F23',
+  'South': '#7C3AED',
+  'Adamawa': '#EC4899',
+  'North': '#10B981',
+  'Far North': '#3B82F6'
+};
 
 // Hospital and Town Markers
 const INFRASTRUCTURE = [
@@ -124,17 +146,29 @@ export default {
     google: gmapApi,
     ...mapGetters('clinical', ['getPatients', 'getVisits', 'getFieldReports']),
     lastUpdate() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
-    infrastructureMarkers() {
+    infrastructureIdentifiers() {
       if (!this.google) return [];
-      return INFRASTRUCTURE.map(inf => ({
-        ...inf,
-        icon: {
-          url: inf.type === 'hospital' 
-            ? 'https://maps.google.com/mapfiles/ms/icons/red-pushpin.png' 
-            : 'https://maps.google.com/mapfiles/ms/icons/green-pushpin.png',
-          scaledSize: new this.google.maps.Size(32, 32)
-        }
-      }));
+      return INFRASTRUCTURE.map(inf => {
+        const color = inf.type === 'hospital' ? '#C0392B' : '#00A99D';
+        return {
+          ...inf,
+          radius: inf.type === 'hospital' ? 8000 : 5000,
+          options: {
+            fillColor: color,
+            fillOpacity: 0.2,
+            strokeColor: color,
+            strokeWeight: 2,
+            clickable: true
+          },
+          pulseOptions: {
+            fillColor: color,
+            fillOpacity: 0.8,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 1,
+            clickable: true
+          }
+        };
+      });
     }
   },
   watch: {
@@ -157,15 +191,15 @@ export default {
         const stats = this.getRegionStats(regionName);
         const coords = data.geometry.type === 'MultiPolygon' ? data.geometry.coordinates[0][0] : data.geometry.coordinates[0];
         const paths = _map(coords, ld => ({ lat: parseFloat(ld[1]), lng: parseFloat(ld[0]) }));
-        const riskColor = this.getRiskColor(stats.total);
+        const regionColor = REGION_COLORS[regionName] || "#CCCCCC";
 
         const poly = new this.google.maps.Polygon({
           paths,
-          strokeColor: "#0B3D2E",
-          strokeOpacity: 0.3,
-          strokeWeight: 1,
-          fillColor: riskColor,
-          fillOpacity: 0.5,
+          strokeColor: "#FFFFFF",
+          strokeOpacity: 0.5,
+          strokeWeight: 1.5,
+          fillColor: regionColor,
+          fillOpacity: 0.4,
           map: this.map,
           clickable: true
         });
@@ -207,11 +241,7 @@ export default {
       }
       return { total, critical };
     },
-    getRiskColor(count) {
-      if (count > 10) return RISK_COLORS.high;
-      if (count > 2) return RISK_COLORS.moderate;
-      return RISK_COLORS.low;
-    }
+    // Removed getRiskColor as we now use unique identifiers
   },
   mounted() {
     this.$refs.frontPageMap.$mapPromise.then(map => {
