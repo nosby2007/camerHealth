@@ -4,7 +4,7 @@ Vue.use(Vuex);
 
 export const state = () => ({
   locales: ['en', 'fr'],
-  locale: 'fr'
+  locale: 'en'
   // Custom state
 });
 
