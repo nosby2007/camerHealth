@@ -104,7 +104,7 @@ export const actions = {
       ...patient,
       id,
       institution: rootState.auth.institution,
-      region: rootState.auth.region,
+      region: patient.region || rootState.auth.region,
       createdAt: new Date().toISOString()
     })
   },
