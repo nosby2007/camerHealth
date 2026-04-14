@@ -131,7 +131,9 @@ export default {
         { icon: 'mdi-shield-account',   titleKey: 'Admin Dashboard',   to: '/admin',                 roles: ['ADMIN'] },
         { icon: 'mdi-account-multiple', titleKey: 'Staff Accounts',    to: '/admin/staff',           roles: ['ADMIN'] },
         { icon: 'mdi-history',          titleKey: 'Audit Log',         to: '/admin/audit',           roles: ['ADMIN'] },
-        { icon: 'mdi-account-group',    titleKey: 'New Patient',       to: '/clinical/patients',     roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+        // ── Patient Modules ──
+        { icon: 'mdi-account-group',    titleKey: 'Patient Listing',   to: '/clinical/patients',     roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+        { icon: 'mdi-account-plus',     titleKey: 'New Patient',       to: '/clinical/patients/new', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
         { icon: 'mdi-clipboard-list',   titleKey: 'Outpatient',        to: '/clinical/visits',       roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
         { icon: 'mdi-bed',               titleKey: 'Inpatient',         to: '/clinical/inpatient',    roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
         { icon: 'mdi-calendar-clock',   titleKey: 'Appointments',      to: '/clinical/appointments', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },

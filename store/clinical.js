@@ -133,7 +133,7 @@ export const actions = {
       case_count: payload.case_count,
       recorded_at: new Date().toISOString()
     }
-    
+
     console.log('--- SUPABASE SYNC ATTEMPT ---')
     console.log('Payload:', record)
 
