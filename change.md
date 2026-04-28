@@ -6,6 +6,47 @@
 
 ## [Unreleased] — 27 Avril 2026
 
+### Phase 11 — Server-Side Bootstrap & Staff Invitation Scaffold
+
+#### `api/bootstrap/facility-admin.js` — ADDED
+- **ADDED**: secure server-side bootstrap endpoint scaffold `POST /api/bootstrap/facility-admin`
+- **ADDED**: strict request validation for facility/admin bootstrap payload
+- **ADDED**: server-side Supabase admin flow to create/verify auth user, create facility, create ADMIN staff profile, create facility settings
+- **ADDED**: audit event writes for `FACILITY_REGISTERED`, `ACCOUNT_CREATED`, and `BOOTSTRAP_FAILED`
+- **ADDED**: safe response model without exposing auth internals or privileged data
+
+#### `api/admin/staff/invite.js` — ADDED
+- **ADDED**: secure server-side staff invitation endpoint scaffold `POST /api/admin/staff/invite`
+- **ADDED**: caller verification from bearer token to `auth.users.id` then `staff_profiles.auth_user_id`
+- **ADDED**: ADMIN-only + active-status authorization gate
+- **ADDED**: facility scoping derived server-side to block cross-facility staff creation
+- **ADDED**: role validation (`ADMIN`, `DOCTOR`, `NURSE`, `LAB`, `IMAGING`)
+- **ADDED**: audit event writes for `AUTH_STAFF_INVITED` and `AUTH_STAFF_INVITE_FAILED`
+
+#### `api/_lib/*.js` — ADDED
+- **ADDED**: shared server helper modules:
+   - `env.js` for server env guardrails
+   - `http.js` for consistent safe error/response payloads
+   - `request.js` for input normalization and validation
+   - `rate-limit.js` for per-IP rate-limit scaffold
+   - `supabase-admin.js` for service-role Supabase client creation (server-side only)
+   - `caller-context.js` for authenticated ADMIN caller resolution
+   - `audit.js` for centralized audit insertion helper
+
+#### `vercel.json` — UPDATED
+- **UPDATED**: added explicit `/api/*` routing rule before SPA catch-all to ensure API calls are not swallowed by `index.html` fallback
+
+#### `.env.example` — UPDATED
+- **ADDED**: `SUPABASE_SERVICE_ROLE_KEY=` (server-side only)
+- **ADDED**: `STAFF_INVITE_ENDPOINT=`
+- **ADDED**: `FACILITY_BOOTSTRAP_ENDPOINT=`
+
+#### Security / QA Documentation — ADDED
+- **ADDED**: `docs/security/bootstrap-and-staff-invite-backend-design.md`
+- **ADDED**: `docs/qa/QA-phase-11-bootstrap-staff-endpoint-checklist.md`
+- **DOCUMENTED**: bootstrap paradox under strict RLS and rationale for controlled privileged bootstrap endpoint
+- **DOCUMENTED**: production follow-up requirements (durable rate limit, compensation strategy, onboarding lifecycle hardening)
+
 ### Supabase v1.0 Backend Security Draft (Phases 2-4)
 
 #### `supabase/migrations/20260427_001_v1_schema_draft.sql` — ADDED
