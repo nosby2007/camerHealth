@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
 export default ({ env }, inject) => {
-  console.log('Initializing Supabase with URL:', env.SUPABASE_URL)
+  if (!env.SUPABASE_URL || !env.SUPABASE_KEY) {
+    throw new Error('[CameroHealth] SUPABASE_URL et SUPABASE_KEY sont requis. Vérifiez votre fichier .env')
+  }
   const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY)
   inject('supabase', supabase)
 }

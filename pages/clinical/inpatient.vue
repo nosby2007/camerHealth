@@ -170,7 +170,11 @@
             <template v-slot:item.patientName="{ item }">
               <div>
                 <div class="text-caption font-weight-black grey--text">{{ item.patientId }}</div>
-                <div class="text-body-2 font-weight-black gov-text-primary">{{ item.patientName.toUpperCase() }}</div>
+                <div>
+                  <nuxt-link :to="patientDetailsRoute(item.patientId)" class="text-body-2 font-weight-black gov-text-primary patient-link">
+                    {{ item.patientName.toUpperCase() }}
+                  </nuxt-link>
+                </div>
               </div>
             </template>
             <template v-slot:item.ward="{ item }">
@@ -184,6 +188,22 @@
               <span class="text-caption grey--text font-weight-bold">{{ item.admissionDate }}</span>
             </template>
             <template v-slot:item.actions="{ item }">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <v-btn icon x-small v-on="on" :to="patientDetailsRoute(item.patientId)" class="mr-1">
+                    <v-icon small color="#003366">mdi-account-card-details-outline</v-icon>
+                  </v-btn>
+                </template>
+                <span>Patient details</span>
+              </v-tooltip>
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <v-btn icon x-small v-on="on" :to="nurseEncounterRoute(item.patientId)" class="mr-1" :disabled="item.status === 'Discharged'">
+                    <v-icon small color="#00A99D">mdi-stethoscope</v-icon>
+                  </v-btn>
+                </template>
+                <span>Nursing evaluation</span>
+              </v-tooltip>
               <v-tooltip bottom>
                 <template v-slot:activator="{ on }">
                   <v-btn icon x-small v-on="on" @click="editInpatient(item)" class="mr-1">
@@ -319,6 +339,12 @@ export default {
       this.$toast.success('Patient discharged.')
       this.dischargeDialog = false; this.dischargeTarget = null; this.loading = false
     },
+    patientDetailsRoute(patientId) {
+      return `/clinical/patients/${patientId}`
+    },
+    nurseEncounterRoute(patientId) {
+      return `/clinical/patients/${patientId}/encounter/nurse`
+    },
     statusColor(s) {
       return { Admitted: '#003366', Stable: '#1F7A5C', Critical: '#C0392B', Discharged: '#6B7280' }[s] || '#6B7280'
     }
@@ -341,4 +367,6 @@ export default {
 .section-label { font-size:10px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:#0B3D2E; border-left:4px solid #00A99D; padding-left:10px; }
 .gov-table { background: white !important; }
 .gov-table ::v-deep th { background:#F8FAFC !important; color:#1B1F23 !important; font-size:10px !important; font-weight:800; text-transform:uppercase; }
+.patient-link { color: inherit; text-decoration: none; }
+.patient-link:hover { text-decoration: underline; }
 </style>

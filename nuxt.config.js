@@ -2,37 +2,86 @@
 import colors from "vuetify/es5/util/colors";
 require("./config");
 
+// ─── Validation des variables d'environnement obligatoires ────────────────────
+// L'application refuse de démarrer si une variable critique est absente.
+// Ajoutez ici toute variable indispensable.
+const REQUIRED_ENV = [
+  'API_URL',
+  'VUE_APP_GOOGLE_MAPS_API_KEY',
+  'SUPABASE_URL',
+  'SUPABASE_KEY',
+  'CLIENT_ID'
+]
+const missingVars = REQUIRED_ENV.filter(k => !process.env[k])
+if (missingVars.length > 0) {
+  throw new Error(
+    `[CameroHealth] Variables d'environnement manquantes : ${missingVars.join(', ')}\n` +
+    `Copiez .env.example vers .env.development et remplissez toutes les valeurs.`
+  )
+}
+
 export default {
+  // ─── Variables publiques exposées côté client ────────────────────────────────
+  // ⚠️  Ne jamais mettre de secrets ici. Toute valeur dans `env` est incluse
+  //     dans le bundle JavaScript envoyé au navigateur.
   env: {
-    API_URL: process.env.API_URL || "https://api.minsante.gov.cm",
-    GOOGLE_MAPS_API_KEY: process.env.VUE_APP_GOOGLE_MAPS_API_KEY || 'AIzaSyCbJ9q4wE-kF96sFcMKiYPmBfiGw_MpvuY',
-    AUTH_URL: process.env.AUTH_URL || "https://auth.minsante.gov.cm/oauth/token",
-    CLIENT_ID: process.env.CLIENT_ID || "3j7mu7dum13sanbh6dke24u36h",
-    CLIENT_SECRET: process.env.CLIENT_SECRET || "314ebm8pfjvtqo8qv1palf3l2a38ktbbmuq2",
-    STATUS_AXIOS_URL: process.env.STATUS_AXIOS_URL || "https://api.minsante.gov.cm/stats",
-    SUPABASE_URL: process.env.SUPABASE_URL || "https://jgltrrvzcrylapnuyfyf.supabase.co",
-    SUPABASE_KEY: process.env.SUPABASE_KEY || "sb_publishable_CHBAlLp76qFuLpjBXnVIYQ_0316QP08"
+    API_URL: process.env.API_URL,
+    GOOGLE_MAPS_API_KEY: process.env.VUE_APP_GOOGLE_MAPS_API_KEY,
+    AUTH_URL: process.env.AUTH_URL,
+    CLIENT_ID: process.env.CLIENT_ID,
+    STATUS_AXIOS_URL: process.env.STATUS_AXIOS_URL,
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    // La clé Supabase publishable (anon key) est publique par conception,
+    // mais les Row Level Security (RLS) doivent être activées côté Supabase.
+    SUPABASE_KEY: process.env.SUPABASE_KEY
+  },
+  // ─── Variables privées : jamais exposées au client ───────────────────────────
+  // Accessibles uniquement via `this.$config` dans les contextes server-side.
+  privateRuntimeConfig: {
+    CLIENT_SECRET: process.env.CLIENT_SECRET
+  },
+  // ─── Variables publiques runtime (non compilées dans le bundle) ──────────────
+  publicRuntimeConfig: {
+    API_URL: process.env.API_URL,
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_KEY: process.env.SUPABASE_KEY
   },
   mode: "spa",
   /*
    ** Headers of the page
    */
   head: {
-    titleTemplate: "%s - " + process.env.npm_package_name,
-    title: process.env.npm_package_name || "",
+    titleTemplate: "%s — CameroHealth | MINSANTE",
+    title: "CameroHealth",
     meta: [
       { charset: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       {
         hid: "description",
         name: "description",
-        content: process.env.npm_package_description || ""
-      }
+        content: "Système intégré de surveillance des maladies et de gestion clinique — Ministère de la Santé Publique du Cameroun (MINSANTE)"
+      },
+      // Sécurité : empêche les moteurs de recherche d'indexer un système de santé gouvernemental
+      { name: "robots", content: "noindex, nofollow" },
+      // PWA theme color (barre navigateur sur mobile)
+      { name: "theme-color", content: "#003366" },
+      // Pas de cache pour les pages contenant des données de santé
+      { "http-equiv": "Cache-Control", content: "no-store, no-cache, must-revalidate" },
+      { "http-equiv": "Pragma", content: "no-cache" }
     ],
     link: [{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" }]
   },
   router: {
-    middleware: ["auth"]
+    middleware: ["auth"],
+    // Désactive le prefetch automatique des liens.
+    // Dans un système RBAC, charger à l'avance des routes protégées
+    // peut révéler l'existence de ressources non autorisées.
+    prefetchLinks: false,
+    // Remonte en haut de page à chaque navigation
+    scrollBehavior(to, from, savedPosition) {
+      if (savedPosition) return savedPosition
+      return { x: 0, y: 0 }
+    }
   },
   /*
    ** Customize the progress-bar color
@@ -60,8 +109,8 @@ export default {
    ** Nuxt.js dev-modules
    */
   buildModules: [
-    // Doc: https://github.com/nuxt-community/eslint-module
-    // '@nuxtjs/eslint-module',
+    // ESLint activé — vérifie la qualité du code à chaque `npm run dev`
+    '@nuxtjs/eslint-module',
     "@nuxtjs/vuetify"
   ],
   /*
@@ -76,9 +125,28 @@ export default {
     "nuxt-precompress"
   ],
 
+  // ─── Configuration Axios ──────────────────────────────────────────────────
+  axios: {
+    // URL de base injectée automatiquement dans tous les appels $axios
+    baseURL: process.env.API_URL,
+    // Timeout : 15 secondes (critique pour les zones à faible connectivité)
+    timeout: 15000,
+    // Envoie les cookies de session avec chaque requête cross-origin
+    credentials: false,
+    // Headers par défaut sur toutes les requêtes
+    headers: {
+      common: {
+        'Accept': 'application/json',
+        'X-Application': 'CameroHealth-MINSANTE'
+      }
+    },
+    // Intercepteur de retry automatique (réseau instable en milieu hospitalier)
+    retry: { retries: 2 }
+  },
+
   nuxtPrecompress: {
-    enabled: true, // Enable in production
-    report: true, // set false to turn off console messages
+    enabled: process.env.NODE_ENV === 'production', // Uniquement en production
+    report: false, // Pas de logs verbose en production
     test: /\.(js|css|html|txt|xml|svg|json|geojson)$/, // files to compress on build
     // Serving options
     middleware: {
@@ -153,8 +221,28 @@ export default {
     }
   },
   pwa: {
+    // ─── Manifest PWA ─────────────────────────────────────────────────────────
+    manifest: {
+      name: 'CameroHealth — MINSANTE',
+      short_name: 'CameroHealth',
+      description: 'Système national de surveillance épidémiologique et de gestion clinique',
+      theme_color: '#003366',
+      background_color: '#ffffff',
+      display: 'standalone',
+      orientation: 'portrait',
+      lang: 'fr'
+    },
+    // ─── Workbox (Service Worker) ──────────────────────────────────────────────
     workbox: {
-      /* workbox options */
+      // Cache les assets statiques (JS, CSS, fonts) pour le mode hors-ligne
+      // IMPORTANT : les données de patients ne sont jamais mises en cache
+      runtimeCaching: [
+        {
+          urlPattern: 'https://fonts.googleapis.com/.*',
+          handler: 'cacheFirst',
+          strategyOptions: { cacheName: 'google-fonts', cacheExpiration: { maxAgeSeconds: 60 * 60 * 24 * 30 } }
+        }
+      ]
     }
   },
   /*

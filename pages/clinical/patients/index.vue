@@ -46,8 +46,9 @@
           <span>{{ item.phone }}</span>
         </template>
         <template v-slot:item.actions="{ item }">
-            <v-btn icon small color="#20B2AA" title="View Patient" @click="$toast.info('Viewing Patient Record')">
-                 <v-icon small>mdi-eye</v-icon>
+            <v-btn icon small color="#20B2AA" title="Voir le dossier patient"
+              @click="$router.push('/clinical/patients/' + item.id)">
+              <v-icon small>mdi-eye</v-icon>
             </v-btn>
         </template>
       </v-data-table>

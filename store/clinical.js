@@ -9,6 +9,10 @@ export const state = () => ({
   labOrders: [],
   imagingOrders: [],
   invoices: [],
+  vitalSigns: [],
+  nursingNotes: [],
+  medicalNotes: [],
+  tasks: [],
   offlineMode: false,
   lastSync: null,
   viewMode: 'national'
@@ -94,6 +98,47 @@ export const mutations = {
     state.labOrders = loadFromLocalStorage('labOrders') || []
     state.imagingOrders = loadFromLocalStorage('imagingOrders') || []
     state.invoices = loadFromLocalStorage('invoices') || []
+    state.vitalSigns = loadFromLocalStorage('vitalSigns') || []
+    state.nursingNotes = loadFromLocalStorage('nursingNotes') || []
+    state.medicalNotes = loadFromLocalStorage('medicalNotes') || []
+    state.tasks = loadFromLocalStorage('tasks') || []
+  },
+  ADD_VITAL_SIGNS(state, record) {
+    state.vitalSigns.push(record)
+    saveToLocalStorage('vitalSigns', state.vitalSigns)
+  },
+  ADD_NURSING_NOTE(state, note) {
+    state.nursingNotes.push(note)
+    saveToLocalStorage('nursingNotes', state.nursingNotes)
+  },
+  ADD_MEDICAL_NOTE(state, note) {
+    state.medicalNotes.push(note)
+    saveToLocalStorage('medicalNotes', state.medicalNotes)
+  },
+  UPDATE_NURSING_NOTE(state, note) {
+    const idx = state.nursingNotes.findIndex(n => n.id === note.id)
+    if (idx !== -1) {
+      state.nursingNotes.splice(idx, 1, note)
+      saveToLocalStorage('nursingNotes', state.nursingNotes)
+    }
+  },
+  UPDATE_MEDICAL_NOTE(state, note) {
+    const idx = state.medicalNotes.findIndex(n => n.id === note.id)
+    if (idx !== -1) {
+      state.medicalNotes.splice(idx, 1, note)
+      saveToLocalStorage('medicalNotes', state.medicalNotes)
+    }
+  },
+  ADD_TASK(state, task) {
+    state.tasks.push(task)
+    saveToLocalStorage('tasks', state.tasks)
+  },
+  UPDATE_TASK(state, task) {
+    const idx = state.tasks.findIndex(t => t.id === task.id)
+    if (idx !== -1) {
+      state.tasks.splice(idx, 1, task)
+      saveToLocalStorage('tasks', state.tasks)
+    }
   }
 }
 
@@ -181,37 +226,43 @@ export const actions = {
     commit('UPDATE_APPOINTMENT', appt)
   },
   prescribeMedication({ commit, rootState }, med) {
-    commit('ADD_MEDICATION', {
+    const medicationRecord = {
       ...med,
       id: 'MED-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       institution: rootState.auth.institution,
       status: 'Active',
       prescribedAt: new Date().toISOString()
-    })
+    }
+    commit('ADD_MEDICATION', medicationRecord)
+    return medicationRecord
   },
   updateMedication({ commit }, med) {
     commit('UPDATE_MEDICATION', med)
   },
   orderLab({ commit, rootState }, order) {
-    commit('ADD_LAB_ORDER', {
+    const labOrderRecord = {
       ...order,
       id: 'LAB-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       institution: rootState.auth.institution,
       status: 'Requested',
       requestedAt: new Date().toISOString()
-    })
+    }
+    commit('ADD_LAB_ORDER', labOrderRecord)
+    return labOrderRecord
   },
   updateLabOrder({ commit }, order) {
     commit('UPDATE_LAB_ORDER', order)
   },
   orderImaging({ commit, rootState }, order) {
-    commit('ADD_IMAGING_ORDER', {
+    const imagingOrderRecord = {
       ...order,
       id: 'IMG-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       institution: rootState.auth.institution,
       status: 'Requested',
       requestedAt: new Date().toISOString()
-    })
+    }
+    commit('ADD_IMAGING_ORDER', imagingOrderRecord)
+    return imagingOrderRecord
   },
   updateImagingOrder({ commit }, order) {
     commit('UPDATE_IMAGING_ORDER', order)
@@ -227,6 +278,163 @@ export const actions = {
   },
   updateInvoice({ commit }, invoice) {
     commit('UPDATE_INVOICE', invoice)
+  },
+  recordVitalSigns({ commit, rootState }, vitals) {
+    commit('ADD_VITAL_SIGNS', {
+      ...vitals,
+      id: 'VIT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution
+    })
+  },
+  addNursingNote({ commit, rootState }, note) {
+    const now = new Date().toISOString()
+    const actor = note.recordedBy || rootState.auth.fullName || 'Unknown user'
+    commit('ADD_NURSING_NOTE', {
+      ...note,
+      id: 'NNT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      createdBy: actor,
+      createdAt: now,
+      updatedBy: actor,
+      updatedAt: now,
+      auditTrail: [
+        {
+          id: 'AUD-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+          action: 'CREATED',
+          actor,
+          at: now,
+          reason: 'Initial nursing note entry',
+          changedFields: []
+        }
+      ]
+    })
+  },
+  addMedicalNote({ commit, rootState }, note) {
+    const now = new Date().toISOString()
+    const actor = note.recordedBy || rootState.auth.fullName || 'Unknown user'
+    commit('ADD_MEDICAL_NOTE', {
+      ...note,
+      id: 'MNT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      createdBy: actor,
+      createdAt: now,
+      updatedBy: actor,
+      updatedAt: now,
+      auditTrail: [
+        {
+          id: 'AUD-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+          action: 'CREATED',
+          actor,
+          at: now,
+          reason: 'Initial medical note entry',
+          changedFields: []
+        }
+      ]
+    })
+  },
+  updateNursingNote({ state, commit, rootState }, payload) {
+    const existing = state.nursingNotes.find(n => n.id === payload.id)
+    if (!existing) return
+    const now = new Date().toISOString()
+    const actor = payload.updatedBy || rootState.auth.fullName || 'Unknown user'
+    const updates = payload.updates || {}
+    const next = {
+      ...existing,
+      ...updates,
+      updatedBy: actor,
+      updatedAt: now,
+      auditTrail: [
+        ...(existing.auditTrail || []),
+        {
+          id: 'AUD-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+          action: 'UPDATED',
+          actor,
+          at: now,
+          reason: payload.reason || 'Nursing note updated',
+          changedFields: getChangedFields(existing, updates)
+        }
+      ]
+    }
+    commit('UPDATE_NURSING_NOTE', next)
+  },
+  updateMedicalNote({ state, commit, rootState }, payload) {
+    const existing = state.medicalNotes.find(n => n.id === payload.id)
+    if (!existing) return
+    const now = new Date().toISOString()
+    const actor = payload.updatedBy || rootState.auth.fullName || 'Unknown user'
+    const updates = payload.updates || {}
+    const next = {
+      ...existing,
+      ...updates,
+      updatedBy: actor,
+      updatedAt: now,
+      auditTrail: [
+        ...(existing.auditTrail || []),
+        {
+          id: 'AUD-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+          action: 'UPDATED',
+          actor,
+          at: now,
+          reason: payload.reason || 'Medical note updated',
+          changedFields: getChangedFields(existing, updates)
+        }
+      ]
+    }
+    commit('UPDATE_MEDICAL_NOTE', next)
+  },
+  createTask({ commit, rootState }, task) {
+    const now = new Date().toISOString()
+    const actor = rootState.auth.fullName || 'Unknown user'
+    const record = {
+      ...task,
+      id: 'TSK-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      status: 'pending',
+      createdAt: now,
+      createdBy: actor,
+      updatedAt: now,
+      updatedBy: actor,
+      actionReason: task.actionReason || 'Task created from clinical order',
+      history: [
+        {
+          id: 'THS-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+          action: 'CREATED',
+          status: 'pending',
+          actor,
+          at: now,
+          reason: task.actionReason || 'Task created from clinical order'
+        }
+      ]
+    }
+    commit('ADD_TASK', record)
+    return record
+  },
+  updateTaskStatus({ state, commit, rootState }, payload) {
+    const task = state.tasks.find(t => t.id === payload.id)
+    if (!task) return
+    if (!['done', 'hold', 'cancel'].includes(payload.status)) return
+    const now = new Date().toISOString()
+    const actor = payload.updatedBy || rootState.auth.fullName || 'Unknown user'
+    const reason = payload.reason || 'Task status updated'
+    const next = {
+      ...task,
+      status: payload.status,
+      updatedAt: now,
+      updatedBy: actor,
+      actionReason: reason,
+      history: [
+        ...(task.history || []),
+        {
+          id: 'THS-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+          action: 'STATUS_UPDATED',
+          status: payload.status,
+          actor,
+          at: now,
+          reason
+        }
+      ]
+    }
+    commit('UPDATE_TASK', next)
   }
 }
 
@@ -276,6 +484,22 @@ export const getters = {
   getInvoices: (state, getters, rootState) => {
     if (getters.isClinical) return state.invoices.filter(i => i.institution === rootState.auth.institution)
     return state.invoices
+  },
+  getVitalSigns: (state, getters, rootState) => {
+    if (getters.isClinical) return state.vitalSigns.filter(v => v.institution === rootState.auth.institution)
+    return state.vitalSigns
+  },
+  getNursingNotes: (state, getters, rootState) => {
+    if (getters.isClinical) return state.nursingNotes.filter(n => n.institution === rootState.auth.institution)
+    return state.nursingNotes
+  },
+  getMedicalNotes: (state, getters, rootState) => {
+    if (getters.isClinical) return state.medicalNotes.filter(n => n.institution === rootState.auth.institution)
+    return state.medicalNotes
+  },
+  getTasks: (state, getters, rootState) => {
+    if (getters.isClinical) return state.tasks.filter(t => t.institution === rootState.auth.institution)
+    return state.tasks
   },
   isOffline: state => state.offlineMode,
   getViewMode: state => state.viewMode,
@@ -330,4 +554,12 @@ function loadFromLocalStorage(key) {
     return data ? JSON.parse(data) : null
   }
   return null
+}
+
+function getChangedFields(previous, updates) {
+  return Object.keys(updates).filter((key) => {
+    const prev = JSON.stringify(previous[key])
+    const next = JSON.stringify(updates[key])
+    return prev !== next
+  })
 }

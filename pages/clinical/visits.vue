@@ -140,7 +140,9 @@
           </div>
           <v-data-table :headers="headers" :items="visitsWithDetails" class="gov-spreadsheet-table" tile elevation="0">
             <template v-slot:item.patientName="{ item }">
-              <span class="text-body-2 font-weight-black gov-text-primary">{{ item.patientName.toUpperCase() }}</span>
+              <nuxt-link :to="patientDetailsRoute(item.patientId)" class="text-body-2 font-weight-black gov-text-primary patient-link">
+                {{ item.patientName.toUpperCase() }}
+              </nuxt-link>
               <div class="text-caption grey--text font-weight-bold opacity-40">{{ item.patientId }}</div>
             </template>
             <template v-slot:item.disease="{ item }">
@@ -153,6 +155,24 @@
             </template>
             <template v-slot:item.createdAt="{ item }">
               <div class="text-caption font-weight-black gov-text-primary lh-1 mb-1">{{ new Date(item.createdAt).toLocaleDateString() }}</div>
+            </template>
+            <template v-slot:item.actions="{ item }">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <v-btn icon x-small v-on="on" :to="patientDetailsRoute(item.patientId)" class="mr-1">
+                    <v-icon small color="#003366">mdi-account-card-details-outline</v-icon>
+                  </v-btn>
+                </template>
+                <span>Patient details</span>
+              </v-tooltip>
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <v-btn icon x-small v-on="on" :to="nurseEncounterRoute(item.patientId)">
+                    <v-icon small color="#00A99D">mdi-stethoscope</v-icon>
+                  </v-btn>
+                </template>
+                <span>Nursing evaluation</span>
+              </v-tooltip>
             </template>
           </v-data-table>
         </v-card>
@@ -252,7 +272,8 @@ export default {
         { text: 'EPIDEMIOLOGICAL FOCUS', value: 'disease' },
         { text: 'SEVERITY', value: 'severity', align: 'center' },
         { text: 'STATUS', value: 'status', align: 'center' },
-        { text: 'LOG TIMESTAMP', value: 'createdAt', align: 'right' }
+        { text: 'LOG TIMESTAMP', value: 'createdAt', align: 'right' },
+        { text: '', value: 'actions', sortable: false, align: 'right' }
       ]
     }
   },
@@ -292,6 +313,12 @@ export default {
   },
   methods: {
     onDiseaseChange() { this.form.vitals = { bloodPressure: '', bloodSugar: '' } },
+    patientDetailsRoute(patientId) {
+      return `/clinical/patients/${patientId}`
+    },
+    nurseEncounterRoute(patientId) {
+      return `/clinical/patients/${patientId}/encounter/nurse`
+    },
     getSeverityColor(s) {
        const colors = { 'Low': '#00A99D', 'Moderate': '#F4A300', 'High': '#C0392B', 'Critical': '#C0392B' }
        return colors[s] || '#6B7280';
@@ -337,6 +364,8 @@ export default {
 .b-1 { border: 1px solid #E5E7EB; }
 .shadow-sm { box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important; }
 .printable-only { display: none; }
+.patient-link { color: inherit; text-decoration: none; }
+.patient-link:hover { text-decoration: underline; }
 @media print {
   .no-print { display: none !important; }
   .printable-only { display: block !important; padding: 40px; background: white; font-family: 'Inter', sans-serif; }
