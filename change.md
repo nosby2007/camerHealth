@@ -6,6 +6,67 @@
 
 ## [Unreleased] — 27 Avril 2026
 
+### Phase 19 — PR Readiness And Security Review Package
+
+#### `docs/release/PR-review-summary-v1-hardening.md` — ADDED
+- **ADDED**: consolidated PR review summary describing completed phases, major changes, non-changes, feature-flag boundaries, documentation-only scope, staging dependencies, and merge-wait rationale
+- **ADDED**: explicit explanation of why Phase 17 remains pending/no-go and why production deploy/merge should wait
+
+#### `docs/security/security-review-checklist-v1-hardening.md` — ADDED
+- **ADDED**: security verification checklist for frontend secret exposure, repo secret hygiene, unchanged clinical surfaces, no active RLS cutover, no default Supabase Auth activation, no production migration apply, and transitional localStorage posture
+- **ADDED**: backend boundary checks confirming privileged staff invite/bootstrap operations are server-side only
+- **ADDED**: documentation checks for audit/idempotency/rate-limit limitations
+
+#### `docs/release/merge-gate-checklist.md` — ADDED
+- **ADDED**: merge gates requiring successful build, granted staging access, real Phase 17 evidence execution, passing cross-tenant denials, and reviewer signoff
+- **ADDED**: explicit no-go conditions and rollback requirements for failed or incomplete staging validation
+
+#### Phase 19 Safety Confirmation
+- **CONFIRMED**: documentation only
+- **CONFIRMED**: no application code changes
+- **CONFIRMED**: no RLS policy changes
+- **CONFIRMED**: no deployment and no staging pass claim
+
+### Phase 18 — Local Readiness Artifacts For Pending Staging Execution
+
+#### `docs/qa/QA-phase-18-local-readiness-checklist.md` — ADDED
+- **ADDED**: local readiness checklist covering local build, local env review, staging access dependencies, fixtures, evidence expectations, go/no-go conditions, rollback criteria, and manager owner checklist
+- **ADDED**: explicit separation between tasks that can continue locally and tasks blocked by staging access
+
+#### `docs/qa/staging-execution-command-reference.md` — ADDED
+- **ADDED**: command reference for `npm run build`, git context capture, local API testing examples, staging SQL execution sequence, and policy-safety verification query
+- **ADDED**: clear list of commands blocked until staging access exists
+
+#### `docs/security/staging-access-request-checklist.md` — ADDED
+- **ADDED**: staging access request checklist covering required Supabase access, required Vercel access, approvals, fixture access, and request output fields
+
+#### `docs/security/cutover-readiness-blockers.md` — ADDED
+- **ADDED**: consolidated blocker register for future cutover readiness decisions
+- **ADDED**: no-go conditions, future go criteria, rollback criteria, and manager owner checklist
+
+#### Phase 18 Safety Confirmation
+- **CONFIRMED**: documentation/readiness only
+- **CONFIRMED**: no staging results invented
+- **CONFIRMED**: Phase 17 remains pending/no-go
+- **CONFIRMED**: no active RLS policy changes and no app code changes
+
+### Phase 17 — Pending Staging Shadow Validation Execution Report
+
+#### `docs/qa/QA-phase-17-shadow-validation-execution-report.md` — ADDED
+- **ADDED**: Phase 17 execution report prepared from the Phase 16 runbook/template in pending status
+- **ADDED**: recorded current git SHA for execution context: `d543bbb012bd2ad9348e0b92df381d0ef5fac0db`
+- **ADDED**: explicit pending sections for:
+   - environment access required
+   - missing credentials
+   - staging-only migration confirmation
+   - fixture setup required
+   - commands to run
+   - evidence checklist
+   - assigned owner fields
+   - blocker list
+- **ADDED**: provisional `No-Go` decision because staging access and fixture data are not available in the current workspace/session
+- **CONFIRMED**: no fake results inserted, no app code changes, no active RLS changes, no production deployment/apply
+
 ### Phase 16 — Staging Evidence Packaging For Shadow Validation
 
 #### `docs/qa/QA-phase-16-staging-evidence-runbook.md` — ADDED
