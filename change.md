@@ -6,6 +6,35 @@
 
 ## [Unreleased] — 27 Avril 2026
 
+### Phase 13 — Multi-Tenant Hierarchy & Super Admin Architecture (Additive Draft)
+
+#### `supabase/migrations/20260427_006_multi_tenant_superadmin_draft.sql` — ADDED (DRAFT ONLY)
+- **ADDED**: additive tenant hierarchy schema draft for platform -> organization -> organization_unit -> facility -> department model
+- **ADDED**: new tables:
+   - `organizations`
+   - `organization_units`
+   - `facility_departments`
+   - `staff_assignments`
+   - `platform_admins`
+   - `support_tickets`
+   - `system_events`
+- **ADDED**: transitional nullable links on `facilities`:
+   - `organization_id uuid null`
+   - `organization_unit_id uuid null`
+- **CONFIRMED**: no replacement of `facility_id`, no required `organization_id`, no patient/clinical table rewrite
+
+#### `docs/security/multi-tenant-superadmin-architecture.md` — ADDED
+- **ADDED**: non-breaking architecture for both public and private healthcare tenant structures
+- **ADDED**: public hierarchy mapping (MINSANTE -> Regional Delegation -> District -> Facility)
+- **ADDED**: private network mapping (Parent organization -> regional/city unit -> clinic sites)
+- **ADDED**: super admin/support admin governance model and break-glass modeling requirements
+- **ADDED**: phased RLS evolution notes from facility scope to multi-scope enforcement (future phase only)
+
+#### `docs/qa/QA-phase-13-multitenant-superadmin-checklist.md` — ADDED
+- **ADDED**: QA controls to verify additive compatibility with current facility-based prototype model
+- **ADDED**: checks for nullable organization links, hierarchical unit support, role scope assignments, and break-glass modeling
+- **ADDED**: explicit validation that existing RLS and clinical frontend flows remain unchanged in this phase
+
 ### Phase 11 — Server-Side Bootstrap & Staff Invitation Scaffold
 
 #### `api/bootstrap/facility-admin.js` — ADDED
