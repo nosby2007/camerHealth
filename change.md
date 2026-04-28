@@ -6,6 +6,56 @@
 
 ## [Unreleased] — 27 Avril 2026
 
+### Supabase v1.0 Backend Security Draft (Phases 2-4)
+
+#### `supabase/migrations/20260427_001_v1_schema_draft.sql` — ADDED
+- **ADDED**: Supabase v1.0 schema draft for clinical backend persistence (draft only, not applied to production)
+- **ADDED**: core multi-tenant clinical tables:
+   - `facilities`
+   - `staff_profiles`
+   - `patients`
+   - `visits`
+   - `appointments`
+   - `inpatient_admissions`
+   - `lab_orders`
+   - `imaging_orders`
+   - `medications`
+   - `invoices`
+   - `audit_logs`
+   - `facility_settings`
+- **ADDED**: governance columns across all tables (`id`, `facility_id`, `created_by`, `updated_by`, `created_at`, `updated_at`, and `status` where applicable)
+- **ADDED**: `updated_at` trigger function and update triggers
+- **ADDED**: tenant-focused indexes and explicit SQL comments describing the purpose of each table
+
+#### `supabase/migrations/20260427_002_v1_rls_policies_draft.sql` — ADDED
+- **ADDED**: dedicated Row Level Security draft for tenant isolation and role-based clinical access (draft only)
+- **ADDED**: helper functions for security context resolution:
+   - `request_jwt_claims()`
+   - `current_staff_profile_id()`
+   - `current_facility_id()`
+   - `current_staff_role()`
+   - `get_current_staff_profile()`
+   - `is_facility_admin()`
+   - `has_clinical_role(required_roles text[])`
+   - `same_facility(row_facility_id uuid)`
+- **ADDED**: `ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY` on all v1.0 clinical tables
+- **ADDED**: explicit `SELECT`, `INSERT`, `UPDATE`, `DELETE` policies per table scoped by `facility_id` and role
+- **ADDED**: special protection for `audit_logs` (insert-only for normal activity, delete blocked by default)
+- **ADDED**: staging verification notes for tenant isolation and role enforcement tests
+
+#### Authentication and JWT Claims Audit — COMPLETED (Phase 4)
+- **AUDITED**: current authentication model and compatibility with Supabase RLS expected claims
+- **CONFIRMED**: current app uses multiple auth mechanisms in parallel (local clinical auth, ministry free-entry flow, legacy Cognito hooks)
+- **IDENTIFIED GAP**: no reliable production-grade JWT claim pipeline today for `staff_profile_id`, `facility_id`, and `role`
+- **IDENTIFIED GAP**: no consistent `auth.uid()` to `staff_profiles` binding in the current prototype flow
+- **DOCUMENTED**: safe migration path from localStorage prototype auth to Supabase Auth + database-enforced authorization
+- **SECURITY GUIDANCE**:
+   - do not store tokens in localStorage
+   - do not rely on client-side hashing as production safeguard
+   - do not expose Supabase service role key in frontend
+   - do not treat frontend middleware as security boundary
+- **SCOPE NOTE**: no frontend page updates, no Vuex migration, no production deployment, and no production migration apply were executed in Phases 2-4
+
 ### Clinical Notes Audit and Task Workflow
 
 #### `pages/clinical/patients/_id/index.vue` — UPDATED
