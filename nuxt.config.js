@@ -20,6 +20,12 @@ if (missingVars.length > 0) {
   )
 }
 
+const parseBooleanFlag = (value, fallback = false) => {
+  if (typeof value === 'boolean') return value
+  if (typeof value !== 'string') return fallback
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase())
+}
+
 export default {
   // ─── Variables publiques exposées côté client ────────────────────────────────
   // ⚠️  Ne jamais mettre de secrets ici. Toute valeur dans `env` est incluse
@@ -33,7 +39,8 @@ export default {
     SUPABASE_URL: process.env.SUPABASE_URL,
     // La clé Supabase publishable (anon key) est publique par conception,
     // mais les Row Level Security (RLS) doivent être activées côté Supabase.
-    SUPABASE_KEY: process.env.SUPABASE_KEY
+    SUPABASE_KEY: process.env.SUPABASE_KEY,
+    ENABLE_SUPABASE_AUTH: process.env.ENABLE_SUPABASE_AUTH || 'false'
   },
   // ─── Variables privées : jamais exposées au client ───────────────────────────
   // Accessibles uniquement via `this.$config` dans les contextes server-side.
@@ -44,7 +51,8 @@ export default {
   publicRuntimeConfig: {
     API_URL: process.env.API_URL,
     SUPABASE_URL: process.env.SUPABASE_URL,
-    SUPABASE_KEY: process.env.SUPABASE_KEY
+    SUPABASE_KEY: process.env.SUPABASE_KEY,
+    ENABLE_SUPABASE_AUTH: parseBooleanFlag(process.env.ENABLE_SUPABASE_AUTH, false)
   },
   mode: "spa",
   /*
@@ -100,6 +108,7 @@ export default {
     { src: "~/plugins/apex.chart.js" },
     { src: "~/plugins/i18n.js" },
     { src: "~/plugins/supabase.js" },
+    { src: "~/plugins/supabase-auth-compat.js" },
     { src: "~/plugins/amplify.js", ssr: false },
     { src: "~/plugins/amplify.auth.js", mode: "client" },
     { src: "~/plugins/vue-json-to-csv.js" }

@@ -23,6 +23,12 @@ function clearSession() {
   if (process.client) sessionStorage.removeItem(SESSION_KEY)
 }
 
+function parseBooleanFlag(value, fallback = false) {
+  if (typeof value === 'boolean') return value
+  if (typeof value !== 'string') return fallback
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase())
+}
+
 export const state = () => {
   const session = loadSession()
   return {
@@ -144,10 +150,49 @@ export const actions = {
     }
   },
 
+  // Transitional compatibility action:
+  // Optional Supabase Auth path behind feature flag.
+  // It does not replace prototype login() unless explicitly called.
+  async loginWithSupabaseCompat({ commit }, { email, password }) {
+    commit('SET_LOGIN_ERROR', null)
+    const enabled = parseBooleanFlag(process.env.ENABLE_SUPABASE_AUTH || 'false', false)
+    if (!enabled) {
+      commit('SET_LOGIN_ERROR', 'Supabase Auth compatibility is disabled by feature flag.')
+      return false
+    }
+
+    try {
+      const context = await this.$supabaseAuthCompat.signInWithPassword({ email, password })
+      commit('SET_SESSION', {
+        id: context.staffCode || context.staffProfileId,
+        role: context.role,
+        fullName: context.displayName,
+        email: context.email,
+        institution: context.institutionName || '',
+        facilityId: context.facilityId,
+        region: ''
+      })
+      return true
+    } catch (err) {
+      commit('SET_LOGIN_ERROR', err && err.message ? err.message : 'Supabase authentication failed.')
+      return false
+    }
+  },
+
+  // Optional helper to resolve normalized Supabase auth context for migrated flows.
+  async resolveSupabaseCompatContext() {
+    return this.$supabaseAuthCompat.resolveAuthContext()
+  },
+
   logout({ commit }) {
     // Attempt Cognito sign-out silently (may fail if not using Cognito — that's fine)
     try { Auth.signOut() } catch (_) {}
     commit('CLEAR_SESSION')
+  },
+
+  // Optional Supabase sign-out for migrated flows.
+  async logoutSupabaseCompat() {
+    return this.$supabaseAuthCompat.signOut()
   },
 
   // Legacy Cognito load — kept for backward compatibility
