@@ -24,8 +24,8 @@
         <v-form ref="form" v-model="valid" @submit.prevent="login">
 
           <!-- Role selector -->
-          <div class="text-caption font-weight-black grey--text mb-3 uppercase ls-1">Select Your Role</div>
-          <v-row dense class="mb-6">
+          <div v-if="!useSupabaseCompatLogin" class="text-caption font-weight-black grey--text mb-3 uppercase ls-1">Select Your Role</div>
+          <v-row v-if="!useSupabaseCompatLogin" dense class="mb-6">
             <v-col v-for="r in roles" :key="r.value" cols="6" sm="4">
               <v-card
                 flat tile
@@ -39,14 +39,19 @@
             </v-col>
           </v-row>
 
+          <v-alert v-if="useSupabaseCompatLogin" dense text type="info" class="mb-4 text-caption font-weight-bold rounded-0">
+            Transitional login mode: sign in with your Supabase email and password.
+          </v-alert>
+
           <v-text-field
-            v-model="form.staffId"
-            label="Staff ID"
+            v-model="form.identity"
+            :label="useSupabaseCompatLogin ? 'Email' : 'Staff ID'"
+            :type="useSupabaseCompatLogin ? 'email' : 'text'"
             outlined tile dense required
             :rules="[v => !!v || 'Required']"
-            prepend-inner-icon="mdi-badge-account"
+            :prepend-inner-icon="useSupabaseCompatLogin ? 'mdi-email' : 'mdi-badge-account'"
             class="mb-4 rounded-0"
-            autocomplete="username"
+            :autocomplete="useSupabaseCompatLogin ? 'email' : 'username'"
           ></v-text-field>
 
           <v-text-field
@@ -65,7 +70,7 @@
           <v-btn
             color="#003366" dark block height="56" tile depressed
             type="submit"
-            :disabled="!valid || !form.role" :loading="loading"
+            :disabled="!valid || loginDisabled" :loading="loading"
             class="font-weight-black text-caption ls-1"
           >
             VALIDATE ACCESS & INITIALIZE SESSION
@@ -97,7 +102,7 @@ export default {
       valid: false,
       loading: false,
       showPwd: false,
-      form: { staffId: '', password: '', role: null },
+      form: { identity: '', password: '', role: null },
       roles: [
         { value: 'ADMIN',   label: 'Admin',   icon: 'mdi-shield-account' },
         { value: 'DOCTOR',  label: 'Doctor',  icon: 'mdi-doctor'          },
@@ -109,7 +114,17 @@ export default {
   },
   computed: {
     loginError() { return this.$store.state.auth.loginError },
-    isMinistryLayer() { return this.$route.query.layer === 'ministry' }
+    isMinistryLayer() { return this.$route.query.layer === 'ministry' },
+    useSupabaseCompatLogin() {
+      const flag = this.$config && this.$config.ENABLE_SUPABASE_AUTH
+      if (typeof flag === 'boolean') return flag
+      if (typeof flag === 'string') return ['1', 'true', 'yes', 'on'].includes(flag.trim().toLowerCase())
+      return false
+    },
+    loginDisabled() {
+      if (this.useSupabaseCompatLogin) return false
+      return !this.form.role
+    }
   },
   mounted() {
     this.$store.commit('clinical/LOAD_FROM_STORAGE')
@@ -123,16 +138,30 @@ export default {
       return { ADMIN: '/admin', DOCTOR: '/clinical/dashboard', NURSE: '/clinical/dashboard', LAB: '/clinical/lab', IMAGING: '/clinical/imaging' }[role] || '/clinical/dashboard'
     },
     async login() {
-      if (!this.$refs.form.validate() || !this.form.role) return
+      if (!this.$refs.form.validate() || this.loginDisabled) return
       this.loading = true
-      const success = await this.$store.dispatch('auth/login', {
-        staffId:  this.form.staffId,
-        password: this.form.password,
-        role:     this.form.role
-      })
+
+      let success = false
+
+      // Transitional auth cutover path:
+      // - ENABLE_SUPABASE_AUTH=false keeps prototype login unchanged.
+      // - ENABLE_SUPABASE_AUTH=true enables Supabase compatibility sign-in.
+      if (this.useSupabaseCompatLogin) {
+        success = await this.$store.dispatch('auth/loginWithSupabaseCompat', {
+          email: this.form.identity,
+          password: this.form.password
+        })
+      } else {
+        success = await this.$store.dispatch('auth/login', {
+          staffId: this.form.identity,
+          password: this.form.password,
+          role: this.form.role
+        })
+      }
+
       this.loading = false
       if (success) {
-        this.$router.push(this.roleHome(this.form.role))
+        this.$router.push(this.roleHome(this.$store.state.auth.role))
       }
     }
   }

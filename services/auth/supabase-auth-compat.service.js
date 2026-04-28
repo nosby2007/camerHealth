@@ -24,6 +24,14 @@ function authError(code, message, cause = null) {
   return err
 }
 
+function classifySupabaseSignInError(error) {
+  const message = (error && error.message ? error.message : '').toLowerCase()
+  if (message.includes('invalid login credentials')) {
+    return authError('INVALID_CREDENTIALS', 'Invalid email or password.', error)
+  }
+  return authError('SUPABASE_AUTH_FAILURE', 'Supabase sign-in failed.', error)
+}
+
 function createSupabaseAuthClient(url, key) {
   return createClient(url, key, {
     auth: {
@@ -118,7 +126,7 @@ export function createSupabaseAuthCompat(options) {
 
       const { data, error } = await supabaseAuthClient.auth.signInWithPassword({ email, password })
       if (error || !data || !data.user) {
-        throw authError('SUPABASE_AUTH_FAILURE', 'Supabase sign-in failed.', error)
+        throw classifySupabaseSignInError(error)
       }
 
       const staffProfile = await resolveLinkedStaffProfile(data.user.id)

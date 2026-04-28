@@ -103,6 +103,7 @@ export default {
    ** Plugins to load before mounting the App
    */
   plugins: [
+    { src: "~/plugins/vuetify-explicit.js" },
     // { src: "~/plugins/leaflet.js", ssr: false },
     { src: "~/plugins/google-maps.js" },
     { src: "~/plugins/apex.chart.js" },
