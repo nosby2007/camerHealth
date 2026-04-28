@@ -6,6 +6,37 @@
 
 ## [Unreleased] — 27 Avril 2026
 
+### Phase 15 — Shadow Validation Plan & Role/Scope Matrix (Pre-Cutover)
+
+#### `docs/security/multiscope-rls-shadow-test-plan.md` — ADDED
+- **ADDED**: controlled shadow validation plan for multi-scope helper functions before any policy cutover
+- **ADDED**: full role/scope matrix coverage for:
+   - roles: `SUPER_ADMIN`, `SUPPORT_ADMIN`, `ORG_ADMIN`, `REGIONAL_ADMIN`, `DISTRICT_ADMIN`, `FACILITY_ADMIN`, `ADMIN`, `DOCTOR`, `NURSE`, `LAB`, `IMAGING`, `AUDITOR`
+   - scopes: `platform`, `organization`, `regional/delegation unit`, `district unit`, `facility`, `department`, `unrelated organization`, `unrelated facility`
+- **ADDED**: expected helper outcomes for:
+   - `can_read_facility_metadata`
+   - `can_manage_facility`
+   - `can_troubleshoot_facility`
+   - `can_break_glass_access`
+   - `has_platform_role`
+   - `has_organization_scope`
+   - `has_unit_scope`
+   - `has_facility_scope`
+- **ADDED**: go/no-go criteria, rollback criteria, and evidence capture format for staging validation
+
+#### `docs/qa/QA-phase-15-multiscope-shadow-validation-checklist.md` — ADDED
+- **ADDED**: QA execution checklist for full role/scope matrix and helper validation in shadow mode
+- **ADDED**: negative-path checks (cross-tenant denial, expired assignments, inactive assignments)
+- **ADDED**: compatibility checks for null `organization_id` and existing `facility_id` model
+
+#### `supabase/tests/phase15_multiscope_helper_validation.sql` — ADDED (STAGING SHADOW SCRIPT)
+- **ADDED**: staging-only SQL validation templates with placeholders for sample fixtures
+- **ADDED**: expected pass/fail comment patterns for helper assertions
+- **ADDED**: cross-tenant denial test templates
+- **ADDED**: expired/inactive assignment tests
+- **ADDED**: null `organization_id` and facility-only compatibility tests
+- **CONFIRMED**: no production data insert, no active policy rewiring, no patient/clinical policy changes
+
 ### Phase 14 — Read-Only Multi-Scope RLS Helpers & Tenant Mapping Runbook (Draft)
 
 #### `supabase/migrations/20260427_007_multiscope_rls_helpers_draft.sql` — ADDED (DRAFT ONLY)
