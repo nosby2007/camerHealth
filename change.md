@@ -6,6 +6,33 @@
 
 ## [Unreleased] — 27 Avril 2026
 
+### Phase 14 — Read-Only Multi-Scope RLS Helpers & Tenant Mapping Runbook (Draft)
+
+#### `supabase/migrations/20260427_007_multiscope_rls_helpers_draft.sql` — ADDED (DRAFT ONLY)
+- **ADDED**: read-only helper function draft to prepare future multi-scope RLS evolution without altering active policies
+- **ADDED**: helper functions:
+   - `current_staff_assignments()`
+   - `has_platform_role(required_roles text[])`
+   - `has_organization_scope(target_organization_id uuid, required_roles text[])`
+   - `has_unit_scope(target_unit_id uuid, required_roles text[])`
+   - `has_facility_scope(target_facility_id uuid, required_roles text[])`
+   - `can_read_facility_metadata(target_facility_id uuid)`
+   - `can_manage_facility(target_facility_id uuid)`
+   - `can_troubleshoot_facility(target_facility_id uuid)`
+   - `can_break_glass_access(target_facility_id uuid)`
+- **CONFIRMED**: no active policy rewrites, no policy drops, no patient/clinical policy replacement in this phase
+
+#### `docs/security/facility-to-organization-unit-mapping-runbook.md` — ADDED
+- **ADDED**: safe migration runbook for mapping standalone facilities to organization and organization_unit hierarchy
+- **ADDED**: explicit public model workflow (MINSANTE -> Regional Delegation -> District -> Facility)
+- **ADDED**: explicit private multi-site workflow (Private Organization -> Region/City Unit -> Facility)
+- **ADDED**: staged backfill, assignment validation, rollback strategy, and cross-tenant access prevention controls
+
+#### `docs/qa/QA-phase-14-multiscope-rls-helper-checklist.md` — ADDED
+- **ADDED**: QA checks for helper function behavior without policy activation
+- **ADDED**: validation that facility-based prototype and existing RLS remain unchanged
+- **ADDED**: break-glass governance checks (disabled by default unless explicit approval)
+
 ### Phase 13 — Multi-Tenant Hierarchy & Super Admin Architecture (Additive Draft)
 
 #### `supabase/migrations/20260427_006_multi_tenant_superadmin_draft.sql` — ADDED (DRAFT ONLY)
