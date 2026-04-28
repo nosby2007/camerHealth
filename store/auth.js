@@ -23,6 +23,27 @@ function clearSession() {
   if (process.client) sessionStorage.removeItem(SESSION_KEY)
 }
 
+function parseBooleanFlag(value, fallback = false) {
+  if (typeof value === 'boolean') return value
+  if (typeof value !== 'string') return fallback
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase())
+}
+
+function mapSupabaseCompatError(err) {
+  const code = err && err.code ? err.code : ''
+  const map = {
+    INVALID_CREDENTIALS: 'Invalid email or password.',
+    STAFF_PROFILE_NOT_FOUND: 'Your account is authenticated but not linked to a staff profile.',
+    STAFF_PROFILE_INACTIVE: 'Your staff account is inactive. Please contact an administrator.',
+    FACILITY_MISSING: 'Your staff profile is missing a facility assignment.',
+    ROLE_MISSING: 'Your staff profile is missing a role assignment.',
+    SUPABASE_AUTH_FAILURE: 'Supabase authentication failed. Please try again.',
+    STAFF_PROFILE_LOOKUP_FAILED: 'Unable to resolve your staff profile at this time.',
+    SUPABASE_CONFIG_MISSING: 'Supabase login is not configured for this environment.'
+  }
+  return map[code] || (err && err.message ? err.message : 'Supabase authentication failed.')
+}
+
 export const state = () => {
   const session = loadSession()
   return {
@@ -144,10 +165,54 @@ export const actions = {
     }
   },
 
+  // Transitional compatibility action:
+  // Optional Supabase Auth path behind feature flag.
+  // It does not replace prototype login() unless explicitly called.
+  async loginWithSupabaseCompat({ commit }, { email, password }) {
+    commit('SET_LOGIN_ERROR', null)
+    const enabled = this.$supabaseAuthCompat && typeof this.$supabaseAuthCompat.isEnabled === 'function'
+      ? this.$supabaseAuthCompat.isEnabled()
+      : parseBooleanFlag(process.env.ENABLE_SUPABASE_AUTH || 'false', false)
+    if (!enabled) {
+      commit('SET_LOGIN_ERROR', 'Supabase Auth compatibility is disabled by feature flag.')
+      return false
+    }
+
+    try {
+      const context = await this.$supabaseAuthCompat.signInWithPassword({ email, password })
+
+      // TODO(phase-9): emit backend audit event for successful Supabase compatibility login.
+      commit('SET_SESSION', {
+        id: context.staffCode || context.staffProfileId,
+        role: context.role,
+        fullName: context.displayName,
+        email: context.email,
+        institution: context.institutionName || '',
+        facilityId: context.facilityId,
+        region: ''
+      })
+      return true
+    } catch (err) {
+      // TODO(phase-9): emit backend audit event for failed Supabase compatibility login.
+      commit('SET_LOGIN_ERROR', mapSupabaseCompatError(err))
+      return false
+    }
+  },
+
+  // Optional helper to resolve normalized Supabase auth context for migrated flows.
+  async resolveSupabaseCompatContext() {
+    return this.$supabaseAuthCompat.resolveAuthContext()
+  },
+
   logout({ commit }) {
     // Attempt Cognito sign-out silently (may fail if not using Cognito — that's fine)
     try { Auth.signOut() } catch (_) {}
     commit('CLEAR_SESSION')
+  },
+
+  // Optional Supabase sign-out for migrated flows.
+  async logoutSupabaseCompat() {
+    return this.$supabaseAuthCompat.signOut()
   },
 
   // Legacy Cognito load — kept for backward compatibility
