@@ -4,71 +4,58 @@ function json(res, statusCode, payload) {
   res.end(JSON.stringify(payload))
 }
 
-function badRequest(res, message, code = 'INVALID_REQUEST', details = null) {
-  return json(res, 400, {
+function errorPayload(code, message, correlationId, details = null) {
+  return {
     ok: false,
     code,
     message,
+    correlationId,
     details
-  })
+  }
 }
 
-function unauthorized(res, message = 'Authentication required.', code = 'UNAUTHORIZED') {
-  return json(res, 401, {
-    ok: false,
-    code,
-    message
-  })
+function badRequest(res, message, code = 'INVALID_REQUEST', details = null, correlationId = null) {
+  return json(res, 400, errorPayload(code, message, correlationId, details))
 }
 
-function forbidden(res, message = 'Access denied.', code = 'FORBIDDEN') {
-  return json(res, 403, {
-    ok: false,
-    code,
-    message
-  })
+function unauthorized(res, message = 'Authentication required.', code = 'UNAUTHORIZED', correlationId = null) {
+  return json(res, 401, errorPayload(code, message, correlationId))
 }
 
-function conflict(res, message, code = 'CONFLICT') {
-  return json(res, 409, {
-    ok: false,
-    code,
-    message
-  })
+function forbidden(res, message = 'Access denied.', code = 'FORBIDDEN', correlationId = null) {
+  return json(res, 403, errorPayload(code, message, correlationId))
 }
 
-function tooManyRequests(res, message = 'Too many requests. Please retry later.') {
-  return json(res, 429, {
-    ok: false,
-    code: 'RATE_LIMITED',
-    message
-  })
+function conflict(res, message, code = 'CONFLICT', correlationId = null) {
+  return json(res, 409, errorPayload(code, message, correlationId))
 }
 
-function internalServerError(res, message = 'Internal server error.', code = 'SERVER_ERROR') {
-  return json(res, 500, {
-    ok: false,
-    code,
-    message
-  })
+function tooManyRequests(res, message = 'Too many requests. Please retry later.', correlationId = null) {
+  return json(res, 429, errorPayload('RATE_LIMITED', message, correlationId))
 }
 
-function methodNotAllowed(res, methods) {
+function internalServerError(res, message = 'Internal server error.', code = 'SERVER_ERROR', correlationId = null) {
+  return json(res, 500, errorPayload(code, message, correlationId))
+}
+
+function serviceUnavailable(res, message = 'Backend service unavailable.', code = 'BACKEND_UNAVAILABLE', correlationId = null) {
+  return json(res, 503, errorPayload(code, message, correlationId))
+}
+
+function methodNotAllowed(res, methods, correlationId = null) {
   res.setHeader('Allow', methods.join(', '))
-  return json(res, 405, {
-    ok: false,
-    code: 'METHOD_NOT_ALLOWED',
-    message: `Method not allowed. Allowed methods: ${methods.join(', ')}`
-  })
+  return json(res, 405, errorPayload('METHOD_NOT_ALLOWED', `Method not allowed. Allowed methods: ${methods.join(', ')}`, correlationId))
 }
 
 module.exports = {
   json,
+  errorPayload,
   badRequest,
   unauthorized,
   forbidden,
   conflict,
   tooManyRequests,
   internalServerError,
+  serviceUnavailable,
   methodNotAllowed
 }

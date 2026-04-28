@@ -15,9 +15,18 @@
       </div>
 
       <div class="pa-10">
-        <v-alert dense text type="info" color="#0B3D2E" class="mb-8 text-caption font-weight-bold rounded-0">
+        <v-alert dense text type="info" color="#0B3D2E" class="mb-4 text-caption font-weight-bold rounded-0">
           This form is completed <strong>once</strong> by the clinic director. It creates the facility record
-          and the administrator account. Keep your credentials safe — they cannot be recovered.
+          and the administrator account. Keep your credentials safe.
+        </v-alert>
+
+        <v-alert v-if="useSupabaseFacilityRegistration" dense text type="warning" class="mb-8 text-caption font-weight-bold rounded-0">
+          Supabase Auth compatibility mode is enabled. This registration path creates the admin Auth account first,
+          then attempts backend-backed facility and staff profile creation without storing Supabase tokens in localStorage.
+        </v-alert>
+
+        <v-alert v-if="registrationError" dense text type="error" class="mb-8 text-caption font-weight-bold rounded-0">
+          {{ registrationError }}
         </v-alert>
 
         <v-form ref="form" v-model="valid">
@@ -167,6 +176,7 @@ export default {
     return {
       valid: false,
       loading: false,
+      registrationError: '',
       showPwd: false,
       facility: { name: '', region: 'Centre', city: '', quarter: '', email: '' },
       admin: { fullName: '', staffId: '', email: '', password: '', confirmPassword: '' },
@@ -181,11 +191,36 @@ export default {
     // If already set up, redirect to login
     if (this.$store.state.facility.setupComplete) this.$router.push('/login')
   },
+  computed: {
+    useSupabaseFacilityRegistration() {
+      return Boolean(this.$config && this.$config.ENABLE_SUPABASE_AUTH)
+    }
+  },
   methods: {
     async register() {
       if (!this.$refs.form.validate()) return
       this.loading = true
+      this.registrationError = ''
       try {
+        if (this.useSupabaseFacilityRegistration) {
+          const result = await this.$store.dispatch('facility/registerFacilityWithSupabase', {
+            facility: this.facility,
+            admin: this.admin,
+            supabaseUrl: this.$config.SUPABASE_URL,
+            supabaseKey: this.$config.SUPABASE_KEY
+          })
+
+          if (result.status === 'pending_confirmation') {
+            this.$toast.info(result.message)
+            this.registrationError = result.message
+            return
+          }
+
+          this.$toast.success('Facility registered. Please log in with the administrator email and password.')
+          this.$router.push('/login')
+          return
+        }
+
         await this.$store.dispatch('facility/registerFacility', {
           facility: this.facility,
           admin: this.admin
@@ -193,7 +228,9 @@ export default {
         this.$toast.success('Facility registered. Please log in with your admin credentials.')
         this.$router.push('/login')
       } catch (err) {
-        this.$toast.error('Registration failed. Please try again.')
+        const message = err && err.message ? err.message : 'Registration failed. Please try again.'
+        this.registrationError = message
+        this.$toast.error(message)
       } finally {
         this.loading = false
       }

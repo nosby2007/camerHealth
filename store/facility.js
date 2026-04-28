@@ -6,6 +6,9 @@
  *   Availability    : all data persisted to localStorage for offline resilience.
  */
 
+import { inviteStaff } from '~/services/admin/staff-invitation.service'
+import { registerFacilityWithAdmin } from '~/services/facility/supabase-facility-registration.service'
+
 // ─── Roles ────────────────────────────────────────────────────────────────────
 export const ROLES = {
   ADMIN:    'ADMIN',
@@ -42,6 +45,38 @@ function persist(key, data) {
 function load(key) {
   if (!process.client) return null
   try { return JSON.parse(localStorage.getItem(key)) } catch { return null }
+}
+
+function buildSupabaseFacilityRecord(result, fallbackFacility) {
+  const facility = result.facility || {}
+  return {
+    id: facility.id || facility.facility_id,
+    name: facility.name || fallbackFacility.name,
+    region: facility.region || fallbackFacility.region,
+    city: facility.city || fallbackFacility.city,
+    quarter: facility.quarter || fallbackFacility.quarter,
+    email: facility.email || fallbackFacility.email,
+    createdAt: facility.created_at || new Date().toISOString(),
+    backendSource: 'supabase'
+  }
+}
+
+function buildSupabaseAdminRecord(result, admin, facilityId, passwordHash) {
+  const authContext = result.authContext || {}
+  return {
+    id: (authContext.staffCode || admin.staffId || '').trim().toUpperCase(),
+    fullName: authContext.displayName || admin.fullName.trim(),
+    email: (authContext.email || admin.email || '').trim().toLowerCase(),
+    role: ROLES.ADMIN,
+    passwordHash,
+    facilityId,
+    active: true,
+    createdAt: (result.staffProfile && result.staffProfile.created_at) || new Date().toISOString(),
+    createdBy: 'SYSTEM',
+    authUserId: result.authUserId || null,
+    staffProfileId: result.staffProfile ? result.staffProfile.id : null,
+    backendSource: 'supabase'
+  }
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -128,6 +163,37 @@ export const actions = {
     dispatch('_audit', { action: 'FACILITY_REGISTERED', actor: adminRecord.id, detail: `Facility "${facilityRecord.name}" registered.` })
   },
 
+  async registerFacilityWithSupabase({ commit, dispatch, state }, { facility, admin, supabaseUrl, supabaseKey }) {
+    const result = await registerFacilityWithAdmin(
+      { facility, admin },
+      { supabaseUrl, supabaseKey }
+    )
+
+    if (result.status === 'pending_confirmation') {
+      return result
+    }
+
+    const hashedPassword = await sha256(admin.password)
+    const facilityRecord = buildSupabaseFacilityRecord(result, facility)
+    const adminRecord = buildSupabaseAdminRecord(result, admin, facilityRecord.id, hashedPassword)
+    const existingAdmin = state.staff.find(member => member.id === adminRecord.id)
+
+    commit('SET_FACILITY', facilityRecord)
+    if (existingAdmin) {
+      commit('UPDATE_STAFF', adminRecord)
+    } else {
+      commit('ADD_STAFF', adminRecord)
+    }
+
+    dispatch('_audit', {
+      action: 'FACILITY_REGISTERED_SUPABASE_COMPAT',
+      actor: adminRecord.id,
+      detail: `Facility "${facilityRecord.name}" registered through Supabase compatibility flow.`
+    })
+
+    return result
+  },
+
   /**
    * createStaffAccount — called by ADMIN only.
    * Creates a staff account with hashed password.
@@ -153,6 +219,21 @@ export const actions = {
       action: 'ACCOUNT_CREATED',
       actor: actorId,
       detail: `Account created for ${member.fullName} (${member.id}) — Role: ${member.role}`
+    })
+  },
+
+  async inviteStaffAccount({ rootState }, { staff, endpoint }) {
+    return inviteStaff({
+      email: staff.email,
+      fullName: staff.fullName,
+      staffId: staff.staffId,
+      role: staff.role,
+      phone: staff.phone,
+      title: staff.title,
+      department: staff.department,
+      facilityId: rootState.facility.facility ? rootState.facility.facility.id : null
+    }, {
+      endpoint
     })
   },
 

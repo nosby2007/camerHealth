@@ -1,4 +1,5 @@
 const BUCKET = new Map()
+const { optionalEnv } = require('./env')
 
 function buildKey(req, scope) {
   const forwarded = req.headers['x-forwarded-for']
@@ -6,6 +7,11 @@ function buildKey(req, scope) {
     ? forwarded[0]
     : (forwarded || req.socket.remoteAddress || 'unknown-ip')
   return `${scope}:${ip}`
+}
+
+function normalizeIdentity(value) {
+  if (value === null || value === undefined || value === '') return 'anonymous'
+  return String(value).trim().toLowerCase()
 }
 
 function enforceRateLimit(req, scope, options = {}) {
@@ -31,6 +37,28 @@ function enforceRateLimit(req, scope, options = {}) {
   return { limited: false }
 }
 
+function enforceRateLimits(req, rules = []) {
+  for (const rule of rules) {
+    const limit = enforceRateLimit(req, rule.scope, {
+      max: rule.max,
+      windowMs: rule.windowMs
+    })
+    if (limit.limited) return { limited: true, scope: rule.scope, retryAfterSeconds: limit.retryAfterSeconds }
+  }
+  return { limited: false }
+}
+
+function rateLimitStrategyInfo() {
+  return {
+    strategy: optionalEnv('RATE_LIMIT_STRATEGY', 'memory'),
+    distributedReady: false,
+    note: 'Memory limiter is for local/staging only. Use Redis/Upstash/Vercel KV/Supabase-backed limiter before production cutover.'
+  }
+}
+
 module.exports = {
-  enforceRateLimit
+  normalizeIdentity,
+  enforceRateLimit,
+  enforceRateLimits,
+  rateLimitStrategyInfo
 }

@@ -47,6 +47,60 @@
 - **DOCUMENTED**: bootstrap paradox under strict RLS and rationale for controlled privileged bootstrap endpoint
 - **DOCUMENTED**: production follow-up requirements (durable rate limit, compensation strategy, onboarding lifecycle hardening)
 
+### Phase 12 — Endpoint Hardening For Production Readiness (Scaffold)
+
+#### `api/_lib/request.js` — HARDENED
+- **ADDED**: robust payload validators for bootstrap and invite endpoints
+- **ADDED**: stronger email/password/facility/staff code/phone normalization checks
+- **ADDED**: explicit rejection of client-supplied `facility_id` in invite payload
+
+#### `api/_lib/http.js` + `api/_lib/correlation.js` — HARDENED
+- **ADDED**: correlation id propagation (`X-Correlation-Id`) for tracing
+- **ADDED**: safer normalized error payload envelopes with correlation context
+- **ADDED**: explicit backend unavailable response handling
+
+#### `api/_lib/idempotency.js` — ADDED
+- **ADDED**: idempotency key support (`Idempotency-Key` / `X-Idempotency-Key`)
+- **ADDED**: request hash comparison to reject key reuse with payload drift
+- **ADDED**: replay support for repeated requests with same key and same payload
+- **ADDED**: DB-backed idempotency support scaffold + in-memory fallback for local/staging
+
+#### `api/_lib/audit.js` — HARDENED
+- **ADDED**: metadata sanitization to avoid leaking passwords/tokens/secrets
+- **ADDED**: endpoint/correlation/actor-auth context support
+- **ADDED**: strict mode option for compliance-critical audit writes
+
+#### `api/_lib/rate-limit.js` — HARDENED
+- **ADDED**: multi-scope rate limit utility for endpoint-level composition
+- **ADDED**: strategy descriptor documenting distributed limiter requirement for production
+
+#### `api/bootstrap/facility-admin.js` — HARDENED
+- **ADDED**: idempotency flow handling (replay/conflict/in-progress)
+- **ADDED**: compensation path for partial failures:
+   - rollback attempt by deleting newly created auth user when facility insert fails
+   - mark facility inactive when profile creation fails
+- **ADDED**: stronger failure audits with error category and correlation id
+- **ADDED**: safer status-oriented response shape without provider internals
+
+#### `api/admin/staff/invite.js` — HARDENED
+- **ADDED**: idempotency flow handling (replay/conflict/in-progress)
+- **ADDED**: strict caller enforcement (active ADMIN + facility derived server-side)
+- **ADDED**: invite lifecycle handling with status model scaffold (`pending`, `accepted`, `revoked`, `expired`, `failed`)
+- **ADDED**: resend behavior for existing pending invites
+- **ADDED**: rollback attempt if auth user is created but profile insert fails
+- **ADDED**: expanded audit event coverage including invite failure and account creation events
+
+#### `supabase/migrations/20260427_005_endpoint_hardening_draft.sql` — ADDED (DRAFT ONLY)
+- **ADDED**: `public.idempotency_keys` table + indexes
+- **ADDED**: `public.pending_staff_invites` table + lifecycle status checks + indexes
+- **ADDED**: `updated_at` triggers for hardening tables
+- **NOTE**: draft only, not applied to production
+
+#### Documentation / QA / Test Plan — ADDED
+- **ADDED**: `docs/security/endpoint-hardening-phase-12.md`
+- **ADDED**: `docs/qa/QA-phase-12-endpoint-hardening-checklist.md`
+- **ADDED**: `docs/qa/Phase-12-api-integration-test-plan.md` (documentation-based integration plan)
+
 ### Supabase v1.0 Backend Security Draft (Phases 2-4)
 
 #### `supabase/migrations/20260427_001_v1_schema_draft.sql` — ADDED

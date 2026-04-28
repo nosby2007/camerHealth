@@ -1,108 +1,184 @@
 const { getSupabaseAdminClient, findAuthUserByEmail } = require('../_lib/supabase-admin')
-const { assertFields, isEmail, sanitizeEmail, toStringSafe, randomCode } = require('../_lib/request')
+const { validateBootstrapPayload, randomCode } = require('../_lib/request')
 const { insertAuditEvent } = require('../_lib/audit')
 const {
   json,
   badRequest,
   conflict,
   internalServerError,
+  serviceUnavailable,
   methodNotAllowed,
   tooManyRequests
 } = require('../_lib/http')
-const { enforceRateLimit } = require('../_lib/rate-limit')
-
-const REQUIRED_FIELDS = [
-  'facilityName',
-  'facilityType',
-  'region',
-  'address',
-  'adminEmail',
-  'adminPassword',
-  'adminFirstName',
-  'adminLastName'
-]
+const { enforceRateLimits, rateLimitStrategyInfo } = require('../_lib/rate-limit')
+const { getCorrelationId } = require('../_lib/correlation')
+const { beginIdempotency, completeIdempotency } = require('../_lib/idempotency')
 
 module.exports = async (req, res) => {
-  if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
-
-  const limit = enforceRateLimit(req, 'bootstrap-facility-admin', { max: 5, windowMs: 60 * 1000 })
-  if (limit.limited) {
-    res.setHeader('Retry-After', String(limit.retryAfterSeconds))
-    return tooManyRequests(res, 'Too many bootstrap attempts. Please retry later.')
-  }
+  const correlationId = getCorrelationId(req, res)
+  if (req.method !== 'POST') return methodNotAllowed(res, ['POST'], correlationId)
 
   const body = req.body || {}
-  const validation = assertFields(body, REQUIRED_FIELDS)
-  if (!validation.valid) {
-    return badRequest(
-      res,
-      `Missing required fields: ${validation.missing.join(', ')}`,
-      'MISSING_REQUIRED_FIELDS',
-      validation.missing
-    )
+  const bootstrapValidation = validateBootstrapPayload(body)
+
+  const limit = enforceRateLimits(req, [
+    { scope: 'bootstrap-facility-admin:ip', max: 5, windowMs: 60 * 1000 },
+    { scope: `bootstrap-facility-admin:email:${(bootstrapValidation.value.adminEmail || 'unknown').toLowerCase()}`, max: 3, windowMs: 60 * 1000 }
+  ])
+
+  if (limit.limited) {
+    res.setHeader('Retry-After', String(limit.retryAfterSeconds))
+    return tooManyRequests(res, 'Too many bootstrap attempts. Please retry later.', correlationId)
   }
 
-  const adminEmail = sanitizeEmail(body.adminEmail)
-  if (!isEmail(adminEmail)) {
-    return badRequest(res, 'adminEmail must be a valid email address.', 'INVALID_ADMIN_EMAIL')
+  if (!bootstrapValidation.valid) {
+    return badRequest(res, bootstrapValidation.errors.join(' '), 'INVALID_BOOTSTRAP_PAYLOAD', {
+      missing: bootstrapValidation.missing,
+      errors: bootstrapValidation.errors
+    }, correlationId)
   }
 
-  const adminPassword = toStringSafe(body.adminPassword)
-  if (adminPassword.length < 8) {
-    return badRequest(res, 'adminPassword must contain at least 8 characters.', 'INVALID_ADMIN_PASSWORD')
+  const payload = bootstrapValidation.value
+  let adminClient
+  try {
+    adminClient = getSupabaseAdminClient()
+  } catch (error) {
+    return serviceUnavailable(res, 'Bootstrap backend is unavailable due to missing server configuration.', 'BOOTSTRAP_BACKEND_UNAVAILABLE', correlationId)
   }
 
-  const adminClient = getSupabaseAdminClient()
+  let idem
+  try {
+    idem = await beginIdempotency({
+      req,
+      adminClient,
+      endpoint: '/api/bootstrap/facility-admin',
+      requesterId: payload.adminEmail,
+      body: payload
+    })
+  } catch (error) {
+    return internalServerError(res, 'Unable to initialize idempotency guard.', 'IDEMPOTENCY_INIT_FAILED', correlationId)
+  }
+
+  if (idem && idem.conflict) {
+    return conflict(res, 'Idempotency key already used with a different request payload.', 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD', correlationId)
+  }
+
+  if (idem && idem.inProgress) {
+    return conflict(res, 'A request with this idempotency key is already being processed.', 'IDEMPOTENCY_REQUEST_IN_PROGRESS', correlationId)
+  }
+
+  if (idem && idem.replay) {
+    return json(res, 200, {
+      ...idem.cachedResponse,
+      replayed: true,
+      correlationId
+    })
+  }
+
   let authUser = null
   let facility = null
   let staffProfile = null
+  let authUserCreated = false
+  let facilityCreated = false
+  let compensation = {
+    authUserDeleted: false,
+    facilityMarkedInactive: false
+  }
 
   try {
-    const existing = await findAuthUserByEmail(adminClient, adminEmail)
+    const existing = await findAuthUserByEmail(adminClient, payload.adminEmail)
     if (existing) {
       authUser = existing
     } else {
       const { data: createdUserData, error: createdUserError } = await adminClient.auth.admin.createUser({
-        email: adminEmail,
-        password: adminPassword,
+        email: payload.adminEmail,
+        password: payload.adminPassword,
         email_confirm: false,
         user_metadata: {
-          first_name: toStringSafe(body.adminFirstName),
-          last_name: toStringSafe(body.adminLastName),
+          first_name: payload.adminFirstName,
+          last_name: payload.adminLastName,
           source: 'facility-bootstrap-api'
         }
       })
 
       if (createdUserError || !createdUserData || !createdUserData.user) {
-        return internalServerError(res, 'Unable to create bootstrap auth user.', 'BOOTSTRAP_AUTH_CREATE_FAILED')
+        const responseBody = {
+          ok: false,
+          code: 'BOOTSTRAP_AUTH_CREATE_FAILED',
+          message: 'Unable to create bootstrap auth user.',
+          correlationId
+        }
+        await completeIdempotency(adminClient, idem, { status: 'failed', responseBody })
+        return internalServerError(res, responseBody.message, responseBody.code, correlationId)
       }
       authUser = createdUserData.user
+      authUserCreated = true
     }
 
-    const adminStatus = authUser.email_confirmed_at ? 'active' : 'pending_email_confirmation'
+    const adminStatus = authUser.email_confirmed_at ? 'active' : 'inactive'
 
     const { data: facilityInsert, error: facilityError } = await adminClient
       .from('facilities')
       .insert({
         code: randomCode('FAC'),
-        name: toStringSafe(body.facilityName),
-        region: toStringSafe(body.region),
+        name: payload.facilityName,
+        region: payload.region,
         city: null,
-        quarter: toStringSafe(body.address),
-        email: adminEmail,
-        phone: toStringSafe(body.adminPhone) || null,
+        quarter: payload.address,
+        email: payload.adminEmail,
+        phone: payload.adminPhone,
         status: 'active'
       })
       .select('id, code, name, region, city, quarter, email, status, created_at')
       .single()
 
     if (facilityError) {
-      if (facilityError.code === '23505') {
-        return conflict(res, 'Facility already exists with conflicting unique values.', 'FACILITY_CONFLICT')
+      if (authUserCreated) {
+        await adminClient.auth.admin.deleteUser(authUser.id).then(() => {
+          compensation.authUserDeleted = true
+        }).catch(() => {})
       }
-      return internalServerError(res, 'Unable to create facility record.', 'FACILITY_CREATE_FAILED')
+
+      await insertAuditEvent(adminClient, {
+        facilityId: null,
+        actorStaffId: null,
+        actorAuthUserId: authUser ? authUser.id : null,
+        targetTable: 'facilities',
+        action: 'BOOTSTRAP_FAILED',
+        reason: 'Facility insert failed during bootstrap.',
+        endpoint: '/api/bootstrap/facility-admin',
+        correlationId,
+        errorCategory: facilityError.code || 'FACILITY_INSERT_ERROR',
+        metadata: {
+          compensation,
+          rateLimit: rateLimitStrategyInfo()
+        }
+      })
+
+      if (facilityError.code === '23505') {
+        const responseBody = {
+          ok: false,
+          code: 'FACILITY_CONFLICT',
+          message: 'Facility already exists with conflicting unique values.',
+          correlationId,
+          status: 'failed'
+        }
+        await completeIdempotency(adminClient, idem, { status: 'failed', responseBody })
+        return conflict(res, responseBody.message, responseBody.code, correlationId)
+      }
+
+      const responseBody = {
+        ok: false,
+        code: 'FACILITY_CREATE_FAILED',
+        message: 'Unable to create facility record.',
+        correlationId,
+        status: 'failed'
+      }
+      await completeIdempotency(adminClient, idem, { status: 'failed', responseBody })
+      return internalServerError(res, responseBody.message, responseBody.code, correlationId)
     }
     facility = facilityInsert
+    facilityCreated = true
 
     const { data: profileInsert, error: profileError } = await adminClient
       .from('staff_profiles')
@@ -110,20 +186,69 @@ module.exports = async (req, res) => {
         auth_user_id: authUser.id,
         facility_id: facility.id,
         staff_code: randomCode('ADM'),
-        full_name: `${toStringSafe(body.adminFirstName)} ${toStringSafe(body.adminLastName)}`.trim(),
-        email: adminEmail,
+        full_name: `${payload.adminFirstName} ${payload.adminLastName}`.trim(),
+        email: payload.adminEmail,
         role: 'ADMIN',
-        phone: toStringSafe(body.adminPhone) || null,
+        phone: payload.adminPhone,
         status: adminStatus
       })
       .select('id, facility_id, staff_code, full_name, email, role, status, created_at')
       .single()
 
     if (profileError) {
-      if (profileError.code === '23505') {
-        return conflict(res, 'Admin staff profile already exists for this auth user or facility.', 'ADMIN_PROFILE_CONFLICT')
+      if (facilityCreated) {
+        await adminClient.from('facilities').update({ status: 'inactive' }).eq('id', facility.id)
+          .then(() => {
+            compensation.facilityMarkedInactive = true
+          })
+          .catch(() => {})
       }
-      return internalServerError(res, 'Unable to create admin staff profile.', 'ADMIN_PROFILE_CREATE_FAILED')
+
+      if (authUserCreated) {
+        await adminClient.auth.admin.deleteUser(authUser.id)
+          .then(() => {
+            compensation.authUserDeleted = true
+          })
+          .catch(() => {})
+      }
+
+      await insertAuditEvent(adminClient, {
+        facilityId: facility ? facility.id : null,
+        actorStaffId: null,
+        actorAuthUserId: authUser ? authUser.id : null,
+        targetTable: 'staff_profiles',
+        action: 'BOOTSTRAP_FAILED',
+        reason: 'Admin staff profile insert failed during bootstrap.',
+        endpoint: '/api/bootstrap/facility-admin',
+        correlationId,
+        errorCategory: profileError.code || 'PROFILE_INSERT_ERROR',
+        metadata: {
+          compensation,
+          facilityId: facility ? facility.id : null
+        }
+      })
+
+      if (profileError.code === '23505') {
+        const responseBody = {
+          ok: false,
+          code: 'ADMIN_PROFILE_CONFLICT',
+          message: 'Admin staff profile already exists for this auth user or facility.',
+          correlationId,
+          status: 'failed'
+        }
+        await completeIdempotency(adminClient, idem, { status: 'failed', responseBody })
+        return conflict(res, responseBody.message, responseBody.code, correlationId)
+      }
+
+      const responseBody = {
+        ok: false,
+        code: 'ADMIN_PROFILE_CREATE_FAILED',
+        message: 'Unable to create admin staff profile.',
+        correlationId,
+        status: 'failed'
+      }
+      await completeIdempotency(adminClient, idem, { status: 'failed', responseBody })
+      return internalServerError(res, responseBody.message, responseBody.code, correlationId)
     }
     staffProfile = profileInsert
 
@@ -131,9 +256,10 @@ module.exports = async (req, res) => {
       facility_id: facility.id,
       settings_key: 'general',
       settings_value: {
-        facilityType: toStringSafe(body.facilityType),
+        facilityType: payload.facilityType,
         bootstrapSource: 'api/bootstrap/facility-admin',
-        bootstrapAt: new Date().toISOString()
+        bootstrapAt: new Date().toISOString(),
+        bootstrapStatus: 'completed'
       },
       status: 'active',
       created_by: staffProfile.id,
@@ -145,33 +271,40 @@ module.exports = async (req, res) => {
     await insertAuditEvent(adminClient, {
       facilityId: facility.id,
       actorStaffId: staffProfile.id,
+      actorAuthUserId: authUser.id,
       targetTable: 'facilities',
       targetId: facility.id,
       action: 'FACILITY_REGISTERED',
       reason: 'Facility created through secure bootstrap endpoint.',
+      endpoint: '/api/bootstrap/facility-admin',
+      correlationId,
       metadata: {
-        endpoint: '/api/bootstrap/facility-admin',
-        authUserId: authUser.id
+        authUserId: authUser.id,
+        bootstrapStatus: 'completed'
       }
-    })
+    }, { strict: true })
 
     await insertAuditEvent(adminClient, {
       facilityId: facility.id,
       actorStaffId: staffProfile.id,
+      actorAuthUserId: authUser.id,
       targetTable: 'staff_profiles',
       targetId: staffProfile.id,
       action: 'ACCOUNT_CREATED',
       reason: 'Initial facility admin account created through secure bootstrap endpoint.',
+      endpoint: '/api/bootstrap/facility-admin',
+      correlationId,
       metadata: {
-        endpoint: '/api/bootstrap/facility-admin',
         role: 'ADMIN',
         authUserId: authUser.id
       }
-    })
+    }, { strict: true })
 
-    return json(res, 201, {
+    const responseBody = {
       ok: true,
       code: 'FACILITY_ADMIN_BOOTSTRAPPED',
+      status: 'completed',
+      correlationId,
       data: {
         facility: {
           id: facility.id,
@@ -190,24 +323,37 @@ module.exports = async (req, res) => {
           status: staffProfile.status
         }
       }
-    })
-  } catch (error) {
-    if (facility && staffProfile) {
-      await insertAuditEvent(adminClient, {
-        facilityId: facility.id,
-        actorStaffId: staffProfile.id,
-        targetTable: 'system',
-        targetId: null,
-        action: 'BOOTSTRAP_FAILED',
-        reason: 'Bootstrap endpoint failed unexpectedly.',
-        metadata: {
-          endpoint: '/api/bootstrap/facility-admin',
-          code: error && error.code,
-          message: error && error.message
-        }
-      })
     }
 
-    return internalServerError(res, 'Bootstrap failed. Please retry or contact support.', 'BOOTSTRAP_FAILED')
+    await completeIdempotency(adminClient, idem, { status: 'completed', responseBody })
+
+    return json(res, 201, responseBody)
+  } catch (error) {
+    await insertAuditEvent(adminClient, {
+      facilityId: facility ? facility.id : null,
+      actorStaffId: staffProfile ? staffProfile.id : null,
+      actorAuthUserId: authUser ? authUser.id : null,
+      targetTable: 'system',
+      targetId: null,
+      action: 'BOOTSTRAP_FAILED',
+      reason: 'Bootstrap endpoint failed unexpectedly.',
+      endpoint: '/api/bootstrap/facility-admin',
+      correlationId,
+      errorCategory: (error && error.code) || 'UNEXPECTED_ERROR',
+      metadata: {
+        compensation
+      }
+    })
+
+    const responseBody = {
+      ok: false,
+      code: 'BOOTSTRAP_FAILED',
+      message: 'Bootstrap failed. Please retry or contact support.',
+      correlationId,
+      status: 'failed'
+    }
+
+    await completeIdempotency(adminClient, idem, { status: 'failed', responseBody }).catch(() => {})
+    return internalServerError(res, responseBody.message, responseBody.code, correlationId)
   }
 }

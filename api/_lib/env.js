@@ -8,6 +8,12 @@ function requiredEnv(name) {
   return value
 }
 
+function optionalEnv(name, fallback = '') {
+  const value = process.env[name]
+  if (value === undefined || value === null || value === '') return fallback
+  return value
+}
+
 function getServerSupabaseConfig() {
   return {
     url: requiredEnv('SUPABASE_URL'),
@@ -17,5 +23,6 @@ function getServerSupabaseConfig() {
 
 module.exports = {
   requiredEnv,
+  optionalEnv,
   getServerSupabaseConfig
 }

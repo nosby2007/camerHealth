@@ -40,7 +40,8 @@ export default {
     // La clé Supabase publishable (anon key) est publique par conception,
     // mais les Row Level Security (RLS) doivent être activées côté Supabase.
     SUPABASE_KEY: process.env.SUPABASE_KEY,
-    ENABLE_SUPABASE_AUTH: process.env.ENABLE_SUPABASE_AUTH || 'false'
+    ENABLE_SUPABASE_AUTH: process.env.ENABLE_SUPABASE_AUTH || 'false',
+    STAFF_INVITE_ENDPOINT: process.env.STAFF_INVITE_ENDPOINT || ''
   },
   // ─── Variables privées : jamais exposées au client ───────────────────────────
   // Accessibles uniquement via `this.$config` dans les contextes server-side.
@@ -52,7 +53,8 @@ export default {
     API_URL: process.env.API_URL,
     SUPABASE_URL: process.env.SUPABASE_URL,
     SUPABASE_KEY: process.env.SUPABASE_KEY,
-    ENABLE_SUPABASE_AUTH: parseBooleanFlag(process.env.ENABLE_SUPABASE_AUTH, false)
+    ENABLE_SUPABASE_AUTH: parseBooleanFlag(process.env.ENABLE_SUPABASE_AUTH, false),
+    STAFF_INVITE_ENDPOINT: process.env.STAFF_INVITE_ENDPOINT || ''
   },
   mode: "spa",
   /*
