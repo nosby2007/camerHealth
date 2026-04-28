@@ -1,4 +1,4 @@
-import { createSupabaseAuthCompat } from '~/services/supabase-auth-compat'
+import { createSupabaseAuthCompat } from '~/services/auth/supabase-auth-compat.service'
 
 export default ({ $config, env }, inject) => {
   const supabaseUrl = $config.SUPABASE_URL || env.SUPABASE_URL
