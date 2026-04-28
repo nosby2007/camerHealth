@@ -6,6 +6,33 @@
 
 ## [Unreleased] — 27 Avril 2026
 
+### Phase 16 — Staging Evidence Packaging For Shadow Validation
+
+#### `docs/qa/QA-phase-16-staging-evidence-runbook.md` — ADDED
+- **ADDED**: staging execution runbook for controlled shadow validation evidence collection
+- **ADDED**: prerequisites, environment confirmation, and migration-presence verification (not production-applied)
+- **ADDED**: required test users/roles, fixture maps, safe script execution flow, pass/fail recording, and severity classification
+- **ADDED**: triage procedures for cross-tenant false positives and false negatives
+- **ADDED**: required logs/screenshots/query outputs, reviewer signoff, go/no-go section, and rollback/cleanup instructions
+
+#### `docs/qa/QA-phase-16-shadow-validation-execution-report-template.md` — ADDED
+- **ADDED**: standardized execution report template including metadata fields:
+   - test date, environment, git SHA, supabase project/environment, tester, reviewer, dataset version
+- **ADDED**: result tables for role/scope matrix, cross-tenant denial, break-glass eligibility, facility-only compatibility, and null `organization_id` compatibility
+- **ADDED**: issue log, evidence links, go/no-go decision, remediation tracking, and final signoff section
+
+#### `docs/security/phase-16-staging-data-fixture-requirements.md` — ADDED
+- **ADDED**: mandatory staging fixture specification for public and private hierarchy test data
+- **ADDED**: explicit fixture requirements for unrelated organization/facility negative controls
+- **ADDED**: assignment fixtures for active, inactive, expired, platform, organization, unit, facility, and department scopes
+- **ADDED**: expected denial fixtures and fixture versioning/traceability requirements
+
+#### Phase 16 Safety Confirmation
+- **CONFIRMED**: documentation and QA packaging only
+- **CONFIRMED**: no SQL helper changes
+- **CONFIRMED**: no active RLS policy changes
+- **CONFIRMED**: no app code or frontend flow changes
+
 ### Phase 15 — Shadow Validation Plan & Role/Scope Matrix (Pre-Cutover)
 
 #### `docs/security/multiscope-rls-shadow-test-plan.md` — ADDED
