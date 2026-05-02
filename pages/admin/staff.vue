@@ -27,6 +27,11 @@
           </div>
           <div class="pa-8">
 
+            <v-alert v-if="useSupabaseStaffInvitation" dense text type="warning" class="mb-6 text-caption font-weight-bold rounded-0">
+              Supabase Auth compatibility mode is enabled. New staff onboarding must move through a secure backend invitation flow.
+              Local password-based account creation is disabled in this mode.
+            </v-alert>
+
             <!-- CREATE MODE -->
             <template v-if="!editingId">
               <v-form ref="createForm" v-model="createValid">
@@ -79,30 +84,36 @@
                   </v-col>
                 </v-row>
 
-                <v-text-field
-                  v-model="form.password"
-                  label="Initial Password"
-                  :type="showPwd ? 'text' : 'password'"
-                  :append-icon="showPwd ? 'mdi-eye-off' : 'mdi-eye'"
-                  @click:append="showPwd = !showPwd"
-                  outlined tile dense required
-                  :rules="[required, pwdRule]"
-                  hint="Min 8 chars, at least 1 number"
-                  persistent-hint
-                  class="mb-4 rounded-0"
-                ></v-text-field>
+                <template v-if="!useSupabaseStaffInvitation">
+                  <v-text-field
+                    v-model="form.password"
+                    label="Initial Password"
+                    :type="showPwd ? 'text' : 'password'"
+                    :append-icon="showPwd ? 'mdi-eye-off' : 'mdi-eye'"
+                    @click:append="showPwd = !showPwd"
+                    outlined tile dense required
+                    :rules="[required, pwdRule]"
+                    hint="Min 8 chars, at least 1 number"
+                    persistent-hint
+                    class="mb-4 rounded-0"
+                  ></v-text-field>
 
-                <v-text-field
-                  v-model="form.confirmPassword"
-                  label="Confirm Password"
-                  :type="showPwd ? 'text' : 'password'"
-                  outlined tile dense required
-                  :rules="[required, v => v === form.password || 'Passwords do not match']"
-                  class="mb-8 rounded-0"
-                ></v-text-field>
+                  <v-text-field
+                    v-model="form.confirmPassword"
+                    label="Confirm Password"
+                    :type="showPwd ? 'text' : 'password'"
+                    outlined tile dense required
+                    :rules="[required, v => v === form.password || 'Passwords do not match']"
+                    class="mb-8 rounded-0"
+                  ></v-text-field>
+                </template>
+
+                <v-alert v-else dense text type="info" class="mb-8 text-caption font-weight-bold rounded-0">
+                  Initial passwords are not set in the browser for secure invitation mode. The backend endpoint will issue the invite and handle account activation.
+                </v-alert>
 
                 <!-- Credential preview card — shown before submit -->
-                <v-card v-if="createValid && form.staffId && form.role" flat tile class="credential-preview pa-5 mb-8">
+                <v-card v-if="!useSupabaseStaffInvitation && createValid && form.staffId && form.role" flat tile class="credential-preview pa-5 mb-8">
                   <div class="text-caption font-weight-black mb-3 uppercase ls-1" style="color:#003366">
                     <v-icon small color="#003366" class="mr-1">mdi-card-account-details</v-icon>
                     CREDENTIAL SUMMARY (share with staff)
@@ -122,8 +133,8 @@
                   @click="createAccount"
                   class="font-weight-black text-caption ls-1"
                 >
-                  CREATE ACCOUNT
-                  <v-icon right small>mdi-account-plus</v-icon>
+                  {{ useSupabaseStaffInvitation ? 'SEND STAFF INVITE' : 'CREATE ACCOUNT' }}
+                  <v-icon right small>{{ useSupabaseStaffInvitation ? 'mdi-email-fast' : 'mdi-account-plus' }}</v-icon>
                 </v-btn>
               </v-form>
             </template>
@@ -310,6 +321,9 @@ export default {
     }
   },
   computed: {
+    useSupabaseStaffInvitation() {
+      return Boolean(this.$config && this.$config.ENABLE_SUPABASE_AUTH)
+    },
     allStaff() { return this.$store.getters['facility/getAllStaff'].filter(s => s.role !== 'ADMIN') },
     filteredStaff() {
       if (!this.roleFilter) return this.allStaff
@@ -329,12 +343,23 @@ export default {
       if (!this.$refs.createForm.validate()) return
       this.loading = true
       try {
+        if (this.useSupabaseStaffInvitation) {
+          await this.$store.dispatch('facility/inviteStaffAccount', {
+            staff: this.form,
+            endpoint: this.$config.STAFF_INVITE_ENDPOINT
+          })
+          this.$toast.success(`Invitation queued for ${this.form.fullName}.`)
+          this.$refs.createForm.reset()
+          this.form.role = null
+          return
+        }
+
         await this.$store.dispatch('facility/createStaffAccount', this.form)
         this.$toast.success(`Account created for ${this.form.fullName}. Share credentials securely.`)
         this.$refs.createForm.reset()
         this.form.role = null
       } catch (e) {
-        this.$toast.error('Failed to create account.')
+        this.$toast.error((e && e.message) || 'Failed to create account.')
       } finally {
         this.loading = false
       }

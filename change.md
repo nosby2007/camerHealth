@@ -6,6 +6,276 @@
 
 ## [Unreleased] — 27 Avril 2026
 
+### Phase 19 — PR Readiness And Security Review Package
+
+#### `docs/release/PR-review-summary-v1-hardening.md` — ADDED
+- **ADDED**: consolidated PR review summary describing completed phases, major changes, non-changes, feature-flag boundaries, documentation-only scope, staging dependencies, and merge-wait rationale
+- **ADDED**: explicit explanation of why Phase 17 remains pending/no-go and why production deploy/merge should wait
+
+#### `docs/security/security-review-checklist-v1-hardening.md` — ADDED
+- **ADDED**: security verification checklist for frontend secret exposure, repo secret hygiene, unchanged clinical surfaces, no active RLS cutover, no default Supabase Auth activation, no production migration apply, and transitional localStorage posture
+- **ADDED**: backend boundary checks confirming privileged staff invite/bootstrap operations are server-side only
+- **ADDED**: documentation checks for audit/idempotency/rate-limit limitations
+
+#### `docs/release/merge-gate-checklist.md` — ADDED
+- **ADDED**: merge gates requiring successful build, granted staging access, real Phase 17 evidence execution, passing cross-tenant denials, and reviewer signoff
+- **ADDED**: explicit no-go conditions and rollback requirements for failed or incomplete staging validation
+
+#### Phase 19 Safety Confirmation
+- **CONFIRMED**: documentation only
+- **CONFIRMED**: no application code changes
+- **CONFIRMED**: no RLS policy changes
+- **CONFIRMED**: no deployment and no staging pass claim
+
+### Phase 18 — Local Readiness Artifacts For Pending Staging Execution
+
+#### `docs/qa/QA-phase-18-local-readiness-checklist.md` — ADDED
+- **ADDED**: local readiness checklist covering local build, local env review, staging access dependencies, fixtures, evidence expectations, go/no-go conditions, rollback criteria, and manager owner checklist
+- **ADDED**: explicit separation between tasks that can continue locally and tasks blocked by staging access
+
+#### `docs/qa/staging-execution-command-reference.md` — ADDED
+- **ADDED**: command reference for `npm run build`, git context capture, local API testing examples, staging SQL execution sequence, and policy-safety verification query
+- **ADDED**: clear list of commands blocked until staging access exists
+
+#### `docs/security/staging-access-request-checklist.md` — ADDED
+- **ADDED**: staging access request checklist covering required Supabase access, required Vercel access, approvals, fixture access, and request output fields
+
+#### `docs/security/cutover-readiness-blockers.md` — ADDED
+- **ADDED**: consolidated blocker register for future cutover readiness decisions
+- **ADDED**: no-go conditions, future go criteria, rollback criteria, and manager owner checklist
+
+#### Phase 18 Safety Confirmation
+- **CONFIRMED**: documentation/readiness only
+- **CONFIRMED**: no staging results invented
+- **CONFIRMED**: Phase 17 remains pending/no-go
+- **CONFIRMED**: no active RLS policy changes and no app code changes
+
+### Phase 17 — Pending Staging Shadow Validation Execution Report
+
+#### `docs/qa/QA-phase-17-shadow-validation-execution-report.md` — ADDED
+- **ADDED**: Phase 17 execution report prepared from the Phase 16 runbook/template in pending status
+- **ADDED**: recorded current git SHA for execution context: `d543bbb012bd2ad9348e0b92df381d0ef5fac0db`
+- **ADDED**: explicit pending sections for:
+   - environment access required
+   - missing credentials
+   - staging-only migration confirmation
+   - fixture setup required
+   - commands to run
+   - evidence checklist
+   - assigned owner fields
+   - blocker list
+- **ADDED**: provisional `No-Go` decision because staging access and fixture data are not available in the current workspace/session
+- **CONFIRMED**: no fake results inserted, no app code changes, no active RLS changes, no production deployment/apply
+
+### Phase 16 — Staging Evidence Packaging For Shadow Validation
+
+#### `docs/qa/QA-phase-16-staging-evidence-runbook.md` — ADDED
+- **ADDED**: staging execution runbook for controlled shadow validation evidence collection
+- **ADDED**: prerequisites, environment confirmation, and migration-presence verification (not production-applied)
+- **ADDED**: required test users/roles, fixture maps, safe script execution flow, pass/fail recording, and severity classification
+- **ADDED**: triage procedures for cross-tenant false positives and false negatives
+- **ADDED**: required logs/screenshots/query outputs, reviewer signoff, go/no-go section, and rollback/cleanup instructions
+
+#### `docs/qa/QA-phase-16-shadow-validation-execution-report-template.md` — ADDED
+- **ADDED**: standardized execution report template including metadata fields:
+   - test date, environment, git SHA, supabase project/environment, tester, reviewer, dataset version
+- **ADDED**: result tables for role/scope matrix, cross-tenant denial, break-glass eligibility, facility-only compatibility, and null `organization_id` compatibility
+- **ADDED**: issue log, evidence links, go/no-go decision, remediation tracking, and final signoff section
+
+#### `docs/security/phase-16-staging-data-fixture-requirements.md` — ADDED
+- **ADDED**: mandatory staging fixture specification for public and private hierarchy test data
+- **ADDED**: explicit fixture requirements for unrelated organization/facility negative controls
+- **ADDED**: assignment fixtures for active, inactive, expired, platform, organization, unit, facility, and department scopes
+- **ADDED**: expected denial fixtures and fixture versioning/traceability requirements
+
+#### Phase 16 Safety Confirmation
+- **CONFIRMED**: documentation and QA packaging only
+- **CONFIRMED**: no SQL helper changes
+- **CONFIRMED**: no active RLS policy changes
+- **CONFIRMED**: no app code or frontend flow changes
+
+### Phase 15 — Shadow Validation Plan & Role/Scope Matrix (Pre-Cutover)
+
+#### `docs/security/multiscope-rls-shadow-test-plan.md` — ADDED
+- **ADDED**: controlled shadow validation plan for multi-scope helper functions before any policy cutover
+- **ADDED**: full role/scope matrix coverage for:
+   - roles: `SUPER_ADMIN`, `SUPPORT_ADMIN`, `ORG_ADMIN`, `REGIONAL_ADMIN`, `DISTRICT_ADMIN`, `FACILITY_ADMIN`, `ADMIN`, `DOCTOR`, `NURSE`, `LAB`, `IMAGING`, `AUDITOR`
+   - scopes: `platform`, `organization`, `regional/delegation unit`, `district unit`, `facility`, `department`, `unrelated organization`, `unrelated facility`
+- **ADDED**: expected helper outcomes for:
+   - `can_read_facility_metadata`
+   - `can_manage_facility`
+   - `can_troubleshoot_facility`
+   - `can_break_glass_access`
+   - `has_platform_role`
+   - `has_organization_scope`
+   - `has_unit_scope`
+   - `has_facility_scope`
+- **ADDED**: go/no-go criteria, rollback criteria, and evidence capture format for staging validation
+
+#### `docs/qa/QA-phase-15-multiscope-shadow-validation-checklist.md` — ADDED
+- **ADDED**: QA execution checklist for full role/scope matrix and helper validation in shadow mode
+- **ADDED**: negative-path checks (cross-tenant denial, expired assignments, inactive assignments)
+- **ADDED**: compatibility checks for null `organization_id` and existing `facility_id` model
+
+#### `supabase/tests/phase15_multiscope_helper_validation.sql` — ADDED (STAGING SHADOW SCRIPT)
+- **ADDED**: staging-only SQL validation templates with placeholders for sample fixtures
+- **ADDED**: expected pass/fail comment patterns for helper assertions
+- **ADDED**: cross-tenant denial test templates
+- **ADDED**: expired/inactive assignment tests
+- **ADDED**: null `organization_id` and facility-only compatibility tests
+- **CONFIRMED**: no production data insert, no active policy rewiring, no patient/clinical policy changes
+
+### Phase 14 — Read-Only Multi-Scope RLS Helpers & Tenant Mapping Runbook (Draft)
+
+#### `supabase/migrations/20260427_007_multiscope_rls_helpers_draft.sql` — ADDED (DRAFT ONLY)
+- **ADDED**: read-only helper function draft to prepare future multi-scope RLS evolution without altering active policies
+- **ADDED**: helper functions:
+   - `current_staff_assignments()`
+   - `has_platform_role(required_roles text[])`
+   - `has_organization_scope(target_organization_id uuid, required_roles text[])`
+   - `has_unit_scope(target_unit_id uuid, required_roles text[])`
+   - `has_facility_scope(target_facility_id uuid, required_roles text[])`
+   - `can_read_facility_metadata(target_facility_id uuid)`
+   - `can_manage_facility(target_facility_id uuid)`
+   - `can_troubleshoot_facility(target_facility_id uuid)`
+   - `can_break_glass_access(target_facility_id uuid)`
+- **CONFIRMED**: no active policy rewrites, no policy drops, no patient/clinical policy replacement in this phase
+
+#### `docs/security/facility-to-organization-unit-mapping-runbook.md` — ADDED
+- **ADDED**: safe migration runbook for mapping standalone facilities to organization and organization_unit hierarchy
+- **ADDED**: explicit public model workflow (MINSANTE -> Regional Delegation -> District -> Facility)
+- **ADDED**: explicit private multi-site workflow (Private Organization -> Region/City Unit -> Facility)
+- **ADDED**: staged backfill, assignment validation, rollback strategy, and cross-tenant access prevention controls
+
+#### `docs/qa/QA-phase-14-multiscope-rls-helper-checklist.md` — ADDED
+- **ADDED**: QA checks for helper function behavior without policy activation
+- **ADDED**: validation that facility-based prototype and existing RLS remain unchanged
+- **ADDED**: break-glass governance checks (disabled by default unless explicit approval)
+
+### Phase 13 — Multi-Tenant Hierarchy & Super Admin Architecture (Additive Draft)
+
+#### `supabase/migrations/20260427_006_multi_tenant_superadmin_draft.sql` — ADDED (DRAFT ONLY)
+- **ADDED**: additive tenant hierarchy schema draft for platform -> organization -> organization_unit -> facility -> department model
+- **ADDED**: new tables:
+   - `organizations`
+   - `organization_units`
+   - `facility_departments`
+   - `staff_assignments`
+   - `platform_admins`
+   - `support_tickets`
+   - `system_events`
+- **ADDED**: transitional nullable links on `facilities`:
+   - `organization_id uuid null`
+   - `organization_unit_id uuid null`
+- **CONFIRMED**: no replacement of `facility_id`, no required `organization_id`, no patient/clinical table rewrite
+
+#### `docs/security/multi-tenant-superadmin-architecture.md` — ADDED
+- **ADDED**: non-breaking architecture for both public and private healthcare tenant structures
+- **ADDED**: public hierarchy mapping (MINSANTE -> Regional Delegation -> District -> Facility)
+- **ADDED**: private network mapping (Parent organization -> regional/city unit -> clinic sites)
+- **ADDED**: super admin/support admin governance model and break-glass modeling requirements
+- **ADDED**: phased RLS evolution notes from facility scope to multi-scope enforcement (future phase only)
+
+#### `docs/qa/QA-phase-13-multitenant-superadmin-checklist.md` — ADDED
+- **ADDED**: QA controls to verify additive compatibility with current facility-based prototype model
+- **ADDED**: checks for nullable organization links, hierarchical unit support, role scope assignments, and break-glass modeling
+- **ADDED**: explicit validation that existing RLS and clinical frontend flows remain unchanged in this phase
+
+### Phase 11 — Server-Side Bootstrap & Staff Invitation Scaffold
+
+#### `api/bootstrap/facility-admin.js` — ADDED
+- **ADDED**: secure server-side bootstrap endpoint scaffold `POST /api/bootstrap/facility-admin`
+- **ADDED**: strict request validation for facility/admin bootstrap payload
+- **ADDED**: server-side Supabase admin flow to create/verify auth user, create facility, create ADMIN staff profile, create facility settings
+- **ADDED**: audit event writes for `FACILITY_REGISTERED`, `ACCOUNT_CREATED`, and `BOOTSTRAP_FAILED`
+- **ADDED**: safe response model without exposing auth internals or privileged data
+
+#### `api/admin/staff/invite.js` — ADDED
+- **ADDED**: secure server-side staff invitation endpoint scaffold `POST /api/admin/staff/invite`
+- **ADDED**: caller verification from bearer token to `auth.users.id` then `staff_profiles.auth_user_id`
+- **ADDED**: ADMIN-only + active-status authorization gate
+- **ADDED**: facility scoping derived server-side to block cross-facility staff creation
+- **ADDED**: role validation (`ADMIN`, `DOCTOR`, `NURSE`, `LAB`, `IMAGING`)
+- **ADDED**: audit event writes for `AUTH_STAFF_INVITED` and `AUTH_STAFF_INVITE_FAILED`
+
+#### `api/_lib/*.js` — ADDED
+- **ADDED**: shared server helper modules:
+   - `env.js` for server env guardrails
+   - `http.js` for consistent safe error/response payloads
+   - `request.js` for input normalization and validation
+   - `rate-limit.js` for per-IP rate-limit scaffold
+   - `supabase-admin.js` for service-role Supabase client creation (server-side only)
+   - `caller-context.js` for authenticated ADMIN caller resolution
+   - `audit.js` for centralized audit insertion helper
+
+#### `vercel.json` — UPDATED
+- **UPDATED**: added explicit `/api/*` routing rule before SPA catch-all to ensure API calls are not swallowed by `index.html` fallback
+
+#### `.env.example` — UPDATED
+- **ADDED**: `SUPABASE_SERVICE_ROLE_KEY=` (server-side only)
+- **ADDED**: `STAFF_INVITE_ENDPOINT=`
+- **ADDED**: `FACILITY_BOOTSTRAP_ENDPOINT=`
+
+#### Security / QA Documentation — ADDED
+- **ADDED**: `docs/security/bootstrap-and-staff-invite-backend-design.md`
+- **ADDED**: `docs/qa/QA-phase-11-bootstrap-staff-endpoint-checklist.md`
+- **DOCUMENTED**: bootstrap paradox under strict RLS and rationale for controlled privileged bootstrap endpoint
+- **DOCUMENTED**: production follow-up requirements (durable rate limit, compensation strategy, onboarding lifecycle hardening)
+
+### Phase 12 — Endpoint Hardening For Production Readiness (Scaffold)
+
+#### `api/_lib/request.js` — HARDENED
+- **ADDED**: robust payload validators for bootstrap and invite endpoints
+- **ADDED**: stronger email/password/facility/staff code/phone normalization checks
+- **ADDED**: explicit rejection of client-supplied `facility_id` in invite payload
+
+#### `api/_lib/http.js` + `api/_lib/correlation.js` — HARDENED
+- **ADDED**: correlation id propagation (`X-Correlation-Id`) for tracing
+- **ADDED**: safer normalized error payload envelopes with correlation context
+- **ADDED**: explicit backend unavailable response handling
+
+#### `api/_lib/idempotency.js` — ADDED
+- **ADDED**: idempotency key support (`Idempotency-Key` / `X-Idempotency-Key`)
+- **ADDED**: request hash comparison to reject key reuse with payload drift
+- **ADDED**: replay support for repeated requests with same key and same payload
+- **ADDED**: DB-backed idempotency support scaffold + in-memory fallback for local/staging
+
+#### `api/_lib/audit.js` — HARDENED
+- **ADDED**: metadata sanitization to avoid leaking passwords/tokens/secrets
+- **ADDED**: endpoint/correlation/actor-auth context support
+- **ADDED**: strict mode option for compliance-critical audit writes
+
+#### `api/_lib/rate-limit.js` — HARDENED
+- **ADDED**: multi-scope rate limit utility for endpoint-level composition
+- **ADDED**: strategy descriptor documenting distributed limiter requirement for production
+
+#### `api/bootstrap/facility-admin.js` — HARDENED
+- **ADDED**: idempotency flow handling (replay/conflict/in-progress)
+- **ADDED**: compensation path for partial failures:
+   - rollback attempt by deleting newly created auth user when facility insert fails
+   - mark facility inactive when profile creation fails
+- **ADDED**: stronger failure audits with error category and correlation id
+- **ADDED**: safer status-oriented response shape without provider internals
+
+#### `api/admin/staff/invite.js` — HARDENED
+- **ADDED**: idempotency flow handling (replay/conflict/in-progress)
+- **ADDED**: strict caller enforcement (active ADMIN + facility derived server-side)
+- **ADDED**: invite lifecycle handling with status model scaffold (`pending`, `accepted`, `revoked`, `expired`, `failed`)
+- **ADDED**: resend behavior for existing pending invites
+- **ADDED**: rollback attempt if auth user is created but profile insert fails
+- **ADDED**: expanded audit event coverage including invite failure and account creation events
+
+#### `supabase/migrations/20260427_005_endpoint_hardening_draft.sql` — ADDED (DRAFT ONLY)
+- **ADDED**: `public.idempotency_keys` table + indexes
+- **ADDED**: `public.pending_staff_invites` table + lifecycle status checks + indexes
+- **ADDED**: `updated_at` triggers for hardening tables
+- **NOTE**: draft only, not applied to production
+
+#### Documentation / QA / Test Plan — ADDED
+- **ADDED**: `docs/security/endpoint-hardening-phase-12.md`
+- **ADDED**: `docs/qa/QA-phase-12-endpoint-hardening-checklist.md`
+- **ADDED**: `docs/qa/Phase-12-api-integration-test-plan.md` (documentation-based integration plan)
+
 ### Supabase v1.0 Backend Security Draft (Phases 2-4)
 
 #### `supabase/migrations/20260427_001_v1_schema_draft.sql` — ADDED
