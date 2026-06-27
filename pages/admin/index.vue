@@ -136,6 +136,7 @@ export default {
     quickActions() {
       return [
         { label: 'MANAGE STAFF',     to: '/admin/staff',         icon: 'mdi-account-plus',   color: '#003366', outlined: false },
+        { label: 'HOSPITAL MODEL',   to: '/admin/hospital',      icon: 'mdi-hospital-building', color: '#003366', outlined: false },
         { label: 'PATIENT REGISTRY', to: '/clinical/patients',   icon: 'mdi-account-group',  color: '#0B3D2E', outlined: false },
         { label: 'CLINICAL VISITS',  to: '/clinical/visits',     icon: 'mdi-clipboard-list', color: '#1F7A5C', outlined: false },
         { label: 'AUDIT LOG',        to: '/admin/audit',         icon: 'mdi-history',        color: '#003366', outlined: true  }

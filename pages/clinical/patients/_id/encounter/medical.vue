@@ -188,6 +188,35 @@
 2. Paracetamol 1g · as needed for pain · max 4x/day
 3. Normal saline 500ml IV · every 8h..."></v-textarea>
 
+              <div class="section-label mb-3">STRUCTURED PRESCRIPTION ORDERS</div>
+              <div v-for="(row, index) in prescriptionRows" :key="index" class="order-row pa-3 mb-3">
+                <v-row dense>
+                  <v-col cols="12" md="4">
+                    <v-combobox v-model="row.medication" :items="commonMedications" label="Medication" outlined tile dense hide-details></v-combobox>
+                  </v-col>
+                  <v-col cols="6" md="2">
+                    <v-text-field v-model="row.dosage" label="Dose" outlined tile dense hide-details></v-text-field>
+                  </v-col>
+                  <v-col cols="6" md="2">
+                    <v-select v-model="row.route" :items="routes" label="Route" outlined tile dense hide-details></v-select>
+                  </v-col>
+                  <v-col cols="12" md="3">
+                    <v-select v-model="row.frequency" :items="frequencies" label="Frequency" outlined tile dense hide-details></v-select>
+                  </v-col>
+                  <v-col cols="12" md="1" class="d-flex align-center justify-end">
+                    <v-btn icon small @click="removePrescription(index)" :disabled="prescriptionRows.length === 1"><v-icon small color="#C0392B">mdi-delete</v-icon></v-btn>
+                  </v-col>
+                </v-row>
+                <v-row dense class="mt-2">
+                  <v-col cols="6" md="3"><v-text-field v-model="row.duration" label="Duration" outlined tile dense hide-details></v-text-field></v-col>
+                  <v-col cols="6" md="3"><v-select v-model="row.dispenseAt" :items="['Hospital pharmacy','External pharmacy','Ward stock','Patient supplied']" label="Dispense" outlined tile dense hide-details></v-select></v-col>
+                  <v-col cols="12" md="6"><v-text-field v-model="row.instructions" label="Instructions" outlined tile dense hide-details></v-text-field></v-col>
+                </v-row>
+              </div>
+              <v-btn small tile outlined color="#003366" class="font-weight-black text-caption mb-4" @click="addPrescription">
+                <v-icon left small>mdi-plus</v-icon>Add medication order
+              </v-btn>
+
               <label class="form-label">Ordered laboratory tests</label>
               <v-select v-model="plan.labOrders"
                 :items="['CBC','CRP','ESR','Fasting glucose','Creatinine/Urea','Electrolyte panel','Liver function tests','Blood culture','Urine culture','Malaria smear/RDT','CD4/Viral load','Pregnancy test','Lipid profile']"
@@ -242,6 +271,45 @@
               <label class="form-label">Next appointment date</label>
               <v-text-field v-model="outcome.nextAppointment" type="date" outlined tile dense class="rounded-0 mb-4"></v-text-field>
 
+              <v-expand-transition>
+                <div v-if="outcome.decision === 'Admission'" class="decision-box pa-4 mb-4">
+                  <div class="section-label mb-3">ADMISSION ORDER</div>
+                  <v-row dense>
+                    <v-col cols="12" md="4"><v-select v-model="admission.ward" :items="wards" label="Ward" outlined tile dense></v-select></v-col>
+                    <v-col cols="12" md="4"><v-text-field v-model="admission.bedNumber" label="Bed" outlined tile dense></v-text-field></v-col>
+                    <v-col cols="12" md="4"><v-select v-model="admission.admissionType" :items="admissionTypes" label="Type" outlined tile dense></v-select></v-col>
+                  </v-row>
+                  <v-textarea v-model="admission.admissionReason" label="Admission reason" rows="2" outlined tile dense></v-textarea>
+                </div>
+              </v-expand-transition>
+
+              <v-expand-transition>
+                <div v-if="outcome.decision === 'Inter-facility referral'" class="decision-box pa-4 mb-4">
+                  <div class="section-label mb-3">REFERRAL ORDER</div>
+                  <v-text-field v-model="referral.toFacility" label="Receiving facility" outlined tile dense></v-text-field>
+                  <v-row dense>
+                    <v-col cols="12" md="6"><v-select v-model="referral.specialty" :items="referralSpecialties" label="Specialty" outlined tile dense></v-select></v-col>
+                    <v-col cols="12" md="6"><v-select v-model="referral.priority" :items="['Routine','Urgent','Emergency']" label="Priority" outlined tile dense></v-select></v-col>
+                  </v-row>
+                  <v-textarea v-model="referral.reason" label="Reason and stabilization given" rows="2" outlined tile dense></v-textarea>
+                </div>
+              </v-expand-transition>
+
+              <v-expand-transition>
+                <div v-if="outcome.decision === 'Discharge home'" class="decision-box pa-4 mb-4">
+                  <div class="section-label mb-3">DISCHARGE SUMMARY</div>
+                  <v-textarea v-model="discharge.condition" label="Condition at discharge" rows="2" outlined tile dense></v-textarea>
+                  <v-textarea v-model="discharge.warningSigns" label="Return immediately if" rows="2" outlined tile dense></v-textarea>
+                  <v-textarea v-model="discharge.homeCare" label="Home care and prevention" rows="2" outlined tile dense></v-textarea>
+                </div>
+              </v-expand-transition>
+
+              <div class="section-label mb-3">BILLING AND FOLLOW-UP</div>
+              <v-row dense>
+                <v-col cols="12" md="6"><v-text-field v-model.number="billing.consultationFee" label="Consultation fee" type="number" outlined tile dense suffix="XAF"></v-text-field></v-col>
+                <v-col cols="12" md="6"><v-select v-model="billing.paymentClass" :items="['Cash','Insurance','Charity','Waived','Corporate']" label="Payment class" outlined tile dense></v-select></v-col>
+              </v-row>
+
               <label class="form-label">Instructions given to the patient / caregiver</label>
               <v-textarea v-model="outcome.patientInstructions" outlined tile dense rows="3" class="rounded-0 mb-4"
                 placeholder="Warning signs to monitor, dietary guidance, how to take medications..."></v-textarea>
@@ -268,6 +336,7 @@
     .vital-badge { display:flex; flex-direction:column; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; padding:8px 16px; border-radius:2px; min-width:80px; }
     .vital-badge span { font-size:10px; color:#6b7280; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
     .vital-badge strong { font-size:14px; color:#003366; }
+    .order-row, .decision-box { background:#F8FAFC; border:1px solid #E5E7EB; }
     </style>
 
   </v-container>
@@ -303,12 +372,45 @@ export default {
         medications: '', labOrders: [], imagingOrders: [], otherOrders: ''
       },
 
+      prescriptionRows: [
+        { medication: '', dosage: '', route: 'Oral', frequency: '', duration: '', dispenseAt: 'Hospital pharmacy', instructions: '' }
+      ],
+
+      commonMedications: [
+        'Paracetamol', 'Ibuprofen', 'Amoxicillin', 'Amoxicillin-Clavulanate', 'Ceftriaxone',
+        'Metronidazole', 'Ciprofloxacin', 'Azithromycin', 'Doxycycline', 'Artemether-Lumefantrine',
+        'Quinine', 'ORS', 'Zinc Sulfate', 'Omeprazole', 'Amlodipine', 'Metformin', 'Salbutamol',
+        'Normal Saline', 'Ringer Lactate', 'Iron + Folic Acid'
+      ],
+      routes: ['Oral', 'IV', 'IM', 'Topical', 'Inhalation', 'Sublingual', 'Rectal'],
+      frequencies: ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'Every 8 hours', 'Every 6 hours', 'As needed (PRN)', 'Single dose'],
+
       soap: {
         subjective: '', objective: '', assessment: '', plan: ''
       },
 
       outcome: {
         decision: '', nextAppointment: '', patientInstructions: ''
+      },
+
+      admission: {
+        ward: 'General Medicine', bedNumber: '', admissionType: 'Medical', admissionReason: ''
+      },
+      wards: ['General Medicine', 'Emergency Observation', 'Maternity', 'Paediatrics', 'Surgery', 'Isolation'],
+      admissionTypes: ['Emergency', 'Medical', 'Surgical', 'Maternity', 'Paediatric', 'Observation'],
+
+      referral: {
+        toFacility: '', specialty: 'General Medicine', priority: 'Routine', reason: ''
+      },
+      referralSpecialties: ['General Medicine', 'Emergency', 'Surgery', 'Obstetrics', 'Paediatrics', 'Internal Medicine', 'Radiology', 'Laboratory'],
+
+      discharge: {
+        condition: '', warningSigns: '', homeCare: ''
+      },
+
+      billing: {
+        consultationFee: 5000,
+        paymentClass: 'Cash'
       }
     }
   },
@@ -342,6 +444,14 @@ export default {
       return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     },
 
+    addPrescription() {
+      this.prescriptionRows.push({ medication: '', dosage: '', route: 'Oral', frequency: '', duration: '', dispenseAt: 'Hospital pharmacy', instructions: '' })
+    },
+
+    removePrescription(index) {
+      if (this.prescriptionRows.length > 1) this.prescriptionRows.splice(index, 1)
+    },
+
     async save() {
       if (!this.$refs.form.validate()) return
       this.saving = true
@@ -370,14 +480,43 @@ export default {
           plan: this.plan.medications,
           soap: { ...this.soap },
           outcome: { ...this.outcome },
+          admission: { ...this.admission },
+          referral: { ...this.referral },
+          discharge: { ...this.discharge },
+          billing: { ...this.billing },
+          prescriptions: this.prescriptionRows.filter(row => row.medication),
           exam: { ...this.exam },
           encounter: { ...this.encounter }
         })
 
-        // 3. Create medication orders if provided
-        if (this.plan.medications) {
+        // 3. Create structured medication orders and legacy free-text fallback
+        const structuredPrescriptions = this.prescriptionRows.filter(row => row.medication)
+        for (const prescription of structuredPrescriptions) {
           const medicationOrder = await this.$store.dispatch('clinical/prescribeMedication', {
             patientId,
+            medication: prescription.medication,
+            dosage: prescription.dosage,
+            route: prescription.route,
+            frequency: prescription.frequency,
+            duration: prescription.duration,
+            notes: prescription.instructions,
+            dispenseAt: prescription.dispenseAt,
+            prescribedBy: recordedBy
+          })
+          await this.$store.dispatch('clinical/createTask', {
+            patientId,
+            relatedType: 'medication',
+            relatedId: medicationOrder.id,
+            title: `Administer ${prescription.medication}`,
+            assignedToRole: 'NURSE',
+            actionReason: `Medication order ${medicationOrder.id} generated from medical encounter`
+          })
+        }
+
+        if (this.plan.medications && structuredPrescriptions.length === 0) {
+          const medicationOrder = await this.$store.dispatch('clinical/prescribeMedication', {
+            patientId,
+            medication: 'Free-text prescription',
             prescriptionText: this.plan.medications,
             prescribedBy: recordedBy
           })
@@ -424,7 +563,59 @@ export default {
         // 6. Admit the patient if needed
         if (this.outcome.decision === 'Admission') {
           await this.$store.dispatch('clinical/admitPatient', {
-            patientId, admittedBy: recordedBy, diagnosis: this.diagnosis.primary
+            patientId,
+            admittedBy: recordedBy,
+            diagnosis: this.diagnosis.primary,
+            ward: this.admission.ward,
+            bedNumber: this.admission.bedNumber,
+            admissionType: this.admission.admissionType,
+            admissionReason: this.admission.admissionReason || this.encounter.chiefComplaint,
+            treatment: this.soap.plan || this.plan.medications,
+            attendingDoctor: recordedBy,
+            admissionDate: new Date().toISOString().slice(0, 10)
+          })
+        }
+
+        if (this.outcome.decision === 'Inter-facility referral') {
+          await this.$store.dispatch('clinical/createReferral', {
+            patientId,
+            toFacility: this.referral.toFacility || 'Higher-level referral facility',
+            specialty: this.referral.specialty,
+            priority: this.referral.priority,
+            reason: this.referral.reason || this.diagnosis.primary,
+            clinicalSummary: `${this.encounter.chiefComplaint}. Diagnosis: ${this.diagnosis.primary}. Treatment: ${this.soap.plan || this.plan.medications}`,
+            createdBy: recordedBy
+          })
+        }
+
+        if (this.outcome.nextAppointment) {
+          await this.$store.dispatch('clinical/scheduleAppointment', {
+            patientId,
+            date: this.outcome.nextAppointment,
+            time: '08:00',
+            provider: recordedBy,
+            type: 'Medical follow-up',
+            reason: this.diagnosis.primary
+          })
+        }
+
+        if (this.billing.consultationFee || this.plan.labOrders.length || this.plan.imagingOrders.length) {
+          await this.$store.dispatch('clinical/createInvoice', {
+            patientId,
+            amount: Number(this.billing.consultationFee || 0) + (this.plan.labOrders.length * 2500) + (this.plan.imagingOrders.length * 5000),
+            paymentMethod: this.billing.paymentClass,
+            description: `Medical consultation: ${this.diagnosis.primary}`,
+            createdBy: recordedBy
+          })
+        }
+
+        if (this.outcome.decision === 'Discharge home') {
+          await this.$store.dispatch('clinical/createDocument', {
+            patientId,
+            title: `Discharge summary - ${this.diagnosis.primary}`,
+            category: 'Discharge Summary',
+            content: `Diagnosis: ${this.diagnosis.primary}\nCondition: ${this.discharge.condition}\nTreatment: ${this.soap.plan || this.plan.medications}\nInstructions: ${this.outcome.patientInstructions}\nReturn if: ${this.discharge.warningSigns}\nHome care: ${this.discharge.homeCare}`,
+            status: 'Filed'
           })
         }
 

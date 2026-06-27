@@ -54,6 +54,18 @@
           <v-spacer />
           <span class="text-caption grey--text">Recorded on {{ formatDate(patient.createdAt) }}</span>
         </div>
+
+        <div class="pa-3 d-flex flex-wrap align-center phi-strip" style="gap:8px">
+          <v-icon small color="#003366">mdi-shield-lock</v-icon>
+          <span class="text-caption font-weight-black gov-text-primary">PHI ACCESS:</span>
+          <v-chip x-small label :color="phiPolicy.canOpenChart ? '#1F7A5C' : '#D97706'" dark class="font-weight-black">{{ phiPolicy.access }}</v-chip>
+          <span class="text-caption grey--text font-weight-bold">
+            {{ staffContext && staffContext.department ? staffContext.department : 'Facility role' }}
+            <span v-if="staffContext && staffContext.service"> · {{ staffContext.service }}</span>
+          </span>
+          <v-spacer />
+          <span class="text-caption grey--text">Basis: {{ patient.phiAccessBasis || 'Treatment' }}</span>
+        </div>
       </v-card>
 
       <!-- ── Patient record tabs ────────────────────────────────────────────── -->
@@ -449,6 +461,7 @@
     .info-row span { color:#6b7280; }
     .gov-note-card { background:#fafbfc; border-radius:2px; }
     .border-left { border-left:3px solid #003366; }
+    .phi-strip { background:#F8FAFC; border-top:1px solid #E5E7EB; }
     </style>
 
   </v-container>
@@ -512,6 +525,8 @@ export default {
     institution() { return this.$store.state.auth.institution },
     role()        { return this.$store.state.auth.role },
     fullName()    { return this.$store.state.auth.fullName },
+    staffContext(){ return this.$store.getters['facility/getStaffContext'](this.$store.state.auth.staffId) || null },
+    phiPolicy()   { return (this.staffContext && this.staffContext.phiPolicy) || { access: 'minimum-necessary', canOpenChart: false } },
     canDoMedical(){ return ['DOCTOR', 'ADMIN'].includes(this.role) },
     hasAllergy()  { return !!(this.patient && this.patient.allergies && this.patient.allergies.trim()) },
 
