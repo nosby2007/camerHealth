@@ -84,6 +84,62 @@
                   </v-col>
                 </v-row>
 
+                <v-divider class="mb-6 grey lighten-3"></v-divider>
+                <div class="section-label mb-4">HOSPITAL ASSIGNMENT</div>
+
+                <v-text-field
+                  v-model="form.position"
+                  label="Position / Title"
+                  outlined tile dense
+                  hint="e.g. Chef de service, Major de service, Cardiologist"
+                  persistent-hint
+                  class="mb-4 rounded-0"
+                ></v-text-field>
+
+                <v-row dense>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="form.department"
+                      :items="departmentOptions"
+                      label="Department"
+                      outlined tile dense
+                      class="mb-4 rounded-0"
+                    ></v-select>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="form.service"
+                      :items="serviceOptions"
+                      item-text="name"
+                      item-value="name"
+                      label="Service / Unit"
+                      outlined tile dense
+                      class="mb-4 rounded-0"
+                    ></v-select>
+                  </v-col>
+                </v-row>
+
+                <v-row dense>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="form.specialty"
+                      :items="specialtyOptions"
+                      label="Specialty"
+                      outlined tile dense
+                      class="mb-4 rounded-0"
+                    ></v-select>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="form.phiScope"
+                      :items="phiScopeOptions"
+                      label="PHI Scope"
+                      outlined tile dense
+                      class="mb-4 rounded-0"
+                    ></v-select>
+                  </v-col>
+                </v-row>
+
                 <template v-if="!useSupabaseStaffInvitation">
                   <v-text-field
                     v-model="form.password"
@@ -222,6 +278,10 @@
             <template v-slot:item.role="{ item }">
               <v-chip x-small dark label :color="roleColor(item.role)" class="font-weight-black">{{ item.role }}</v-chip>
             </template>
+            <template v-slot:item.assignment="{ item }">
+              <div class="text-caption font-weight-black gov-text-primary">{{ item.department || 'Unassigned' }}</div>
+              <div class="text-caption grey--text">{{ item.service || item.specialty || item.phiScope || 'No PHI scope set' }}</div>
+            </template>
             <template v-slot:item.active="{ item }">
               <v-chip x-small label :color="item.active ? '#1F7A5C' : '#C0392B'" dark class="font-weight-black">
                 {{ item.active ? 'ACTIVE' : 'INACTIVE' }}
@@ -297,7 +357,7 @@ export default {
       editingId: null,
       deactivateDialog: false,
       deactivateTarget: null,
-      form: { fullName: '', email: '', staffId: '', role: null, password: '', confirmPassword: '' },
+      form: { fullName: '', email: '', staffId: '', role: null, position: '', department: '', service: '', specialty: '', phiScope: '', password: '', confirmPassword: '' },
       resetPwd: { password: '', confirm: '' },
       roleOptions: [
         { value: 'DOCTOR',  label: 'Doctor'  },
@@ -309,6 +369,7 @@ export default {
         { text: 'STAFF MEMBER', value: 'fullName', width: '260px' },
         { text: 'ID',           value: 'id' },
         { text: 'ROLE',         value: 'role',      align: 'center' },
+        { text: 'ASSIGNMENT',   value: 'assignment' },
         { text: 'STATUS',       value: 'active',    align: 'center' },
         { text: 'CREATED',      value: 'createdAt', align: 'right'  },
         { text: '',             value: 'actions',   sortable: false, align: 'right' }
@@ -330,6 +391,23 @@ export default {
       return this.allStaff.filter(s => s.role === this.roleFilter)
     },
     existingIds() { return this.$store.getters['facility/getAllStaff'].map(s => s.id) },
+    hospitalDepartments() { return this.$store.getters['facility/getDepartments'] || [] },
+    departmentOptions() { return this.hospitalDepartments.map(department => department.name) },
+    selectedDepartment() { return this.hospitalDepartments.find(department => department.name === this.form.department) },
+    serviceOptions() { return this.selectedDepartment ? (this.selectedDepartment.services || []) : [] },
+    specialtyOptions() { return this.selectedDepartment ? (this.selectedDepartment.specialties || []) : this.$store.getters['facility/getSpecialties'] || [] },
+    phiScopeOptions() {
+      return [
+        'facility-administration',
+        'assigned-service-and-consult',
+        'assigned-unit-care-team',
+        'diagnostic-orders-only',
+        'imaging-orders-only',
+        'billing-only',
+        'records-management',
+        'minimum-necessary'
+      ]
+    },
     uniqueIdRule() {
       return v => !this.existingIds.includes((v || '').trim().toUpperCase()) || 'This Staff ID already exists'
     },

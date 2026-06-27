@@ -1,0 +1,47 @@
+function toNumber(value) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : 0
+}
+
+function calculateWoundSurfaceArea(lengthCm, widthCm) {
+  const length = toNumber(lengthCm)
+  const width = toNumber(widthCm)
+  if (length <= 0 || width <= 0) return 0
+  return Number((length * width).toFixed(2))
+}
+
+function calculateWoundVolume(lengthCm, widthCm, depthCm) {
+  const depth = toNumber(depthCm)
+  if (depth <= 0) return null
+  return Number((calculateWoundSurfaceArea(lengthCm, widthCm) * depth).toFixed(2))
+}
+
+function hasWoundAreaIncreased(previousAssessment, nextAssessment) {
+  if (!previousAssessment || !nextAssessment) return false
+  const previousArea = toNumber(previousAssessment.surface_area || previousAssessment.surfaceArea)
+  const nextArea = toNumber(nextAssessment.surface_area || nextAssessment.surfaceArea)
+  return nextArea > previousArea
+}
+
+function taskFromProviderOrder(order, assignedNurse) {
+  if (!order || order.assigned_role !== 'NURSE') return null
+  return {
+    patient_id: order.patient_id,
+    facility_id: order.facility_id,
+    linked_order_id: order.id,
+    linked_order_type: order.order_type,
+    title: order.title || order.order_type || 'Provider order',
+    priority: order.priority || 'routine',
+    reason: order.reason || order.instructions || '',
+    status: 'pending',
+    assigned_nurse_id: assignedNurse || order.assigned_staff_id || null,
+    due_at: order.due_at || null
+  }
+}
+
+module.exports = {
+  calculateWoundSurfaceArea,
+  calculateWoundVolume,
+  hasWoundAreaIncreased,
+  taskFromProviderOrder
+}

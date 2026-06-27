@@ -122,14 +122,24 @@ export default {
 				{ icon: 'mdi-map', titleKey: 'menu.map', to: '/maps', roles: ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'] },
 				{ icon: 'mdi-file-chart', titleKey: 'menu.reports', to: '/reports', roles: ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'] },
 				{ icon: 'mdi-shield-account', titleKey: 'Admin Dashboard', to: '/admin', roles: ['ADMIN'] },
+				{ icon: 'mdi-hospital-building', titleKey: 'Hospital Model', to: '/admin/hospital', roles: ['ADMIN'] },
 				{ icon: 'mdi-account-multiple', titleKey: 'Staff Accounts', to: '/admin/staff', roles: ['ADMIN'] },
 				{ icon: 'mdi-history', titleKey: 'Audit Log', to: '/admin/audit', roles: ['ADMIN'] },
-				{ icon: 'mdi-account-group', titleKey: 'Patient Listing', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+				{ icon: 'mdi-view-dashboard', titleKey: 'EMR Command Center', to: '/clinical/dashboard', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'LAB', 'IMAGING', 'BILLING'] },
+				{ icon: 'mdi-medical-bag', titleKey: 'Doctor Worklist', to: '/clinical/doctor', roles: ['ADMIN', 'DOCTOR', 'NP'] },
+				{ icon: 'mdi-account-heart', titleKey: 'Nurse Command Center', to: '/clinical/nursing', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA'] },
+				{ icon: 'mdi-account-group', titleKey: 'Patient Listing', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA'] },
 				{ icon: 'mdi-account-plus', titleKey: 'New Patient', to: '/clinical/patients/new', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
 				{ icon: 'mdi-clipboard-list', titleKey: 'Outpatient', to: '/clinical/visits', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
 				{ icon: 'mdi-bed', titleKey: 'Inpatient', to: '/clinical/inpatient', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
 				{ icon: 'mdi-calendar-clock', titleKey: 'Appointments', to: '/clinical/appointments', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
 				{ icon: 'mdi-pill', titleKey: 'Medications', to: '/clinical/medications', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+				{ icon: 'mdi-file-document-multiple', titleKey: 'Documents', to: '/clinical/documents', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+				{ icon: 'mdi-text-box-check', titleKey: 'Templates', to: '/clinical/templates', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+				{ icon: 'mdi-account-arrow-right', titleKey: 'Referrals', to: '/clinical/referrals', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+				{ icon: 'mdi-shield-check', titleKey: 'Claims', to: '/clinical/insurance', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+				{ icon: 'mdi-cellphone-message', titleKey: 'Patient Portal', to: '/clinical/portal', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+				{ icon: 'mdi-microphone', titleKey: 'Voice Dictation', to: '/clinical/voice', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
 				{ icon: 'mdi-file-export', titleKey: 'menu.field_input', to: '/clinical/reports', roles: ['ADMIN'] },
 				{ icon: 'mdi-flask', titleKey: 'Laboratory', to: '/clinical/lab', roles: ['LAB', 'ADMIN', 'DOCTOR'] },
 				{ icon: 'mdi-radiology-box', titleKey: 'Imaging', to: '/clinical/imaging', roles: ['IMAGING', 'ADMIN', 'DOCTOR'] }
@@ -138,6 +148,7 @@ export default {
 	},
 	mounted() {
 		this.$store.commit('clinical/LOAD_FROM_STORAGE')
+		if (this.$store._modulesNamespaceMap['nursing/']) this.$store.commit('nursing/LOAD_FROM_STORAGE')
 		this.$store.commit('facility/RELOAD_FROM_STORAGE')
 		if (this.isMinistry) {
 			setTimeout(() => {
@@ -160,7 +171,7 @@ export default {
 		admin() { return this.$store.state.auth.user },
 		userRole() { return this.$store.state.auth.role || 'GUEST' },
 		institution() { return this.$store.state.auth.institution },
-		isClinical() { return ['ADMIN', 'DOCTOR', 'NURSE', 'LAB', 'IMAGING'].includes(this.userRole) },
+		isClinical() { return ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'LAB', 'IMAGING', 'BILLING'].includes(this.userRole) },
 		isMinistry() { return ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'].includes(this.userRole) },
 		currentLangName() { return this.$store.state.locale === 'fr' ? 'FRANCAIS' : 'ENGLISH' },
 		filteredNavItems() { return this.navItems.filter(item => item.roles.includes(this.userRole)) }

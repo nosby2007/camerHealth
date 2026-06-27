@@ -13,6 +13,12 @@ export const state = () => ({
   nursingNotes: [],
   medicalNotes: [],
   tasks: [],
+  documents: [],
+  insuranceClaims: [],
+  referrals: [],
+  medicalTemplates: [],
+  portalMessages: [],
+  voiceDrafts: [],
   offlineMode: false,
   lastSync: null,
   viewMode: 'national'
@@ -102,6 +108,12 @@ export const mutations = {
     state.nursingNotes = loadFromLocalStorage('nursingNotes') || []
     state.medicalNotes = loadFromLocalStorage('medicalNotes') || []
     state.tasks = loadFromLocalStorage('tasks') || []
+    state.documents = loadFromLocalStorage('documents') || []
+    state.insuranceClaims = loadFromLocalStorage('insuranceClaims') || []
+    state.referrals = loadFromLocalStorage('referrals') || []
+    state.medicalTemplates = loadFromLocalStorage('medicalTemplates') || defaultMedicalTemplates()
+    state.portalMessages = loadFromLocalStorage('portalMessages') || []
+    state.voiceDrafts = loadFromLocalStorage('voiceDrafts') || []
   },
   ADD_VITAL_SIGNS(state, record) {
     state.vitalSigns.push(record)
@@ -139,6 +151,54 @@ export const mutations = {
       state.tasks.splice(idx, 1, task)
       saveToLocalStorage('tasks', state.tasks)
     }
+  },
+  ADD_DOCUMENT(state, document) {
+    state.documents.push(document)
+    saveToLocalStorage('documents', state.documents)
+  },
+  UPDATE_DOCUMENT(state, document) {
+    const idx = state.documents.findIndex(item => item.id === document.id)
+    if (idx !== -1) { state.documents.splice(idx, 1, document); saveToLocalStorage('documents', state.documents) }
+  },
+  ADD_INSURANCE_CLAIM(state, claim) {
+    state.insuranceClaims.push(claim)
+    saveToLocalStorage('insuranceClaims', state.insuranceClaims)
+  },
+  UPDATE_INSURANCE_CLAIM(state, claim) {
+    const idx = state.insuranceClaims.findIndex(item => item.id === claim.id)
+    if (idx !== -1) { state.insuranceClaims.splice(idx, 1, claim); saveToLocalStorage('insuranceClaims', state.insuranceClaims) }
+  },
+  ADD_REFERRAL(state, referral) {
+    state.referrals.push(referral)
+    saveToLocalStorage('referrals', state.referrals)
+  },
+  UPDATE_REFERRAL(state, referral) {
+    const idx = state.referrals.findIndex(item => item.id === referral.id)
+    if (idx !== -1) { state.referrals.splice(idx, 1, referral); saveToLocalStorage('referrals', state.referrals) }
+  },
+  ADD_MEDICAL_TEMPLATE(state, template) {
+    state.medicalTemplates.push(template)
+    saveToLocalStorage('medicalTemplates', state.medicalTemplates)
+  },
+  UPDATE_MEDICAL_TEMPLATE(state, template) {
+    const idx = state.medicalTemplates.findIndex(item => item.id === template.id)
+    if (idx !== -1) { state.medicalTemplates.splice(idx, 1, template); saveToLocalStorage('medicalTemplates', state.medicalTemplates) }
+  },
+  ADD_PORTAL_MESSAGE(state, message) {
+    state.portalMessages.push(message)
+    saveToLocalStorage('portalMessages', state.portalMessages)
+  },
+  UPDATE_PORTAL_MESSAGE(state, message) {
+    const idx = state.portalMessages.findIndex(item => item.id === message.id)
+    if (idx !== -1) { state.portalMessages.splice(idx, 1, message); saveToLocalStorage('portalMessages', state.portalMessages) }
+  },
+  ADD_VOICE_DRAFT(state, draft) {
+    state.voiceDrafts.push(draft)
+    saveToLocalStorage('voiceDrafts', state.voiceDrafts)
+  },
+  UPDATE_VOICE_DRAFT(state, draft) {
+    const idx = state.voiceDrafts.findIndex(item => item.id === draft.id)
+    if (idx !== -1) { state.voiceDrafts.splice(idx, 1, draft); saveToLocalStorage('voiceDrafts', state.voiceDrafts) }
   }
 }
 
@@ -435,6 +495,80 @@ export const actions = {
       ]
     }
     commit('UPDATE_TASK', next)
+  },
+  createDocument({ commit, rootState }, document) {
+    commit('ADD_DOCUMENT', {
+      ...document,
+      id: 'DOC-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      status: document.status || 'Filed',
+      createdAt: new Date().toISOString(),
+      createdBy: rootState.auth.fullName || 'Unknown user'
+    })
+  },
+  updateDocument({ commit }, document) {
+    commit('UPDATE_DOCUMENT', document)
+  },
+  createInsuranceClaim({ commit, rootState }, claim) {
+    commit('ADD_INSURANCE_CLAIM', {
+      ...claim,
+      id: 'CLM-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      status: claim.status || 'Draft',
+      createdAt: new Date().toISOString()
+    })
+  },
+  updateInsuranceClaim({ commit }, claim) {
+    commit('UPDATE_INSURANCE_CLAIM', claim)
+  },
+  createReferral({ commit, rootState }, referral) {
+    commit('ADD_REFERRAL', {
+      ...referral,
+      id: 'REF-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      status: referral.status || 'Open',
+      createdAt: new Date().toISOString(),
+      createdBy: rootState.auth.fullName || 'Unknown user'
+    })
+  },
+  updateReferral({ commit }, referral) {
+    commit('UPDATE_REFERRAL', referral)
+  },
+  createMedicalTemplate({ commit, rootState }, template) {
+    commit('ADD_MEDICAL_TEMPLATE', {
+      ...template,
+      id: 'TPL-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      createdAt: new Date().toISOString()
+    })
+  },
+  updateMedicalTemplate({ commit }, template) {
+    commit('UPDATE_MEDICAL_TEMPLATE', template)
+  },
+  createPortalMessage({ commit, rootState }, message) {
+    commit('ADD_PORTAL_MESSAGE', {
+      ...message,
+      id: 'MSG-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      status: message.status || 'Unread',
+      createdAt: new Date().toISOString()
+    })
+  },
+  updatePortalMessage({ commit }, message) {
+    commit('UPDATE_PORTAL_MESSAGE', message)
+  },
+  createVoiceDraft({ commit, rootState }, draft) {
+    commit('ADD_VOICE_DRAFT', {
+      ...draft,
+      id: 'VOC-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      status: draft.status || 'Draft',
+      createdAt: new Date().toISOString(),
+      createdBy: rootState.auth.fullName || 'Unknown user'
+    })
+  },
+  updateVoiceDraft({ commit }, draft) {
+    commit('UPDATE_VOICE_DRAFT', draft)
   }
 }
 
@@ -501,6 +635,194 @@ export const getters = {
     if (getters.isClinical) return state.tasks.filter(t => t.institution === rootState.auth.institution)
     return state.tasks
   },
+  getDocuments: (state, getters, rootState) => {
+    if (getters.isClinical) return state.documents.filter(item => item.institution === rootState.auth.institution)
+    return state.documents
+  },
+  getInsuranceClaims: (state, getters, rootState) => {
+    if (getters.isClinical) return state.insuranceClaims.filter(item => item.institution === rootState.auth.institution)
+    return state.insuranceClaims
+  },
+  getReferrals: (state, getters, rootState) => {
+    if (getters.isClinical) return state.referrals.filter(item => item.institution === rootState.auth.institution)
+    return state.referrals
+  },
+  getMedicalTemplates: (state, getters, rootState) => {
+    const templates = state.medicalTemplates && state.medicalTemplates.length ? state.medicalTemplates : defaultMedicalTemplates()
+    if (getters.isClinical) return templates.filter(item => !item.institution || item.institution === rootState.auth.institution)
+    return templates
+  },
+  getPortalMessages: (state, getters, rootState) => {
+    if (getters.isClinical) return state.portalMessages.filter(item => item.institution === rootState.auth.institution)
+    return state.portalMessages
+  },
+  getVoiceDrafts: (state, getters, rootState) => {
+    if (getters.isClinical) return state.voiceDrafts.filter(item => item.institution === rootState.auth.institution)
+    return state.voiceDrafts
+  },
+  patientDirectory: (state, getters) => {
+    const patients = getters.getPatients || []
+    const visits = getters.getVisits || []
+    const appointments = getters.getAppointments || []
+    const inpatients = getters.getInpatients || []
+    const labOrders = getters.getLabOrders || []
+    const imagingOrders = getters.getImagingOrders || []
+    const vitalSigns = getters.getVitalSigns || []
+    const tasks = getters.getTasks || []
+    const documents = getters.getDocuments || []
+    const claims = getters.getInsuranceClaims || []
+    const referrals = getters.getReferrals || []
+    const portalMessages = getters.getPortalMessages || []
+
+    return patients.map(patient => {
+      const patientVisits = visits.filter(item => item.patientId === patient.id)
+      const patientAppointments = appointments.filter(item => item.patientId === patient.id)
+      const patientLabs = labOrders.filter(item => item.patientId === patient.id)
+      const patientImaging = imagingOrders.filter(item => item.patientId === patient.id)
+      const patientTasks = tasks.filter(item => item.patientId === patient.id)
+      const activeInpatient = inpatients.find(item => item.patientId === patient.id && item.status !== 'Discharged')
+      const latestVisit = latestByDate(patientVisits, 'createdAt')
+      const latestVitals = latestByDate(vitalSigns.filter(item => item.patientId === patient.id), 'recordedAt')
+      const nextAppointment = upcomingAppointment(patientAppointments)
+      const openOrders = [
+        ...patientLabs.filter(item => item.status !== 'Completed'),
+        ...patientImaging.filter(item => item.status !== 'Completed')
+      ]
+      const openTasks = patientTasks.filter(item => item.status === 'pending' || item.status === 'hold')
+      const patientDocuments = documents.filter(item => item.patientId === patient.id)
+      const patientClaims = claims.filter(item => item.patientId === patient.id)
+      const patientReferrals = referrals.filter(item => item.patientId === patient.id)
+      const patientPortalMessages = portalMessages.filter(item => item.patientId === patient.id)
+      const risk = computePatientRisk({ patient, latestVitals, latestVisit, activeInpatient, openTasks, openOrders })
+
+      return {
+        ...patient,
+        displayName: patient.name || `${patient.firstName || ''} ${patient.lastName || ''}`.trim(),
+        mrn: patient.externalId || patient.id,
+        currentDepartment: resolveCurrentDepartment({ patient, activeInpatient, openOrders, latestVisit, nextAppointment }),
+        riskLevel: risk.level,
+        riskReasons: risk.reasons,
+        latestVisit,
+        latestVitals,
+        activeInpatient,
+        nextAppointment,
+        openOrders,
+        openTasks,
+        documents: patientDocuments,
+        claims: patientClaims,
+        referrals: patientReferrals,
+        portalMessages: patientPortalMessages,
+        lastActivityAt: latestActivityDate([patient.createdAt, latestVisit && latestVisit.createdAt, latestVitals && latestVitals.recordedAt, nextAppointment && nextAppointment.date])
+      }
+    })
+  },
+  departmentQueues: (state, getters) => {
+    const directory = getters.patientDirectory || []
+    const labs = getters.getLabOrders || []
+    const imaging = getters.getImagingOrders || []
+    const appointments = getters.getAppointments || []
+    const inpatients = getters.getInpatients || []
+    const tasks = getters.getTasks || []
+
+    return [
+      {
+        key: 'front-desk',
+        title: 'Registration / Intake',
+        icon: 'mdi-clipboard-account',
+        color: '#003366',
+        patients: directory.filter(patient => !patient.latestVisit && !patient.activeInpatient),
+        nextAction: 'Complete intake and confirm demographics'
+      },
+      {
+        key: 'triage',
+        title: 'Nursing / Triage',
+        icon: 'mdi-stethoscope',
+        color: '#00A99D',
+        patients: directory.filter(patient => patient.riskLevel !== 'low' || !patient.latestVitals),
+        nextAction: 'Capture vitals, allergies, acuity and nursing note'
+      },
+      {
+        key: 'provider',
+        title: 'Provider Review',
+        icon: 'mdi-medical-bag',
+        color: '#0B3D2E',
+        patients: directory.filter(patient => patient.latestVitals && (!patient.latestVisit || patient.openTasks.length > 0)),
+        nextAction: 'Review chart, diagnose, place orders and plan care'
+      },
+      {
+        key: 'diagnostics',
+        title: 'Diagnostics',
+        icon: 'mdi-flask-outline',
+        color: '#D97706',
+        patients: directory.filter(patient => patient.openOrders.length > 0),
+        nextAction: 'Complete pending lab and imaging orders'
+      },
+      {
+        key: 'inpatient',
+        title: 'Inpatient / Ward',
+        icon: 'mdi-bed',
+        color: '#1F7A5C',
+        patients: directory.filter(patient => patient.activeInpatient),
+        nextAction: 'Track ward status, bed, notes and discharge readiness'
+      }
+    ].map(queue => ({
+      ...queue,
+      total: queue.patients.length,
+      highRisk: queue.patients.filter(patient => patient.riskLevel === 'high').length
+    })).concat({
+      key: 'scheduled',
+      title: 'Scheduled Today',
+      icon: 'mdi-calendar-clock',
+      color: '#4B5563',
+      patients: directory.filter(patient => patient.nextAppointment && isToday(patient.nextAppointment.date)),
+      total: appointments.filter(item => item.status === 'Scheduled' && isToday(item.date)).length,
+      highRisk: 0,
+      nextAction: 'Confirm arrivals and route to intake'
+    }, {
+      key: 'task-worklist',
+      title: 'Care Team Tasks',
+      icon: 'mdi-format-list-checks',
+      color: '#6D28D9',
+      patients: directory.filter(patient => patient.openTasks.length > 0),
+      total: tasks.filter(item => item.status === 'pending' || item.status === 'hold').length,
+      highRisk: 0,
+      nextAction: 'Close, hold or cancel assigned care tasks'
+    }, {
+      key: 'beds',
+      title: 'Active Beds',
+      icon: 'mdi-hospital-building',
+      color: '#0F766E',
+      patients: directory.filter(patient => patient.activeInpatient),
+      total: inpatients.filter(item => item.status !== 'Discharged').length,
+      highRisk: inpatients.filter(item => item.status === 'Critical').length,
+      nextAction: 'Monitor occupancy and critical ward patients'
+    })
+  },
+  clinicalCommandMetrics: (state, getters) => {
+    const directory = getters.patientDirectory || []
+    const queues = getters.departmentQueues || []
+    const labOrders = getters.getLabOrders || []
+    const imagingOrders = getters.getImagingOrders || []
+    const tasks = getters.getTasks || []
+    const inpatients = getters.getInpatients || []
+    const documents = getters.getDocuments || []
+    const claims = getters.getInsuranceClaims || []
+    const referrals = getters.getReferrals || []
+    const portalMessages = getters.getPortalMessages || []
+
+    return {
+      activePatients: directory.filter(patient => patient.currentDepartment !== 'Registry').length,
+      highRiskPatients: directory.filter(patient => patient.riskLevel === 'high').length,
+      pendingDiagnostics: labOrders.filter(item => item.status !== 'Completed').length + imagingOrders.filter(item => item.status !== 'Completed').length,
+      openTasks: tasks.filter(item => item.status === 'pending' || item.status === 'hold').length,
+      admittedPatients: inpatients.filter(item => item.status !== 'Discharged').length,
+      pendingClaims: claims.filter(item => !['Paid', 'Denied', 'Closed'].includes(item.status)).length,
+      openReferrals: referrals.filter(item => item.status !== 'Closed').length,
+      unreadPortalMessages: portalMessages.filter(item => item.status === 'Unread').length,
+      filedDocuments: documents.length,
+      busiestQueue: queues.reduce((current, queue) => (queue.total > (current.total || 0) ? queue : current), {})
+    }
+  },
   isOffline: state => state.offlineMode,
   getViewMode: state => state.viewMode,
 
@@ -562,4 +884,98 @@ function getChangedFields(previous, updates) {
     const next = JSON.stringify(updates[key])
     return prev !== next
   })
+}
+
+function latestByDate(records, field) {
+  if (!records || !records.length) return null
+  return [...records].sort((a, b) => new Date(b[field] || 0) - new Date(a[field] || 0))[0]
+}
+
+function upcomingAppointment(appointments) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return [...(appointments || [])]
+    .filter(item => item.status === 'Scheduled' && new Date(item.date) >= today)
+    .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))[0] || null
+}
+
+function latestActivityDate(values) {
+  const dates = values.filter(Boolean).map(value => new Date(value)).filter(date => !isNaN(date.getTime()))
+  if (!dates.length) return null
+  return new Date(Math.max(...dates.map(date => date.getTime()))).toISOString()
+}
+
+function resolveCurrentDepartment({ patient, activeInpatient, openOrders, latestVisit, nextAppointment }) {
+  if (activeInpatient) return activeInpatient.ward || 'Inpatient'
+  if (openOrders && openOrders.length) return 'Diagnostics'
+  if (latestVisit && latestVisit.encounterType === 'MÉDICAL') return 'Provider Follow-up'
+  if (latestVisit && latestVisit.encounterType === 'INFIRMIER') return 'Nursing Review'
+  if (nextAppointment && isToday(nextAppointment.date)) return 'Scheduled Today'
+  if (patient.departmentRouting) return patient.departmentRouting
+  return 'Registry'
+}
+
+function computePatientRisk({ patient, latestVitals, latestVisit, activeInpatient, openTasks, openOrders }) {
+  const reasons = []
+  if (patient.patientStatus === 'Emergency') reasons.push('Emergency intake')
+  if (patient.allergies && patient.allergies.trim()) reasons.push('Known allergy')
+  if (activeInpatient && activeInpatient.status === 'Critical') reasons.push('Critical inpatient')
+  if (latestVisit && ['High', 'Critical'].includes(latestVisit.severity)) reasons.push(`${latestVisit.severity} severity encounter`)
+  if (latestVitals) {
+    const systolic = parseInt(String(latestVitals.bp || '').split('/')[0])
+    const temperature = parseFloat(latestVitals.temp)
+    const spo2 = parseFloat(latestVitals.spo2)
+    if (systolic >= 180 || systolic < 90) reasons.push('Blood pressure out of range')
+    if (temperature >= 39 || temperature < 36) reasons.push('Temperature out of range')
+    if (spo2 && spo2 < 92) reasons.push('Low oxygen saturation')
+  }
+  if ((openTasks || []).length >= 3) reasons.push('Multiple open care tasks')
+  if ((openOrders || []).some(order => ['STAT', 'Emergency', 'Urgent'].includes(order.priority))) reasons.push('Urgent diagnostic order')
+
+  if (reasons.length >= 2 || reasons.some(reason => /Critical|Emergency|oxygen|Blood pressure/.test(reason))) {
+    return { level: 'high', reasons }
+  }
+  if (reasons.length === 1 || (openOrders || []).length || (openTasks || []).length) {
+    return { level: 'medium', reasons: reasons.length ? reasons : ['Open care activity'] }
+  }
+  return { level: 'low', reasons: [] }
+}
+
+function isToday(value) {
+  if (!value) return false
+  const date = new Date(value)
+  const today = new Date()
+  return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate()
+}
+
+function defaultMedicalTemplates() {
+  return [
+    {
+      id: 'TPL-SOAP-GENERAL',
+      name: 'SOAP General Visit',
+      specialty: 'Primary Care',
+      type: 'Encounter Note',
+      sections: 'Subjective\nObjective\nAssessment\nPlan\nFollow-up',
+      phrase: 'Patient presents for evaluation. Vitals reviewed. Assessment and plan discussed with patient.',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'TPL-ED-TRIAGE',
+      name: 'Emergency Triage',
+      specialty: 'Emergency',
+      type: 'Triage',
+      sections: 'Chief complaint\nAcuity\nVitals\nRed flags\nImmediate actions',
+      phrase: 'Triage completed. Patient assigned acuity based on presenting complaint and vital signs.',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'TPL-DISCHARGE',
+      name: 'Discharge Summary',
+      specialty: 'Inpatient',
+      type: 'Discharge',
+      sections: 'Admission diagnosis\nHospital course\nDischarge medications\nInstructions\nFollow-up',
+      phrase: 'Patient discharged in stable condition with instructions and follow-up plan reviewed.',
+      createdAt: new Date().toISOString()
+    }
+  ]
 }
