@@ -104,6 +104,20 @@ export const mutations = {
   SET_API_TOKEN(state, token) {
     state.apiToken = token
   },
+  RESTORE_SESSION(state) {
+    const session = loadSession()
+    if (!session || !session.staffId || !session.role) return
+    state.isAuthenticated = true
+    state.user            = session.user || { username: session.fullName, first_name: (session.fullName || '').split(' ')[0], email: session.email }
+    state.role            = session.role
+    state.staffId         = session.staffId
+    state.fullName        = session.fullName || ''
+    state.email           = session.email || ''
+    state.institution     = session.institution || ''
+    state.facilityId      = session.facilityId || ''
+    state.region          = session.region || ''
+    state.loginError      = null
+  },
   // National Health Statistics — uses original free-entry flow (Cognito-backed)
   set(state, user) {
     if (user) {
@@ -250,5 +264,5 @@ export const getters = {
   isNurse:   state => state.role === 'NURSE',
   isLab:     state => state.role === 'LAB',
   isImaging: state => state.role === 'IMAGING',
-  isClinical: state => ['ADMIN', 'DOCTOR', 'NURSE', 'LAB', 'IMAGING'].includes(state.role)
+  isClinical: state => ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'LAB', 'IMAGING', 'BILLING'].includes(state.role)
 }
