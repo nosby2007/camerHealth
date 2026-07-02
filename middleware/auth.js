@@ -11,11 +11,11 @@
  * ── CLINICAL LAYER (new facility-based) ───────────────────────────────────────
  *   Entry : /register (first time) → /login (returning)
  *   Routes: /clinical/*, /admin/*
- *   Roles : ADMIN, DOCTOR, NURSE, LAB, IMAGING
+ *   Roles : ADMIN, DOCTOR, NP, NURSE, CNA, LAB, IMAGING, BILLING
  */
 
 const MINISTRY_ROLES  = ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST']
-const CLINICAL_ROLES  = ['ADMIN', 'DOCTOR', 'NURSE', 'LAB', 'IMAGING']
+const CLINICAL_ROLES  = ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'LAB', 'IMAGING', 'BILLING']
 
 // Fully public — no auth needed
 const OPEN_ROUTES = ['/', '/login', '/register', '/ministry-login']
@@ -23,9 +23,12 @@ const OPEN_ROUTES = ['/', '/login', '/register', '/ministry-login']
 const CLINICAL_HOME = {
   ADMIN:   '/admin',
   DOCTOR:  '/clinical/dashboard',
+  NP:      '/clinical/dashboard',
   NURSE:   '/clinical/dashboard',
+  CNA:     '/clinical/nursing',
   LAB:     '/clinical/lab',
-  IMAGING: '/clinical/imaging'
+  IMAGING: '/clinical/imaging',
+  BILLING: '/clinical/billing'
 }
 
 const MINISTRY_HOME = {
@@ -36,14 +39,23 @@ const MINISTRY_HOME = {
 const CLINICAL_PERMITTED = {
   ADMIN:   ['/admin', '/clinical'],
   DOCTOR:  ['/clinical'],
+  NP:      ['/clinical'],
   NURSE:   ['/clinical'],
+  CNA:     ['/clinical/nursing', '/clinical/patients'],
   LAB:     ['/clinical/lab', '/clinical/dashboard'],
-  IMAGING: ['/clinical/imaging', '/clinical/dashboard']
+  IMAGING: ['/clinical/imaging', '/clinical/dashboard'],
+  BILLING: ['/clinical/billing', '/clinical/dashboard', '/clinical/insurance']
 }
 
 const MINISTRY_PERMITTED = ['/ministry', '/surveillance', '/maps', '/reports']
 
 export default function ({ store, redirect, route }) {
+  if (process.client) {
+    store.commit('auth/RESTORE_SESSION')
+    store.commit('auth/loadFromStorage')
+    store.commit('facility/RELOAD_FROM_STORAGE')
+  }
+
   const path            = route.path
   const isAuthenticated = store.state.auth.isAuthenticated
   const role            = store.state.auth.role

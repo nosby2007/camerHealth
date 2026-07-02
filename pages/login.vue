@@ -135,7 +135,16 @@ export default {
   },
   methods: {
     roleHome(role) {
-      return { ADMIN: '/admin', DOCTOR: '/clinical/dashboard', NURSE: '/clinical/dashboard', LAB: '/clinical/lab', IMAGING: '/clinical/imaging' }[role] || '/clinical/dashboard'
+      return {
+        ADMIN: '/admin',
+        DOCTOR: '/clinical/dashboard',
+        NP: '/clinical/dashboard',
+        NURSE: '/clinical/dashboard',
+        CNA: '/clinical/nursing',
+        LAB: '/clinical/lab',
+        IMAGING: '/clinical/imaging',
+        BILLING: '/clinical/billing'
+      }[role] || '/clinical/dashboard'
     },
     async login() {
       if (!this.$refs.form.validate() || this.loginDisabled) return

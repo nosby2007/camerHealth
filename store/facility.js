@@ -13,17 +13,37 @@ import { registerFacilityWithAdmin } from '~/services/facility/supabase-facility
 export const ROLES = {
   ADMIN:    'ADMIN',
   DOCTOR:   'DOCTOR',
+  NP:       'NP',
   NURSE:    'NURSE',
+  CNA:      'CNA',
+  MIDWIFE:  'MIDWIFE',
   LAB:      'LAB',
-  IMAGING:  'IMAGING'
+  IMAGING:  'IMAGING',
+  PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',
+  PHARMACY: 'PHARMACY',
+  BILLING:  'BILLING',
+  RECORDS:  'RECORDS',
+  FRONT_DESK: 'FRONT_DESK',
+  SOCIAL_WORKER: 'SOCIAL_WORKER',
+  BIOMEDICAL: 'BIOMEDICAL'
 }
 
 export const ROLE_LABELS = {
   ADMIN:   'Administrator',
   DOCTOR:  'Doctor / Clinician',
+  NP:      'Nurse Practitioner',
   NURSE:   'Nurse / Midwife',
+  CNA:     'Care Assistant / Nursing Aide',
+  MIDWIFE: 'Sage-femme / Midwife',
   LAB:     'Laboratory Technician',
-  IMAGING: 'Imaging / Radiology'
+  IMAGING: 'Imaging / Radiology',
+  PHYSIOTHERAPIST: 'Kinesitherapist / Physiotherapist',
+  PHARMACY: 'Pharmacy Staff',
+  BILLING: 'Billing / Claims Staff',
+  RECORDS: 'Medical Records Officer',
+  FRONT_DESK: 'Admissions / Front Desk',
+  SOCIAL_WORKER: 'Social Worker',
+  BIOMEDICAL: 'Biomedical Technician'
 }
 
 // ─── SHA-256 (client-side, no plain-text storage) ─────────────────────────────
@@ -367,9 +387,19 @@ function defaultPhiScopeForRole(role) {
   return {
     ADMIN: 'facility-administration',
     DOCTOR: 'assigned-service-and-consult',
+    NP: 'assigned-service-and-consult',
     NURSE: 'assigned-unit-care-team',
+    CNA: 'assigned-unit-care-team-limited',
+    MIDWIFE: 'maternal-care-team',
     LAB: 'diagnostic-orders-only',
-    IMAGING: 'imaging-orders-only'
+    IMAGING: 'imaging-orders-only',
+    PHYSIOTHERAPIST: 'rehab-care-plan',
+    PHARMACY: 'medication-profile',
+    BILLING: 'billing-only',
+    RECORDS: 'records-management',
+    FRONT_DESK: 'demographics-and-consent',
+    SOCIAL_WORKER: 'social-care-minimum',
+    BIOMEDICAL: 'no-direct-phi'
   }[role] || 'minimum-necessary'
 }
 
@@ -423,16 +453,27 @@ function defaultHospitalOperatingModel() {
       },
       {
         id: 'mere-enfant', name: 'Mere et enfant', type: 'clinical', location: 'Pavillon maternite pediatrie', leadRole: 'Chef de service mere-enfant', headNurseRole: 'Major maternite',
-        specialties: ['Gynecologie', 'Obstetrique', 'Pediatrie', 'Neonatologie'],
+        specialties: ['Gynecologie', 'Obstetrique', 'Sage-femme', 'Maieutique', 'Pediatrie', 'Neonatologie'],
         services: [
           { id: 'maternite', name: 'Maternite', queueKey: 'provider', defaultPhiScope: 'maternal-care-team' },
+          { id: 'consultation-prenatale', name: 'Consultation prenatale', queueKey: 'provider', defaultPhiScope: 'maternal-care-team' },
+          { id: 'salle-accouchement', name: 'Salle d accouchement', queueKey: 'task-worklist', defaultPhiScope: 'maternal-care-team' },
           { id: 'pediatrie', name: 'Pediatrie', queueKey: 'provider', defaultPhiScope: 'pediatric-care-team' },
           { id: 'neonatologie', name: 'Neonatologie', queueKey: 'inpatient', defaultPhiScope: 'restricted-care-team' }
         ]
       },
       {
+        id: 'soins-infirmiers', name: 'Direction des soins infirmiers', type: 'clinical', location: 'Unites de soins', leadRole: 'Surveillant general', headNurseRole: 'Majors de service',
+        specialties: ['Soins generaux', 'Soins critiques', 'Pansements et plaies', 'Education therapeutique', 'Aide-soignant'],
+        services: [
+          { id: 'soins-generaux', name: 'Soins generaux', queueKey: 'task-worklist', defaultPhiScope: 'assigned-unit-care-team' },
+          { id: 'plaies-pansements', name: 'Plaies et pansements', queueKey: 'task-worklist', defaultPhiScope: 'assigned-unit-care-team' },
+          { id: 'aides-soignants', name: 'Aides-soignants', queueKey: 'task-worklist', defaultPhiScope: 'assigned-unit-care-team-limited' }
+        ]
+      },
+      {
         id: 'diagnostic', name: 'Plateau technique', type: 'diagnostic', location: 'Diagnostic central', leadRole: 'Responsable plateau technique', headNurseRole: 'Major technique',
-        specialties: ['Laboratoire', 'Imagerie medicale', 'Anatomopathologie'],
+        specialties: ['Laboratoire', 'Biologie medicale', 'Prelevement', 'Imagerie medicale', 'Radiologie', 'Echographie', 'Anatomopathologie'],
         services: [
           { id: 'laboratoire', name: 'Laboratoire', queueKey: 'diagnostics', defaultPhiScope: 'orders-and-results' },
           { id: 'imagerie', name: 'Imagerie', queueKey: 'diagnostics', defaultPhiScope: 'orders-and-results' },
@@ -440,8 +481,17 @@ function defaultHospitalOperatingModel() {
         ]
       },
       {
+        id: 'readaptation', name: 'Readaptation et kinesitherapie', type: 'clinical', location: 'Plateau rehabilitation', leadRole: 'Responsable readaptation', headNurseRole: 'Referent kinesitherapie',
+        specialties: ['Kinesitherapie', 'Physiotherapie', 'Ergotherapie', 'Orthophonie', 'Reeducation fonctionnelle'],
+        services: [
+          { id: 'kinesitherapie', name: 'Kinesitherapie', queueKey: 'task-worklist', defaultPhiScope: 'rehab-care-plan' },
+          { id: 'reeducation', name: 'Reeducation fonctionnelle', queueKey: 'task-worklist', defaultPhiScope: 'rehab-care-plan' },
+          { id: 'ergotherapie', name: 'Ergotherapie', queueKey: 'task-worklist', defaultPhiScope: 'rehab-care-plan' }
+        ]
+      },
+      {
         id: 'pharmacie', name: 'Pharmacie', type: 'support', location: 'Pharmacie hospitaliere', leadRole: 'Pharmacien chef', headNurseRole: 'Responsable dispensation',
-        specialties: ['Pharmacie clinique', 'Stock medical'],
+        specialties: ['Pharmacie clinique', 'Preparation', 'Dispensation', 'Stock medical'],
         services: [
           { id: 'dispensation', name: 'Dispensation', queueKey: 'task-worklist', defaultPhiScope: 'medication-profile' },
           { id: 'stock', name: 'Gestion stock', queueKey: 'task-worklist', defaultPhiScope: 'no-direct-phi' }
@@ -469,9 +519,19 @@ function defaultHospitalOperatingModel() {
     phiPolicies: {
       ADMIN: { access: 'administrative', canOpenChart: true, requiresReason: true, breakGlass: false, note: 'Administrative access is audited and should avoid clinical details unless necessary.' },
       DOCTOR: { access: 'clinical-full-assigned', canOpenChart: true, requiresReason: false, breakGlass: true, note: 'Clinical PHI for assigned services and consults.' },
+      NP: { access: 'clinical-full-assigned', canOpenChart: true, requiresReason: false, breakGlass: true, note: 'Advanced nursing/clinical PHI for assigned services.' },
       NURSE: { access: 'care-team-assigned', canOpenChart: true, requiresReason: false, breakGlass: true, note: 'Nursing PHI for assigned unit and active care team.' },
+      CNA: { access: 'care-team-limited', canOpenChart: true, requiresReason: false, breakGlass: false, note: 'Limited nursing aide PHI for assigned tasks and unit.' },
+      MIDWIFE: { access: 'maternal-care-team', canOpenChart: true, requiresReason: false, breakGlass: true, note: 'Maternal and newborn PHI for assigned maternity care.' },
       LAB: { access: 'diagnostic-orders-results', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Minimum necessary access to lab orders and results.' },
       IMAGING: { access: 'imaging-orders-results', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Minimum necessary access to imaging orders and reports.' },
+      PHYSIOTHERAPIST: { access: 'rehab-care-plan', canOpenChart: true, requiresReason: false, breakGlass: false, note: 'Rehabilitation access to care plan, mobility notes and functional assessments.' },
+      PHARMACY: { access: 'medication-profile', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Medication profile, dispensing and stock-related access.' },
+      BILLING: { access: 'billing-only', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Billing, payer and claims data only.' },
+      RECORDS: { access: 'records-management', canOpenChart: true, requiresReason: true, breakGlass: false, note: 'Medical records management with audited chart access.' },
+      FRONT_DESK: { access: 'demographics-and-consent', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Registration, demographics, consent and appointment access.' },
+      SOCIAL_WORKER: { access: 'social-care-minimum', canOpenChart: true, requiresReason: true, breakGlass: false, note: 'Minimum necessary social support documentation.' },
+      BIOMEDICAL: { access: 'no-direct-phi', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Equipment and device support without direct patient PHI.' },
       DEFAULT: { access: 'minimum-necessary', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'No PHI unless specifically assigned.' }
     }
   }
