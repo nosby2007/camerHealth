@@ -11,24 +11,51 @@
  * ── CLINICAL LAYER (new facility-based) ───────────────────────────────────────
  *   Entry : /register (first time) → /login (returning)
  *   Routes: /clinical/*, /admin/*
- *   Roles : ADMIN, DOCTOR, NP, NURSE, CNA, LAB, IMAGING, BILLING
+ *   Roles : ADMIN, DOCTOR, NP, NURSE, CNA, MIDWIFE, LAB, IMAGING,
+ *           PHARMACY, MAJOR_SERVICE, NURSING_SUPERVISOR, FRONT_DESK,
+ *           BILLING, RECORDS, SOCIAL_WORKER
  */
 
 const MINISTRY_ROLES  = ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST']
-const CLINICAL_ROLES  = ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'LAB', 'IMAGING', 'BILLING']
+const CLINICAL_ROLES  = [
+  'ADMIN',
+  'DOCTOR',
+  'NP',
+  'NURSE',
+  'CNA',
+  'MIDWIFE',
+  'LAB',
+  'IMAGING',
+  'PHARMACY',
+  'MAJOR_SERVICE',
+  'NURSING_SUPERVISOR',
+  'BILLING',
+  'RECORDS',
+  'FRONT_DESK',
+  'SOCIAL_WORKER',
+  'PHYSIOTHERAPIST'
+]
 
 // Fully public — no auth needed
-const OPEN_ROUTES = ['/', '/login', '/register', '/ministry-login']
+const OPEN_ROUTES = ['/', '/about', '/contact', '/login', '/register', '/ministry-login']
 
 const CLINICAL_HOME = {
   ADMIN:   '/admin',
   DOCTOR:  '/clinical/dashboard',
   NP:      '/clinical/dashboard',
-  NURSE:   '/clinical/dashboard',
+  NURSE:   '/clinical/patients',
   CNA:     '/clinical/nursing',
+  MIDWIFE: '/clinical/patients',
   LAB:     '/clinical/lab',
   IMAGING: '/clinical/imaging',
-  BILLING: '/clinical/billing'
+  PHARMACY: '/clinical/medications',
+  MAJOR_SERVICE: '/clinical/patients',
+  NURSING_SUPERVISOR: '/clinical/patients',
+  BILLING: '/clinical/billing',
+  RECORDS: '/clinical/patients',
+  FRONT_DESK: '/clinical/patients',
+  SOCIAL_WORKER: '/clinical/patients',
+  PHYSIOTHERAPIST: '/clinical/patients'
 }
 
 const MINISTRY_HOME = {
@@ -42,9 +69,17 @@ const CLINICAL_PERMITTED = {
   NP:      ['/clinical'],
   NURSE:   ['/clinical'],
   CNA:     ['/clinical/nursing', '/clinical/patients'],
-  LAB:     ['/clinical/lab', '/clinical/dashboard'],
-  IMAGING: ['/clinical/imaging', '/clinical/dashboard'],
-  BILLING: ['/clinical/billing', '/clinical/dashboard', '/clinical/insurance']
+  MIDWIFE: ['/clinical'],
+  LAB:     ['/clinical', '/clinical/lab', '/clinical/dashboard'],
+  IMAGING: ['/clinical', '/clinical/imaging', '/clinical/dashboard'],
+  PHARMACY: ['/clinical', '/clinical/medications', '/clinical/dashboard'],
+  MAJOR_SERVICE: ['/clinical'],
+  NURSING_SUPERVISOR: ['/clinical'],
+  BILLING: ['/clinical/billing', '/clinical/dashboard', '/clinical/insurance'],
+  RECORDS: ['/clinical', '/clinical/patients', '/clinical/dashboard'],
+  FRONT_DESK: ['/clinical', '/clinical/patients', '/clinical/appointments', '/clinical/dashboard'],
+  SOCIAL_WORKER: ['/clinical'],
+  PHYSIOTHERAPIST: ['/clinical', '/clinical/nursing', '/clinical/dashboard']
 }
 
 const MINISTRY_PERMITTED = ['/ministry', '/surveillance', '/maps', '/reports']
@@ -84,6 +119,12 @@ export default function ({ store, redirect, route }) {
   // ── 3. Ministry routes ───────────────────────────────────────────────────────
   if (MINISTRY_PERMITTED.some(p => path.startsWith(p))) {
     if (!MINISTRY_ROLES.includes(role)) return redirect(CLINICAL_HOME[role] || '/')
+    return
+  }
+
+  // ── 4. Super Admin routes ─────────────────────────────────────────────────
+  if (path.startsWith('/super-admin')) {
+    if (role !== 'ADMIN') return redirect(CLINICAL_HOME[role] || MINISTRY_HOME[role] || '/')
     return
   }
 

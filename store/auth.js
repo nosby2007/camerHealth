@@ -262,7 +262,27 @@ export const getters = {
   isAdmin:   state => state.role === 'ADMIN',
   isDoctor:  state => state.role === 'DOCTOR',
   isNurse:   state => state.role === 'NURSE',
+  isMidwife: state => state.role === 'MIDWIFE',
+  isPharmacy: state => state.role === 'PHARMACY',
+  isFrontDesk: state => state.role === 'FRONT_DESK',
   isLab:     state => state.role === 'LAB',
   isImaging: state => state.role === 'IMAGING',
-  isClinical: state => ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'LAB', 'IMAGING', 'BILLING'].includes(state.role)
+  isClinical: state => [
+    'ADMIN',
+    'DOCTOR',
+    'NP',
+    'NURSE',
+    'CNA',
+    'MIDWIFE',
+    'MAJOR_SERVICE',
+    'NURSING_SUPERVISOR',
+    'LAB',
+    'IMAGING',
+    'PHARMACY',
+    'BILLING',
+    'RECORDS',
+    'FRONT_DESK',
+    'SOCIAL_WORKER',
+    'PHYSIOTHERAPIST'
+  ].includes(state.role)
 }

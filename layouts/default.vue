@@ -131,17 +131,19 @@ export default {
         { icon: 'mdi-shield-account',   titleKey: 'Admin Dashboard',   to: '/admin',                 roles: ['ADMIN'] },
         { icon: 'mdi-account-multiple', titleKey: 'Staff Accounts',    to: '/admin/staff',           roles: ['ADMIN'] },
         { icon: 'mdi-history',          titleKey: 'Audit Log',         to: '/admin/audit',           roles: ['ADMIN'] },
+        { icon: 'mdi-shield-crown',     titleKey: 'Super Admin',       to: '/super-admin',           roles: ['ADMIN'] },
+        { icon: 'mdi-monitor-dashboard', titleKey: 'Patient Workflow 360', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
         // ── Patient Modules ──
-        { icon: 'mdi-account-group',    titleKey: 'Patient Listing',   to: '/clinical/patients',     roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
-        { icon: 'mdi-account-plus',     titleKey: 'New Patient',       to: '/clinical/patients/new', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
-        { icon: 'mdi-clipboard-list',   titleKey: 'Outpatient',        to: '/clinical/visits',       roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
-        { icon: 'mdi-bed',               titleKey: 'Inpatient',         to: '/clinical/inpatient',    roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
-        { icon: 'mdi-calendar-clock',   titleKey: 'Appointments',      to: '/clinical/appointments', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
-        { icon: 'mdi-pill',             titleKey: 'Medications',       to: '/clinical/medications',  roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+        { icon: 'mdi-account-group',    titleKey: 'Patient Listing',   to: '/clinical/patients',     roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS', 'FRONT_DESK'] },
+        { icon: 'mdi-account-plus',     titleKey: 'New Patient',       to: '/clinical/patients/new', roles: ['ADMIN', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },
+        { icon: 'mdi-clipboard-list',   titleKey: 'Outpatient',        to: '/clinical/visits',       roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },
+        { icon: 'mdi-bed',               titleKey: 'Inpatient',         to: '/clinical/inpatient',    roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },
+        { icon: 'mdi-calendar-clock',   titleKey: 'Appointments',      to: '/clinical/appointments', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },
+        { icon: 'mdi-pill',             titleKey: 'Medications',       to: '/clinical/medications',  roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'PHARMACY'] },
         { icon: 'mdi-file-export',      titleKey: 'menu.field_input',  to: '/clinical/reports',      roles: ['ADMIN'] },
         // ── Lab & Imaging ──
-        { icon: 'mdi-flask',            titleKey: 'Laboratory',        to: '/clinical/lab',          roles: ['LAB', 'ADMIN', 'DOCTOR'] },
-        { icon: 'mdi-radiology-box',    titleKey: 'Imaging',           to: '/clinical/imaging',      roles: ['IMAGING', 'ADMIN', 'DOCTOR'] }
+        { icon: 'mdi-flask',            titleKey: 'Laboratory',        to: '/clinical/lab',          roles: ['LAB', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] },
+        { icon: 'mdi-radiology-box',    titleKey: 'Imaging',           to: '/clinical/imaging',      roles: ['IMAGING', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] }
       ]
     };
   },
@@ -169,7 +171,7 @@ export default {
     admin() { return this.$store.state.auth.user; },
     userRole() { return this.$store.state.auth.role || 'GUEST'; },
     institution() { return this.$store.state.auth.institution; },
-    isClinical() { return ['ADMIN','DOCTOR','NURSE','LAB','IMAGING'].includes(this.userRole); },
+    isClinical() { return ['ADMIN','DOCTOR','NP','NURSE','CNA','MIDWIFE','MAJOR_SERVICE','NURSING_SUPERVISOR','LAB','IMAGING','PHARMACY','BILLING','RECORDS','FRONT_DESK','SOCIAL_WORKER','PHYSIOTHERAPIST'].includes(this.userRole); },
     isMinistry() { return ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'].includes(this.userRole); },
     currentLangName() { return this.$store.state.locale === 'fr' ? 'FRANÇAIS' : 'ENGLISH'; },
     filteredNavItems() { return this.navItems.filter(item => item.roles.includes(this.userRole)); }

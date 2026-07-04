@@ -15,7 +15,24 @@ const { enforceRateLimits, rateLimitStrategyInfo } = require('../../_lib/rate-li
 const { getCorrelationId } = require('../../_lib/correlation')
 const { beginIdempotency, completeIdempotency } = require('../../_lib/idempotency')
 
-const ALLOWED_ROLES = ['ADMIN', 'DOCTOR', 'NURSE', 'LAB', 'IMAGING']
+const ALLOWED_ROLES = [
+  'ADMIN',
+  'DOCTOR',
+  'NP',
+  'NURSE',
+  'CNA',
+  'MIDWIFE',
+  'MAJOR_SERVICE',
+  'NURSING_SUPERVISOR',
+  'LAB',
+  'IMAGING',
+  'PHARMACY',
+  'BILLING',
+  'RECORDS',
+  'FRONT_DESK',
+  'SOCIAL_WORKER',
+  'PHYSIOTHERAPIST'
+]
 const INVITE_STATUS = {
   PENDING: 'pending',
   ACCEPTED: 'accepted',

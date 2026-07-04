@@ -361,9 +361,20 @@ export default {
       resetPwd: { password: '', confirm: '' },
       roleOptions: [
         { value: 'DOCTOR',  label: 'Doctor'  },
+        { value: 'NP',      label: 'Nurse Practitioner' },
         { value: 'NURSE',   label: 'Nurse'   },
-        { value: 'LAB',     label: 'Lab'     },
-        { value: 'IMAGING', label: 'Imaging' }
+        { value: 'CNA',     label: 'Care Assistant' },
+        { value: 'MIDWIFE', label: 'Sage-femme' },
+        { value: 'MAJOR_SERVICE', label: 'Major de service' },
+        { value: 'NURSING_SUPERVISOR', label: 'Surveillant general' },
+        { value: 'LAB',     label: 'Laborantin' },
+        { value: 'IMAGING', label: 'Imagerie' },
+        { value: 'PHARMACY', label: 'Pharmacien' },
+        { value: 'FRONT_DESK', label: 'Reception' },
+        { value: 'RECORDS', label: 'Archives' },
+        { value: 'BILLING', label: 'Facturation' },
+        { value: 'SOCIAL_WORKER', label: 'Social' },
+        { value: 'PHYSIOTHERAPIST', label: 'Kine' }
       ],
       headers: [
         { text: 'STAFF MEMBER', value: 'fullName', width: '260px' },
@@ -401,10 +412,19 @@ export default {
         'facility-administration',
         'assigned-service-and-consult',
         'assigned-unit-care-team',
+        'assigned-unit-care-team-limited',
+        'maternal-care-team',
+        'unit-nursing-supervision',
+        'facility-nursing-oversight',
         'diagnostic-orders-only',
         'imaging-orders-only',
+        'medication-profile',
+        'demographics-and-consent',
         'billing-only',
         'records-management',
+        'social-care-minimum',
+        'rehab-care-plan',
+        'no-direct-phi',
         'minimum-necessary'
       ]
     },
@@ -475,8 +495,46 @@ export default {
       }
     },
     fmt(ts) { return new Date(ts).toLocaleDateString() },
-    roleColor(r) { return { ADMIN: '#003366', DOCTOR: '#0B3D2E', NURSE: '#1F7A5C', LAB: '#F4A300', IMAGING: '#9B59B6' }[r] || '#6B7280' },
-    roleIcon(r)  { return { ADMIN: 'mdi-shield-account', DOCTOR: 'mdi-doctor', NURSE: 'mdi-medical-bag', LAB: 'mdi-flask', IMAGING: 'mdi-radiology-box' }[r] || 'mdi-account' }
+    roleColor(r) {
+      return {
+        ADMIN: '#003366',
+        DOCTOR: '#0B3D2E',
+        NP: '#0F766E',
+        NURSE: '#1F7A5C',
+        CNA: '#64748B',
+        MIDWIFE: '#BE185D',
+        MAJOR_SERVICE: '#7C3AED',
+        NURSING_SUPERVISOR: '#4F46E5',
+        LAB: '#F4A300',
+        IMAGING: '#9B59B6',
+        PHARMACY: '#0369A1',
+        FRONT_DESK: '#0891B2',
+        RECORDS: '#475569',
+        BILLING: '#B45309',
+        SOCIAL_WORKER: '#15803D',
+        PHYSIOTHERAPIST: '#2563EB'
+      }[r] || '#6B7280'
+    },
+    roleIcon(r) {
+      return {
+        ADMIN: 'mdi-shield-account',
+        DOCTOR: 'mdi-doctor',
+        NP: 'mdi-stethoscope',
+        NURSE: 'mdi-medical-bag',
+        CNA: 'mdi-account-heart',
+        MIDWIFE: 'mdi-baby-face-outline',
+        MAJOR_SERVICE: 'mdi-account-star',
+        NURSING_SUPERVISOR: 'mdi-account-supervisor',
+        LAB: 'mdi-flask',
+        IMAGING: 'mdi-radiology-box',
+        PHARMACY: 'mdi-pill',
+        FRONT_DESK: 'mdi-desk',
+        RECORDS: 'mdi-archive',
+        BILLING: 'mdi-file-document-outline',
+        SOCIAL_WORKER: 'mdi-hand-heart',
+        PHYSIOTHERAPIST: 'mdi-human-cane'
+      }[r] || 'mdi-account'
+    }
   }
 }
 </script>

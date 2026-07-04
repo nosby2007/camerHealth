@@ -17,8 +17,13 @@
     </div>
 
     <!-- Empty State -->
-    <v-card flat v-if="!patients || patients.length === 0" class="pa-4 rounded-sm" style="background-color: #FCF8E3; color: #8A6D3B; border-color: #FAEBCC; border-width: 1px; border-style: solid;">
-      <span>No patients found. <nuxt-link to="/clinical/patients/new" style="color: #20B2AA; text-decoration: none;">Create a new patient record?</nuxt-link></span>
+    <v-card flat v-if="!patients || patients.length === 0" class="pa-5 rounded-sm empty-state">
+      <div class="d-flex flex-wrap align-center justify-space-between" style="gap:12px">
+        <span>No patients found. <nuxt-link to="/clinical/patients/new" class="empty-link">Create a new patient record?</nuxt-link></span>
+        <v-btn small depressed color="#003366" dark class="font-weight-black text-caption" @click="provisionWorkflowDemo">
+          <v-icon left small>mdi-database-plus</v-icon>Provision demo workflow
+        </v-btn>
+      </div>
     </v-card>
 
     <!-- Patients Table -->
@@ -65,6 +70,7 @@
         :search="search"
         class="hospital-table elevation-0"
         :items-per-page="12"
+        @click:row="openPatient"
       >
         <template v-slot:item.name="{ item }">
           <nuxt-link :to="'/clinical/patients/' + item.id" class="patient-link">{{ item.displayName }}</nuxt-link>
@@ -94,11 +100,11 @@
         </template>
         <template v-slot:item.actions="{ item }">
             <v-btn icon small color="#20B2AA" title="Voir le dossier patient"
-              @click="$router.push('/clinical/patients/' + item.id)">
+              @click.stop="$router.push('/clinical/patients/' + item.id)">
               <v-icon small>mdi-eye</v-icon>
             </v-btn>
             <v-btn icon small color="#003366" title="Triage infirmier"
-              @click="$router.push('/clinical/patients/' + item.id + '/encounter/nurse')">
+              @click.stop="$router.push('/clinical/patients/' + item.id + '/encounter/nurse')">
               <v-icon small>mdi-stethoscope</v-icon>
             </v-btn>
         </template>
@@ -150,6 +156,14 @@ export default {
     }
   },
   methods: {
+    async provisionWorkflowDemo() {
+      const patientId = await this.$store.dispatch('clinical/provisionPatientWorkflowDemo')
+      this.$toast.success('Demo patient workflow provisioned.')
+      this.$router.push('/clinical/patients/' + patientId)
+    },
+    openPatient(patient) {
+      if (patient && patient.id) this.$router.push('/clinical/patients/' + patient.id)
+    },
     riskColor(level) {
       return { high: '#C0392B', medium: '#D97706', low: '#166534' }[level] || '#6B7280'
     }
@@ -172,6 +186,16 @@ export default {
 .filter-control { max-width: 190px; }
 .patient-link { color: #20B2AA; text-decoration: none; font-weight: 700; }
 .patient-link:hover { text-decoration: underline; }
+.empty-state {
+  background-color: #FCF8E3;
+  color: #8A6D3B;
+  border: 1px solid #FAEBCC;
+}
+.empty-link {
+  color: #20B2AA;
+  text-decoration: none;
+  font-weight: 800;
+}
 
 .hospital-table {
   background: white !important;
@@ -192,5 +216,11 @@ export default {
   height: 50px !important; 
   color: #1B1F23;
   font-size: 14px;
+}
+.hospital-table ::v-deep tbody tr {
+  cursor: pointer;
+}
+.hospital-table ::v-deep tbody tr:hover {
+  background: #ECFDF5 !important;
 }
 </style>
