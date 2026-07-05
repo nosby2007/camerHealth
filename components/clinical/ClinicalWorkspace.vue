@@ -1,5 +1,5 @@
 <template>
-  <div class="epic-workspace">
+  <div class="emr-workspace">
     <header class="chart-topbar">
       <div class="brand-row">
         <v-avatar tile size="24" color="#0f766e" class="mr-2">
@@ -203,46 +203,46 @@
               />
             </section>
 
-            <section v-else-if="selectedChartTab === 'Parcours Patient'" class="africa-workflow">
-              <div class="africa-command">
+            <section v-else-if="selectedChartTab === 'EMR Command Center'" class="emr-command-center">
+              <div class="command-brief">
                 <div>
-                  <span>Hospital workflow for African care settings</span>
-                  <strong>Simple navigation, offline-first care and protected role access.</strong>
+                  <span>General hospital command center</span>
+                  <strong>Protected 360 view for departments, offline work and Cameroonian hospital operations.</strong>
                 </div>
-                <div class="africa-command-actions">
+                <div class="command-brief-actions">
                   <v-chip small label color="#dcfce7" text-color="#166534" class="font-weight-black">
                     Offline ready
                   </v-chip>
                   <v-chip small label color="#e0f2fe" text-color="#075985" class="font-weight-black">
                     {{ accessProfile.short }} scope
                   </v-chip>
-                  <v-btn x-small depressed color="#0f766e" dark @click="openJourneyAction('nurse')">
-                    <v-icon x-small left>mdi-clipboard-pulse-outline</v-icon>Document care
+                  <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('nurse')">
+                    <v-icon x-small left>mdi-clipboard-pulse-outline</v-icon>Document
                   </v-btn>
                 </div>
               </div>
 
-              <div class="journey-lane" aria-label="Admission to discharge patient pathway">
+              <div class="command-card-grid" aria-label="Hospital command modules">
                 <article
-                  v-for="stage in patientJourneyStages"
-                  :key="stage.key"
-                  :class="['journey-stage', stage.status]"
+                  v-for="card in emrCommandCards"
+                  :key="card.key"
+                  :class="['command-card', card.status]"
                 >
-                  <div class="stage-icon">
-                    <v-icon small>{{ stage.icon }}</v-icon>
+                  <div class="command-card-icon">
+                    <v-icon small>{{ card.icon }}</v-icon>
                   </div>
                   <div>
-                    <strong>{{ stage.label }}</strong>
-                    <span>{{ stage.owner }}</span>
-                    <p>{{ stage.detail }}</p>
+                    <strong>{{ card.label }}</strong>
+                    <span>{{ card.owner }}</span>
+                    <p>{{ card.detail }}</p>
                   </div>
-                  <button type="button" @click="openJourneyAction(stage.action)">
-                    {{ stage.actionLabel }}
+                  <button type="button" @click="openCommandAction(card.action)">
+                    {{ card.actionLabel }}
                   </button>
                 </article>
               </div>
 
-              <div class="africa-grid">
+              <div class="command-two-column">
                 <FlowSection
                   title="Department Coverage"
                   :columns="['Status', 'Owner', 'Next']"
@@ -259,6 +259,56 @@
                 title="My Role - Actions Now"
                 :columns="['Priority', 'Where', 'Action']"
                 :rows="roleActionRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Nurse Command Center'" class="nurse-command-center">
+              <div class="command-brief nurse">
+                <div>
+                  <span>Nurse command center</span>
+                  <strong>One shift board for vitals, nursing tasks, medication safety, hygiene, mobility, wound care and handoff.</strong>
+                </div>
+                <div class="command-brief-actions">
+                  <v-btn x-small depressed color="#003366" dark @click="openCommandAction('nurse')">
+                    <v-icon x-small left>mdi-stethoscope</v-icon>New nursing entry
+                  </v-btn>
+                  <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('medication')">
+                    <v-icon x-small left>mdi-pill</v-icon>MAR
+                  </v-btn>
+                  <v-btn x-small depressed color="#7c3aed" dark @click="openCommandAction('handoff')">
+                    <v-icon x-small left>mdi-handshake-outline</v-icon>Handoff
+                  </v-btn>
+                </div>
+              </div>
+
+              <div class="nurse-focus-grid">
+                <article v-for="item in nurseCommandTiles" :key="item.label" :class="['nurse-focus-card', item.status]">
+                  <v-icon small>{{ item.icon }}</v-icon>
+                  <div>
+                    <strong>{{ item.label }}</strong>
+                    <span>{{ item.value }}</span>
+                    <p>{{ item.action }}</p>
+                  </div>
+                </article>
+              </div>
+
+              <div class="command-two-column">
+                <FlowSection
+                  title="Shift Care Board"
+                  :columns="['Time', 'Priority', 'Action']"
+                  :rows="nurseShiftRows"
+                />
+                <FlowSection
+                  title="Aide-Soignant and Support Tasks"
+                  :columns="['Status', 'Owner', 'Action']"
+                  :rows="supportCareRows"
+                />
+              </div>
+
+              <FlowSection
+                title="Safety, Escalation and Handoff"
+                :columns="['Signal', 'Owner', 'Action']"
+                :rows="nurseEscalationRows"
               />
             </section>
 
@@ -1219,7 +1269,7 @@
               <div class="navigator-banner">
                 <div>
                   <strong>Medication Administration Record</strong>
-                  <span>Scheduled, PRN, continuous and running infusion medication workflow</span>
+                  <span>Scheduled, PRN, continuous and running infusion medication command</span>
                 </div>
                 <v-btn x-small depressed color="#0f766e" dark @click="selectChartTab('MAR')">
                   <v-icon x-small left>mdi-open-in-new</v-icon>Open full eMAR
@@ -1600,7 +1650,8 @@ const FlowSection = {
 
 const ALL_CLINICAL_TABS = [
   'Summary',
-  'Parcours Patient',
+  'EMR Command Center',
+  'Nurse Command Center',
   'Chart Review',
   'Navigators',
   'Avatar',
@@ -2064,7 +2115,8 @@ export default {
     workspaceHeadline() {
       const map = {
         Summary: 'Patient 360 Summary',
-        'Parcours Patient': 'Admission to Discharge Workflow',
+        'EMR Command Center': 'EMR Command Center',
+        'Nurse Command Center': 'Nurse Command Center',
         'Chart Review': 'Longitudinal Chart Review',
         Flowsheets: 'Care Schedule Flowsheets',
         Orders: 'Orders and Diagnostics',
@@ -2209,7 +2261,7 @@ export default {
         { label: 'Open orders', values: { Current: this.patientLabOrders.length + this.patientImagingOrders.length + this.patientMedications.length } }
       ]
     },
-    patientJourneyStages() {
+    emrCommandCards() {
       const hasVitals = Boolean(this.latestVitalsSummary)
       const hasClinicalNote = Boolean(this.latestVisit || this.latestNursingNote)
       const hasDiagnostics = Boolean(this.patientLabOrders.length || this.patientImagingOrders.length)
@@ -2218,7 +2270,7 @@ export default {
       return [
         {
           key: 'registration',
-          label: 'Admission / Reception',
+          label: 'Reception and admission',
           owner: 'Reception + Nurse',
           detail: 'Identity, contact, consent, payment class and bed/service assignment.',
           status: this.activePatient.mrn ? 'complete' : 'due',
@@ -2228,7 +2280,7 @@ export default {
         },
         {
           key: 'triage',
-          label: 'Triage and vitals',
+          label: 'Triage and first contact',
           owner: 'Nurse / Midwife',
           detail: hasVitals ? this.latestVitalsSummary : 'Capture vitals, pain score, GCS and first nursing assessment.',
           status: hasVitals ? 'complete' : 'due',
@@ -2238,7 +2290,7 @@ export default {
         },
         {
           key: 'consultation',
-          label: 'Clinical decision',
+          label: 'Clinical decision desk',
           owner: 'Doctor / NP / Midwife',
           detail: hasClinicalNote ? 'Clinical documentation started.' : 'Diagnosis, plan, orders and escalation decisions.',
           status: hasClinicalNote ? 'active' : 'due',
@@ -2248,7 +2300,7 @@ export default {
         },
         {
           key: 'care',
-          label: 'Daily care and tasks',
+          label: 'Nurse and support care',
           owner: 'Nurse + Aide-soignant',
           detail: this.patientTasks.length ? `${this.patientTasks.length} active task(s) to coordinate.` : 'Timed care, hygiene, mobility, wound care and handoff.',
           status: this.patientTasks.length ? 'active' : 'warning',
@@ -2258,7 +2310,7 @@ export default {
         },
         {
           key: 'diagnostics',
-          label: 'Labo / Imagerie',
+          label: 'Lab and imaging',
           owner: 'Lab + Imaging',
           detail: hasDiagnostics ? `${this.patientLabOrders.length} lab and ${this.patientImagingOrders.length} imaging item(s).` : 'Specimen, imaging requests and result acknowledgement.',
           status: hasDiagnostics ? 'active' : 'pending',
@@ -2268,7 +2320,7 @@ export default {
         },
         {
           key: 'pharmacy',
-          label: 'Pharmacy / eMAR',
+          label: 'Pharmacy and eMAR',
           owner: 'Pharmacy + Nurse',
           detail: hasMeds ? `${this.patientMedications.length} medication item(s) active.` : 'Medication profile, dispense, administration and reconciliation.',
           status: hasMeds ? 'active' : 'pending',
@@ -2278,7 +2330,7 @@ export default {
         },
         {
           key: 'maternity',
-          label: 'Maternity when needed',
+          label: 'Maternity and newborn',
           owner: 'Sage-femme',
           detail: 'Pregnancy, labor, delivery, newborn and postpartum checks when applicable.',
           status: this.currentRole === 'MIDWIFE' ? 'active' : 'pending',
@@ -2298,7 +2350,7 @@ export default {
         },
         {
           key: 'discharge',
-          label: 'Discharge / Follow-up',
+          label: 'Discharge and follow-up',
           owner: 'Care team',
           detail: hasDischargeDoc ? 'Discharge document available.' : 'Instructions, medications, follow-up, supplies and family handoff.',
           status: hasDischargeDoc ? 'complete' : 'due',
@@ -2308,6 +2360,87 @@ export default {
         }
       ]
     },
+    nurseCommandTiles() {
+      const vitalsDue = !this.latestVitalsSummary
+      const pain = this.latestVitals && this.latestVitals.pain !== undefined ? Number(this.latestVitals.pain) : null
+      const medCount = this.patientMedications.length
+      return [
+        {
+          label: 'Vitals and triage',
+          value: this.latestVitalsSummary || 'Due now',
+          action: vitalsDue ? 'Open nursing entry and capture vitals, pain and GCS.' : 'Trend and update at next scheduled round.',
+          status: vitalsDue ? 'due' : 'complete',
+          icon: 'mdi-heart-pulse'
+        },
+        {
+          label: 'Pain and comfort',
+          value: Number.isFinite(pain) ? `${pain}/10` : 'Not filed',
+          action: Number.isFinite(pain) && pain >= 7 ? 'Reassess now and notify provider if not controlled.' : 'Document comfort, positioning and response.',
+          status: Number.isFinite(pain) && pain >= 7 ? 'due' : 'active',
+          icon: 'mdi-alert-circle-outline'
+        },
+        {
+          label: 'Medication safety',
+          value: medCount ? `${medCount} active` : 'Med rec due',
+          action: medCount ? 'Review MAR due/held/refused items.' : 'Start medication reconciliation or request order.',
+          status: medCount ? 'active' : 'warning',
+          icon: 'mdi-pill'
+        },
+        {
+          label: 'Wound and skin',
+          value: this.activePatient.woundStatus || 'Review',
+          action: 'Check dressing, photo, dimensions, pressure risk and supplies.',
+          status: this.activePatient.woundStatus ? 'due' : 'active',
+          icon: 'mdi-bandage'
+        },
+        {
+          label: 'Mobility and fall risk',
+          value: 'Safety rounds',
+          action: 'Coordinate aide-soignant support for hygiene, meals and mobility.',
+          status: 'active',
+          icon: 'mdi-walk'
+        },
+        {
+          label: 'Handoff readiness',
+          value: this.latestNursingNote ? 'Note available' : 'Due before shift end',
+          action: 'Close open tasks and document unresolved risks.',
+          status: this.latestNursingNote ? 'complete' : 'warning',
+          icon: 'mdi-handshake-outline'
+        }
+      ]
+    },
+    nurseShiftRows() {
+      return [
+        { label: 'Start shift safety check', values: { Time: 'Start', Priority: 'High', Action: 'Confirm identity, allergies, code status, isolation and fall risk' } },
+        { label: 'Vitals, pain and GCS', values: { Time: '0800 / PRN', Priority: this.latestVitalsSummary ? 'Routine' : 'High', Action: this.latestVitalsSummary || 'Capture first complete nursing set' } },
+        { label: 'Medication pass and MAR review', values: { Time: 'Per schedule', Priority: this.patientMedications.length ? 'High' : 'Review', Action: this.patientMedications.length ? 'Administer, hold, refuse or educate in MAR' : 'Medication reconciliation pending' } },
+        { label: 'Wound / skin / hygiene round', values: { Time: 'Mid-shift', Priority: 'Today', Action: 'Inspect skin, dressing, hygiene, nutrition and mobility needs' } },
+        { label: 'Lab / imaging follow-up', values: { Time: 'When resulted', Priority: this.patientLabOrders.length || this.patientImagingOrders.length ? 'High' : 'Routine', Action: 'Acknowledge results and escalate critical signals' } },
+        { label: 'End shift handoff', values: { Time: 'Before shift end', Priority: 'High', Action: 'Summarize care, unresolved tasks, family/social issues and next nurse priorities' } }
+      ]
+    },
+    supportCareRows() {
+      return [
+        { label: 'Hygiene and dignity care', values: { Status: 'Scheduled', Owner: 'CNA / Nurse', Action: 'Bathing, linen, oral care and privacy' } },
+        { label: 'Meals and hydration', values: { Status: 'Monitor', Owner: 'CNA / Nurse', Action: 'Record intake, swallowing risk and family food issues' } },
+        { label: 'Mobility assistance', values: { Status: 'Safety', Owner: 'CNA / Physio', Action: 'Ambulate or reposition with fall precautions' } },
+        { label: 'Transport inside hospital', values: { Status: this.patientImagingOrders.length ? 'Possible' : 'As needed', Owner: 'Support staff', Action: 'Move patient with ticket, oxygen/isolation status and documents' } },
+        { label: 'Family communication', values: { Status: 'Context', Owner: 'Nurse / Social', Action: 'Document caregiver updates, payment barriers and discharge support' } }
+      ]
+    },
+    nurseEscalationRows() {
+      const vitals = this.latestVitals || {}
+      const spo2 = Number(vitals.spo2)
+      const temp = Number(vitals.temp)
+      const pain = Number(vitals.pain)
+      return [
+        { label: 'Abnormal vitals', values: { Signal: this.latestVitalsSummary || 'No current vitals', Owner: 'NURSE', Action: Number.isFinite(spo2) && spo2 < 92 ? 'Recheck oxygen and notify provider' : 'Trend and escalate if outside protocol' } },
+        { label: 'Fever / infection', values: { Signal: Number.isFinite(temp) ? `${temp} C` : 'Not filed', Owner: 'NURSE / PROVIDER', Action: Number.isFinite(temp) && temp >= 38 ? 'Start sepsis screen and notify provider' : 'Monitor temperature and infection precautions' } },
+        { label: 'Uncontrolled pain', values: { Signal: Number.isFinite(pain) ? `${pain}/10` : 'Not filed', Owner: 'NURSE', Action: Number.isFinite(pain) && pain >= 7 ? 'Document intervention response and medication review' : 'Reassess after care' } },
+        { label: 'Medication issue', values: { Signal: this.patientMedications.length ? 'Medication profile active' : 'No active meds', Owner: 'NURSE / PHARMACY', Action: 'Escalate allergy, stock, dose, refused or held medication issues' } },
+        { label: 'Discharge blocker', values: { Signal: this.patientTasks.length ? `${this.patientTasks.length} open task(s)` : 'No task blocker filed', Owner: 'NURSE / MAJOR', Action: 'Resolve tasks, social support, transport, pharmacy and family education' } }
+      ]
+    },
     departmentCoverageRows() {
       return [
         { label: 'Reception / Admissions', values: { Status: this.activePatient.mrn ? 'Registered' : 'Due', Owner: 'FRONT_DESK', Next: 'Verify identity, contact, consent and payment class' } },
@@ -2315,8 +2448,8 @@ export default {
         { label: 'Aide-soignant', values: { Status: 'Task view', Owner: 'CNA', Next: 'Hygiene, mobility, meals, safety rounds' } },
         { label: 'Medecin / NP', values: { Status: this.latestVisit ? 'Encounter filed' : 'Assessment due', Owner: 'DOCTOR / NP', Next: 'Diagnosis, orders, procedure and discharge decisions' } },
         { label: 'Sage-femme', values: { Status: this.currentRole === 'MIDWIFE' ? 'Focused view' : 'When applicable', Owner: 'MIDWIFE', Next: 'Maternal, newborn and postpartum documentation' } },
-        { label: 'Laborantin', values: { Status: this.patientLabOrders.length ? 'Specimen workflow' : 'No active lab', Owner: 'LAB', Next: 'Collect, validate and publish results' } },
-        { label: 'Imagerie', values: { Status: this.patientImagingOrders.length ? 'Imaging workflow' : 'No active imaging', Owner: 'IMAGING', Next: 'Schedule, perform and report imaging' } },
+        { label: 'Laborantin', values: { Status: this.patientLabOrders.length ? 'Specimen queue' : 'No active lab', Owner: 'LAB', Next: 'Collect, validate and publish results' } },
+        { label: 'Imagerie', values: { Status: this.patientImagingOrders.length ? 'Imaging queue' : 'No active imaging', Owner: 'IMAGING', Next: 'Schedule, perform and report imaging' } },
         { label: 'Pharmacie', values: { Status: this.patientMedications.length ? 'Medication profile' : 'Med rec due', Owner: 'PHARMACY', Next: 'Dispense, reconcile and support MAR safety' } },
         { label: 'Major / Surveillant', values: { Status: this.patientTasks.length ? 'Open workload' : 'Stable workload', Owner: 'MAJOR / SUPERVISOR', Next: 'Assign staff, watch blockers, validate handoff' } },
         { label: 'Facturation / Social', values: { Status: 'Context aware', Owner: 'BILLING / SOCIAL', Next: 'Costs, insurance, indigent support and transport' } }
@@ -2530,7 +2663,7 @@ export default {
         detail: row.values.Detail || 'No signed and held action required',
         status: row.values.Status || 'None',
         schedule: 'Signed & Held',
-        orderedBy: 'Admission workflow',
+        orderedBy: 'Admission command center',
         priority: 'Review',
         group: 'Signed & Held',
         icon: 'mdi-clipboard-check-outline',
@@ -2586,7 +2719,7 @@ export default {
           type: task.relatedType || 'task',
           typeLabel: 'Order Task',
           label: task.title || 'Order task',
-          detail: task.actionReason || 'Order workflow task',
+          detail: task.actionReason || 'Order command task',
           status: task.status || 'pending',
           schedule: task.updatedAt ? this.formatShortDate(task.updatedAt) : 'Order History',
           orderedBy: task.updatedBy || task.createdBy || 'Care team',
@@ -2650,7 +2783,7 @@ export default {
         { kind: 'Lab', label: 'Lab order', detail: 'Specimen collection and lab follow-up', icon: 'mdi-flask', color: '#0369a1' },
         { kind: 'Imaging', label: 'Imaging order', detail: 'Radiology request and transport readiness', icon: 'mdi-radiology-box', color: '#7c3aed' },
         { kind: 'Nursing care', label: 'Nursing care task', detail: 'Creates a work-list task for the shift', icon: 'mdi-clipboard-pulse-outline', color: '#be123c' },
-        { kind: 'Wound care', label: 'Wound care order', detail: 'Dressing, photo and skin assessment workflow', icon: 'mdi-bandage', color: '#b45309' }
+        { kind: 'Wound care', label: 'Wound care order', detail: 'Dressing, photo and skin assessment command', icon: 'mdi-bandage', color: '#b45309' }
       ]
       const query = this.orderSearch.trim().toLowerCase()
       if (!query) return suggestions
@@ -2666,7 +2799,7 @@ export default {
     },
     shiftOverviewRows() {
       return [
-        { label: 'Current shift', values: { Status: this.currentRole, Owner: this.actorName(), Action: 'Continue active patient 360 workflow' } },
+        { label: 'Current shift', values: { Status: this.currentRole, Owner: this.actorName(), Action: 'Continue active 360 command center' } },
         { label: 'Required documentation', values: { Status: this.patientVitals.length ? 'Started' : 'Due', Owner: 'NURSE', Action: 'Vitals, pain, GCS and assessments' } },
         { label: 'Open work', values: { Status: this.patientTasks.length, Owner: 'Care team', Action: 'Review Work List' } },
         { label: 'New results', values: { Status: this.patientLabOrders.length + this.patientImagingOrders.length, Owner: 'NURSE', Action: 'Acknowledge diagnostics' } }
@@ -3245,7 +3378,7 @@ export default {
     aiCareRiskLabel() {
       if (this.aiCareAcuityScore >= 75) return 'High risk'
       if (this.aiCareAcuityScore >= 50) return 'Watch closely'
-      return 'Stable workflow'
+      return 'Stable command state'
     },
     effectiveAiCareAcuityScore() {
       return this.remoteAiCarePlan && Number.isFinite(Number(this.remoteAiCarePlan.acuityScore))
@@ -3620,7 +3753,7 @@ export default {
       if (value.includes('wound')) return 'wound'
       return 'nursing'
     },
-    openJourneyAction(action) {
+    openCommandAction(action) {
       const target = String(action || '').toLowerCase()
       if (target === 'nurse') {
         this.openChartDialog('nurse')
@@ -3672,7 +3805,7 @@ export default {
         this.selectedChartTab = this.visibleChartTabs.includes('Notes') ? 'Notes' : 'Summary'
         return
       }
-      this.selectedChartTab = 'Parcours Patient'
+      this.selectedChartTab = 'EMR Command Center'
     },
     orderStatusClass(status) {
       const value = String(status || '').toLowerCase()
@@ -4104,7 +4237,8 @@ export default {
       this.selectedChartTab = tab
       const navMap = {
         Summary: 'admission',
-        'Parcours Patient': 'admission',
+        'EMR Command Center': 'admission',
+        'Nurse Command Center': 'shift',
         'Chart Review': 'shift',
         Navigators: this.selectedNavigator || 'admission',
         Avatar: 'vitals',
@@ -4273,7 +4407,7 @@ function latestByDate(items, field) {
 </script>
 
 <style scoped>
-.epic-workspace {
+.emr-workspace {
   min-height: calc(100vh - 72px);
   background: #dbe8e5;
   color: #1f2933;
@@ -5070,11 +5204,12 @@ function latestByDate(items, field) {
   display: grid;
   gap: 8px;
 }
-.africa-workflow {
+.emr-command-center,
+.nurse-command-center {
   display: grid;
   gap: 12px;
 }
-.africa-command {
+.command-brief {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -5084,33 +5219,33 @@ function latestByDate(items, field) {
   border-left: 4px solid #0f766e;
   padding: 10px 12px;
 }
-.africa-command div:first-child {
+.command-brief div:first-child {
   display: grid;
   gap: 3px;
 }
-.africa-command span {
+.command-brief span {
   color: #64748b;
   font-weight: 800;
 }
-.africa-command strong {
+.command-brief strong {
   color: #0f172a;
   font-size: 13px;
 }
-.africa-command-actions {
+.command-brief-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
 }
-.journey-lane {
+.command-card-grid {
   display: grid;
   grid-template-columns: repeat(9, minmax(124px, 1fr));
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 2px;
 }
-.journey-stage {
+.command-card {
   min-height: 190px;
   background: #ffffff;
   border: 1px solid #dbe6e3;
@@ -5120,12 +5255,12 @@ function latestByDate(items, field) {
   gap: 8px;
   padding: 10px;
 }
-.journey-stage.complete { border-top-color: #16a34a; }
-.journey-stage.active { border-top-color: #0369a1; }
-.journey-stage.due { border-top-color: #be123c; }
-.journey-stage.warning { border-top-color: #f97316; }
-.journey-stage.pending { border-top-color: #64748b; }
-.stage-icon {
+.command-card.complete { border-top-color: #16a34a; }
+.command-card.active { border-top-color: #0369a1; }
+.command-card.due { border-top-color: #be123c; }
+.command-card.warning { border-top-color: #f97316; }
+.command-card.pending { border-top-color: #64748b; }
+.command-card-icon {
   width: 30px;
   height: 30px;
   display: grid;
@@ -5134,23 +5269,23 @@ function latestByDate(items, field) {
   color: #0f766e;
   border: 1px solid #cfe5df;
 }
-.journey-stage strong {
+.command-card strong {
   display: block;
   color: #0f172a;
   font-size: 12px;
 }
-.journey-stage span {
+.command-card span {
   display: block;
   color: #0f766e;
   font-weight: 800;
   margin-top: 2px;
 }
-.journey-stage p {
+.command-card p {
   color: #475569;
   line-height: 1.35;
   margin: 6px 0 0;
 }
-.journey-stage button {
+.command-card button {
   border: 1px solid #cbd5e1;
   background: #f8fafc;
   color: #0f172a;
@@ -5159,14 +5294,51 @@ function latestByDate(items, field) {
   text-align: center;
   cursor: pointer;
 }
-.journey-stage button:hover {
+.command-card button:hover {
   border-color: #0f766e;
   color: #0f766e;
 }
-.africa-grid {
+.command-two-column {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
   gap: 12px;
+}
+.nurse-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 8px;
+}
+.nurse-focus-card {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-content: start;
+  background: #fff;
+  border: 1px solid #dbe6e3;
+  border-left: 4px solid #94a3b8;
+  padding: 9px;
+}
+.nurse-focus-card.complete { border-left-color: #16a34a; }
+.nurse-focus-card.active { border-left-color: #0369a1; }
+.nurse-focus-card.due { border-left-color: #be123c; }
+.nurse-focus-card.warning { border-left-color: #f97316; }
+.nurse-focus-card strong {
+  display: block;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+}
+.nurse-focus-card span {
+  display: block;
+  color: #0f766e;
+  font-weight: 900;
+  margin-top: 2px;
+}
+.nurse-focus-card p {
+  margin: 5px 0 0;
+  color: #475569;
+  line-height: 1.35;
 }
 .flowsheet-actions {
   display: flex !important;
@@ -6355,21 +6527,21 @@ function latestByDate(items, field) {
   .access-strip div {
     flex-wrap: wrap;
   }
-  .chart-frame, .navigator-layout, .sdoh-content, .discharge-summary, .ai-care-panel, .avatar-grid, .orders-layout, .emar-layout, .africa-grid {
+  .chart-frame, .navigator-layout, .sdoh-content, .discharge-summary, .ai-care-panel, .avatar-grid, .orders-layout, .emar-layout, .command-two-column, .nurse-focus-grid {
     grid-template-columns: 1fr;
   }
-  .journey-lane {
+  .command-card-grid {
     grid-template-columns: repeat(9, minmax(180px, 220px));
   }
   .orders-command,
   .emar-command,
-  .africa-command,
+  .command-brief,
   .order-card {
     grid-template-columns: 1fr;
   }
   .orders-command,
   .emar-command,
-  .africa-command {
+  .command-brief {
     align-items: flex-start;
     flex-direction: column;
   }
