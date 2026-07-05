@@ -75,7 +75,7 @@
 
 <script>
 export default {
-  layout: 'login-layout',
+  layout: 'public',
   head: { title: 'CameroHealth — Select Layer' },
   mounted() {
     this.$store.commit('facility/RELOAD_FROM_STORAGE')

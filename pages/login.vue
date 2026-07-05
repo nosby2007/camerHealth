@@ -106,8 +106,14 @@ export default {
       roles: [
         { value: 'ADMIN',   label: 'Admin',   icon: 'mdi-shield-account' },
         { value: 'DOCTOR',  label: 'Doctor',  icon: 'mdi-doctor'          },
+        { value: 'NP',      label: 'NP',      icon: 'mdi-stethoscope'     },
         { value: 'NURSE',   label: 'Nurse',   icon: 'mdi-medical-bag'     },
+        { value: 'MIDWIFE', label: 'Midwife', icon: 'mdi-baby-face-outline' },
+        { value: 'MAJOR_SERVICE', label: 'Major', icon: 'mdi-account-star' },
+        { value: 'NURSING_SUPERVISOR', label: 'Supervisor', icon: 'mdi-account-supervisor' },
         { value: 'LAB',     label: 'Lab',     icon: 'mdi-flask'           },
+        { value: 'PHARMACY', label: 'Pharmacy', icon: 'mdi-pill'          },
+        { value: 'FRONT_DESK', label: 'Reception', icon: 'mdi-desk'       },
         { value: 'IMAGING', label: 'Imaging', icon: 'mdi-radiology-box'   }
       ]
     }
@@ -139,10 +145,18 @@ export default {
         ADMIN: '/admin',
         DOCTOR: '/clinical/dashboard',
         NP: '/clinical/dashboard',
-        NURSE: '/clinical/dashboard',
+        NURSE: '/clinical/patients',
         CNA: '/clinical/nursing',
+        MIDWIFE: '/clinical/patients',
+        MAJOR_SERVICE: '/clinical/patients',
+        NURSING_SUPERVISOR: '/clinical/patients',
         LAB: '/clinical/lab',
         IMAGING: '/clinical/imaging',
+        PHARMACY: '/clinical/medications',
+        FRONT_DESK: '/clinical/patients',
+        RECORDS: '/clinical/patients',
+        SOCIAL_WORKER: '/clinical/patients',
+        PHYSIOTHERAPIST: '/clinical/patients',
         BILLING: '/clinical/billing'
       }[role] || '/clinical/dashboard'
     },

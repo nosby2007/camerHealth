@@ -47,3 +47,4 @@ coverage/
 
 # ─── Analyse bundle ──────────────────────────────────────────────────────────
 .nuxt/analyze/
+.vercel

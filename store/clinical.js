@@ -213,6 +213,153 @@ export const actions = {
       createdAt: new Date().toISOString()
     })
   },
+  provisionPatientWorkflowDemo({ state, commit, rootState }) {
+    const institution = rootState.auth.institution || 'CameroHealth Demo Hospital'
+    const region = rootState.auth.region || 'Littoral'
+    const now = new Date().toISOString()
+    const patientId = 'PAT-WF360-DEMO'
+
+    if (state.patients.some(patient => patient.id === patientId && patient.institution === institution)) {
+      return patientId
+    }
+
+    commit('ADD_PATIENT', {
+      id: patientId,
+      firstName: 'Amina',
+      middleName: '',
+      lastName: 'Mballa',
+      name: 'Amina Mballa',
+      gender: 'Female',
+      dob: '1988-04-18',
+      phone: '+237 699 000 360',
+      region,
+      address: 'Bonaberi, Douala',
+      bloodType: 'O+',
+      externalId: 'MRN-360-0001',
+      patientStatus: 'Admitted',
+      patientClass: 'Inpatient',
+      clinicSite: institution,
+      institution,
+      allergies: 'Penicillin',
+      medicalHistory: 'Hypertension, chronic lower limb wound',
+      surgicalHistory: 'None reported',
+      familyHistory: 'Diabetes in mother',
+      currentMeds: 'Amlodipine 5 mg daily',
+      phiAccessBasis: 'Treatment',
+      createdAt: now
+    })
+
+    commit('ADD_INPATIENT', {
+      id: 'INP-WF360-DEMO',
+      patientId,
+      institution,
+      region,
+      ward: 'Medecine interne',
+      bedNumber: 'MI-12',
+      status: 'Admitted',
+      admittedAt: now
+    })
+
+    commit('ADD_VITAL_SIGNS', {
+      id: 'VIT-WF360-DEMO',
+      patientId,
+      institution,
+      region,
+      recordedBy: rootState.auth.fullName || 'Nurse Demo',
+      recordedAt: now,
+      bp: '138/84',
+      hr: 86,
+      rr: 18,
+      temp: 37.2,
+      spo2: 97,
+      glucose: 1.1,
+      weight: 72,
+      height: 168,
+      glasgow: 15,
+      pain: 3
+    })
+
+    commit('ADD_VISIT', {
+      id: 'VIS-WF360-DEMO',
+      patientId,
+      institution,
+      region,
+      encounterType: 'INFIRMIER',
+      chiefComplaint: 'Follow-up wound dressing and pain review',
+      triageLevel: 'Yellow',
+      assessment: {
+        generalCondition: 'Stable',
+        consciousness: 'Alert and oriented',
+        respiratoryStatus: 'Normal',
+        nursingProblems: ['Acute pain', 'Risk of infection', 'Pressure injury risk']
+      },
+      recordedBy: rootState.auth.fullName || 'Nurse Demo',
+      createdAt: now
+    })
+
+    commit('ADD_MEDICATION', {
+      id: 'MED-WF360-DEMO',
+      patientId,
+      institution,
+      drug: 'Amlodipine',
+      dose: '5 mg',
+      frequency: 'Daily',
+      status: 'Active',
+      prescribedAt: now
+    })
+
+    commit('ADD_LAB_ORDER', {
+      id: 'LAB-WF360-DEMO',
+      patientId,
+      institution,
+      test: 'CBC with differential',
+      priority: 'Routine',
+      status: 'Requested',
+      requestedAt: now
+    })
+
+    commit('ADD_IMAGING_ORDER', {
+      id: 'IMG-WF360-DEMO',
+      patientId,
+      institution,
+      exam: 'Lower limb ultrasound',
+      priority: 'Today',
+      status: 'Requested',
+      requestedAt: now
+    })
+
+    commit('ADD_TASK', {
+      id: 'TSK-WF360-DEMO',
+      patientId,
+      institution,
+      title: 'Wound dressing and photo documentation',
+      assignedToRole: 'NURSE',
+      priority: 'Today',
+      status: 'pending',
+      actionReason: 'Daily wound workflow',
+      createdAt: now,
+      createdBy: rootState.auth.fullName || 'Nurse Demo',
+      updatedAt: now,
+      updatedBy: rootState.auth.fullName || 'Nurse Demo',
+      history: []
+    })
+
+    commit('ADD_NURSING_NOTE', {
+      id: 'NNT-WF360-DEMO',
+      patientId,
+      institution,
+      recordedBy: rootState.auth.fullName || 'Nurse Demo',
+      recordedAt: now,
+      observation: 'Patient stable. Wound dressing clean, pain controlled after repositioning.',
+      actions: 'Vitals recorded, wound reviewed, patient education completed',
+      response: 'Patient tolerated care well.',
+      createdAt: now,
+      updatedAt: now,
+      auditTrail: []
+    })
+
+    return patientId
+  },
   async logVisit({ commit, rootState, dispatch }, visit) {
     commit('ADD_VISIT', {
       ...visit,
@@ -574,7 +721,25 @@ export const actions = {
 
 export const getters = {
   // ROLE HELPERS
-  isClinical: (state, getters, rootState) => ['DOCTOR', 'NURSE', 'LAB', 'IMAGING', 'CLINICAL_STAFF'].includes(rootState.auth.role),
+  isClinical: (state, getters, rootState) => [
+    'ADMIN',
+    'DOCTOR',
+    'NP',
+    'NURSE',
+    'CNA',
+    'MIDWIFE',
+    'MAJOR_SERVICE',
+    'NURSING_SUPERVISOR',
+    'LAB',
+    'IMAGING',
+    'PHARMACY',
+    'BILLING',
+    'RECORDS',
+    'FRONT_DESK',
+    'SOCIAL_WORKER',
+    'PHYSIOTHERAPIST',
+    'CLINICAL_STAFF'
+  ].includes(rootState.auth.role),
   isMinistry: (state, getters, rootState) => ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'].includes(rootState.auth.role),
 
   // FILTERED DATA

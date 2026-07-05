@@ -11,9 +11,20 @@ function buildPermissions(role) {
   const map = {
     ADMIN: ['manage_staff', 'manage_facility_settings', 'manage_patients', 'manage_clinical_records', 'manage_invoices', 'view_audit_logs'],
     DOCTOR: ['read_patients', 'write_medical_visits', 'write_medications', 'write_lab_orders', 'write_imaging_orders', 'write_admissions'],
+    NP: ['read_patients', 'write_medical_visits', 'write_medications', 'write_lab_orders', 'write_imaging_orders', 'write_admissions'],
     NURSE: ['read_patients', 'write_nursing_visits', 'write_appointments', 'write_care_records'],
+    CNA: ['read_patients_limited', 'write_care_tasks'],
+    MIDWIFE: ['read_patients', 'write_maternity_visits', 'write_nursing_visits', 'write_care_records'],
+    MAJOR_SERVICE: ['read_patients', 'write_nursing_visits', 'write_care_records', 'manage_unit_worklists', 'view_unit_audit'],
+    NURSING_SUPERVISOR: ['read_patients', 'write_nursing_visits', 'write_care_records', 'manage_nursing_worklists', 'view_nursing_audit'],
     LAB: ['read_patients_limited', 'read_lab_orders', 'update_lab_orders'],
-    IMAGING: ['read_patients_limited', 'read_imaging_orders', 'update_imaging_orders']
+    IMAGING: ['read_patients_limited', 'read_imaging_orders', 'update_imaging_orders'],
+    PHARMACY: ['read_patients_limited', 'read_medications', 'dispense_medications', 'update_medication_status'],
+    FRONT_DESK: ['read_patient_demographics', 'write_appointments', 'write_registration'],
+    RECORDS: ['read_patient_demographics', 'read_clinical_documents', 'manage_records'],
+    BILLING: ['read_patient_demographics', 'manage_invoices', 'manage_claims'],
+    SOCIAL_WORKER: ['read_patients_limited', 'write_social_needs'],
+    PHYSIOTHERAPIST: ['read_patients_limited', 'write_rehab_notes']
   }
   return map[role] || []
 }
