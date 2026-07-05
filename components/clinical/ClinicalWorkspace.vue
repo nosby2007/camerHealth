@@ -118,7 +118,7 @@
             v-for="tab in visibleChartTabs"
             :key="tab"
             :class="{ active: selectedChartTab === tab }"
-            @click="selectedChartTab = tab"
+            @click="selectChartTab(tab)"
           >
   <div class="clinical-workspace-shell">
     <header class="workspace-header">
@@ -168,22 +168,29 @@
         </nav>
 
         <div class="navigator-layout">
-          <aside class="navigator-rail">
-            <h2>Navigators</h2>
+          <nav v-if="selectedChartTab === 'Navigators'" class="navigator-tab-strip">
             <button
               v-for="nav in visibleNavigatorTabs"
               :key="nav.key"
               :class="{ active: selectedNavigator === nav.key }"
-              @click="selectedNavigator = nav.key"
+              @click="selectNavigator(nav.key)"
             >
               <v-icon x-small>{{ nav.icon }}</v-icon>
               {{ nav.label }}
             </button>
-
+          </nav>
+          <aside class="navigator-rail">
             <div class="rail-group" v-if="activeNavigator">
               <strong>{{ activeNavigator.label }}</strong>
-              <a v-for="section in activeNavigator.sections" :key="section" href="#" @click.prevent>
-                {{ section }}
+              <a
+                v-for="section in activeNavigatorSections"
+                :key="section.key"
+                :class="{ active: selectedNavigatorSection === section.key }"
+                href="#"
+                @click.prevent="selectedNavigatorSection = section.key"
+              >
+                <small v-if="section.group">{{ section.group }}</small>
+                {{ section.label }}
               </a>
             </div>
           </aside>
@@ -191,8 +198,8 @@
           <section class="workspace-panel">
             <div class="workspace-title">
               <div>
-                <p>{{ activeNavigator.label }}</p>
-                <h2>{{ activeNavigator.headline }}</h2>
+                <p>{{ workspaceEyebrow }}</p>
+                <h2>{{ workspaceHeadline }}</h2>
               </div>
           <div class="title-actions">
             <v-chip x-small label color="#e0f2fe" text-color="#075985" class="font-weight-black">
@@ -205,7 +212,7 @@
               color="#003366"
               dark
               class="font-weight-black"
-              :to="`/clinical/patients/${activePatientId}/encounter/nurse`"
+              @click="openChartDialog('nurse')"
             >
               <v-icon x-small left>mdi-stethoscope</v-icon>Nurse work
             </v-btn>
@@ -216,17 +223,635 @@
               color="#1d4ed8"
               dark
               class="font-weight-black"
-              :to="`/clinical/patients/${activePatientId}/encounter/medical`"
+              @click="openChartDialog('medical')"
             >
               <v-icon x-small left>mdi-medical-bag</v-icon>Medical
             </v-btn>
-            <v-btn x-small depressed color="#0f766e" dark class="font-weight-black">
+            <v-btn x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('nurse')">
               <v-icon x-small left>mdi-plus</v-icon>New Reading
                 </v-btn>
               </div>
             </div>
 
-            <section v-if="selectedNavigator === 'sdoh'" class="sdoh-section">
+            <section v-if="selectedChartTab === 'Summary'" class="flowsheet">
+              <FlowSection
+                title="Patient Snapshot"
+                :columns="['Current']"
+                :rows="summaryRows"
+              />
+              <FlowSection
+                title="Latest Clinical Signals"
+                :columns="['Last Filed']"
+                :rows="visibleVitalRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Chart Review'" class="flowsheet">
+              <FlowSection
+                title="Encounter Timeline"
+                :columns="['Type', 'Recorded', 'Clinician']"
+                :rows="chartReviewRows"
+              />
+              <FlowSection
+                title="Problem and Risk Review"
+                :columns="['Status']"
+                :rows="riskReviewRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Avatar'" class="avatar-workspace">
+              <div class="navigator-banner">
+                <div>
+                  <strong>Patient Avatar</strong>
+                  <span>Vue corporelle interactive pour localiser les soins, risques, lignes, douleur et plaies</span>
+                </div>
+                <div class="flowsheet-actions">
+                  <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
+                    <v-icon x-small left>mdi-stethoscope</v-icon>Assess
+                  </v-btn>
+                  <v-btn x-small depressed color="#475569" dark @click="openChartDialog('document')">
+                    <v-icon x-small left>mdi-camera-plus</v-icon>Photo / doc
+                  </v-btn>
+                </div>
+              </div>
+
+              <div class="avatar-grid">
+                <section class="patient-body-panel" aria-label="Patient body avatar">
+                  <div class="avatar-legend">
+                    <span><i class="risk"></i>Risk</span>
+                    <span><i class="active"></i>Active care</span>
+                    <span><i class="stable"></i>Stable</span>
+                  </div>
+                  <div class="body-canvas">
+                    <div class="body-figure">
+                      <button
+                        v-for="zone in avatarZones"
+                        :key="zone.key"
+                        :class="['body-zone', zone.key, zone.status, { selected: activeAvatarZone === zone.key }]"
+                        type="button"
+                        @click="activeAvatarZone = zone.key"
+                      >
+                        <v-icon x-small>{{ zone.icon }}</v-icon>
+                        <span>{{ zone.short }}</span>
+                      </button>
+                      <div class="body-head"></div>
+                      <div class="body-neck"></div>
+                      <div class="body-torso"></div>
+                      <div class="body-arm left"></div>
+                      <div class="body-arm right"></div>
+                      <div class="body-leg left"></div>
+                      <div class="body-leg right"></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="avatar-detail-panel">
+                  <header>
+                    <div>
+                      <v-icon small :color="activeAvatarZoneRecord.color">{{ activeAvatarZoneRecord.icon }}</v-icon>
+                      <strong>{{ activeAvatarZoneRecord.label }}</strong>
+                    </div>
+                    <span>{{ activeAvatarZoneRecord.statusLabel }}</span>
+                  </header>
+                  <p>{{ activeAvatarZoneRecord.detail }}</p>
+                  <div class="avatar-actions">
+                    <button @click="openChartDialog('nurse')">
+                      <v-icon x-small>mdi-note-plus</v-icon>
+                      Document assessment
+                    </button>
+                    <button v-if="activeAvatarZoneRecord.key === 'skin'" @click="openChartDialog('document')">
+                      <v-icon x-small>mdi-camera-plus</v-icon>
+                      File wound photo
+                    </button>
+                    <button v-if="activeAvatarZoneRecord.key === 'meds'" @click="openChartDialog('medication')">
+                      <v-icon x-small>mdi-pill-plus</v-icon>
+                      Medication action
+                    </button>
+                  </div>
+                  <FlowSection
+                    title="Selected Zone Detail"
+                    :columns="['Status', 'Evidence', 'Action']"
+                    :rows="activeAvatarRows"
+                  />
+                </section>
+              </div>
+
+              <FlowSection
+                title="Avatar Systems Review"
+                required
+                :columns="['Status', 'Evidence', 'Action']"
+                :rows="avatarSystemRows"
+              />
+              <FlowSection
+                title="Lines, Wounds and Care Targets"
+                :columns="['Location', 'Status', 'Next Step']"
+                :rows="avatarCareTargetRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Flowsheets'" class="flowsheet flowsheet-command-center">
+              <div class="navigator-banner">
+                <div>
+                  <strong>Flowsheets</strong>
+                  <span>Calendrier de soins, taches dues et documentation horaire des soignants</span>
+                </div>
+                <div class="flowsheet-actions">
+                  <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
+                    <v-icon x-small left>mdi-stethoscope</v-icon>Documenter soin
+                  </v-btn>
+                  <v-btn x-small depressed color="#7c3aed" dark @click="openChartDialog('medication')">
+                    <v-icon x-small left>mdi-pill</v-icon>Medicament
+                  </v-btn>
+                  <v-btn x-small depressed color="#475569" dark @click="openChartDialog('document')">
+                    <v-icon x-small left>mdi-file-document-plus</v-icon>Document
+                  </v-btn>
+                </div>
+              </div>
+
+              <section class="ai-care-panel">
+                <div class="ai-care-score">
+                  <span>AI Care Acuity</span>
+                  <strong>{{ effectiveAiCareAcuityScore }}</strong>
+                  <small>{{ effectiveAiCareRiskLabel }}</small>
+                </div>
+                <div class="ai-care-main">
+                  <header>
+                    <div>
+                      <v-icon small color="#0f766e">mdi-brain</v-icon>
+                      <strong>AI Care Copilot</strong>
+                    </div>
+                    <div class="ai-care-tools">
+                      <span>{{ remoteAiCarePlan ? 'ChatGPT active' : 'Local safety engine' }}</span>
+                      <v-btn x-small depressed color="#0f766e" dark :loading="aiCareLoading" @click="refreshAiCarePlan">
+                        <v-icon x-small left>mdi-chat-processing</v-icon>ChatGPT
+                      </v-btn>
+                    </div>
+                  </header>
+                  <p>{{ effectiveAiNextBestAction }}</p>
+                  <small v-if="aiCareError" class="ai-care-error">{{ aiCareError }}</small>
+                  <div class="ai-insight-grid">
+                    <article v-for="insight in effectiveAiCareInsights" :key="insight.title" :class="['ai-insight', insight.level]">
+                      <v-icon x-small>{{ insight.icon }}</v-icon>
+                      <div>
+                        <strong>{{ insight.title }}</strong>
+                        <span>{{ insight.detail }}</span>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </section>
+
+              <div class="care-calendar">
+                <article v-for="slot in flowsheetScheduleSlots" :key="slot.time" :class="['care-slot', slot.status]">
+                  <strong>{{ slot.time }}</strong>
+                  <span>{{ slot.label }}</span>
+                  <small>{{ slot.owner }}</small>
+                </article>
+              </div>
+
+              <FlowSection
+                title="Care Schedule - Today"
+                required
+                :columns="flowsheetTimeColumns"
+                :rows="flowsheetScheduleRows"
+              />
+              <FlowSection
+                title="Tasks and Soins Due"
+                required
+                :columns="['Time', 'Priority', 'Status', 'Action']"
+                :rows="flowsheetTaskRows"
+              />
+              <FlowSection
+                title="AI Priority Queue"
+                required
+                :columns="['Reason', 'Owner', 'Next Action']"
+                :rows="effectiveAiPriorityRows"
+              />
+              <FlowSection
+                title="Skin / Wound Assessment and Care"
+                required
+                :columns="flowsheetTimeColumns"
+                :rows="skinWoundFlowsheetRows"
+              />
+              <FlowSection
+                title="Vital Signs, Pain and Safety"
+                :columns="patientVitals.length ? ['Last Filed', 'Next Due', 'Action'] : flowsheetTimeColumns"
+                :rows="flowsheetVitalsRows"
+              />
+              <FlowSection
+                title="Intake, Output and Mobility"
+                :columns="flowsheetTimeColumns"
+                :rows="flowsheetIntakeMobilityRows"
+              />
+              <FlowSection
+                title="Medication Administration Schedule"
+                :columns="['0600', '1000', '1400', '1800']"
+                :rows="visibleMarRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Orders'" class="orders-workspace">
+              <div class="orders-command">
+                <div>
+                  <span>Orders</span>
+                  <strong>Medication, diagnostics and care orders</strong>
+                </div>
+                <div class="orders-quick-actions">
+                  <v-btn x-small depressed color="#0369a1" dark @click="openOrderComposer('lab')">
+                    <v-icon x-small left>mdi-flask</v-icon>Lab
+                  </v-btn>
+                  <v-btn x-small depressed color="#7c3aed" dark @click="openOrderComposer('imaging')">
+                    <v-icon x-small left>mdi-radiology-box</v-icon>Imaging
+                  </v-btn>
+                  <v-btn x-small depressed color="#0f766e" dark @click="openOrderComposer('medication')">
+                    <v-icon x-small left>mdi-pill-plus</v-icon>Medication
+                  </v-btn>
+                </div>
+              </div>
+
+              <div class="orders-tabs" role="tablist" aria-label="Order views">
+                <button
+                  v-for="tab in orderWorkspaceTabs"
+                  :key="tab.key"
+                  type="button"
+                  :class="{ active: selectedOrderView === tab.key }"
+                  @click="selectedOrderView = tab.key"
+                >
+                  <span>{{ tab.label }}</span>
+                  <strong>{{ tab.count }}</strong>
+                </button>
+              </div>
+
+              <div class="orders-controls">
+                <label class="orders-toggle">
+                  <input v-model="showHomeMedications" type="checkbox">
+                  <span>Show Home Medications</span>
+                </label>
+                <label>
+                  <span>Sort by</span>
+                  <select v-model="orderSortBy">
+                    <option v-for="option in orderSortOptions" :key="option" :value="option">{{ option }}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Go to</span>
+                  <select v-model="orderGoTo">
+                    <option v-for="option in orderGoToOptions" :key="option" :value="option">{{ option }}</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="orders-layout">
+                <div class="orders-main">
+                  <section v-for="group in visibleOrderGroups" :key="group.key" class="order-group">
+                    <header>
+                      <div>
+                        <strong>{{ group.title }}</strong>
+                        <span>{{ group.rows.length }} item(s)</span>
+                      </div>
+                      <button type="button" @click="orderGoTo = group.title">
+                        <v-icon x-small>mdi-arrow-down-right</v-icon>
+                        Focus
+                      </button>
+                    </header>
+
+                    <article v-for="order in group.rows" :key="order.id" class="order-card" :class="order.statusClass">
+                      <div class="order-card-icon">
+                        <v-icon small :color="order.color">{{ order.icon }}</v-icon>
+                      </div>
+                      <div class="order-card-body">
+                        <div class="order-card-title">
+                          <strong>{{ order.label }}</strong>
+                          <span>{{ order.typeLabel }}</span>
+                        </div>
+                        <p>{{ order.detail }}</p>
+                        <div class="order-meta">
+                          <span>{{ order.status }}</span>
+                          <span>{{ order.schedule }}</span>
+                          <span>{{ order.orderedBy }}</span>
+                        </div>
+                      </div>
+                      <div class="order-action-buttons">
+                        <button type="button" @click="handleOrderAction('modify', order)">
+                          <v-icon x-small>mdi-pencil</v-icon>
+                          Modify
+                        </button>
+                        <button type="button" @click="handleOrderAction('hold', order)">
+                          <v-icon x-small>mdi-pause</v-icon>
+                          Hold
+                        </button>
+                        <button type="button" @click="handleOrderAction('discontinue', order)">
+                          <v-icon x-small>mdi-close-circle-outline</v-icon>
+                          Discontinue
+                        </button>
+                      </div>
+                    </article>
+                  </section>
+
+                  <div v-if="!visibleOrderGroups.length" class="empty-orders compact">
+                    <v-icon size="42" color="#94a3b8">mdi-clipboard-text-outline</v-icon>
+                    <strong>No orders in this view</strong>
+                    <span>Use New, Lab, Imaging or Medication to place an order from Patient 360.</span>
+                  </div>
+                </div>
+
+                <aside class="order-sidebar-panel">
+                  <div class="order-sidebar-tabs">
+                    <button type="button" :class="{ active: selectedOrderPanel === 'manage' }" @click="selectedOrderPanel = 'manage'">Manage Orders</button>
+                    <button type="button" :class="{ active: selectedOrderPanel === 'sets' }" @click="selectedOrderPanel = 'sets'">Order Sets</button>
+                  </div>
+
+                  <div class="order-provider">
+                    <v-icon small color="#0f766e">mdi-account-tie</v-icon>
+                    <div>
+                      <span>Providers</span>
+                      <strong>{{ activePatient.provider || activePatient.attending || 'Provider not assigned' }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="order-search-row">
+                    <input v-model="orderSearch" type="search" placeholder="Place orders, order sets, or pathways">
+                    <button type="button" @click="openOrderComposer(orderMode)">
+                      <v-icon x-small>mdi-plus</v-icon>
+                      New
+                    </button>
+                  </div>
+
+                  <label class="order-mode-row">
+                    <span>Select order mode</span>
+                    <select v-model="orderMode">
+                      <option v-for="option in orderModeOptions" :key="option" :value="option">{{ option }}</option>
+                    </select>
+                  </label>
+
+                  <div v-if="selectedOrderPanel === 'manage'" class="order-set-list">
+                    <button
+                      v-for="suggestion in orderEntrySuggestions"
+                      :key="suggestion.label"
+                      type="button"
+                      @click="openOrderComposer(suggestion.kind)"
+                    >
+                      <v-icon small :color="suggestion.color">{{ suggestion.icon }}</v-icon>
+                      <div>
+                        <strong>{{ suggestion.label }}</strong>
+                        <span>{{ suggestion.detail }}</span>
+                      </div>
+                    </button>
+                  </div>
+                  <div v-else class="order-set-list">
+                    <button v-for="set in orderSetSuggestions" :key="set.label" type="button" @click="openOrderSet(set)">
+                      <v-icon small color="#0f766e">mdi-folder-plus-outline</v-icon>
+                      <div>
+                        <strong>{{ set.label }}</strong>
+                        <span>{{ set.detail }}</span>
+                      </div>
+                    </button>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <section v-else-if="selectedChartTab === 'MAR'" class="emar-workspace">
+              <div class="emar-command">
+                <div>
+                  <span>eMAR</span>
+                  <strong>Medication Administration Record</strong>
+                </div>
+                <div class="emar-command-actions">
+                  <v-btn x-small depressed color="#0f766e" dark @click="openMarQuickScan">
+                    <v-icon x-small left>mdi-barcode-scan</v-icon>Scan med
+                  </v-btn>
+                  <v-btn x-small depressed color="#7c3aed" dark @click="openChartDialog('medication')">
+                    <v-icon x-small left>mdi-pill-plus</v-icon>Medication order
+                  </v-btn>
+                </div>
+              </div>
+
+              <div class="emar-tabs" role="tablist" aria-label="eMAR views">
+                <button
+                  v-for="tab in marViewTabs"
+                  :key="tab.key"
+                  type="button"
+                  :class="{ active: selectedMarView === tab.key }"
+                  @click="selectedMarView = tab.key"
+                >
+                  <span>{{ tab.label }}</span>
+                  <strong>{{ tab.count }}</strong>
+                </button>
+              </div>
+
+              <div class="emar-controls">
+                <label>
+                  <span>Go to</span>
+                  <select v-model="marTimeFocus">
+                    <option v-for="time in marTimeColumns" :key="time" :value="time">{{ time }}</option>
+                  </select>
+                </label>
+                <label class="emar-toggle">
+                  <input v-model="marShowEducation" type="checkbox">
+                  <span>Show Med Education</span>
+                </label>
+                <label class="emar-toggle">
+                  <input v-model="marHideAdmins" type="checkbox">
+                  <span>Hide All Admins</span>
+                </label>
+                <input v-model="marSearch" class="emar-search" type="search" placeholder="Search medication, route, indication">
+              </div>
+
+              <div class="emar-layout">
+                <section class="emar-board">
+                  <div class="emar-time-header">
+                    <span>Medication</span>
+                    <div>
+                      <strong v-for="time in marTimeColumns" :key="time" :class="{ focus: marTimeFocus === time }">{{ time }}</strong>
+                    </div>
+                    <span>Actions</span>
+                  </div>
+
+                  <article v-for="med in visibleEmarMedicationRows" :key="med.id" class="emar-row" :class="med.statusClass">
+                    <div class="emar-medication">
+                      <div>
+                        <v-icon small :color="med.color">{{ med.icon }}</v-icon>
+                        <strong>{{ med.label }}</strong>
+                      </div>
+                      <p>{{ med.detail }}</p>
+                      <div class="emar-med-meta">
+                        <span>{{ med.route }}</span>
+                        <span>{{ med.frequency }}</span>
+                        <span>{{ med.dispense }}</span>
+                      </div>
+                      <small v-if="marShowEducation">{{ med.education }}</small>
+                    </div>
+
+                    <div class="emar-time-grid">
+                      <button
+                        v-for="cell in med.timeline"
+                        :key="`${med.id}-${cell.time}`"
+                        type="button"
+                        :class="['emar-time-cell', cell.status, { focus: marTimeFocus === cell.time }]"
+                        @click="openMarAction(cell.defaultAction, med, cell)"
+                      >
+                        <span>{{ cell.text }}</span>
+                      </button>
+                    </div>
+
+                    <div class="emar-actions">
+                      <button type="button" @click="openMarAction('given', med)">
+                        <v-icon x-small>mdi-check</v-icon>Administer
+                      </button>
+                      <button type="button" @click="openMarAction('held', med)">
+                        <v-icon x-small>mdi-pause</v-icon>Hold
+                      </button>
+                      <button type="button" @click="openMarAction('refused', med)">
+                        <v-icon x-small>mdi-account-cancel-outline</v-icon>Refuse
+                      </button>
+                      <button type="button" @click="openOrderComposer('medication', med.orderItem)">
+                        <v-icon x-small>mdi-information-outline</v-icon>Details
+                      </button>
+                    </div>
+                  </article>
+
+                  <div v-if="!visibleEmarMedicationRows.length" class="empty-orders compact">
+                    <v-icon size="42" color="#94a3b8">mdi-pill-off</v-icon>
+                    <strong>No medication in this eMAR view</strong>
+                    <span>Place a medication order or adjust the view filter.</span>
+                  </div>
+                </section>
+
+                <aside class="emar-side">
+                  <section class="emar-advisories">
+                    <header>
+                      <v-icon small color="#be123c">mdi-alert-octagon</v-icon>
+                      <strong>Patient Chart Advisories</strong>
+                    </header>
+                    <article v-for="advisory in marAdvisories" :key="advisory.title" :class="advisory.level">
+                      <strong>{{ advisory.title }}</strong>
+                      <span>{{ advisory.detail }}</span>
+                    </article>
+                  </section>
+
+                  <section class="emar-advisories">
+                    <header>
+                      <v-icon small color="#0f766e">mdi-school-outline</v-icon>
+                      <strong>Medication Education</strong>
+                    </header>
+                    <article v-for="row in marEducationCards" :key="row.label" class="education">
+                      <strong>{{ row.label }}</strong>
+                      <span>{{ row.detail }}</span>
+                    </article>
+                  </section>
+                </aside>
+              </div>
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Medications'" class="flowsheet">
+              <div class="action-strip">
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('medication')">
+                  <v-icon x-small left>mdi-pill-plus</v-icon>Medication order
+                </v-btn>
+              </div>
+              <FlowSection
+                title="Medication Profile"
+                :columns="['Status', 'Route', 'Instructions']"
+                :rows="medicationProfileRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Lab Results'" class="flowsheet">
+              <FlowSection
+                title="Laboratory Orders and Results"
+                :columns="['Status', 'Priority', 'Result']"
+                :rows="labResultRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Notes'" class="flowsheet">
+              <div class="action-strip">
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
+                  <v-icon x-small left>mdi-note-plus</v-icon>Nursing note
+                </v-btn>
+                <v-btn v-if="canLaunchMedical" x-small depressed color="#1d4ed8" dark @click="openChartDialog('medical')">
+                  <v-icon x-small left>mdi-medical-bag</v-icon>Medical note
+                </v-btn>
+              </div>
+              <FlowSection
+                title="Clinical Notes"
+                :columns="['Type', 'Recorded', 'Summary']"
+                :rows="noteRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Care Plan'" class="flowsheet">
+              <FlowSection
+                title="Care Plan"
+                :columns="['Owner', 'Status', 'Next Step']"
+                :rows="carePlanRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Education'" class="flowsheet">
+              <FlowSection
+                title="Patient Education"
+                :columns="['Status', 'Owner', 'Notes']"
+                :rows="educationRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Work List'" class="flowsheet">
+              <FlowSection
+                title="Work List"
+                required
+                :columns="['Time', 'Priority', 'Status']"
+                :rows="visibleWorklistRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Immunizations'" class="flowsheet">
+              <FlowSection
+                title="Immunizations"
+                :columns="['Status', 'Date', 'Source']"
+                :rows="immunizationRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Care Teams'" class="flowsheet">
+              <FlowSection
+                title="Current Encounter Team"
+                :columns="['Role', 'Shift', 'Contact']"
+                :rows="visibleCareTeamRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Handoff'" class="flowsheet">
+              <FlowSection
+                title="Nursing Handoff"
+                :columns="['Status', 'Owner', 'Concern']"
+                :rows="handoffRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Documents'" class="flowsheet">
+              <div class="action-strip">
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('document')">
+                  <v-icon x-small left>mdi-file-plus</v-icon>File document
+                </v-btn>
+              </div>
+              <FlowSection
+                title="Documents"
+                :columns="['Category', 'Status', 'Filed']"
+                :rows="documentRows"
+              />
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Registration'" class="flowsheet">
+              <FlowSection
+                title="Registration and Demographics"
+                :columns="['Value']"
+                :rows="registrationRows"
+              />
+            </section>
+
+            <section v-else-if="selectedNavigator === 'sdoh'" class="sdoh-section">
               <div class="sdoh-card">
                 <div class="section-title purple">
                   <v-icon small color="#6d28d9">mdi-heart</v-icon>
@@ -287,7 +912,145 @@
               </div>
             </section>
 
-            <section v-else-if="selectedNavigator === 'admission'" class="flowsheet">
+            <section v-else-if="selectedNavigator === 'shift'" class="navigator-workspace">
+              <div class="navigator-banner">
+                <div>
+                  <strong>Shift Navigator</strong>
+                  <span>{{ activePatient.name }} - active nursing shift</span>
+                </div>
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
+                  <v-icon x-small left>mdi-plus</v-icon>New Reading
+                </v-btn>
+              </div>
+              <FlowSection
+                title="Overview"
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="shiftOverviewRows"
+              />
+              <FlowSection
+                title="Signed/Held Orders"
+                :columns="['Type', 'Status', 'Detail']"
+                :rows="signedHeldOrderRows"
+              />
+              <FlowSection
+                title="Release Orders"
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="releaseOrderRows"
+              />
+              <FlowSection
+                title="Care Everywhere"
+                :columns="['Authorization', 'Last Update', 'Action']"
+                :rows="careEverywhereRows"
+              />
+              <FlowSection
+                title="Quick Links"
+                :columns="['Destination', 'Status', 'Action']"
+                :rows="quickLinkRows"
+              />
+              <FlowSection
+                title="Delirium - GCS"
+                required
+                :columns="flowColumns"
+                :rows="deliriumRows"
+              />
+              <FlowSection
+                title="Specimen Collection and Provider Notification"
+                :columns="['Status', 'Owner', 'Due']"
+                :rows="specimenNotificationRows"
+              />
+              <FlowSection
+                title="Assessments"
+                :columns="['Last Filed']"
+                :rows="visibleAssessmentRows"
+              />
+              <FlowSection
+                title="Clinical Alerts"
+                :columns="['Status', 'Source', 'Action']"
+                :rows="clinicalAlertRows"
+              />
+              <FlowSection
+                title="Vital Signs and Pain"
+                required
+                :columns="patientVitals.length ? ['Last Filed'] : flowColumns"
+                :rows="visibleVitalRows"
+              />
+              <FlowSection
+                title="Head to Toe"
+                :columns="['Last Filed', 'Concern', 'Action']"
+                :rows="headToToeRows"
+              />
+              <FlowSection
+                title="IV Assessment"
+                :columns="['Site', 'Status', 'Action']"
+                :rows="ivAssessmentRows"
+              />
+              <FlowSection
+                title="Intake and Output"
+                :columns="flowColumns"
+                :rows="intakeRows"
+              />
+              <FlowSection
+                title="Sepsis Screen"
+                :columns="flowColumns"
+                :rows="sepsisRows"
+              />
+              <FlowSection
+                title="Rounds/Safety/Fall Risk"
+                :columns="['Status', 'Risk', 'Action']"
+                :rows="safetyFallRows"
+              />
+              <FlowSection
+                title="Comfort and Hygiene"
+                :columns="['Status', 'Need', 'Action']"
+                :rows="comfortHygieneRows"
+              />
+              <FlowSection
+                title="Functional / Quality"
+                :columns="['Status', 'Baseline', 'Goal']"
+                :rows="mobilityQualityRows"
+              />
+              <FlowSection
+                title="Plan of Care"
+                :columns="['Owner', 'Status', 'Next Step']"
+                :rows="carePlanRows"
+              />
+            </section>
+
+            <section v-else-if="selectedNavigator === 'admission'" class="navigator-workspace">
+              <div class="navigator-banner">
+                <div>
+                  <strong>Admission Navigator</strong>
+                  <span>Admission, orders release and outside records</span>
+                </div>
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('document')">
+                  <v-icon x-small left>mdi-file-plus</v-icon>File admission document
+                </v-btn>
+              </div>
+              <FlowSection
+                title="Signed and Held Orders"
+                :columns="['Type', 'Status', 'Detail']"
+                :rows="signedHeldOrderRows"
+              />
+              <FlowSection
+                title="Release Orders"
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="releaseOrderRows"
+              />
+              <FlowSection
+                title="Care Everywhere Outside Records"
+                :columns="['Authorization', 'Last Update', 'Action']"
+                :rows="careEverywhereRows"
+              />
+              <FlowSection
+                title="Quick Links"
+                :columns="['Destination', 'Status', 'Action']"
+                :rows="admissionQuickLinkRows"
+              />
+              <FlowSection
+                title="Documentation Review"
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="admissionDocumentationRows"
+              />
               <FlowSection
                 title="Intake and Output"
                 :columns="flowColumns"
@@ -306,7 +1069,16 @@
               />
             </section>
 
-            <section v-else-if="selectedNavigator === 'discharge'" class="discharge-board">
+            <section v-else-if="selectedNavigator === 'discharge'" class="navigator-workspace">
+              <div class="navigator-banner">
+                <div>
+                  <strong>Discharge Navigator</strong>
+                  <span>Expected discharge, readiness, milestones, instructions and after visit summary</span>
+                </div>
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('document')">
+                  <v-icon x-small left>mdi-file-document-check</v-icon>File discharge document
+                </v-btn>
+              </div>
               <div class="discharge-summary">
                 <div>
                   <h3>Expected Discharge</h3>
@@ -323,6 +1095,21 @@
                     <button class="active">Not Yet Ready</button>
                   </div>
                 </div>
+                <div>
+                  <h3>Expected Time</h3>
+                  <div class="segmented">
+                    <button>Morning</button>
+                    <button>Midday</button>
+                    <button class="active">Afternoon</button>
+                    <button>Evening</button>
+                  </div>
+                </div>
+                <div>
+                  <h3>Discharge Planning Comment</h3>
+                  <p class="planning-comment">
+                    {{ latestNursingNote ? latestNursingNote.observation || latestNursingNote.response : 'No discharge planning comment filed' }}
+                  </p>
+                </div>
               </div>
 
               <FlowSection
@@ -330,12 +1117,43 @@
                 :columns="['Status', 'Owner', 'Due']"
                 :rows="dischargeRows"
               />
+              <FlowSection
+                title="Quality Discharge"
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="dischargeQualityRows"
+              />
+              <FlowSection
+                title="Discharge Documentation"
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="dischargeDocumentationRows"
+              />
+              <FlowSection
+                title="Discharge Instructions"
+                required
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="dischargeInstructionRows"
+              />
+              <FlowSection
+                title="Follow-up Providers and After Visit Summary"
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="afterVisitSummaryRows"
+              />
+              <FlowSection
+                title="Pain Impact"
+                :columns="['Last Filed', 'Owner', 'Action']"
+                :rows="painImpactRows"
+              />
             </section>
 
-            <section v-else-if="selectedNavigator === 'transfer'" class="flowsheet">
-              <div class="info-banner">
-                <v-icon small color="#0f766e">mdi-clipboard-check</v-icon>
-                Pre-Procedure Checklist: complete the following questions before transfer or print documents.
+            <section v-else-if="selectedNavigator === 'transfer'" class="navigator-workspace">
+              <div class="navigator-banner">
+                <div>
+                  <strong>Transfer Navigator</strong>
+                  <span>Procedure, X-Ray transfer, ticket to ride, return handoff and monitoring</span>
+                </div>
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('document')">
+                  <v-icon x-small left>mdi-printer-check</v-icon>Print / file transfer packet
+                </v-btn>
               </div>
               <FlowSection
                 title="Pre-Procedure Checklist"
@@ -344,17 +1162,62 @@
                 :rows="transferRows"
               />
               <FlowSection
-                title="Ticket to Ride"
+                title="Ticket to Ride - Procedure"
                 :columns="['Status']"
                 :rows="ticketRows"
+              />
+              <FlowSection
+                title="Print Pre-Procedure Checklist, Med Rec Form, and Ticket to Ride"
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="transferPrintRows"
+              />
+              <FlowSection
+                title="Transfer to X-Ray"
+                :columns="['Status', 'Destination', 'Action']"
+                :rows="transferXrayRows"
+              />
+              <FlowSection
+                title="Ticket to Ride - X-Ray"
+                :columns="['Status', 'Destination', 'Action']"
+                :rows="ticketXrayRows"
+              />
+              <FlowSection
+                title="Upon Patient Return"
+                :columns="['Status', 'Owner', 'Action']"
+                :rows="patientReturnRows"
+              />
+              <FlowSection
+                title="Handoff"
+                :columns="['Status', 'Owner', 'Concern']"
+                :rows="handoffRows"
+              />
+              <FlowSection
+                title="Vital Signs Monitoring"
+                required
+                :columns="patientVitals.length ? ['Last Filed'] : flowColumns"
+                :rows="visibleVitalRows"
               />
             </section>
 
             <section v-else-if="selectedNavigator === 'mar'" class="flowsheet">
+              <div class="navigator-banner">
+                <div>
+                  <strong>Medication Administration Record</strong>
+                  <span>Scheduled, PRN, continuous and running infusion medication workflow</span>
+                </div>
+                <v-btn x-small depressed color="#0f766e" dark @click="selectChartTab('MAR')">
+                  <v-icon x-small left>mdi-open-in-new</v-icon>Open full eMAR
+                </v-btn>
+              </div>
               <FlowSection
                 title="Medication Administration Record"
                 :columns="['0600', '1000', '1400', '1800']"
                 :rows="visibleMarRows"
+              />
+              <FlowSection
+                title="Medication Education"
+                :columns="['Status', 'Route', 'Instructions']"
+                :rows="medicationProfileRows"
               />
             </section>
 
@@ -425,7 +1288,7 @@
         <section v-if="canViewOrders" class="orders-panel">
           <div class="orders-header">
             <strong>Inpatient Orders</strong>
-            <v-btn x-small depressed color="#0f766e" dark class="font-weight-black">New</v-btn>
+            <v-btn x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('medication')">New</v-btn>
           </div>
           <div v-if="visibleActiveOrders.length" class="order-list">
             <article v-for="order in visibleActiveOrders" :key="order.title" class="order-row">
@@ -440,7 +1303,7 @@
             <v-icon size="52" color="#94a3b8">mdi-clipboard-text-outline</v-icon>
             <span>No Orders</span>
           </div>
-          <button class="sign-button">
+          <button class="sign-button" @click="selectChartTab('Orders')">
             <v-icon small>mdi-draw-pen</v-icon>
             Sign
           </button>
@@ -517,6 +1380,237 @@
         </div>
       </aside>
     </div>
+
+    <v-dialog v-model="dialogs.nurse" max-width="980" persistent scrollable>
+      <v-card class="chart-dialog">
+        <v-card-title class="dialog-title">
+          <div>
+            <span>Nursing encounter</span>
+            <strong>{{ activePatient.name }}</strong>
+          </div>
+          <v-btn icon small @click="closeChartDialog('nurse')"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="nurseFormRef" v-model="forms.nurseValid">
+            <div class="dialog-grid three">
+              <v-text-field v-model="forms.nurse.vitals.bp" label="BP" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.hr" label="HR" type="number" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.rr" label="RR" type="number" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.temp" label="Temp C" type="number" step="0.1" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.spo2" label="SpO2 %" type="number" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.pain" label="Pain /10" type="number" min="0" max="10" dense outlined hide-details />
+            </div>
+            <div class="dialog-grid three mt-3">
+              <v-select v-model.number="forms.nurse.vitals.gcsE" :items="gcsEyeOptions" item-text="text" item-value="value" label="GCS Eye" dense outlined hide-details />
+              <v-select v-model.number="forms.nurse.vitals.gcsV" :items="gcsVerbalOptions" item-text="text" item-value="value" label="GCS Verbal" dense outlined hide-details />
+              <v-select v-model.number="forms.nurse.vitals.gcsM" :items="gcsMotorOptions" item-text="text" item-value="value" label="GCS Motor" dense outlined hide-details />
+            </div>
+            <div class="dialog-grid two mt-3">
+              <v-text-field v-model="forms.nurse.encounter.chiefComplaint" label="Chief complaint" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.nurse.encounter.triageLevel" :items="triageLevels" label="Triage" dense outlined />
+            </div>
+            <v-textarea v-model="forms.nurse.encounter.historyOfIllness" label="History of illness" rows="2" dense outlined />
+            <div class="dialog-grid two">
+              <v-select v-model="forms.nurse.assessment.generalCondition" :items="generalConditionOptions" label="General condition" dense outlined />
+              <v-select v-model="forms.nurse.assessment.consciousness" :items="consciousnessOptions" label="Consciousness" dense outlined />
+              <v-select v-model="forms.nurse.assessment.respiratoryStatus" :items="respiratoryOptions" label="Respiratory status" dense outlined />
+              <v-select v-model="forms.nurse.assessment.nursingProblems" :items="nursingProblemsList" label="Nursing problems" multiple chips small-chips dense outlined />
+            </div>
+            <v-select v-model="forms.nurse.note.actions" :items="nursingActionsList" label="Nursing actions" multiple chips small-chips dense outlined />
+            <v-textarea v-model="forms.nurse.note.observation" label="Observation" rows="2" dense outlined />
+            <v-textarea v-model="forms.nurse.note.response" label="Patient response / follow-up" rows="2" dense outlined />
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <span>GCS {{ nurseGcsScore }}/15</span>
+          <v-spacer />
+          <v-btn text small @click="closeChartDialog('nurse')">Cancel</v-btn>
+          <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveNurseEncounter">
+            <v-icon x-small left>mdi-content-save</v-icon>File to 360
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="dialogs.medical" max-width="860" persistent scrollable>
+      <v-card class="chart-dialog">
+        <v-card-title class="dialog-title">
+          <div>
+            <span>Medical note</span>
+            <strong>{{ activePatient.name }}</strong>
+          </div>
+          <v-btn icon small @click="closeChartDialog('medical')"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="medicalFormRef" v-model="forms.medicalValid">
+            <v-text-field v-model="forms.medical.chiefComplaint" label="Chief complaint" dense outlined :rules="[requiredRule]" />
+            <v-textarea v-model="forms.medical.clinicalFindings" label="Clinical findings" rows="3" dense outlined />
+            <div class="dialog-grid two">
+              <v-text-field v-model="forms.medical.diagnosis" label="Diagnosis" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.medical.severity" :items="severityOptions" label="Severity" dense outlined />
+            </div>
+            <v-textarea v-model="forms.medical.plan" label="Plan / orders / treatment" rows="3" dense outlined />
+            <v-textarea v-model="forms.medical.instructions" label="Patient instructions" rows="2" dense outlined />
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <v-spacer />
+          <v-btn text small @click="closeChartDialog('medical')">Cancel</v-btn>
+          <v-btn depressed color="#1d4ed8" dark small :loading="savingDialog" @click="saveMedicalNote">
+            <v-icon x-small left>mdi-content-save</v-icon>File to 360
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="dialogs.lab" max-width="680" persistent scrollable>
+      <v-card class="chart-dialog">
+        <v-card-title class="dialog-title">
+          <div>
+            <span>Laboratory order</span>
+            <strong>{{ activePatient.name }}</strong>
+          </div>
+          <v-btn icon small @click="closeChartDialog('lab')"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="labFormRef" v-model="forms.orderValid">
+            <div class="dialog-grid two">
+              <v-text-field v-model="forms.order.lab.testName" label="Lab test" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.order.lab.priority" :items="priorityOptions" label="Priority" dense outlined />
+            </div>
+            <v-textarea v-model="forms.order.instructions" label="Clinical reason / specimen instructions" rows="2" dense outlined />
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <v-spacer />
+          <v-btn text small @click="closeChartDialog('lab')">Cancel</v-btn>
+          <v-btn depressed color="#0369a1" dark small :loading="savingDialog" @click="saveLabOrder">
+            <v-icon x-small left>mdi-flask</v-icon>Place lab order
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="dialogs.imaging" max-width="680" persistent scrollable>
+      <v-card class="chart-dialog">
+        <v-card-title class="dialog-title">
+          <div>
+            <span>Imaging order</span>
+            <strong>{{ activePatient.name }}</strong>
+          </div>
+          <v-btn icon small @click="closeChartDialog('imaging')"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="imagingFormRef" v-model="forms.orderValid">
+            <div class="dialog-grid two">
+              <v-text-field v-model="forms.order.imaging.modality" label="Modality / exam" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.order.imaging.priority" :items="priorityOptions" label="Priority" dense outlined />
+            </div>
+            <v-textarea v-model="forms.order.instructions" label="Clinical indication / protocol notes" rows="2" dense outlined />
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <v-spacer />
+          <v-btn text small @click="closeChartDialog('imaging')">Cancel</v-btn>
+          <v-btn depressed color="#7c3aed" dark small :loading="savingDialog" @click="saveImagingOrder">
+            <v-icon x-small left>mdi-radiology-box</v-icon>Place imaging order
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="dialogs.medication" max-width="760" persistent scrollable>
+      <v-card class="chart-dialog">
+        <v-card-title class="dialog-title">
+          <div>
+            <span>Medication order</span>
+            <strong>{{ activePatient.name }}</strong>
+          </div>
+          <v-btn icon small @click="closeChartDialog('medication')"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="medicationFormRef" v-model="forms.orderValid">
+            <div class="dialog-grid two">
+              <v-text-field v-model="forms.order.medication.medication" label="Medication" dense outlined :rules="[requiredRule]" />
+              <v-text-field v-model="forms.order.medication.dosage" label="Dose" dense outlined />
+              <v-select v-model="forms.order.medication.route" :items="medicationRoutes" label="Route" dense outlined />
+              <v-text-field v-model="forms.order.medication.frequency" label="Frequency" dense outlined />
+            </div>
+            <v-textarea v-model="forms.order.instructions" label="Administration instructions" rows="2" dense outlined />
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <v-spacer />
+          <v-btn text small @click="closeChartDialog('medication')">Cancel</v-btn>
+          <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveMedicationOrder">
+            <v-icon x-small left>mdi-pill-plus</v-icon>Place medication order
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="dialogs.marAction" max-width="720" persistent scrollable>
+      <v-card class="chart-dialog">
+        <v-card-title class="dialog-title">
+          <div>
+            <span>eMAR documentation</span>
+            <strong>{{ selectedMarMedication ? selectedMarMedication.label : activePatient.name }}</strong>
+          </div>
+          <v-btn icon small @click="closeChartDialog('marAction')"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="marActionFormRef" v-model="forms.marValid">
+            <div class="dialog-grid three">
+              <v-select v-model="forms.mar.action" :items="marActionOptions" label="Action" dense outlined />
+              <v-select v-model="forms.mar.time" :items="marTimeColumns" label="Time" dense outlined />
+              <v-text-field v-model="forms.mar.barcode" label="Barcode / scan" dense outlined />
+            </div>
+            <div class="dialog-grid two mt-3">
+              <v-text-field v-model="forms.mar.dose" label="Dose administered" dense outlined />
+              <v-text-field v-model="forms.mar.site" label="Site / line" dense outlined />
+            </div>
+            <v-textarea v-model="forms.mar.comment" label="Clinical comment / reason" rows="2" dense outlined />
+            <v-textarea v-model="forms.mar.patientResponse" label="Patient response / education" rows="2" dense outlined />
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <span>{{ selectedMarMedication ? selectedMarMedication.detail : 'Medication administration' }}</span>
+          <v-spacer />
+          <v-btn text small @click="closeChartDialog('marAction')">Cancel</v-btn>
+          <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveMarAction">
+            <v-icon x-small left>mdi-content-save-check</v-icon>File eMAR action
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="dialogs.document" max-width="720" persistent scrollable>
+      <v-card class="chart-dialog">
+        <v-card-title class="dialog-title">
+          <div>
+            <span>Clinical document</span>
+            <strong>{{ activePatient.name }}</strong>
+          </div>
+          <v-btn icon small @click="closeChartDialog('document')"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="documentFormRef" v-model="forms.documentValid">
+            <div class="dialog-grid two">
+              <v-text-field v-model="forms.document.title" label="Document title" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.document.category" :items="documentCategories" label="Category" dense outlined />
+            </div>
+            <v-textarea v-model="forms.document.content" label="Document content" rows="6" dense outlined />
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <v-spacer />
+          <v-btn text small @click="closeChartDialog('document')">Cancel</v-btn>
+          <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveDocumentDialog">
+            <v-icon x-small left>mdi-file-check</v-icon>File document
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -566,6 +1660,7 @@ const ALL_CLINICAL_TABS = [
   'Flowsheets',
   'Orders',
   'MAR',
+  'Medications',
   'Lab Results',
   'Wound Management',
   'Notes',
@@ -648,15 +1743,149 @@ export default {
     return {
       activeChartId: this.patientId || 'demo-1',
       previewRole: this.$store.state.auth.role || 'NURSE',
-      selectedChartTab: 'Navigators',
-      selectedNavigator: 'admission',
+      selectedChartTab: 'Summary',
+      selectedNavigator: 'shift',
+      selectedNavigatorSection: 'overview',
       activeSdoh: 'food',
+      activeAvatarZone: 'vitals',
       chartTabs: ALL_CLINICAL_TABS,
       navigatorTabs: [
-        { key: 'shift', label: 'Shift', icon: 'mdi-clock-outline', headline: 'Shift Navigator', sections: ['Overview', 'Signed/Held Orders', 'Quick Links', 'Pain', 'Head to Toe', 'IV Assessment'] },
-        { key: 'admission', label: 'Admission', icon: 'mdi-login-variant', headline: 'Admission Review', sections: ['Intake and Output', 'Delirium - GCS', 'Sepsis Screen', 'Fall Risk', 'Nutrition', 'Belongings'] },
-        { key: 'discharge', label: 'Discharge', icon: 'mdi-logout-variant', headline: 'Expected Discharge', sections: ['Exp. Discharge', 'BMS', 'Function/Quality', 'Medication Detail', 'Instructions', 'Follow-up Providers'] },
-        { key: 'transfer', label: 'Transfer', icon: 'mdi-swap-horizontal', headline: 'Pre-Procedure Checklist', sections: ['Pre-Procedure Checklist', 'Print Documents', 'Ticket to Ride', 'Handoff', 'Vital Signs Monitoring'] },
+        {
+          key: 'shift',
+          label: 'Shift',
+          icon: 'mdi-clock-outline',
+          headline: 'Shift Navigator',
+          sections: [
+            { key: 'overview', label: 'Overview', group: 'Overview' },
+            { key: 'signed-held', label: 'Signed/Held Orders', group: 'Orders' },
+            { key: 'release-orders', label: 'Release Orders', group: 'Orders' },
+            { key: 'care-everywhere', label: 'Care Everywhere', group: 'Outside records' },
+            { key: 'quick-links', label: 'Quick Links', group: 'Tools' },
+            { key: 'delirium-gcs', label: 'Delirium - GCS', group: 'Required Documentation' },
+            { key: 'specimen', label: 'Specimen Collection', group: 'Required Documentation' },
+            { key: 'implants', label: 'Implants/Pumps', group: 'Required Documentation' },
+            { key: 'provider-notification', label: 'Provider Notification', group: 'Required Documentation' },
+            { key: 'falls-doc-review', label: 'Falls Doc Review', group: 'Required Documentation' },
+            { key: 'clinical-alerts', label: 'Clinical Alerts', group: 'Assessments' },
+            { key: 'vital-signs', label: 'Vital Signs', group: 'Assessments' },
+            { key: 'pain', label: 'Pain', group: 'Assessments' },
+            { key: 'head-to-toe', label: 'Head to Toe', group: 'Assessments' },
+            { key: 'iv-assessment', label: 'IV Assessment', group: 'Assessments' },
+            { key: 'intake-output', label: 'Intake and Output', group: 'Assessments' },
+            { key: 'sepsis', label: 'Sepsis Screen', group: 'Assessments' },
+            { key: 'rounds-safety', label: 'Rounds/Safety/Alarms', group: 'Safety' },
+            { key: 'fall-risk', label: 'Fall Risk', group: 'Safety' },
+            { key: 'falls-neuro', label: 'Pt Falls & Neuro', group: 'Safety' },
+            { key: 'comfort', label: 'Comfort & Hygiene', group: 'Safety' },
+            { key: 'suicide-risk', label: 'Suicide Risk', group: 'Safety' },
+            { key: 'mobility', label: 'Mobility', group: 'Functional/Quality' },
+            { key: 'education', label: 'Education', group: 'Plan of Care' },
+            { key: 'care-plans', label: 'Care Plans', group: 'Plan of Care' }
+          ]
+        },
+        {
+          key: 'admission',
+          label: 'Admission',
+          icon: 'mdi-login-variant',
+          headline: 'Admission Review',
+          sections: [
+            { key: 'signed-held', label: 'Signed/Held Orders', group: 'Orders' },
+            { key: 'release-orders', label: 'Release Orders', group: 'Orders' },
+            { key: 'care-everywhere', label: 'Care Everywhere', group: 'Outside records' },
+            { key: 'quick-links', label: 'Quick Links', group: 'Tools' },
+            { key: 'specimen', label: 'Specimen Collection', group: 'History' },
+            { key: 'provider-notification', label: 'Provider Notification', group: 'History' },
+            { key: 'travel-exposure', label: 'Travel/Exposure', group: 'History' },
+            { key: 'allergies', label: 'Allergies', group: 'History' },
+            { key: 'latex', label: 'Latex Screening', group: 'History' },
+            { key: 'home-meds', label: 'Home Meds', group: 'History' },
+            { key: 'med-rec', label: 'Med Rec', group: 'History' },
+            { key: 'alcohol', label: 'Alcohol Use', group: 'History' },
+            { key: 'implants', label: 'Implants/Pumps', group: 'History' },
+            { key: 'vaccine-screen', label: 'Vaccine Screen', group: 'History' },
+            { key: 'contacts-legal', label: 'Contacts & Legal', group: 'History' },
+            { key: 'orientation', label: 'Orientation/Identity', group: 'Assessment' },
+            { key: 'clinical-alerts', label: 'Clinical Alerts', group: 'Assessment' },
+            { key: 'vital-signs', label: 'Vital Signs', group: 'Assessment' },
+            { key: 'pain', label: 'Pain', group: 'Assessment' },
+            { key: 'baseline', label: 'Baseline', group: 'Assessment' },
+            { key: 'adls', label: 'ADLs', group: 'Assessment' },
+            { key: 'head-to-toe', label: 'Head to Toe', group: 'Assessment' },
+            { key: 'iv-assessment', label: 'IV Assessment', group: 'Assessment' },
+            { key: 'intake-output', label: 'Intake and Output', group: 'Assessment' },
+            { key: 'delirium-gcs', label: 'Delirium - GCS', group: 'Assessment' },
+            { key: 'sepsis', label: 'Sepsis Screen', group: 'Assessment' },
+            { key: 'rounds-safety', label: 'Rounds/Safety/Alarms', group: 'Safety' },
+            { key: 'fall-risk', label: 'Fall Risk', group: 'Safety' },
+            { key: 'comfort', label: 'Comfort & Hygiene', group: 'Safety' },
+            { key: 'psychosocial', label: 'Psychosocial', group: 'Safety' },
+            { key: 'suicide-risk', label: 'Suicide Risk', group: 'Safety' },
+            { key: 'belongings', label: 'Belongings', group: 'Safety' },
+            { key: 'mobility', label: 'Mobility', group: 'Functional/Quality' },
+            { key: 'education', label: 'Education', group: 'Plan of Care' },
+            { key: 'care-plans', label: 'Care Plans', group: 'Plan of Care' }
+          ]
+        },
+        {
+          key: 'discharge',
+          label: 'Discharge',
+          icon: 'mdi-logout-variant',
+          headline: 'Expected Discharge',
+          sections: [
+            { key: 'expected-discharge', label: 'Exp. Discharge', group: 'Discharge Milestones' },
+            { key: 'expected-discharge-readiness', label: 'Expected Discha.', group: 'Discharge Milestones' },
+            { key: 'discharge-milestones', label: 'Discharge Milest...', group: 'Discharge Milestones' },
+            { key: 'pain-impact', label: 'Pain Impact', group: 'Quality Discharge' },
+            { key: 'bms', label: 'BMS', group: 'Quality Discharge' },
+            { key: 'function-quality', label: 'Function/Quality', group: 'Quality Discharge' },
+            { key: 'functional-items', label: 'Functional Items', group: 'Quality Discharge' },
+            { key: 'mobility', label: 'Mobility', group: 'Quality Discharge' },
+            { key: 'quality-discharge', label: 'Quality Discharge', group: 'Quality Discharge' },
+            { key: 'best-practice', label: 'BestPractice', group: 'Discharge Doc' },
+            { key: 'discharge-info', label: 'Discharge Info', group: 'Discharge Doc' },
+            { key: 'family-notification', label: 'Family Notification', group: 'Discharge Doc' },
+            { key: 'home-pharmacy', label: 'Home Pharmacy', group: 'Discharge Doc' },
+            { key: 'discharge-vitals', label: 'Discharge Vital S...', group: 'Discharge Doc' },
+            { key: 'vaccine-doc', label: 'Vaccine Doc', group: 'Discharge Doc' },
+            { key: 'belongings', label: 'Belongings', group: 'Discharge Doc' },
+            { key: 'belongings-return', label: 'Belongings Retur...', group: 'Discharge Doc' },
+            { key: 'lda-removal', label: 'LDA Removal', group: 'Discharge Doc' },
+            { key: 'wound-lda-removal', label: 'Wound LDA rem...', group: 'Discharge Doc' },
+            { key: 'education', label: 'Education', group: 'Discharge Doc' },
+            { key: 'dme-recommendation', label: 'DME Recommen...', group: 'Discharge Doc' },
+            { key: 'handoff', label: 'Handoff', group: 'Discharge Doc' },
+            { key: 'instructions', label: 'Instructions', group: 'Discharge Instructions' },
+            { key: 'medication-detail', label: 'Medication Detail', group: 'Discharge Instructions' },
+            { key: 'med-rec-status', label: 'Med Rec Status', group: 'Discharge Instructions' },
+            { key: 'type-of-med-rec', label: 'Type of Med Rec', group: 'Discharge Instructions' },
+            { key: 'pain-med-instructions', label: 'Pain/Med Instruc...', group: 'Discharge Instructions' },
+            { key: 'diet-instructions', label: 'Diet Instructions', group: 'Discharge Instructions' },
+            { key: 'nursing-discharge', label: 'Nursing Dischar...', group: 'Discharge Instructions' },
+            { key: 'wound-care-instructions', label: 'Wound Care Instr...', group: 'Discharge Instructions' },
+            { key: 'rt-instructions', label: 'RT Instructions', group: 'Discharge Instructions' },
+            { key: 'follow-up-providers', label: 'Follow-up Provid...', group: 'Discharge Instructions' },
+            { key: 'after-visit-summary', label: 'After Visit Summary', group: 'After Visit Summary' },
+            { key: 'after-visit-summary-review', label: 'After Visit Summ...', group: 'After Visit Summary' }
+          ]
+        },
+        {
+          key: 'transfer',
+          label: 'Transfer',
+          icon: 'mdi-swap-horizontal',
+          headline: 'Transfer and Procedure Readiness',
+          sections: [
+            { key: 'pre-procedure', label: 'Pre-Procedure Checklist', group: 'Transfer to Procedure' },
+            { key: 'ticket-procedure', label: 'Ticket to Ride', group: 'Transfer to Procedure' },
+            { key: 'print-procedure', label: 'Print Documents', group: 'Transfer to Procedure' },
+            { key: 'diagnostic-test', label: 'Diagnostic Test', group: 'Transfer to X-Ray' },
+            { key: 'non-invasive', label: 'Non-Invasive Procedure', group: 'Transfer to X-Ray' },
+            { key: 'ticket-xray', label: 'Ticket to Ride', group: 'Transfer to X-Ray' },
+            { key: 'print-xray', label: 'Print Documents', group: 'Transfer to X-Ray' },
+            { key: 'med-rec', label: 'Med Rec for Meds', group: 'Upon Patient Return' },
+            { key: 'handoff', label: 'Handoff', group: 'Upon Patient Return' },
+            { key: 'vital-monitoring', label: 'Vital Signs Monitoring', group: 'Upon Patient Return' }
+          ]
+        },
         { key: 'medreview', label: 'Medication Review', icon: 'mdi-pill', headline: 'Medication Review', sections: ['Current Meds', 'Scheduled', 'PRN', 'Medication Detail', 'Reconciliation'] },
         { key: 'mar', label: 'MAR', icon: 'mdi-format-list-checks', headline: 'Medication Administration Record', sections: ['Scheduled', 'PRN', 'Continuous', 'Running Infusions', 'Education'] },
         { key: 'blood', label: 'Blood Admin', icon: 'mdi-water', headline: 'Blood Administration', sections: ['Type and Screen', 'Consent', 'Dual Verification', 'Transfusion Vitals'] },
@@ -699,19 +1928,31 @@ export default {
         { label: 'Notify family/caregiver', values: { Status: 'Open', Owner: 'RN', Due: 'Today' } }
       ],
       transferRows: [
-        { label: 'Site marked before procedure', value: '-' },
-        { label: 'Consent', value: '-' },
-        { label: 'H&P verified', value: '-' },
-        { label: 'Procedure order verified', value: '-' },
-        { label: 'Allergies reviewed', value: '-' },
-        { label: 'Patient ID verified', value: '-' },
-        { label: 'Blood consent signed', value: '-' },
-        { label: 'NPO start', value: '-' }
+        { label: 'Site marked before procedure', values: { 'Current admission': '-' } },
+        { label: 'Consent', values: { 'Current admission': '-' } },
+        { label: 'H&P verified', values: { 'Current admission': '-' } },
+        { label: 'Procedure order verified', values: { 'Current admission': '-' } },
+        { label: 'Allergies reviewed', values: { 'Current admission': '-' } },
+        { label: 'Patient ID verified', values: { 'Current admission': '-' } },
+        { label: 'Completed or verified the following:', values: { 'Current admission': '-' } },
+        { label: 'Blood consent signed', values: { 'Current admission': '-' } },
+        { label: 'Blood band on?', values: { 'Current admission': '-' } },
+        { label: 'Blood type and screen', values: { 'Current admission': '-' } },
+        { label: 'Blood products ordered?', values: { 'Current admission': '-' } },
+        { label: 'NPO start', values: { 'Current admission': '-' } },
+        { label: 'IV infusing', values: { 'Current admission': '-' } },
+        { label: 'Was anticoagulant given?', values: { 'Current admission': '-' } },
+        { label: 'Valuables', values: { 'Current admission': 'None' } },
+        { label: 'Prosthesis', values: { 'Current admission': '-' } },
+        { label: 'Lab values reviewed', values: { 'Current admission': '-' } }
       ],
       ticketRows: [
-        { label: 'Transport mode', value: 'Bed' },
-        { label: 'Oxygen required', value: 'No' },
-        { label: 'Isolation alert visible', value: 'Yes' }
+        { label: 'Transfer destination', values: { Status: 'Procedure area' } },
+        { label: 'Transport mode', values: { Status: 'Bed' } },
+        { label: 'Oxygen required', values: { Status: 'No' } },
+        { label: 'Isolation alert visible', values: { Status: 'Review' } },
+        { label: 'Mobility assistance', values: { Status: 'Assist x1' } },
+        { label: 'Documents travel with patient', values: { Status: 'Required' } }
       ],
       marRows: [
         { label: 'Acetaminophen 650 mg', values: { '0600': '-', '1000': 'Given', '1400': '-', '1800': 'Due' } },
@@ -758,6 +1999,76 @@ export default {
         { icon: 'mdi-bandage', color: '#be123c', title: 'Wound dressing change', detail: 'Daily at 0900' },
         { icon: 'mdi-flask', color: '#0369a1', title: 'CBC with differential', detail: 'Scheduled' },
         { icon: 'mdi-pill', color: '#7c3aed', title: 'Medication review', detail: 'Acknowledge' }
+      ],
+      selectedOrderView: 'active',
+      selectedOrderPanel: 'manage',
+      showHomeMedications: false,
+      orderSortBy: 'Order Type',
+      orderGoTo: 'Scheduled',
+      orderSearch: '',
+      orderMode: 'Medication',
+      selectedMarView: 'all',
+      marTimeFocus: '1700',
+      marShowEducation: true,
+      marHideAdmins: false,
+      marSearch: '',
+      selectedMarMedication: null,
+      selectedMarAction: 'given',
+      marTimeColumns: ['1400', '1500', '1600', '1700', '1800', '1900', '2000'],
+      remoteAiCarePlan: null,
+      aiCareLoading: false,
+      aiCareError: '',
+      dialogs: {
+        nurse: false,
+        medical: false,
+        lab: false,
+        imaging: false,
+        medication: false,
+        document: false,
+        marAction: false
+      },
+      savingDialog: false,
+      forms: defaultDialogForms(),
+      triageLevels: ['Green', 'Yellow', 'Orange', 'Red'],
+      severityOptions: ['Mild', 'Moderate', 'Severe', 'Critical'],
+      priorityOptions: ['Routine', 'Today', 'Urgent', 'STAT'],
+      medicationRoutes: ['Oral', 'IV', 'IM', 'Topical', 'Inhalation', 'Sublingual', 'Rectal'],
+      marActionOptions: ['Given', 'Held', 'Refused', 'Not scanned', 'Patient education', 'Details reviewed'],
+      documentCategories: ['Clinical Note', 'Consent', 'Referral', 'Discharge Summary', 'Education', 'Wound Photo'],
+      generalConditionOptions: ['Good general condition', 'Stable', 'Impaired', 'Serious', 'Critical'],
+      consciousnessOptions: ['Alert and oriented', 'Confused', 'Drowsy', 'Stuporous', 'Comatose'],
+      respiratoryOptions: ['Normal', 'Mild dyspnea', 'Moderate dyspnea', 'Respiratory distress', 'Cyanosis'],
+      nursingProblemsList: [
+        'Acute pain', 'Chronic pain', 'Impaired mobility', 'Fall risk', 'Self-care deficit',
+        'Impaired nutrition', 'Constipation', 'Diarrhea', 'Urinary retention', 'Incontinence',
+        'Impaired breathing', 'Anxiety', 'Risk of infection', 'Pressure injury risk'
+      ],
+      nursingActionsList: [
+        'Vital signs recorded', 'IV line placement', 'IV injection', 'IM injection',
+        'Simple dressing', 'Complex dressing', 'Urinary catheterization', 'Suctioning',
+        'Oxygen therapy', 'ECG completed', 'Blood sample collected', 'Medication administration',
+        'Patient education', 'Pain-relief positioning', 'Mobilization', 'Personal hygiene completed'
+      ],
+      gcsEyeOptions: [
+        { text: 'Spontaneous (4)', value: 4 },
+        { text: 'To sound (3)', value: 3 },
+        { text: 'To pain (2)', value: 2 },
+        { text: 'None (1)', value: 1 }
+      ],
+      gcsVerbalOptions: [
+        { text: 'Oriented (5)', value: 5 },
+        { text: 'Confused (4)', value: 4 },
+        { text: 'Incoherent (3)', value: 3 },
+        { text: 'Incomprehensible (2)', value: 2 },
+        { text: 'None (1)', value: 1 }
+      ],
+      gcsMotorOptions: [
+        { text: 'To command (6)', value: 6 },
+        { text: 'Localized (5)', value: 5 },
+        { text: 'Withdrawal (4)', value: 4 },
+        { text: 'Flexion (3)', value: 3 },
+        { text: 'Extension (2)', value: 2 },
+        { text: 'None (1)', value: 1 }
       ]
     }
   },
@@ -770,6 +2081,13 @@ export default {
     },
     canLaunchMedical() {
       return ['ADMIN', 'DOCTOR', 'NP'].includes(this.currentRole)
+    },
+    requiredRule() {
+      return value => Boolean(value) || 'Required'
+    },
+    nurseGcsScore() {
+      const v = this.forms.nurse.vitals
+      return Number(v.gcsE || 0) + Number(v.gcsV || 0) + Number(v.gcsM || 0)
     },
     roleOptions() {
       return Object.keys(ACCESS_PROFILES).map(value => ({ value, ...ACCESS_PROFILES[value] }))
@@ -787,6 +2105,36 @@ export default {
     },
     activeNavigator() {
       return this.visibleNavigatorTabs.find(item => item.key === this.selectedNavigator) || this.visibleNavigatorTabs[0] || this.navigatorTabs[0]
+    },
+    activeNavigatorSections() {
+      const sections = this.activeNavigator && this.activeNavigator.sections ? this.activeNavigator.sections : []
+      return sections.map(section => typeof section === 'string' ? { key: section, label: section, group: '' } : section)
+    },
+    workspaceEyebrow() {
+      if (this.selectedChartTab && this.selectedChartTab !== 'Navigators') return this.selectedChartTab
+      return this.activeNavigator ? this.activeNavigator.label : 'Patient 360'
+    },
+    workspaceHeadline() {
+      const map = {
+        Summary: 'Patient 360 Summary',
+        'Chart Review': 'Longitudinal Chart Review',
+        Flowsheets: 'Care Schedule Flowsheets',
+        Orders: 'Orders and Diagnostics',
+        MAR: 'Medication Administration Record',
+        Medications: 'Medication Profile',
+        'Lab Results': 'Laboratory Results',
+        'Wound Management': 'Wound and Skin Care',
+        Notes: 'Clinical Notes',
+        'Care Plan': 'Care Plan and Goals',
+        Education: 'Patient Education',
+        'Work List': 'Care Team Work List',
+        Immunizations: 'Immunization Record',
+        'Care Teams': 'Current Care Team',
+        Handoff: 'Nursing Handoff',
+        Documents: 'Clinical Documents',
+        Registration: 'Registration and Demographics'
+      }
+      return map[this.selectedChartTab] || (this.activeNavigator ? this.activeNavigator.headline : 'Patient 360')
     },
     activeSdohDomain() {
       return this.sdohDomains.find(item => item.key === this.activeSdoh) || this.sdohDomains[0]
@@ -875,6 +2223,9 @@ export default {
       const all = this.$store.getters['clinical/getNursingNotes'] || []
       return all.filter(item => item.patientId === this.activePatientId)
     },
+    latestNursingNote() {
+      return latestByDate(this.patientNursingNotes, 'recordedAt')
+    },
     patientMedicalNotes() {
       const all = this.$store.getters['clinical/getMedicalNotes'] || []
       return all.filter(item => item.patientId === this.activePatientId)
@@ -894,6 +2245,694 @@ export default {
     patientMedications() {
       const all = this.$store.getters['clinical/getMedications'] || []
       return all.filter(item => item.patientId === this.activePatientId)
+    },
+    patientDocuments() {
+      const all = this.$store.getters['clinical/getDocuments'] || []
+      return all.filter(item => item.patientId === this.activePatientId)
+    },
+    summaryRows() {
+      return [
+        { label: 'Name', values: { Current: this.activePatient.name } },
+        { label: 'MRN', values: { Current: this.activePatient.mrn } },
+        { label: 'Current location', values: { Current: this.activePatient.bed } },
+        { label: 'Class', values: { Current: this.activePatient.patientClass } },
+        { label: 'Allergies', values: { Current: this.activePatient.allergies } },
+        { label: 'Open tasks', values: { Current: this.patientTasks.length } },
+        { label: 'Open orders', values: { Current: this.patientLabOrders.length + this.patientImagingOrders.length + this.patientMedications.length } }
+      ]
+    },
+    chartReviewRows() {
+      if (!this.patientVisits.length) {
+        return [{ label: 'No encounters filed', values: { Type: '-', Recorded: '-', Clinician: '-' } }]
+      }
+      return [...this.patientVisits]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 8)
+        .map(visit => ({
+          label: visit.chiefComplaint || visit.diagnosis || 'Clinical encounter',
+          values: {
+            Type: this.displayEncounterType(visit.encounterType),
+            Recorded: this.formatShortDate(visit.createdAt),
+            Clinician: visit.recordedBy || '-'
+          }
+        }))
+    },
+    riskReviewRows() {
+      const patient = this.findPatientRecord(this.activePatientId)
+      const reasons = patient && patient.riskReasons && patient.riskReasons.length ? patient.riskReasons : ['No active risk reason filed']
+      return [
+        { label: 'Risk level', values: { Status: patient ? patient.riskLevel || 'low' : '-' } },
+        ...reasons.map(reason => ({ label: reason, values: { Status: 'Review' } }))
+      ]
+    },
+    orderRows() {
+      const rows = [
+        ...this.patientLabOrders.map(order => ({
+          label: order.test || order.orderName || 'Lab order',
+          values: { Type: 'Lab', Status: order.status || 'Requested', Detail: order.priority || order.result || '-' }
+        })),
+        ...this.patientImagingOrders.map(order => ({
+          label: order.exam || order.study || 'Imaging order',
+          values: { Type: 'Imaging', Status: order.status || 'Requested', Detail: order.priority || order.report || '-' }
+        })),
+        ...this.patientMedications.map(med => ({
+          label: med.drug || med.medication || med.name || 'Medication',
+          values: { Type: 'Medication', Status: med.status || 'Active', Detail: [med.dose, med.frequency].filter(Boolean).join(' · ') || '-' }
+        }))
+      ]
+      return rows.length ? rows : [{ label: 'No active orders', values: { Type: '-', Status: '-', Detail: '-' } }]
+    },
+    orderWorkspaceTabs() {
+      const activeCount = this.allOrderItems.filter(item => !/discontinued|cancelled/i.test(item.status)).length
+      return [
+        { key: 'active', label: 'Active', count: activeCount },
+        { key: 'signed', label: 'Signed & Held', count: this.signedHeldOrderItems.length },
+        { key: 'home', label: 'Home Meds', count: this.homeMedicationItems.length },
+        { key: 'history', label: 'Order History', count: this.orderHistoryItems.length }
+      ]
+    },
+    orderSortOptions() {
+      return ['Order Type', 'Status', 'Priority', 'Newest first']
+    },
+    orderGoToOptions() {
+      return ['Scheduled', 'PRN', 'Labs', 'Imaging', 'Home Medications', 'Signed & Held', 'Order History']
+    },
+    orderModeOptions() {
+      return ['Medication', 'Lab', 'Imaging', 'Nursing care', 'Wound care']
+    },
+    allOrderItems() {
+      if (!this.canViewOrders) return []
+      const labItems = this.patientLabOrders.map((order, index) => ({
+        id: order.id || `lab-${index}`,
+        type: 'lab',
+        typeLabel: 'Lab',
+        label: order.test || order.testName || order.orderName || 'Lab order',
+        detail: order.instructions || order.result || order.value || 'Specimen collection and result follow-up',
+        status: order.status || 'Requested',
+        schedule: order.priority || 'Scheduled',
+        orderedBy: order.orderedBy || 'Provider / Nurse',
+        priority: order.priority || 'Routine',
+        group: 'Labs',
+        icon: 'mdi-flask',
+        color: '#0369a1',
+        statusClass: this.orderStatusClass(order.status || 'Requested'),
+        raw: order
+      }))
+      const imagingItems = this.patientImagingOrders.map((order, index) => ({
+        id: order.id || `img-${index}`,
+        type: 'imaging',
+        typeLabel: 'Imaging',
+        label: order.exam || order.modality || order.study || 'Imaging order',
+        detail: order.instructions || order.report || 'Radiology scheduling and transport readiness',
+        status: order.status || 'Requested',
+        schedule: order.priority || 'Scheduled',
+        orderedBy: order.orderedBy || 'Provider / Nurse',
+        priority: order.priority || 'Routine',
+        group: 'Imaging',
+        icon: 'mdi-radiology-box',
+        color: '#7c3aed',
+        statusClass: this.orderStatusClass(order.status || 'Requested'),
+        raw: order
+      }))
+      const medicationItems = this.patientMedications.map((med, index) => {
+        const frequency = med.frequency || med.instructions || med.prescriptionText || ''
+        const isPrn = /prn|as needed|au besoin/i.test(frequency)
+        return {
+          id: med.id || `med-${index}`,
+          type: 'medication',
+          typeLabel: 'Medication',
+          label: med.drug || med.medication || med.name || 'Medication',
+          detail: [med.dose || med.dosage, med.route, med.frequency || med.instructions].filter(Boolean).join(' · ') || 'Medication administration profile',
+          status: med.status || 'Active',
+          schedule: isPrn ? 'PRN' : med.frequency || 'Scheduled',
+          orderedBy: med.prescribedBy || med.orderedBy || 'Provider / Pharmacy',
+          priority: isPrn ? 'PRN' : 'Routine',
+          group: isPrn ? 'PRN' : 'Scheduled',
+          icon: 'mdi-pill',
+          color: '#0f766e',
+          statusClass: this.orderStatusClass(med.status || 'Active'),
+          raw: med
+        }
+      })
+      const realItems = [...medicationItems, ...labItems, ...imagingItems]
+      if (realItems.length) return realItems
+      return this.activeOrders.map((order, index) => {
+        const title = order.title || 'Clinical order'
+        const isLab = /cbc|lab|blood|specimen/i.test(title)
+        const isMedication = /medication|drug|pill|admin/i.test(title)
+        const type = isLab ? 'lab' : isMedication ? 'medication' : 'nursing'
+        return {
+          id: `fallback-order-${index}`,
+          type,
+          typeLabel: isLab ? 'Lab' : isMedication ? 'Medication' : 'Nursing care',
+          label: title,
+          detail: order.detail || 'Open care order',
+          status: order.detail || 'Active',
+          schedule: isLab ? 'Labs' : 'Scheduled',
+          orderedBy: 'Patient 360 demo',
+          priority: 'Routine',
+          group: isLab ? 'Labs' : 'Scheduled',
+          icon: order.icon || 'mdi-clipboard-text-outline',
+          color: order.color || '#0f766e',
+          statusClass: this.orderStatusClass(order.detail || 'Active'),
+          raw: null
+        }
+      })
+    },
+    signedHeldOrderItems() {
+      const realOrders = this.allOrderItems.filter(item => /signed|held/i.test(`${item.status} ${item.schedule}`))
+      if (realOrders.length) return realOrders.map(item => ({ ...item, group: 'Signed & Held' }))
+      return this.signedHeldOrderRows.map((row, index) => ({
+        id: `signed-held-${index}`,
+        type: 'signed',
+        typeLabel: row.values.Type || 'Admission',
+        label: row.label,
+        detail: row.values.Detail || 'No signed and held action required',
+        status: row.values.Status || 'None',
+        schedule: 'Signed & Held',
+        orderedBy: 'Admission workflow',
+        priority: 'Review',
+        group: 'Signed & Held',
+        icon: 'mdi-clipboard-check-outline',
+        color: '#475569',
+        statusClass: this.orderStatusClass(row.values.Status || 'None'),
+        raw: null
+      }))
+    },
+    homeMedicationItems() {
+      const patient = this.findPatientRecord(this.activePatientId) || {}
+      const homeMeds = Array.isArray(patient.homeMedications) ? patient.homeMedications : []
+      const mappedHomeMeds = homeMeds.map((med, index) => ({
+        id: med.id || `home-med-${index}`,
+        type: 'medication',
+        typeLabel: 'Home Medication',
+        label: med.drug || med.medication || med.name || String(med),
+        detail: [med.dose || med.dosage, med.route, med.frequency].filter(Boolean).join(' · ') || 'Patient home medication',
+        status: med.status || 'Needs reconciliation',
+        schedule: 'Home Medications',
+        orderedBy: med.source || 'Patient history',
+        priority: 'Medication reconciliation',
+        group: 'Home Medications',
+        icon: 'mdi-home-heart',
+        color: '#7c3aed',
+        statusClass: this.orderStatusClass(med.status || 'Needs reconciliation'),
+        raw: med
+      }))
+      if (mappedHomeMeds.length) return mappedHomeMeds
+      return [
+        {
+          id: 'home-med-reconciliation',
+          type: 'medication',
+          typeLabel: 'Home Medication',
+          label: 'Medication reconciliation',
+          detail: this.patientMedications.length ? 'Review active profile against home medication history' : 'No home medication history filed',
+          status: this.patientMedications.length ? 'Started' : 'Due',
+          schedule: 'Home Medications',
+          orderedBy: 'Nurse / Pharmacy',
+          priority: 'Admission',
+          group: 'Home Medications',
+          icon: 'mdi-home-heart',
+          color: '#7c3aed',
+          statusClass: this.orderStatusClass(this.patientMedications.length ? 'Started' : 'Due'),
+          raw: null
+        }
+      ]
+    },
+    orderHistoryItems() {
+      const taskHistory = this.patientTasks
+        .filter(task => /order|medication|lab|imaging|hold|discontinue/i.test(`${task.title || ''} ${task.relatedType || ''} ${task.actionReason || ''}`))
+        .map((task, index) => ({
+          id: task.id || `order-history-task-${index}`,
+          type: task.relatedType || 'task',
+          typeLabel: 'Order Task',
+          label: task.title || 'Order task',
+          detail: task.actionReason || 'Order workflow task',
+          status: task.status || 'pending',
+          schedule: task.updatedAt ? this.formatShortDate(task.updatedAt) : 'Order History',
+          orderedBy: task.updatedBy || task.createdBy || 'Care team',
+          priority: task.priority || 'Routine',
+          group: 'Order History',
+          icon: 'mdi-history',
+          color: '#475569',
+          statusClass: this.orderStatusClass(task.status || 'pending'),
+          raw: task
+        }))
+      const orders = this.allOrderItems.map(item => ({
+        ...item,
+        id: `history-${item.id}`,
+        group: 'Order History',
+        schedule: item.raw && (item.raw.prescribedAt || item.raw.requestedAt) ? this.formatShortDate(item.raw.prescribedAt || item.raw.requestedAt) : item.schedule
+      }))
+      return [...taskHistory, ...orders]
+    },
+    visibleOrderItems() {
+      let items = []
+      if (this.selectedOrderView === 'signed') items = this.signedHeldOrderItems
+      else if (this.selectedOrderView === 'home') items = this.homeMedicationItems
+      else if (this.selectedOrderView === 'history') items = this.orderHistoryItems
+      else {
+        items = this.allOrderItems.filter(item => !/discontinued|cancelled/i.test(item.status))
+        if (this.showHomeMedications) items = [...items, ...this.homeMedicationItems]
+      }
+      const query = this.orderSearch.trim().toLowerCase()
+      if (query) {
+        items = items.filter(item => `${item.label} ${item.detail} ${item.typeLabel} ${item.status}`.toLowerCase().includes(query))
+      }
+      const sorted = [...items]
+      if (this.orderSortBy === 'Status') sorted.sort((a, b) => a.status.localeCompare(b.status))
+      if (this.orderSortBy === 'Priority') sorted.sort((a, b) => a.priority.localeCompare(b.priority))
+      if (this.orderSortBy === 'Order Type') sorted.sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label))
+      if (this.orderSortBy === 'Newest first') sorted.sort((a, b) => String(b.id).localeCompare(String(a.id)))
+      return sorted
+    },
+    visibleOrderGroups() {
+      const grouped = this.visibleOrderItems.reduce((groups, item) => {
+        const key = item.group || 'Orders'
+        if (!groups[key]) groups[key] = []
+        groups[key].push(item)
+        return groups
+      }, {})
+      const preferred = ['Scheduled', 'PRN', 'Labs', 'Imaging', 'Home Medications', 'Signed & Held', 'Order History']
+      const keys = Object.keys(grouped).sort((a, b) => {
+        const aScore = preferred.includes(a) ? preferred.indexOf(a) : preferred.length
+        const bScore = preferred.includes(b) ? preferred.indexOf(b) : preferred.length
+        return aScore - bScore || a.localeCompare(b)
+      })
+      if (this.orderGoTo && keys.includes(this.orderGoTo)) {
+        keys.splice(keys.indexOf(this.orderGoTo), 1)
+        keys.unshift(this.orderGoTo)
+      }
+      return keys.map(key => ({ key, title: key, rows: grouped[key] }))
+    },
+    orderEntrySuggestions() {
+      const suggestions = [
+        { kind: 'Medication', label: 'Medication order', detail: 'Dose, route, frequency and nursing task', icon: 'mdi-pill-plus', color: '#0f766e' },
+        { kind: 'Lab', label: 'Lab order', detail: 'Specimen collection and lab follow-up', icon: 'mdi-flask', color: '#0369a1' },
+        { kind: 'Imaging', label: 'Imaging order', detail: 'Radiology request and transport readiness', icon: 'mdi-radiology-box', color: '#7c3aed' },
+        { kind: 'Nursing care', label: 'Nursing care task', detail: 'Creates a work-list task for the shift', icon: 'mdi-clipboard-pulse-outline', color: '#be123c' },
+        { kind: 'Wound care', label: 'Wound care order', detail: 'Dressing, photo and skin assessment workflow', icon: 'mdi-bandage', color: '#b45309' }
+      ]
+      const query = this.orderSearch.trim().toLowerCase()
+      if (!query) return suggestions
+      return suggestions.filter(item => `${item.label} ${item.detail}`.toLowerCase().includes(query))
+    },
+    orderSetSuggestions() {
+      return [
+        { kind: 'Nursing care', label: 'Admission nurse bundle', detail: 'Vitals, pain, GCS, fall risk and education' },
+        { kind: 'Wound care', label: 'Wound care bundle', detail: 'Dressing task, wound photo and pain reassessment' },
+        { kind: 'Lab', label: 'Sepsis screen bundle', detail: 'CBC, cultures if ordered, vitals and provider notification' },
+        { kind: 'Medication', label: 'Discharge med rec bundle', detail: 'Medication review, pharmacy reconciliation and education' }
+      ]
+    },
+    shiftOverviewRows() {
+      return [
+        { label: 'Current shift', values: { Status: this.currentRole, Owner: this.actorName(), Action: 'Continue active patient 360 workflow' } },
+        { label: 'Required documentation', values: { Status: this.patientVitals.length ? 'Started' : 'Due', Owner: 'NURSE', Action: 'Vitals, pain, GCS and assessments' } },
+        { label: 'Open work', values: { Status: this.patientTasks.length, Owner: 'Care team', Action: 'Review Work List' } },
+        { label: 'New results', values: { Status: this.patientLabOrders.length + this.patientImagingOrders.length, Owner: 'NURSE', Action: 'Acknowledge diagnostics' } }
+      ]
+    },
+    signedHeldOrderRows() {
+      const orders = this.orderRows.filter(row => row.values.Status !== '-')
+      return orders.length ? orders : [
+        { label: 'Admission/Transfer Signed and Held Orders', values: { Type: 'Admission', Status: 'None', Detail: 'No signed and held orders for this encounter' } }
+      ]
+    },
+    releaseOrderRows() {
+      const openOrders = this.patientLabOrders.length + this.patientImagingOrders.length + this.patientMedications.length
+      return [
+        { label: 'Release signed and held orders', values: { Status: openOrders ? 'Available' : 'No pending release', Owner: 'Provider / Nurse', Action: openOrders ? 'Review and release eligible orders' : 'No action' } },
+        { label: 'Order acknowledgement', values: { Status: this.patientTasks.length ? 'Required' : 'Current', Owner: 'NURSE', Action: 'Acknowledge active orders' } }
+      ]
+    },
+    careEverywhereRows() {
+      return [
+        { label: 'All Care Medical Associates LLC', values: { Authorization: 'Not needed', 'Last Update': '30 Jun 2026', Action: 'View outside records' } },
+        { label: 'Central Regional Health Center', values: { Authorization: 'Not needed', 'Last Update': '30 Jun 2026', Action: 'View outside records' } },
+        { label: 'NextGen Share', values: { Authorization: 'Not needed', 'Last Update': '30 Jun 2026', Action: 'Find outside charts' } }
+      ]
+    },
+    quickLinkRows() {
+      return [
+        { label: 'Go to Document Flowsheet', values: { Destination: 'Flowsheets', Status: 'Available', Action: 'Open in 360 panel' } },
+        { label: 'New Reading', values: { Destination: 'Nursing dialog', Status: 'Available', Action: 'Record vitals and nursing note' } },
+        { label: 'Required Documentation', values: { Destination: 'Shift requirements', Status: this.patientVitals.length ? 'Started' : 'Due', Action: 'Complete required rows' } }
+      ]
+    },
+    admissionQuickLinkRows() {
+      return [
+        ...this.quickLinkRows,
+        { label: 'Find Outside Charts', values: { Destination: 'Care Everywhere', Status: 'Available', Action: 'Search outside organizations' } },
+        { label: 'Documentation Review', values: { Destination: 'Admission documents', Status: 'Open', Action: 'Review admission packet' } }
+      ]
+    },
+    specimenNotificationRows() {
+      return [
+        { label: 'Specimen collection', values: { Status: this.patientLabOrders.length ? 'Pending / active' : 'No active specimen', Owner: 'LAB / NURSE', Due: this.patientLabOrders.length ? 'Today' : '-' } },
+        { label: 'Provider notification', values: { Status: this.patientLabOrders.length || this.patientImagingOrders.length ? 'If critical result' : 'No pending notification', Owner: 'NURSE', Due: 'Per result' } },
+        { label: 'Implants/Pumps', values: { Status: 'No active pump filed', Owner: 'NURSE', Due: 'Assess on admission' } },
+        { label: 'Falls documentation review', values: { Status: 'Required', Owner: 'NURSE', Due: 'This shift' } }
+      ]
+    },
+    clinicalAlertRows() {
+      return [
+        { label: 'Precautions', values: { Status: this.activePatient.precautions, Source: 'Storyboard', Action: 'Maintain precautions' } },
+        { label: 'Allergies', values: { Status: this.activePatient.allergies, Source: 'Registration / pharmacy', Action: 'Verify before medication' } },
+        { label: 'Infection status', values: { Status: this.activePatient.infectionStatus, Source: 'Admission', Action: 'Review isolation' } }
+      ]
+    },
+    headToToeRows() {
+      return [
+        { label: 'Neuro', values: { 'Last Filed': this.latestVitals && this.latestVitals.glasgow ? `GCS ${this.latestVitals.glasgow}` : '-', Concern: 'Monitor mentation', Action: 'Reassess per shift' } },
+        { label: 'Respiratory', values: { 'Last Filed': this.latestVitals && this.latestVitals.spo2 ? `SpO2 ${this.latestVitals.spo2}%` : '-', Concern: 'Oxygenation', Action: 'Document respiratory status' } },
+        { label: 'Skin / wound', values: { 'Last Filed': 'Admission wound documentation', Concern: 'Wound care', Action: 'Photo and dressing assessment' } }
+      ]
+    },
+    ivAssessmentRows() {
+      return [
+        { label: 'Peripheral IV', values: { Site: 'Not filed', Status: 'Assess', Action: 'Document patency and dressing' } },
+        { label: 'Line infection prevention', values: { Site: 'All active lines', Status: 'Due', Action: 'Review site and date' } }
+      ]
+    },
+    safetyFallRows() {
+      return [
+        { label: 'Rounds/Safety/Alarms', values: { Status: 'Active', Risk: 'Routine safety rounds', Action: 'Document alarms and environment' } },
+        { label: 'Fall Risk', values: { Status: 'Required', Risk: 'Assess each shift', Action: 'Update fall prevention plan' } },
+        { label: 'Pt Falls & Neuro', values: { Status: 'No event filed', Risk: 'Monitor neuro status', Action: 'File event if fall occurs' } },
+        { label: 'Suicide Risk', values: { Status: 'Screening due', Risk: 'Admission safety', Action: 'Complete screening' } }
+      ]
+    },
+    comfortHygieneRows() {
+      return [
+        { label: 'Comfort', values: { Status: this.latestVitals && this.latestVitals.pain !== undefined ? `${this.latestVitals.pain}/10 pain` : 'Assess', Need: 'Pain / position', Action: 'Reposition and reassess' } },
+        { label: 'Hygiene', values: { Status: 'Open', Need: 'Daily care', Action: 'Document assistance level' } },
+        { label: 'Psychosocial', values: { Status: 'Open', Need: 'Support / orientation', Action: 'Assess coping and family support' } }
+      ]
+    },
+    mobilityQualityRows() {
+      return [
+        { label: 'Mobility', values: { Status: 'Open', Baseline: 'Assess on admission', Goal: 'Safe mobility plan' } },
+        { label: 'ADLs', values: { Status: 'Open', Baseline: 'Needs assessment', Goal: 'Document independence level' } },
+        { label: 'Education', values: { Status: 'Open', Baseline: 'Patient teaching', Goal: 'Complete teach-back' } }
+      ]
+    },
+    admissionDocumentationRows() {
+      return [
+        { label: 'Travel/Exposure', values: { Status: 'Not filed', Owner: 'NURSE', Action: 'Complete admission history' } },
+        { label: 'Allergies / Latex Screening', values: { Status: this.activePatient.allergies, Owner: 'NURSE / PHARMACY', Action: 'Verify and reconcile' } },
+        { label: 'Home Meds / Medication Reconciliation', values: { Status: this.patientMedications.length ? 'Started' : 'Due', Owner: 'NURSE / PROVIDER', Action: 'Review medication history' } },
+        { label: 'Contacts & Legal', values: { Status: 'Review', Owner: 'Reception / Nurse', Action: 'Confirm emergency contact and consent' } },
+        { label: 'Belongings', values: { Status: 'Not filed', Owner: 'NURSE', Action: 'Document patient belongings' } }
+      ]
+    },
+    transferPrintRows() {
+      return [
+        { label: 'Pre-Procedure Checklist', values: { Status: 'Ready to print', Owner: 'NURSE', Action: 'Review missing items before print' } },
+        { label: 'Medication Reconciliation Form', values: { Status: this.patientMedications.length ? 'Medication profile available' : 'No active medications filed', Owner: 'NURSE / PHARMACY', Action: 'Attach current MAR' } },
+        { label: 'Ticket to Ride', values: { Status: 'Required', Owner: 'NURSE', Action: 'Send with patient' } },
+        { label: 'Transfer packet document', values: { Status: this.patientDocuments.length ? 'Documents filed' : 'No transfer document filed', Owner: 'NURSE', Action: 'File document in 360' } }
+      ]
+    },
+    transferXrayRows() {
+      const imaging = this.patientImagingOrders
+      if (!imaging.length) {
+        return [
+          { label: 'Diagnostic Test', values: { Status: 'No active imaging order', Destination: 'Radiology', Action: 'Place imaging order if needed' } },
+          { label: 'Non-Invasive Procedure', values: { Status: 'Not scheduled', Destination: 'Procedure area', Action: 'Review transfer need' } },
+          { label: 'Print Documents', values: { Status: 'Not ready', Destination: 'Radiology', Action: 'Complete ticket to ride first' } }
+        ]
+      }
+      return imaging.map(order => ({
+        label: order.exam || order.modality || order.study || 'Imaging order',
+        values: {
+          Status: order.status || 'Requested',
+          Destination: 'Radiology / X-Ray',
+          Action: order.priority || 'Transport when ready'
+        }
+      }))
+    },
+    ticketXrayRows() {
+      return [
+        { label: 'Destination', values: { Status: this.patientImagingOrders.length ? 'Radiology' : 'Not selected', Destination: 'X-Ray / Imaging', Action: 'Confirm receiving area' } },
+        { label: 'Oxygen / monitoring', values: { Status: this.latestVitals && this.latestVitals.spo2 ? `SpO2 ${this.latestVitals.spo2}%` : 'Assess before transport', Destination: 'During transport', Action: 'Document support required' } },
+        { label: 'Isolation and precautions', values: { Status: this.activePatient.infectionStatus, Destination: 'Receiving area', Action: 'Notify transport team' } },
+        { label: 'Allergy banner', values: { Status: this.activePatient.allergies, Destination: 'Receiving area', Action: 'Verify before contrast or meds' } }
+      ]
+    },
+    patientReturnRows() {
+      return [
+        { label: 'Med Rec for Meds', values: { Status: this.patientMedications.length ? 'Review current meds' : 'No active medications filed', Owner: 'NURSE / PHARMACY', Action: 'Resume, hold, or reconcile meds' } },
+        { label: 'Handoff', values: { Status: 'Required on return', Owner: 'NURSE', Action: 'Document procedure outcome and concerns' } },
+        { label: 'Vital Signs Monitoring', values: { Status: this.latestVitalsSummary || 'No current vitals', Owner: 'NURSE', Action: 'Record post-transfer vitals' } },
+        { label: 'Pain reassessment', values: { Status: this.latestVitals && this.latestVitals.pain !== undefined ? `${this.latestVitals.pain}/10` : 'Due', Owner: 'NURSE', Action: 'Reassess after procedure/transport' } }
+      ]
+    },
+    dischargeQualityRows() {
+      return [
+        { label: 'Pain Impact', values: { Status: this.latestVitals && this.latestVitals.pain !== undefined ? `${this.latestVitals.pain}/10` : 'Not filed', Owner: 'NURSE', Action: 'Reassess pain before discharge' } },
+        { label: 'BMS', values: { Status: this.latestVisit && this.latestVisit.assessment ? 'Assessment available' : 'Not reviewed', Owner: 'NURSE', Action: 'Confirm bowel/bladder status' } },
+        { label: 'Function/Quality', values: { Status: this.patientTasks.length ? 'Open care tasks' : 'No open task filed', Owner: 'NURSE / CASE MANAGER', Action: 'Resolve quality checklist' } },
+        { label: 'Functional Items', values: { Status: this.latestVisit && this.latestVisit.assessment ? 'Review latest assessment' : 'Needs assessment', Owner: 'NURSE', Action: 'Confirm ADL support and equipment' } },
+        { label: 'Mobility', values: { Status: this.latestNursingNote ? this.latestNursingNote.mobility || 'See nursing note' : 'Not documented', Owner: 'NURSE / PHYSIO', Action: 'Confirm safe ambulation or transport' } },
+        { label: 'Quality Discharge', values: { Status: this.patientTasks.length ? `${this.patientTasks.length} task(s) to review` : 'Ready for checklist review', Owner: 'MAJOR / NURSE', Action: 'Mark reviewed when completed' } }
+      ]
+    },
+    dischargeDocumentationRows() {
+      const hasDischargeDoc = this.patientDocuments.some(doc => /discharge|sortie|avs|after visit/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      return [
+        { label: 'BestPractice', values: { Status: 'Review required', Owner: 'NURSE', Action: 'Check discharge best-practice prompts' } },
+        { label: 'Discharge Info', values: { Status: hasDischargeDoc ? 'Document filed' : 'No discharge document filed', Owner: 'NURSE / PROVIDER', Action: 'File discharge document in 360' } },
+        { label: 'Family Notification', values: { Status: this.activePatient.emergencyContact ? 'Contact available' : 'No contact listed', Owner: 'NURSE', Action: 'Notify family/caregiver' } },
+        { label: 'Home Pharmacy', values: { Status: this.patientMedications.length ? 'Medication profile ready' : 'No active meds filed', Owner: 'PHARMACY', Action: 'Confirm dispense pharmacy' } },
+        { label: 'Discharge Vital Signs', values: { Status: this.latestVitalsSummary || 'No current vitals', Owner: 'NURSE', Action: 'Capture final vitals' } },
+        { label: 'Vaccine Doc', values: { Status: 'Review immunizations', Owner: 'NURSE', Action: 'Confirm vaccine documentation' } },
+        { label: 'Belongings', values: { Status: 'Pending confirmation', Owner: 'NURSE', Action: 'Inventory belongings' } },
+        { label: 'Belongings Return', values: { Status: 'Pending return', Owner: 'NURSE', Action: 'Return and document belongings' } },
+        { label: 'LDA Removal', values: { Status: 'Review lines/tubes', Owner: 'NURSE', Action: 'Remove or document active LDAs' } },
+        { label: 'Wound LDA Removal', values: { Status: this.activePatient.woundStatus || 'Wound review needed', Owner: 'WOUND NURSE', Action: 'Complete wound LDA review' } },
+        { label: 'Education', values: { Status: this.latestNursingNote ? 'Education note available' : 'Not filed', Owner: 'NURSE', Action: 'Document discharge teaching' } },
+        { label: 'DME Recommendation', values: { Status: 'Needs review', Owner: 'CASE MANAGER', Action: 'Confirm equipment or supplies' } },
+        { label: 'Handoff', values: { Status: this.latestNursingNote ? 'Nursing note available' : 'No handoff note filed', Owner: 'NURSE', Action: 'Complete discharge handoff' } }
+      ]
+    },
+    dischargeInstructionRows() {
+      return [
+        { label: 'Instructions', values: { Status: 'Required', Owner: 'NURSE', Action: 'Review final instructions with patient' } },
+        { label: 'Medication Detail', values: { Status: this.patientMedications.length ? `${this.patientMedications.length} medication(s)` : 'No active meds filed', Owner: 'PHARMACY / PROVIDER', Action: 'Reconcile and explain medications' } },
+        { label: 'Med Rec Status', values: { Status: this.patientMedications.length ? 'Pending final reconciliation' : 'No medication profile', Owner: 'PROVIDER', Action: 'Complete medication reconciliation' } },
+        { label: 'Type of Med Rec', values: { Status: 'Discharge', Owner: 'PROVIDER', Action: 'Confirm discharge med rec type' } },
+        { label: 'Pain/Med Instructions', values: { Status: this.latestVitals && this.latestVitals.pain !== undefined ? `Pain ${this.latestVitals.pain}/10` : 'Pain not filed', Owner: 'NURSE', Action: 'Give pain and medication instructions' } },
+        { label: 'Diet Instructions', values: { Status: this.activePatient.diet || 'Not documented', Owner: 'NURSE / DIETITIAN', Action: 'Confirm discharge diet' } },
+        { label: 'Nursing Discharge Instructions', values: { Status: this.latestNursingNote ? 'Draft from latest note' : 'Not started', Owner: 'NURSE', Action: 'Document nursing discharge instructions' } },
+        { label: 'Wound Care Instructions', values: { Status: this.activePatient.woundStatus || 'Needs wound review', Owner: 'WOUND NURSE', Action: 'Add wound care instructions' } },
+        { label: 'RT Instructions', values: { Status: 'If applicable', Owner: 'RESPIRATORY', Action: 'Confirm respiratory therapy instructions' } },
+        { label: 'Follow-up Providers', values: { Status: this.activePatient.provider || this.activePatient.attending || 'Provider not assigned', Owner: 'RECEPTION / NURSE', Action: 'Schedule follow-up appointment' } }
+      ]
+    },
+    afterVisitSummaryRows() {
+      const avsDoc = this.patientDocuments.find(doc => /avs|after visit|discharge|sortie/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      return [
+        { label: 'After Visit Summary', values: { Status: avsDoc ? 'Available' : 'Not generated', Owner: 'NURSE', Action: avsDoc ? this.formatShortDate(avsDoc.createdAt) : 'Generate and review AVS' } },
+        { label: 'Patient Copy', values: { Status: avsDoc ? 'Ready to print/share' : 'Pending AVS', Owner: 'RECEPTION / NURSE', Action: 'Print, send, or hand to patient' } },
+        { label: 'Follow-up Providers', values: { Status: this.activePatient.provider || this.activePatient.attending || 'Needs provider', Owner: 'RECEPTION', Action: 'Confirm appointment and contact' } },
+        { label: 'Care Team Review', values: { Status: this.patientTasks.length ? 'Open tasks remain' : 'No task blocker filed', Owner: 'MAJOR / NURSE', Action: 'Final discharge review' } }
+      ]
+    },
+    painImpactRows() {
+      return [
+        { label: 'Impact of Pain', values: { 'Last Filed': this.latestVitals && this.latestVitals.pain !== undefined ? `${this.latestVitals.pain}/10` : '-', Owner: 'NURSE', Action: 'Assess pain impact before discharge' } },
+        { label: 'Pain Management Plan', values: { 'Last Filed': this.patientMedications.length ? 'Medication profile available' : '-', Owner: 'PROVIDER / PHARMACY', Action: 'Confirm take-home plan' } },
+        { label: 'Patient Understanding', values: { 'Last Filed': this.latestNursingNote ? this.latestNursingNote.response || 'See nursing note' : '-', Owner: 'NURSE', Action: 'Teach and document response' } }
+      ]
+    },
+    labResultRows() {
+      if (!this.patientLabOrders.length) {
+        return [{ label: 'No lab orders', values: { Status: '-', Priority: '-', Result: '-' } }]
+      }
+      return this.patientLabOrders.map(order => ({
+        label: order.test || order.orderName || 'Lab order',
+        values: {
+          Status: order.status || 'Requested',
+          Priority: order.priority || '-',
+          Result: order.result || order.value || 'Pending'
+        }
+      }))
+    },
+    medicationProfileRows() {
+      if (!this.patientMedications.length) {
+        return [{ label: 'No medications filed', values: { Status: '-', Route: '-', Instructions: '-' } }]
+      }
+      return this.patientMedications.map(med => ({
+        label: med.drug || med.medication || med.name || 'Medication',
+        values: {
+          Status: med.status || 'Active',
+          Route: med.route || med.dispenseAt || '-',
+          Instructions: med.instructions || med.frequency || med.dose || med.prescriptionText || '-'
+        }
+      }))
+    },
+    emarMedicationRows() {
+      const medications = this.patientMedications.length
+        ? this.patientMedications
+        : this.marRows.map((row, index) => ({ id: `demo-mar-${index}`, drug: row.label, status: 'Active', frequency: Object.values(row.values).includes('Due') ? 'Scheduled' : 'PRN', dose: '', route: '', demoValues: row.values }))
+      return medications.map((med, index) => {
+        const name = med.drug || med.medication || med.name || med.label || 'Medication'
+        const route = med.route || (/(iv|infusion)/i.test(name) ? 'IV' : 'Oral')
+        const frequency = med.frequency || med.instructions || med.prescriptionText || 'Scheduled'
+        const isPrn = /prn|as needed|au besoin/i.test(frequency)
+        const isInfusion = /infusion|ivpb|continuous|running/i.test(`${name} ${route} ${frequency}`)
+        const status = med.status || 'Active'
+        const statusClass = this.orderStatusClass(status)
+        const adminTime = med.lastAdminTime || med.administeredAt || med.schedule || (isPrn ? '' : this.marTimeColumns[index % this.marTimeColumns.length])
+        return {
+          id: med.id || `emar-med-${index}`,
+          raw: med.id && !String(med.id).startsWith('demo-mar') ? med : null,
+          orderItem: {
+            type: 'medication',
+            raw: med,
+            label: name,
+            detail: [med.dose || med.dosage, route, frequency].filter(Boolean).join(' · ')
+          },
+          label: name,
+          detail: [med.dose || med.dosage || 'Dose per order', route, frequency].filter(Boolean).join(' · '),
+          route,
+          frequency,
+          dispense: med.dispenseLocation || med.dispenseAt || 'Central pharmacy / unit stock',
+          education: med.education || `Educate patient on ${name}, indication, expected effect and side effects.`,
+          status,
+          statusClass,
+          scheduleType: isInfusion ? 'infusion' : isPrn ? 'prn' : 'scheduled',
+          color: isInfusion ? '#7c3aed' : isPrn ? '#b45309' : '#0f766e',
+          icon: isInfusion ? 'mdi-iv-bag' : isPrn ? 'mdi-pill-multiple' : 'mdi-pill',
+          lastAdmin: med.lastAdminTime || med.administeredAt || med.lastAdmin || 'Not filed',
+          timeline: this.marTimeColumns.map(time => {
+            const demoValue = med.demoValues && med.demoValues[time]
+            const isDue = !isPrn && (time === adminTime || (!adminTime && time === '1800'))
+            const isGiven = demoValue === 'Given' || String(status).toLowerCase() === 'given' || String(med.administrationStatus || '').toLowerCase() === 'given'
+            const isHeld = demoValue === 'Held' || /hold|held/i.test(status)
+            const isRunning = demoValue === 'Running' || (isInfusion && ['1600', '1700', '1800'].includes(time))
+            const text = demoValue || (isGiven && time === adminTime ? 'Given' : isHeld && time === adminTime ? 'Held' : isRunning ? 'Running' : isDue ? 'Due' : isPrn ? 'PRN' : '')
+            return {
+              time,
+              text,
+              status: isGiven && time === adminTime ? 'given' : isHeld && time === adminTime ? 'held' : isRunning ? 'running' : isDue ? 'due' : isPrn ? 'prn' : 'empty',
+              defaultAction: isDue || isPrn || isRunning ? 'given' : 'details'
+            }
+          })
+        }
+      })
+    },
+    marViewTabs() {
+      const rows = this.emarMedicationRows
+      return [
+        { key: 'all', label: 'All', count: rows.length },
+        { key: 'scheduled', label: 'Scheduled', count: rows.filter(row => row.scheduleType === 'scheduled').length },
+        { key: 'prn', label: 'PRN', count: rows.filter(row => row.scheduleType === 'prn').length },
+        { key: 'continuous', label: 'Continuous', count: rows.filter(row => row.scheduleType === 'infusion').length },
+        { key: 'running', label: 'Running Infusions', count: rows.filter(row => row.timeline.some(cell => cell.status === 'running')).length },
+        { key: 'education', label: 'Education', count: rows.length }
+      ]
+    },
+    visibleEmarMedicationRows() {
+      let rows = [...this.emarMedicationRows]
+      if (this.selectedMarView === 'scheduled') rows = rows.filter(row => row.scheduleType === 'scheduled')
+      if (this.selectedMarView === 'prn') rows = rows.filter(row => row.scheduleType === 'prn')
+      if (this.selectedMarView === 'continuous') rows = rows.filter(row => row.scheduleType === 'infusion')
+      if (this.selectedMarView === 'running') rows = rows.filter(row => row.timeline.some(cell => cell.status === 'running'))
+      if (this.marHideAdmins) rows = rows.filter(row => row.timeline.some(cell => ['due', 'prn', 'running'].includes(cell.status)))
+      const query = this.marSearch.trim().toLowerCase()
+      if (query) {
+        rows = rows.filter(row => `${row.label} ${row.detail} ${row.route} ${row.frequency} ${row.education}`.toLowerCase().includes(query))
+      }
+      return rows
+    },
+    marAdvisories() {
+      const rows = []
+      if (this.activePatient.allergies && !/no known/i.test(this.activePatient.allergies)) {
+        rows.push({ level: 'high', title: 'Allergy check required', detail: this.activePatient.allergies })
+      }
+      const dueCount = this.emarMedicationRows.filter(row => row.timeline.some(cell => cell.status === 'due')).length
+      if (dueCount) rows.push({ level: 'warning', title: 'Medications due', detail: `${dueCount} medication(s) due in the current eMAR window.` })
+      const unscanned = this.emarMedicationRows.filter(row => row.raw && !row.raw.lastScanAt).length
+      if (unscanned) rows.push({ level: 'warning', title: 'Barcode scan pending', detail: `${unscanned} active medication(s) do not have a scan filed.` })
+      if (!rows.length) rows.push({ level: 'normal', title: 'No blocking advisory', detail: 'Continue medication rights and patient education.' })
+      return rows
+    },
+    marEducationCards() {
+      return this.visibleEmarMedicationRows.slice(0, 5).map(row => ({
+        label: row.label,
+        detail: row.education
+      }))
+    },
+    noteRows() {
+      const rows = [
+        ...this.patientNursingNotes.map(note => ({
+          label: note.observation || 'Nursing note',
+          values: { Type: 'Nursing', Recorded: this.formatShortDate(note.recordedAt), Summary: note.response || note.actions || '-' }
+        })),
+        ...this.patientMedicalNotes.map(note => ({
+          label: note.diagnosis || note.progressNote || 'Medical note',
+          values: { Type: 'Medical', Recorded: this.formatShortDate(note.recordedAt), Summary: note.plan || note.clinicalFindings || '-' }
+        }))
+      ]
+      return rows.length ? rows : [{ label: 'No clinical notes filed', values: { Type: '-', Recorded: '-', Summary: '-' } }]
+    },
+    carePlanRows() {
+      const taskRows = this.patientTasks.map(task => ({
+        label: task.title || 'Care task',
+        values: { Owner: task.assignedToRole || 'Care team', Status: task.status || 'pending', 'Next Step': task.actionReason || 'Continue plan' }
+      }))
+      return taskRows.length ? taskRows : [
+        { label: 'Nursing surveillance', values: { Owner: 'NURSE', Status: 'Active', 'Next Step': 'Capture vitals and notes' } },
+        { label: 'Provider review', values: { Owner: 'DOCTOR', Status: 'Open', 'Next Step': 'Review orders and diagnosis' } }
+      ]
+    },
+    educationRows() {
+      const latestNote = latestByDate(this.patientNursingNotes, 'recordedAt')
+      return [
+        { label: 'Medication education', values: { Status: this.patientMedications.length ? 'Due' : 'Not started', Owner: 'Nurse / Pharmacy', Notes: 'Review current medication profile' } },
+        { label: 'Discharge instructions', values: { Status: 'Open', Owner: 'Care team', Notes: latestNote ? latestNote.response || 'See latest note' : 'No education note filed' } }
+      ]
+    },
+    immunizationRows() {
+      const patient = this.findPatientRecord(this.activePatientId) || {}
+      return [
+        { label: 'Influenza', values: { Status: patient.influenzaStatus || 'Not reviewed', Date: patient.influenzaDate || '-', Source: 'Patient chart' } },
+        { label: 'Tetanus', values: { Status: patient.tetanusStatus || 'Unknown', Date: patient.tetanusDate || '-', Source: 'Patient chart' } }
+      ]
+    },
+    handoffRows() {
+      const latestNote = latestByDate(this.patientNursingNotes, 'recordedAt')
+      return [
+        { label: 'Situation', values: { Status: this.activePatient.patientClass, Owner: 'Outgoing RN', Concern: latestNote ? latestNote.observation || '-' : 'No handoff note filed' } },
+        { label: 'Orders to acknowledge', values: { Status: this.patientLabOrders.length + this.patientImagingOrders.length, Owner: 'Incoming RN', Concern: 'Review open orders' } },
+        { label: 'Tasks due', values: { Status: this.patientTasks.length, Owner: 'Care team', Concern: 'Complete work list' } }
+      ]
+    },
+    documentRows() {
+      if (!this.patientDocuments.length) {
+        return [{ label: 'No documents filed', values: { Category: '-', Status: '-', Filed: '-' } }]
+      }
+      return this.patientDocuments.map(doc => ({
+        label: doc.title || doc.name || 'Document',
+        values: {
+          Category: doc.category || 'Clinical document',
+          Status: doc.status || 'Filed',
+          Filed: this.formatShortDate(doc.createdAt)
+        }
+      }))
+    },
+    registrationRows() {
+      const patient = this.findPatientRecord(this.activePatientId) || {}
+      return [
+        { label: 'Full name', values: { Value: this.activePatient.name } },
+        { label: 'Date of birth', values: { Value: this.activePatient.dob } },
+        { label: 'Sex', values: { Value: this.activePatient.gender } },
+        { label: 'Phone', values: { Value: patient.phone || '-' } },
+        { label: 'Address', values: { Value: patient.address || '-' } },
+        { label: 'Region', values: { Value: patient.region || '-' } },
+        { label: 'PHI basis', values: { Value: patient.phiAccessBasis || 'Treatment' } }
+      ]
     },
     visibleVitalRows() {
       if (!this.patientVitals.length) return this.vitalRows
@@ -916,6 +2955,350 @@ export default {
         { label: 'Consciousness', values: { 'Last Filed': latest.assessment.consciousness || '-' } },
         { label: 'Respiratory status', values: { 'Last Filed': latest.assessment.respiratoryStatus || '-' } },
         { label: 'Nursing problems', values: { 'Last Filed': Array.isArray(latest.assessment.nursingProblems) ? latest.assessment.nursingProblems.join(', ') : '-' } }
+      ]
+    },
+    avatarZones() {
+      const vitals = this.latestVitals || {}
+      const pain = Number(vitals.pain)
+      const spo2 = Number(vitals.spo2)
+      const hasWound = Boolean(this.activePatient.woundStatus || /wound|skin/i.test(`${this.activePatient.problem || ''} ${this.activePatient.alert || ''}`))
+      const abnormalVitals = Number.isFinite(spo2) && spo2 < 92
+      return [
+        {
+          key: 'neuro',
+          label: 'Neuro / cognition',
+          short: 'Neuro',
+          icon: 'mdi-brain',
+          color: '#2563eb',
+          status: this.latestVitals && this.latestVitals.glasgow && Number(this.latestVitals.glasgow) < 15 ? 'risk' : 'stable',
+          statusLabel: this.latestVitals && this.latestVitals.glasgow ? `GCS ${this.latestVitals.glasgow}` : 'Neuro due',
+          detail: this.latestVitals && this.latestVitals.glasgow ? 'Latest Glasgow Coma Scale is available.' : 'No current neuro score filed.'
+        },
+        {
+          key: 'resp',
+          label: 'Respiratory',
+          short: 'Resp',
+          icon: 'mdi-lungs',
+          color: abnormalVitals ? '#be123c' : '#0f766e',
+          status: abnormalVitals ? 'risk' : 'stable',
+          statusLabel: vitals.spo2 ? `SpO2 ${vitals.spo2}%` : 'SpO2 due',
+          detail: vitals.spo2 ? 'Respiratory status is tied to latest filed SpO2.' : 'Record respiratory status with next vital signs.'
+        },
+        {
+          key: 'cardiac',
+          label: 'Cardiac / vitals',
+          short: 'Vitals',
+          icon: 'mdi-heart-pulse',
+          color: '#0f766e',
+          status: this.patientVitals.length ? 'active' : 'risk',
+          statusLabel: this.latestVitalsSummary || 'Vitals due',
+          detail: this.latestVitalsSummary || 'No current vital signs filed for this patient.'
+        },
+        {
+          key: 'iv',
+          label: 'IV / lines',
+          short: 'IV',
+          icon: 'mdi-needle',
+          color: '#7c3aed',
+          status: this.patientMedications.some(med => /iv|infusion/i.test(`${med.route || ''} ${med.frequency || ''} ${med.instructions || ''}`)) ? 'active' : 'stable',
+          statusLabel: 'Line review',
+          detail: 'Review patency, site condition, dressing date and infusion compatibility.'
+        },
+        {
+          key: 'skin',
+          label: 'Skin / wound',
+          short: 'Skin',
+          icon: 'mdi-bandage',
+          color: hasWound ? '#be123c' : '#0f766e',
+          status: hasWound ? 'risk' : 'stable',
+          statusLabel: hasWound ? 'Wound care due' : 'Skin stable',
+          detail: hasWound ? (this.activePatient.woundStatus || 'Active wound concern requires photo, dimensions and dressing status.') : 'No active wound signal in current chart.'
+        },
+        {
+          key: 'pain',
+          label: 'Pain',
+          short: 'Pain',
+          icon: 'mdi-alert-circle-outline',
+          color: Number.isFinite(pain) && pain >= 7 ? '#be123c' : '#f97316',
+          status: Number.isFinite(pain) && pain >= 7 ? 'risk' : (Number.isFinite(pain) ? 'active' : 'stable'),
+          statusLabel: Number.isFinite(pain) ? `${pain}/10` : 'Pain due',
+          detail: Number.isFinite(pain) ? 'Pain score is filed and can drive reassessment timing.' : 'Pain score should be captured with the next nursing assessment.'
+        },
+        {
+          key: 'mobility',
+          label: 'Mobility / fall risk',
+          short: 'Move',
+          icon: 'mdi-walk',
+          color: '#f97316',
+          status: 'active',
+          statusLabel: 'Fall precautions',
+          detail: 'Mobility assistance and fall precautions remain part of shift rounds.'
+        },
+        {
+          key: 'meds',
+          label: 'Medication workload',
+          short: 'Meds',
+          icon: 'mdi-pill',
+          color: '#0f766e',
+          status: this.patientMedications.length ? 'active' : 'stable',
+          statusLabel: this.patientMedications.length ? `${this.patientMedications.length} medication(s)` : 'No meds filed',
+          detail: this.patientMedications.length ? 'Active medication profile is available for MAR and reconciliation.' : 'No active medication order filed in this chart.'
+        }
+      ]
+    },
+    activeAvatarZoneRecord() {
+      return this.avatarZones.find(zone => zone.key === this.activeAvatarZone) || this.avatarZones[0]
+    },
+    activeAvatarRows() {
+      const zone = this.activeAvatarZoneRecord
+      const evidenceMap = {
+        neuro: this.latestVitals && this.latestVitals.glasgow ? `GCS ${this.latestVitals.glasgow}` : 'No GCS filed',
+        resp: this.latestVitals && this.latestVitals.spo2 ? `SpO2 ${this.latestVitals.spo2}%` : 'No SpO2 filed',
+        cardiac: this.latestVitalsSummary || 'No current vitals',
+        iv: this.patientMedications.length ? 'Medication/infusion profile available' : 'No infusion order filed',
+        skin: this.activePatient.woundStatus || 'Admission wound documentation',
+        pain: this.latestVitals && this.latestVitals.pain !== undefined ? `${this.latestVitals.pain}/10` : 'Pain not filed',
+        mobility: this.latestNursingNote ? this.latestNursingNote.mobility || 'See nursing note' : 'No mobility note filed',
+        meds: this.patientMedications.length ? `${this.patientMedications.length} active item(s)` : 'No medication profile'
+      }
+      const actionMap = {
+        neuro: 'Document neuro/GCS assessment',
+        resp: 'Record respiratory status and oxygen need',
+        cardiac: 'File vitals and reassess trend',
+        iv: 'Document line site, patency and dressing',
+        skin: 'File wound photo, measurements and dressing',
+        pain: 'Document intervention and reassessment',
+        mobility: 'Update fall risk and assist level',
+        meds: 'Review MAR and medication reconciliation'
+      }
+      return [
+        {
+          label: zone.label,
+          values: {
+            Status: zone.statusLabel,
+            Evidence: evidenceMap[zone.key] || zone.detail,
+            Action: actionMap[zone.key] || 'Document assessment'
+          }
+        }
+      ]
+    },
+    avatarSystemRows() {
+      return this.avatarZones.map(zone => ({
+        label: zone.label,
+        values: {
+          Status: zone.statusLabel,
+          Evidence: zone.detail,
+          Action: zone.status === 'risk' ? 'Prioritize this zone' : 'Continue scheduled assessment'
+        }
+      }))
+    },
+    avatarCareTargetRows() {
+      return [
+        { label: 'Wound / skin target', values: { Location: 'Skin', Status: this.activePatient.woundStatus || 'Review skin integrity', 'Next Step': 'Photo, dimensions, dressing status' } },
+        { label: 'Pain target', values: { Location: 'Pain', Status: this.latestVitals && this.latestVitals.pain !== undefined ? `${this.latestVitals.pain}/10` : 'Not filed', 'Next Step': 'Reassess after intervention' } },
+        { label: 'IV / line target', values: { Location: 'Upper extremity / IV', Status: 'Assess patency', 'Next Step': 'Document site and dressing' } },
+        { label: 'Mobility target', values: { Location: 'Lower extremity / safety', Status: 'Fall precautions active', 'Next Step': 'Confirm assist level every round' } },
+        { label: 'Medication target', values: { Location: 'MAR', Status: this.patientMedications.length ? `${this.patientMedications.length} medication(s)` : 'No meds filed', 'Next Step': 'Review due/held/administered items' } }
+      ]
+    },
+    flowsheetTimeColumns() {
+      return ['0800', '1000', '1200', '1400', '1600', '1800']
+    },
+    aiCareAcuityScore() {
+      let score = 22
+      const vitals = this.latestVitals || {}
+      const pain = Number(vitals.pain)
+      const temp = Number(vitals.temp)
+      const spo2 = Number(vitals.spo2)
+      const hr = Number(vitals.hr)
+      if (!this.patientVitals.length) score += 14
+      if (Number.isFinite(pain) && pain >= 7) score += 18
+      if (Number.isFinite(temp) && temp >= 38) score += 15
+      if (Number.isFinite(spo2) && spo2 < 92) score += 18
+      if (Number.isFinite(hr) && (hr > 110 || hr < 50)) score += 12
+      if (this.patientTasks.length) score += Math.min(this.patientTasks.length * 6, 24)
+      if (this.patientLabOrders.length || this.patientImagingOrders.length) score += 8
+      if (this.patientMedications.length) score += 5
+      if (this.activePatient.woundStatus || /wound|skin/i.test(`${this.activePatient.problem || ''} ${this.activePatient.alert || ''}`)) score += 12
+      return Math.min(score, 100)
+    },
+    aiCareRiskLabel() {
+      if (this.aiCareAcuityScore >= 75) return 'High risk'
+      if (this.aiCareAcuityScore >= 50) return 'Watch closely'
+      return 'Stable workflow'
+    },
+    effectiveAiCareAcuityScore() {
+      return this.remoteAiCarePlan && Number.isFinite(Number(this.remoteAiCarePlan.acuityScore))
+        ? Number(this.remoteAiCarePlan.acuityScore)
+        : this.aiCareAcuityScore
+    },
+    effectiveAiCareRiskLabel() {
+      return this.remoteAiCarePlan && this.remoteAiCarePlan.riskLabel
+        ? this.remoteAiCarePlan.riskLabel
+        : this.aiCareRiskLabel
+    },
+    aiNextBestAction() {
+      const vitals = this.latestVitals || {}
+      const pain = Number(vitals.pain)
+      const spo2 = Number(vitals.spo2)
+      if (!this.patientVitals.length) return 'Start with vitals, pain score and GCS, then file the nursing assessment.'
+      if (Number.isFinite(spo2) && spo2 < 92) return 'Prioritize respiratory reassessment and notify provider if low oxygen persists.'
+      if (Number.isFinite(pain) && pain >= 7) return 'Reassess pain now, document intervention response, and review medication plan.'
+      if (this.patientTasks.length) return 'Complete or acknowledge due care tasks before the next scheduled round.'
+      if (this.activePatient.woundStatus) return 'Complete wound reassessment, photo/dimensions, and dressing status.'
+      return 'Continue scheduled rounds and document the next flowsheet event on time.'
+    },
+    effectiveAiNextBestAction() {
+      return this.remoteAiCarePlan && this.remoteAiCarePlan.nextBestAction
+        ? this.remoteAiCarePlan.nextBestAction
+        : this.aiNextBestAction
+    },
+    aiCareInsights() {
+      const insights = []
+      const vitals = this.latestVitals || {}
+      const pain = Number(vitals.pain)
+      const temp = Number(vitals.temp)
+      const spo2 = Number(vitals.spo2)
+      if (!this.patientVitals.length) {
+        insights.push({ level: 'high', icon: 'mdi-heart-pulse', title: 'Vitals missing', detail: 'No current vital signs filed for this patient.' })
+      } else {
+        insights.push({ level: 'good', icon: 'mdi-check-circle', title: 'Vitals available', detail: this.latestVitalsSummary || 'Latest vital signs are filed.' })
+      }
+      if (Number.isFinite(pain) && pain >= 7) {
+        insights.push({ level: 'high', icon: 'mdi-alert-circle', title: 'Pain priority', detail: `Pain is ${pain}/10. Reassessment and response are due.` })
+      }
+      if (Number.isFinite(spo2) && spo2 < 92) {
+        insights.push({ level: 'high', icon: 'mdi-lungs', title: 'Oxygenation risk', detail: `SpO2 is ${spo2}%. Respiratory review is recommended.` })
+      }
+      if (Number.isFinite(temp) && temp >= 38) {
+        insights.push({ level: 'warning', icon: 'mdi-thermometer-alert', title: 'Fever watch', detail: `Temperature is ${temp} C. Consider sepsis screen.` })
+      }
+      if (this.patientTasks.length) {
+        insights.push({ level: 'warning', icon: 'mdi-format-list-checks', title: 'Open care tasks', detail: `${this.patientTasks.length} task(s) need review in this shift.` })
+      }
+      if (this.patientMedications.length) {
+        insights.push({ level: 'info', icon: 'mdi-pill', title: 'Medication workload', detail: `${this.patientMedications.length} medication item(s) in the active profile.` })
+      }
+      if (this.activePatient.woundStatus || /wound|skin/i.test(`${this.activePatient.problem || ''} ${this.activePatient.alert || ''}`)) {
+        insights.push({ level: 'warning', icon: 'mdi-bandage', title: 'Wound care focus', detail: 'Wound/skin documentation should stay on the care schedule.' })
+      }
+      return insights.slice(0, 5)
+    },
+    effectiveAiCareInsights() {
+      return this.remoteAiCarePlan && Array.isArray(this.remoteAiCarePlan.insights) && this.remoteAiCarePlan.insights.length
+        ? this.remoteAiCarePlan.insights
+        : this.aiCareInsights
+    },
+    aiPriorityRows() {
+      const rows = []
+      const vitals = this.latestVitals || {}
+      const pain = Number(vitals.pain)
+      const spo2 = Number(vitals.spo2)
+      if (!this.patientVitals.length) {
+        rows.push({ label: 'Capture baseline vitals and GCS', values: { Reason: 'No current vital signs', Owner: 'NURSE', 'Next Action': 'Open Documenter soin' } })
+      }
+      if (Number.isFinite(spo2) && spo2 < 92) {
+        rows.push({ label: 'Respiratory reassessment', values: { Reason: `SpO2 ${spo2}%`, Owner: 'NURSE / PROVIDER', 'Next Action': 'Recheck oxygen, notify if persistent' } })
+      }
+      if (Number.isFinite(pain) && pain >= 7) {
+        rows.push({ label: 'Pain intervention response', values: { Reason: `Pain ${pain}/10`, Owner: 'NURSE', 'Next Action': 'Document intervention and reassessment' } })
+      }
+      if (this.patientTasks.length) {
+        rows.push({ label: 'Close due worklist items', values: { Reason: `${this.patientTasks.length} open task(s)`, Owner: 'CARE TEAM', 'Next Action': 'Acknowledge, complete, or escalate' } })
+      }
+      if (this.activePatient.woundStatus || /wound|skin/i.test(`${this.activePatient.problem || ''} ${this.activePatient.alert || ''}`)) {
+        rows.push({ label: 'Wound photo and dressing status', values: { Reason: 'Active wound concern', Owner: 'WOUND NURSE', 'Next Action': 'File wound documentation' } })
+      }
+      if (!rows.length) {
+        rows.push({ label: 'Maintain scheduled care', values: { Reason: 'No high-priority signal', Owner: 'NURSE', 'Next Action': 'Continue timed flowsheet rounds' } })
+      }
+      return rows
+    },
+    effectiveAiPriorityRows() {
+      if (!this.remoteAiCarePlan || !Array.isArray(this.remoteAiCarePlan.priorityRows) || !this.remoteAiCarePlan.priorityRows.length) {
+        return this.aiPriorityRows
+      }
+      return this.remoteAiCarePlan.priorityRows.map(row => ({
+        label: row.label || 'AI recommendation',
+        values: {
+          Reason: row.reason || '-',
+          Owner: row.owner || 'CARE TEAM',
+          'Next Action': row.nextAction || '-'
+        }
+      }))
+    },
+    flowsheetScheduleSlots() {
+      const openTasks = this.patientTasks.length
+      return [
+        { time: '0800', label: this.latestVitalsSummary ? 'Vitaux deja files' : 'Vitaux / douleur a saisir', owner: 'NURSE', status: this.latestVitalsSummary ? 'done' : 'due' },
+        { time: '1000', label: 'Pansement / wound care', owner: 'WOUND NURSE', status: 'active' },
+        { time: '1200', label: 'Reevaluation douleur + I/O', owner: 'NURSE', status: 'due' },
+        { time: '1400', label: this.patientMedications.length ? 'Administration medicaments' : 'Medication review', owner: 'NURSE / PHARMACY', status: this.patientMedications.length ? 'active' : 'pending' },
+        { time: '1600', label: openTasks ? `${openTasks} tache(s) a cloturer` : 'Rounds securite', owner: 'CARE TEAM', status: openTasks ? 'due' : 'pending' },
+        { time: '1800', label: 'Handoff et plan prochaine equipe', owner: 'NURSE', status: this.latestNursingNote ? 'pending' : 'due' }
+      ]
+    },
+    flowsheetScheduleRows() {
+      return [
+        { label: 'Vital signs / pain', values: { '0800': this.latestVitalsSummary || 'Due', '1000': '-', '1200': 'Reassess', '1400': '-', '1600': 'As needed', '1800': 'Handoff value' } },
+        { label: 'Medication administration', values: { '0800': this.patientMedications.length ? 'Review MAR' : '-', '1000': this.patientMedications.length ? 'Scheduled' : '-', '1200': '-', '1400': this.patientMedications.length ? 'Scheduled' : '-', '1600': '-', '1800': this.patientMedications.length ? 'Evening due' : '-' } },
+        { label: 'Wound / skin care', values: { '0800': 'Inspect', '1000': 'Dressing / photo', '1200': '-', '1400': 'Reposition', '1600': 'Skin check', '1800': 'Handoff' } },
+        { label: 'Intake and output', values: { '0800': 'Start totals', '1000': '-', '1200': 'Record I/O', '1400': '-', '1600': 'Review balance', '1800': 'Close shift' } },
+        { label: 'Mobility / safety rounds', values: { '0800': 'Fall precautions', '1000': 'Assist activity', '1200': 'Position', '1400': 'Round', '1600': 'Round', '1800': 'Handoff risk' } }
+      ]
+    },
+    flowsheetTaskRows() {
+      const rows = this.patientTasks.length
+        ? this.patientTasks.map(task => ({
+          label: task.title || task.label || 'Care task',
+          values: {
+            Time: this.formatShortDate(task.createdAt || task.updatedAt) || 'Today',
+            Priority: task.priority || task.assignedToRole || 'Routine',
+            Status: task.status || 'pending',
+            Action: task.actionReason || 'Document in flowsheet'
+          }
+        }))
+        : this.worklistRows.map(row => ({
+          label: row.label,
+          values: { ...row.values, Action: row.values.Status === 'Open' || row.values.Status === 'Due' ? 'Documenter / completer' : 'Review' }
+        }))
+      return rows
+    },
+    skinWoundFlowsheetRows() {
+      return [
+        { label: 'Braden Scale - sensory perception', values: { '0800': '3', '1000': '-', '1200': '-', '1400': '-', '1600': 'Recheck', '1800': '-' } },
+        { label: 'Moisture', values: { '0800': '4', '1000': '-', '1200': 'Monitor', '1400': '-', '1600': '-', '1800': '-' } },
+        { label: 'Activity / mobility', values: { '0800': '2', '1000': 'Assist x1', '1200': '-', '1400': 'Reposition', '1600': '-', '1800': 'Handoff' } },
+        { label: 'Nutrition', values: { '0800': '2', '1000': '-', '1200': 'Meal intake', '1400': '-', '1600': '-', '1800': '-' } },
+        { label: 'Friction and shear', values: { '0800': '3', '1000': '-', '1200': '-', '1400': 'Reposition', '1600': '-', '1800': '-' } },
+        { label: 'Wound prevention dressing', values: { '0800': 'Assess', '1000': 'Change if due', '1200': '-', '1400': '-', '1600': 'Intact?', '1800': 'Report' } },
+        { label: 'Wound photo / dimensions', values: { '0800': this.activePatient.woundStatus || 'Admission wound', '1000': 'Photo due', '1200': '-', '1400': '-', '1600': '-', '1800': 'File document' } }
+      ]
+    },
+    flowsheetVitalsRows() {
+      if (this.patientVitals.length) {
+        return [
+          { label: 'Blood pressure', values: { 'Last Filed': this.latestVitals.bp || '-', 'Next Due': '1200 / PRN', Action: 'Document trend' } },
+          { label: 'Heart rate', values: { 'Last Filed': this.latestVitals.hr || '-', 'Next Due': '1200 / PRN', Action: 'Notify if abnormal' } },
+          { label: 'Temperature', values: { 'Last Filed': this.latestVitals.temp ? `${this.latestVitals.temp} C` : '-', 'Next Due': '1200 / PRN', Action: 'Sepsis screen if febrile' } },
+          { label: 'SpO2', values: { 'Last Filed': this.latestVitals.spo2 ? `${this.latestVitals.spo2}%` : '-', 'Next Due': '1200 / PRN', Action: 'Respiratory review' } },
+          { label: 'Pain', values: { 'Last Filed': this.latestVitals.pain !== undefined ? `${this.latestVitals.pain}/10` : '-', 'Next Due': 'After intervention', Action: 'Reassess pain' } },
+          { label: 'Fall precautions', values: { 'Last Filed': 'Active', 'Next Due': 'Every round', Action: 'Document safety round' } }
+        ]
+      }
+      return [
+        { label: 'Blood pressure', values: { '0800': 'Due', '1000': '-', '1200': 'Due', '1400': '-', '1600': 'PRN', '1800': 'Handoff' } },
+        { label: 'Pain score', values: { '0800': 'Due', '1000': 'After care', '1200': 'Due', '1400': '-', '1600': 'PRN', '1800': 'Handoff' } },
+        { label: 'Safety round', values: { '0800': 'Fall precautions', '1000': 'Round', '1200': 'Round', '1400': 'Round', '1600': 'Round', '1800': 'Handoff' } }
+      ]
+    },
+    flowsheetIntakeMobilityRows() {
+      return [
+        { label: 'Oral intake', values: { '0800': 'Breakfast', '1000': '-', '1200': 'Lunch', '1400': '-', '1600': 'Hydration', '1800': 'Dinner' } },
+        { label: 'IV intake', values: { '0800': 'Review fluids', '1000': '-', '1200': 'Record volume', '1400': '-', '1600': 'Review balance', '1800': 'Close shift' } },
+        { label: 'Urine output', values: { '0800': 'Record', '1000': '-', '1200': 'Record', '1400': '-', '1600': 'Record', '1800': 'Total' } },
+        { label: 'Stool / ostomy', values: { '0800': 'Assess', '1000': '-', '1200': 'Record if present', '1400': '-', '1600': '-', '1800': 'Handoff' } },
+        { label: 'Mobility assistance', values: { '0800': 'Plan', '1000': 'Assist activity', '1200': 'Position', '1400': 'Ambulate if safe', '1600': 'Reposition', '1800': 'Handoff' } }
       ]
     },
     visibleWorklistRows() {
@@ -1029,6 +3412,549 @@ export default {
     this.normalizeVisibleSelection()
   },
   methods: {
+    buildClinicalAiContext() {
+      const patient = this.activePatient || {}
+      return {
+        role: this.currentRole,
+        patient: {
+          age: patient.age || '',
+          gender: patient.gender || '',
+          patientClass: patient.patientClass || patient.patientStatus || '',
+          isolation: patient.isolation || patient.infectionStatus || ''
+        },
+        latestVitals: this.latestVitals || null,
+        latestVitalsSummary: this.latestVitalsSummary || '',
+        latestNursingNoteSummary: this.latestNursingNote
+          ? [this.latestNursingNote.observation, this.latestNursingNote.response, this.latestNursingNote.actions].filter(Boolean).join(' | ')
+          : '',
+        openTasks: this.patientTasks.map(task => ({
+          title: task.title || task.label || 'Care task',
+          priority: task.priority || '',
+          status: task.status || '',
+          owner: task.assignedToRole || ''
+        })),
+        medications: this.patientMedications.map(med => ({
+          name: med.drug || med.medication || med.name || 'Medication',
+          route: med.route || '',
+          schedule: med.schedule || med.frequency || '',
+          status: med.status || ''
+        })),
+        diagnostics: {
+          labOrders: this.patientLabOrders.length,
+          imagingOrders: this.patientImagingOrders.length
+        },
+        wound: {
+          status: patient.woundStatus || patient.problem || '',
+          due: Boolean(patient.woundStatus || /wound|skin/i.test(`${patient.problem || ''} ${patient.alert || ''}`))
+        },
+        schedule: this.flowsheetScheduleSlots.map(slot => ({
+          time: slot.time,
+          label: slot.label,
+          owner: slot.owner,
+          status: slot.status
+        }))
+      }
+    },
+    async refreshAiCarePlan() {
+      this.aiCareLoading = true
+      this.aiCareError = ''
+      try {
+        const response = await fetch('/api/clinical/ai-care-plan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({ context: this.buildClinicalAiContext() })
+        })
+        const contentType = response.headers.get('content-type') || ''
+        if (!contentType.includes('application/json')) {
+          throw new Error('AI endpoint did not return JSON.')
+        }
+        const payload = await response.json()
+        if (!response.ok || !payload.ok || !payload.plan) {
+          throw new Error(payload.message || 'Unable to generate ChatGPT care plan.')
+        }
+        this.remoteAiCarePlan = payload.plan
+        this.toastSuccess(`ChatGPT care plan ready (${payload.model || 'OpenAI'}).`)
+      } catch (error) {
+        this.aiCareError = 'ChatGPT indisponible: le moteur local reste actif.'
+        this.remoteAiCarePlan = null
+        this.toastError(this.aiCareError)
+      } finally {
+        this.aiCareLoading = false
+      }
+    },
+    selectNavigator(key) {
+      this.selectedChartTab = 'Navigators'
+      this.selectedNavigator = key
+      const nav = this.navigatorTabs.find(item => item.key === key)
+      const first = nav && nav.sections && nav.sections[0]
+      this.selectedNavigatorSection = first ? (typeof first === 'string' ? first : first.key) : ''
+    },
+    normalizeOrderKind(kind) {
+      const value = String(kind || '').toLowerCase()
+      if (value.includes('lab')) return 'lab'
+      if (value.includes('imag') || value.includes('radio')) return 'imaging'
+      if (value.includes('med') || value.includes('pill')) return 'medication'
+      if (value.includes('wound')) return 'wound'
+      return 'nursing'
+    },
+    orderStatusClass(status) {
+      const value = String(status || '').toLowerCase()
+      if (/hold|held/.test(value)) return 'held'
+      if (/discontinued|cancelled|cancel/.test(value)) return 'stopped'
+      if (/requested|pending|due/.test(value)) return 'pending'
+      if (/completed|done|given|active|started/.test(value)) return 'active'
+      return 'neutral'
+    },
+    openOrderComposer(kind, order) {
+      const normalized = this.normalizeOrderKind(kind)
+      if (normalized === 'lab') {
+        this.openChartDialog('lab')
+        if (order && order.raw) {
+          this.forms.order.lab.testName = order.raw.test || order.raw.testName || order.label || ''
+          this.forms.order.lab.priority = order.raw.priority || 'Routine'
+          this.forms.order.instructions = order.raw.instructions || order.detail || ''
+        }
+        return
+      }
+      if (normalized === 'imaging') {
+        this.openChartDialog('imaging')
+        if (order && order.raw) {
+          this.forms.order.imaging.modality = order.raw.exam || order.raw.modality || order.raw.study || order.label || ''
+          this.forms.order.imaging.priority = order.raw.priority || 'Routine'
+          this.forms.order.instructions = order.raw.instructions || order.detail || ''
+        }
+        return
+      }
+      if (normalized === 'medication') {
+        this.openChartDialog('medication')
+        if (order && order.raw) {
+          this.forms.order.medication.medication = order.raw.drug || order.raw.medication || order.raw.name || order.label || ''
+          this.forms.order.medication.dosage = order.raw.dose || order.raw.dosage || ''
+          this.forms.order.medication.route = order.raw.route || 'Oral'
+          this.forms.order.medication.frequency = order.raw.frequency || ''
+          this.forms.order.instructions = order.raw.instructions || order.detail || ''
+        }
+        return
+      }
+      if (normalized === 'wound') {
+        this.forms.document = defaultDialogForms().document
+        this.forms.document.title = order && order.label ? `Wound care order - ${order.label}` : 'Wound care order'
+        this.forms.document.category = 'Wound Photo'
+        this.forms.document.content = order && order.detail ? order.detail : 'Document wound care plan, dressing task, photo requirement and reassessment.'
+        this.openChartDialog('document')
+        return
+      }
+      this.openChartDialog('nurse')
+    },
+    async handleOrderAction(action, order) {
+      if (!order) return
+      if (action === 'modify') {
+        this.openOrderComposer(order.type, order)
+        return
+      }
+      const nextStatus = action === 'hold' ? 'Hold' : 'Discontinued'
+      const actionLabel = action === 'hold' ? 'Hold' : 'Discontinue'
+      this.savingDialog = true
+      try {
+        if (order.raw && order.raw.id) {
+          const nextRecord = { ...order.raw, status: nextStatus, updatedAt: new Date().toISOString(), updatedBy: this.actorName() }
+          if (order.type === 'medication') await this.$store.dispatch('clinical/updateMedication', nextRecord)
+          else if (order.type === 'lab') await this.$store.dispatch('clinical/updateLabOrder', nextRecord)
+          else if (order.type === 'imaging') await this.$store.dispatch('clinical/updateImagingOrder', nextRecord)
+        }
+        await this.$store.dispatch('clinical/createTask', {
+          patientId: this.activePatientId,
+          relatedType: order.type,
+          relatedId: order.id,
+          title: `${actionLabel} order: ${order.label}`,
+          assignedToRole: action === 'hold' ? 'NURSE' : 'PROVIDER',
+          priority: action === 'hold' ? 'Today' : 'Routine',
+          actionReason: `${actionLabel} requested from Patient 360 Orders by ${this.actorName()}`
+        })
+        this.toastSuccess(`${actionLabel} documented for ${order.label}.`)
+      } catch (e) {
+        this.toastError(`Unable to ${actionLabel.toLowerCase()} order.`)
+      } finally {
+        this.savingDialog = false
+      }
+    },
+    openOrderSet(set) {
+      this.orderMode = set.kind || 'Medication'
+      this.openOrderComposer(this.orderMode)
+    },
+    openMarQuickScan() {
+      const firstDue = this.visibleEmarMedicationRows.find(row => row.timeline.some(cell => cell.status === 'due')) || this.visibleEmarMedicationRows[0] || null
+      if (firstDue) {
+        const dueCell = firstDue.timeline.find(cell => cell.status === 'due') || firstDue.timeline.find(cell => cell.status === 'prn') || null
+        this.openMarAction('given', firstDue, dueCell)
+      } else {
+        this.openChartDialog('medication')
+      }
+    },
+    openMarAction(action, medication, cell) {
+      if (action === 'details') {
+        this.openOrderComposer('medication', medication && medication.orderItem)
+        return
+      }
+      const normalized = String(action || 'given').toLowerCase()
+      const actionMap = {
+        given: 'Given',
+        held: 'Held',
+        refused: 'Refused',
+        scan: 'Not scanned',
+        education: 'Patient education'
+      }
+      this.selectedMarMedication = medication
+      this.selectedMarAction = actionMap[normalized] || 'Given'
+      this.forms.mar = {
+        ...defaultDialogForms().mar,
+        action: this.selectedMarAction,
+        time: cell && cell.time ? cell.time : this.marTimeFocus,
+        dose: medication ? medication.detail.split(' · ')[0] || '' : '',
+        comment: cell && cell.text ? `eMAR cell ${cell.time}: ${cell.text}` : '',
+        patientResponse: medication && this.marShowEducation ? medication.education : ''
+      }
+      this.$set(this.dialogs, 'marAction', true)
+    },
+    async saveMarAction() {
+      if (!this.selectedMarMedication) return
+      const form = this.$refs.marActionFormRef
+      if (form && form.validate && !form.validate()) return
+      this.savingDialog = true
+      try {
+        const now = new Date().toISOString()
+        const action = this.forms.mar.action || 'Given'
+        const statusMap = {
+          Given: 'Given',
+          Held: 'Hold',
+          Refused: 'Refused',
+          'Not scanned': 'Not scanned',
+          'Patient education': 'Education documented',
+          'Details reviewed': 'Reviewed'
+        }
+        if (this.selectedMarMedication.raw && this.selectedMarMedication.raw.id) {
+          await this.$store.dispatch('clinical/updateMedication', {
+            ...this.selectedMarMedication.raw,
+            status: statusMap[action] || action,
+            lastAdminTime: this.forms.mar.time,
+            lastScanAt: this.forms.mar.barcode ? now : this.selectedMarMedication.raw.lastScanAt,
+            administrationStatus: statusMap[action] || action,
+            administrationComment: this.forms.mar.comment,
+            patientResponse: this.forms.mar.patientResponse,
+            updatedAt: now,
+            updatedBy: this.actorName()
+          })
+        }
+        await this.$store.dispatch('clinical/createTask', {
+          patientId: this.activePatientId,
+          relatedType: 'emar',
+          relatedId: this.selectedMarMedication.id,
+          title: `eMAR ${action}: ${this.selectedMarMedication.label}`,
+          assignedToRole: 'NURSE',
+          priority: action === 'Held' || action === 'Refused' ? 'Today' : 'Routine',
+          actionReason: [
+            `Time ${this.forms.mar.time}`,
+            this.forms.mar.dose ? `Dose ${this.forms.mar.dose}` : '',
+            this.forms.mar.site ? `Site ${this.forms.mar.site}` : '',
+            this.forms.mar.comment || '',
+            this.forms.mar.patientResponse || ''
+          ].filter(Boolean).join(' | ')
+        })
+        this.closeChartDialog('marAction')
+        this.toastSuccess(`eMAR action filed for ${this.selectedMarMedication.label}.`)
+      } catch (e) {
+        this.toastError('Unable to file eMAR action.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
+    openChartDialog(kind) {
+      if (!this.activePatientId) return
+      if (['lab', 'imaging', 'medication'].includes(kind)) {
+        const next = defaultDialogForms().order
+        if (kind === 'lab') {
+          this.forms.order.lab = next.lab
+          this.forms.order.instructions = ''
+        }
+        if (kind === 'imaging') {
+          this.forms.order.imaging = next.imaging
+          this.forms.order.instructions = ''
+        }
+        if (kind === 'medication') {
+          this.forms.order.medication = next.medication
+          this.forms.order.instructions = ''
+        }
+      }
+      if (kind === 'document') {
+        this.forms.document = defaultDialogForms().document
+      }
+      if (kind === 'medical') {
+        this.forms.medical = defaultDialogForms().medical
+        this.forms.medical.chiefComplaint = this.latestVisit ? this.latestVisit.chiefComplaint || '' : ''
+      }
+      if (kind === 'nurse') {
+        this.forms.nurse = defaultDialogForms().nurse
+        if (this.latestVitals) {
+          this.forms.nurse.vitals = {
+            ...this.forms.nurse.vitals,
+            bp: this.latestVitals.bp || '',
+            hr: this.latestVitals.hr || null,
+            rr: this.latestVitals.rr || null,
+            temp: this.latestVitals.temp || null,
+            spo2: this.latestVitals.spo2 || null,
+            pain: this.latestVitals.pain || 0,
+            weight: this.latestVitals.weight || null,
+            height: this.latestVitals.height || null
+          }
+        }
+      }
+      this.$set(this.dialogs, kind, true)
+    },
+    closeChartDialog(kind) {
+      this.$set(this.dialogs, kind, false)
+    },
+    toastSuccess(message) {
+      if (this.$toast && this.$toast.success) this.$toast.success(message)
+    },
+    toastError(message) {
+      if (this.$toast && this.$toast.error) this.$toast.error(message)
+    },
+    actorName() {
+      return this.$store.state.auth.fullName || (this.$store.state.auth.user && this.$store.state.auth.user.username) || 'Clinical user'
+    },
+    async saveNurseEncounter() {
+      const form = this.$refs.nurseFormRef
+      if (form && form.validate && !form.validate()) return
+      this.savingDialog = true
+      try {
+        const now = new Date().toISOString()
+        const recordedBy = this.actorName()
+        const patientId = this.activePatientId
+        await this.$store.dispatch('clinical/recordVitalSigns', {
+          patientId,
+          recordedBy,
+          recordedAt: now,
+          glasgow: this.nurseGcsScore,
+          ...this.forms.nurse.vitals
+        })
+        await this.$store.dispatch('clinical/logVisit', {
+          patientId,
+          encounterType: 'INFIRMIER',
+          chiefComplaint: this.forms.nurse.encounter.chiefComplaint,
+          historyOfIllness: this.forms.nurse.encounter.historyOfIllness,
+          modeOfArrival: this.forms.nurse.encounter.modeOfArrival,
+          triageLevel: this.forms.nurse.encounter.triageLevel,
+          assessment: { ...this.forms.nurse.assessment },
+          recordedBy,
+          createdAt: now
+        })
+        await this.$store.dispatch('clinical/addNursingNote', {
+          patientId,
+          recordedBy,
+          recordedAt: now,
+          ...this.forms.nurse.note
+        })
+        this.selectedChartTab = 'Notes'
+        this.closeChartDialog('nurse')
+        this.toastSuccess('Nursing encounter filed in Patient 360.')
+      } catch (e) {
+        this.toastError('Unable to file nursing encounter.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
+    async saveMedicalNote() {
+      const form = this.$refs.medicalFormRef
+      if (form && form.validate && !form.validate()) return
+      this.savingDialog = true
+      try {
+        const now = new Date().toISOString()
+        const recordedBy = this.actorName()
+        const patientId = this.activePatientId
+        await this.$store.dispatch('clinical/logVisit', {
+          patientId,
+          encounterType: 'MÉDICAL',
+          chiefComplaint: this.forms.medical.chiefComplaint,
+          diagnosis: this.forms.medical.diagnosis,
+          severity: this.forms.medical.severity,
+          recordedBy,
+          createdAt: now
+        })
+        await this.$store.dispatch('clinical/addMedicalNote', {
+          patientId,
+          recordedBy,
+          recordedAt: now,
+          diagnosis: this.forms.medical.diagnosis,
+          severity: this.forms.medical.severity,
+          clinicalFindings: this.forms.medical.clinicalFindings,
+          plan: this.forms.medical.plan,
+          outcome: { patientInstructions: this.forms.medical.instructions },
+          encounter: { chiefComplaint: this.forms.medical.chiefComplaint }
+        })
+        this.selectedChartTab = 'Notes'
+        this.closeChartDialog('medical')
+        this.toastSuccess('Medical note filed in Patient 360.')
+      } catch (e) {
+        this.toastError('Unable to file medical note.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
+    async saveLabOrder() {
+      const form = this.$refs.labFormRef
+      if (form && form.validate && !form.validate()) return
+      this.savingDialog = true
+      try {
+        const patientId = this.activePatientId
+        const recordedBy = this.actorName()
+        const record = await this.$store.dispatch('clinical/orderLab', {
+          patientId,
+          testName: this.forms.order.lab.testName,
+          test: this.forms.order.lab.testName,
+          priority: this.forms.order.lab.priority,
+          instructions: this.forms.order.instructions,
+          orderedBy: recordedBy
+        })
+        await this.$store.dispatch('clinical/createTask', {
+          patientId,
+          relatedType: 'lab',
+          relatedId: record.id,
+          title: `Complete lab order: ${this.forms.order.lab.testName}`,
+          assignedToRole: 'LAB',
+          priority: this.forms.order.lab.priority || 'Routine',
+          actionReason: this.forms.order.instructions || 'Created from Patient 360'
+        })
+        this.selectedChartTab = 'Orders'
+        this.closeChartDialog('lab')
+        this.toastSuccess('Lab order placed from Patient 360.')
+      } catch (e) {
+        this.toastError('Unable to place lab order.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
+    async saveImagingOrder() {
+      const form = this.$refs.imagingFormRef
+      if (form && form.validate && !form.validate()) return
+      this.savingDialog = true
+      try {
+        const patientId = this.activePatientId
+        const recordedBy = this.actorName()
+        const record = await this.$store.dispatch('clinical/orderImaging', {
+          patientId,
+          modality: this.forms.order.imaging.modality,
+          exam: this.forms.order.imaging.modality,
+          priority: this.forms.order.imaging.priority,
+          instructions: this.forms.order.instructions,
+          orderedBy: recordedBy
+        })
+        await this.$store.dispatch('clinical/createTask', {
+          patientId,
+          relatedType: 'imaging',
+          relatedId: record.id,
+          title: `Complete imaging order: ${this.forms.order.imaging.modality}`,
+          assignedToRole: 'IMAGING',
+          priority: this.forms.order.imaging.priority || 'Routine',
+          actionReason: this.forms.order.instructions || 'Created from Patient 360'
+        })
+        this.selectedChartTab = 'Orders'
+        this.closeChartDialog('imaging')
+        this.toastSuccess('Imaging order placed from Patient 360.')
+      } catch (e) {
+        this.toastError('Unable to place imaging order.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
+    async saveMedicationOrder() {
+      const form = this.$refs.medicationFormRef
+      if (form && form.validate && !form.validate()) return
+      this.savingDialog = true
+      try {
+        const patientId = this.activePatientId
+        const recordedBy = this.actorName()
+        const record = await this.$store.dispatch('clinical/prescribeMedication', {
+          patientId,
+          medication: this.forms.order.medication.medication,
+          dosage: this.forms.order.medication.dosage,
+          drug: this.forms.order.medication.medication,
+          dose: this.forms.order.medication.dosage,
+          route: this.forms.order.medication.route,
+          frequency: this.forms.order.medication.frequency,
+          instructions: this.forms.order.instructions,
+          prescribedBy: recordedBy
+        })
+        await this.$store.dispatch('clinical/createTask', {
+          patientId,
+          relatedType: 'medication',
+          relatedId: record.id,
+          title: `Administer ${this.forms.order.medication.medication}`,
+          assignedToRole: 'NURSE',
+          priority: 'routine',
+          actionReason: this.forms.order.instructions || 'Created from Patient 360'
+        })
+        this.selectedChartTab = 'Medications'
+        this.closeChartDialog('medication')
+        this.toastSuccess('Medication order placed from Patient 360.')
+      } catch (e) {
+        this.toastError('Unable to place medication order.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
+    async saveDocumentDialog() {
+      const form = this.$refs.documentFormRef
+      if (form && form.validate && !form.validate()) return
+      this.savingDialog = true
+      try {
+        await this.$store.dispatch('clinical/createDocument', {
+          patientId: this.activePatientId,
+          title: this.forms.document.title,
+          category: this.forms.document.category,
+          content: this.forms.document.content,
+          status: 'Filed'
+        })
+        this.selectedChartTab = 'Documents'
+        this.closeChartDialog('document')
+        this.toastSuccess('Document filed in Patient 360.')
+      } catch (e) {
+        this.toastError('Unable to file document.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
+    selectChartTab(tab) {
+      this.selectedChartTab = tab
+      const navMap = {
+        Summary: 'admission',
+        'Chart Review': 'shift',
+        Navigators: this.selectedNavigator || 'admission',
+        Avatar: 'vitals',
+        Flowsheets: 'vitals',
+        Orders: 'worklist',
+        MAR: 'mar',
+        Medications: 'medreview',
+        'Lab Results': 'worklist',
+        'Wound Management': 'worklist',
+        Notes: 'shift',
+        'Care Plan': 'discharge',
+        Education: 'discharge',
+        'Work List': 'worklist',
+        Immunizations: 'admission',
+        'Sedation/Procedure Documentation': 'transfer',
+        'Care Teams': 'careteam',
+        Handoff: 'worklist',
+        Documents: 'admission',
+        Registration: 'admission'
+      }
+      const next = navMap[tab]
+      if (next && this.visibleNavigatorTabs.some(item => item.key === next)) {
+        this.selectedNavigator = next
+      }
+    },
     findPatientRecord(id) {
       const directory = this.$store.getters['clinical/patientDirectory'] || []
       const patients = this.$store.getters['clinical/getPatients'] || []
@@ -1043,6 +3969,9 @@ export default {
       }
       if (!this.canViewSocialNeeds && this.selectedNavigator === 'sdoh') {
         this.selectedNavigator = this.visibleNavigatorTabs[0] ? this.visibleNavigatorTabs[0].key : 'admission'
+      }
+      if (!this.activeNavigatorSections.some(section => section.key === this.selectedNavigatorSection)) {
+        this.selectedNavigatorSection = this.activeNavigatorSections[0] ? this.activeNavigatorSections[0].key : ''
       }
     },
     maskClinical(value) {
@@ -1062,6 +3991,84 @@ export default {
       } catch (e) {
         return '-'
       }
+    },
+    displayEncounterType(type) {
+      if (type === 'MÉDICAL' || type === 'MEDICAL') return 'Medical'
+      if (type === 'INFIRMIER' || type === 'NURSING') return 'Nursing'
+      return type || 'Encounter'
+    }
+  }
+}
+
+function defaultDialogForms() {
+  return {
+    nurseValid: false,
+    medicalValid: false,
+    orderValid: false,
+    documentValid: false,
+    marValid: false,
+    nurse: {
+      vitals: {
+        bp: '',
+        hr: null,
+        rr: null,
+        temp: null,
+        spo2: null,
+        glucose: null,
+        weight: null,
+        height: null,
+        gcsE: 4,
+        gcsV: 5,
+        gcsM: 6,
+        pain: 0
+      },
+      encounter: {
+        chiefComplaint: '',
+        historyOfIllness: '',
+        modeOfArrival: 'Walk-in',
+        triageLevel: 'Green'
+      },
+      assessment: {
+        generalCondition: 'Good general condition',
+        consciousness: 'Alert and oriented',
+        respiratoryStatus: 'Normal',
+        nursingProblems: []
+      },
+      note: {
+        actions: [],
+        observation: '',
+        response: '',
+        orientation: ''
+      }
+    },
+    medical: {
+      chiefComplaint: '',
+      clinicalFindings: '',
+      diagnosis: '',
+      severity: 'Mild',
+      plan: '',
+      instructions: ''
+    },
+    order: {
+      type: 'lab',
+      instructions: '',
+      lab: { testName: '', priority: 'Routine' },
+      imaging: { modality: '', priority: 'Routine' },
+      medication: { medication: '', dosage: '', route: 'Oral', frequency: '' }
+    },
+    mar: {
+      action: 'Given',
+      time: '',
+      dose: '',
+      site: '',
+      barcode: '',
+      comment: '',
+      patientResponse: ''
+    },
+    document: {
+      title: '',
+      category: 'Clinical Note',
+      content: ''
     }
   }
 }
@@ -1348,8 +4355,38 @@ function latestByDate(items, field) {
 .navigator-layout {
   display: grid;
   grid-template-columns: 190px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
   flex: 1;
+}
+.navigator-tab-strip {
+  grid-column: 1 / -1;
+  background: #f5fbfa;
+  border-bottom: 1px solid #b7c9c6;
+  display: flex;
+  gap: 2px;
+  min-height: 30px;
+  overflow-x: auto;
+  padding: 0 6px;
+}
+.navigator-tab-strip button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid #d7e0df;
+  color: #173b39;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 900;
+  gap: 4px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+.navigator-tab-strip button.active {
+  background: #fff;
+  border-top: 3px solid #0f766e;
+  color: #0f4f4b;
 }
 .navigator-rail {
   background: #e5f0ef;
@@ -1391,7 +4428,24 @@ function latestByDate(items, field) {
 }
 .rail-group a {
   color: #1d4ed8;
+  border-left: 2px solid transparent;
+  display: grid;
+  gap: 1px;
+  padding: 3px 4px 3px 7px;
   text-decoration: none;
+}
+.rail-group a.active {
+  background: #eef6ff;
+  border-left-color: #1d4ed8;
+  color: #0f3b82;
+  font-weight: 900;
+}
+.rail-group a small {
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
 }
 .workspace-panel {
   padding: 8px;
@@ -1611,6 +4665,1221 @@ function latestByDate(items, field) {
   font-weight: 800;
   text-decoration: none;
 }
+.navigator-workspace {
+  display: grid;
+  gap: 8px;
+}
+.navigator-banner {
+  align-items: center;
+  background: #edf7f5;
+  border: 1px solid #b7c9c6;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+.navigator-banner div {
+  display: grid;
+  gap: 2px;
+}
+.navigator-banner strong {
+  color: #134e4a;
+  font-size: 14px;
+  font-weight: 900;
+}
+.navigator-banner span {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+.avatar-workspace {
+  display: grid;
+  gap: 8px;
+}
+.avatar-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 8px;
+}
+.patient-body-panel,
+.avatar-detail-panel {
+  border: 1px solid #b7c9c6;
+  background: #fff;
+}
+.avatar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #d7e0df;
+  background: #f8fafc;
+  padding: 7px 9px;
+}
+.avatar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 900;
+}
+.avatar-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.avatar-legend .risk { background: #be123c; }
+.avatar-legend .active { background: #0f766e; }
+.avatar-legend .stable { background: #64748b; }
+.body-canvas {
+  min-height: 430px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef5f4 100%);
+  overflow: auto;
+  padding: 16px;
+}
+.body-figure {
+  position: relative;
+  width: 230px;
+  height: 380px;
+}
+.body-head,
+.body-neck,
+.body-torso,
+.body-arm,
+.body-leg {
+  position: absolute;
+  background: #e2e8f0;
+  border: 1px solid #94a3b8;
+}
+.body-head {
+  left: 87px;
+  top: 8px;
+  width: 56px;
+  height: 64px;
+  border-radius: 50% 50% 44% 44%;
+}
+.body-neck {
+  left: 101px;
+  top: 68px;
+  width: 28px;
+  height: 24px;
+  border-radius: 8px;
+}
+.body-torso {
+  left: 67px;
+  top: 88px;
+  width: 96px;
+  height: 150px;
+  border-radius: 42px 42px 32px 32px;
+}
+.body-arm {
+  top: 105px;
+  width: 34px;
+  height: 150px;
+  border-radius: 22px;
+}
+.body-arm.left {
+  left: 27px;
+  transform: rotate(12deg);
+}
+.body-arm.right {
+  right: 27px;
+  transform: rotate(-12deg);
+}
+.body-leg {
+  top: 232px;
+  width: 40px;
+  height: 138px;
+  border-radius: 20px;
+}
+.body-leg.left { left: 72px; }
+.body-leg.right { right: 72px; }
+.body-zone {
+  position: absolute;
+  z-index: 2;
+  min-width: 54px;
+  min-height: 34px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px 7px;
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.body-zone.risk {
+  border-color: #be123c;
+  background: #fff1f2;
+}
+.body-zone.active {
+  border-color: #0f766e;
+  background: #ecfdf5;
+}
+.body-zone.stable {
+  border-color: #64748b;
+  background: #f8fafc;
+}
+.body-zone.selected {
+  outline: 3px solid #99f6e4;
+}
+.body-zone.neuro { left: 83px; top: 2px; }
+.body-zone.resp { left: 116px; top: 102px; }
+.body-zone.cardiac { left: 60px; top: 116px; }
+.body-zone.iv { left: 4px; top: 164px; }
+.body-zone.skin { left: 89px; top: 178px; }
+.body-zone.pain { right: 4px; top: 164px; }
+.body-zone.mobility { left: 37px; top: 292px; }
+.body-zone.meds { right: 37px; top: 292px; }
+.avatar-detail-panel {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+}
+.avatar-detail-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #d7e0df;
+  padding-bottom: 8px;
+}
+.avatar-detail-panel > header div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.avatar-detail-panel > header strong {
+  color: #134e4a;
+  font-size: 16px;
+  font-weight: 900;
+}
+.avatar-detail-panel > header span {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.avatar-detail-panel p {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+.avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.avatar-actions button {
+  min-height: 30px;
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #134e4a;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.flowsheet-command-center {
+  display: grid;
+  gap: 8px;
+}
+.flowsheet-actions {
+  display: flex !important;
+  grid-template-columns: none !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.flowsheet-actions .v-btn {
+  text-transform: none;
+}
+.ai-care-panel {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 8px;
+  border: 1px solid #b7c9c6;
+  background: #f8fafc;
+  padding: 8px;
+}
+.ai-care-score {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  min-height: 116px;
+  border: 1px solid #99f6e4;
+  background: #ecfeff;
+  color: #134e4a;
+  text-align: center;
+}
+.ai-care-score span,
+.ai-care-score small {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.ai-care-score strong {
+  font-size: 38px;
+  line-height: 1;
+  font-weight: 900;
+}
+.ai-care-main {
+  display: grid;
+  gap: 8px;
+}
+.ai-care-main header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ai-care-main header div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ai-care-main header strong {
+  color: #134e4a;
+  font-size: 14px;
+  font-weight: 900;
+}
+.ai-care-main header span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.ai-care-tools {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.ai-care-tools .v-btn {
+  text-transform: none;
+}
+.ai-care-main p {
+  margin: 0;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+}
+.ai-care-error {
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 900;
+}
+.ai-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+}
+.ai-insight {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 7px;
+}
+.ai-insight strong {
+  display: block;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+}
+.ai-insight span {
+  display: block;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.ai-insight.high {
+  border-left: 4px solid #be123c;
+}
+.ai-insight.warning {
+  border-left: 4px solid #f97316;
+}
+.ai-insight.info {
+  border-left: 4px solid #2563eb;
+}
+.ai-insight.good {
+  border-left: 4px solid #16a34a;
+}
+.care-calendar {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(118px, 1fr));
+  gap: 6px;
+  overflow-x: auto;
+}
+.care-slot {
+  min-height: 76px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: 8px;
+}
+.care-slot strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+}
+.care-slot span {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.care-slot small {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.care-slot.due {
+  border-left: 4px solid #be123c;
+  background: #fff7ed;
+}
+.care-slot.active {
+  border-left: 4px solid #0f766e;
+  background: #f0fdfa;
+}
+.care-slot.done {
+  border-left: 4px solid #16a34a;
+  background: #f0fdf4;
+}
+.care-slot.pending {
+  border-left: 4px solid #64748b;
+  background: #f8fafc;
+}
+.orders-workspace {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+.orders-command {
+  min-height: 46px;
+  border: 1px solid #b7c9c6;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+}
+.orders-command div:first-child {
+  display: grid;
+  gap: 2px;
+}
+.orders-command span {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.orders-command strong {
+  color: #134e4a;
+  font-size: 14px;
+  font-weight: 900;
+}
+.orders-quick-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.orders-quick-actions .v-btn {
+  text-transform: none;
+}
+.orders-tabs {
+  display: flex;
+  align-items: end;
+  gap: 3px;
+  min-height: 34px;
+  border-bottom: 1px solid #7fb5ae;
+}
+.orders-tabs button {
+  min-width: 118px;
+  height: 31px;
+  border: 1px solid #9bbfba;
+  border-bottom: 0;
+  background: #dcecea;
+  color: #334155;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 900;
+}
+.orders-tabs button.active {
+  height: 34px;
+  background: #fff;
+  color: #0f4f4b;
+  border-top: 3px solid #0f766e;
+}
+.orders-tabs button strong {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+.orders-tabs button.active strong {
+  background: #0f766e;
+  color: white;
+}
+.orders-controls {
+  min-height: 38px;
+  border: 1px solid #d7e0df;
+  background: #f8fafc;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+}
+.orders-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 900;
+}
+.orders-controls select,
+.order-mode-row select {
+  height: 24px;
+  border: 1px solid #94a3b8;
+  background: white;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 800;
+  outline: none;
+}
+.orders-toggle input {
+  width: 14px;
+  height: 14px;
+}
+.orders-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 8px;
+  align-items: start;
+}
+.orders-main {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.order-group {
+  border: 1px solid #b7c9c6;
+  background: #fff;
+}
+.order-group > header {
+  min-height: 34px;
+  background: #e7f4e2;
+  border-bottom: 1px solid #b7c9c6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+}
+.order-group > header div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.order-group > header strong {
+  color: #134e4a;
+  font-size: 13px;
+  font-weight: 900;
+}
+.order-group > header span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.order-group > header button {
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.order-card {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 8px;
+}
+.order-card:last-child {
+  border-bottom: 0;
+}
+.order-card.active {
+  border-left: 4px solid #0f766e;
+}
+.order-card.pending {
+  border-left: 4px solid #f97316;
+}
+.order-card.held {
+  border-left: 4px solid #7c3aed;
+  background: #faf5ff;
+}
+.order-card.stopped {
+  border-left: 4px solid #64748b;
+  background: #f8fafc;
+}
+.order-card-icon {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.order-card-body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.order-card-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.order-card-title strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+.order-card-title span {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.order-card-body p {
+  margin: 0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.order-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.order-meta span {
+  background: #eef2ff;
+  color: #334155;
+  border: 1px solid #d7e0df;
+  padding: 2px 5px;
+  font-size: 10px;
+  font-weight: 900;
+}
+.order-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 280px;
+}
+.order-action-buttons button {
+  min-height: 26px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 7px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.order-action-buttons button:hover {
+  border-color: #0f766e;
+  color: #0f766e;
+}
+.order-sidebar-panel {
+  border: 1px solid #b7c9c6;
+  background: #eef5f4;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+}
+.order-sidebar-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+.order-sidebar-tabs button {
+  min-height: 28px;
+  border: 1px solid #cbd5e1;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.order-sidebar-tabs button.active {
+  background: white;
+  border-top: 3px solid #0f766e;
+  color: #0f4f4b;
+}
+.order-provider {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  border-bottom: 1px solid #d7e0df;
+  padding-bottom: 6px;
+}
+.order-provider div {
+  display: grid;
+  gap: 2px;
+}
+.order-provider span,
+.order-mode-row span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.order-provider strong {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+.order-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px;
+  gap: 4px;
+}
+.order-search-row input {
+  min-width: 0;
+  height: 30px;
+  border: 1px solid #94a3b8;
+  background: white;
+  padding: 0 7px;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 800;
+  outline: none;
+}
+.order-search-row button {
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.order-mode-row {
+  display: grid;
+  gap: 4px;
+}
+.order-set-list {
+  display: grid;
+  gap: 5px;
+}
+.order-set-list button {
+  min-height: 48px;
+  border: 1px solid #d7e0df;
+  background: white;
+  color: #0f172a;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
+  padding: 7px;
+  text-align: left;
+  cursor: pointer;
+}
+.order-set-list button:hover {
+  border-color: #0f766e;
+  background: #f0fdfa;
+}
+.order-set-list div {
+  display: grid;
+  gap: 2px;
+}
+.order-set-list strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+.order-set-list span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.empty-orders.compact {
+  min-height: 180px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 20px;
+  text-align: center;
+}
+.empty-orders.compact strong {
+  color: #334155;
+  font-size: 14px;
+  font-weight: 900;
+}
+.emar-workspace {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+.emar-command {
+  min-height: 46px;
+  border: 1px solid #b7c9c6;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px;
+}
+.emar-command > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+.emar-command span {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.emar-command strong {
+  color: #134e4a;
+  font-size: 14px;
+  font-weight: 900;
+}
+.emar-command-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.emar-command-actions .v-btn {
+  text-transform: none;
+}
+.emar-tabs {
+  display: flex;
+  gap: 3px;
+  align-items: end;
+  min-height: 34px;
+  border-bottom: 1px solid #7fb5ae;
+  overflow-x: auto;
+}
+.emar-tabs button {
+  min-width: 112px;
+  height: 31px;
+  border: 1px solid #9bbfba;
+  border-bottom: 0;
+  background: #dcecea;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.emar-tabs button.active {
+  height: 34px;
+  background: white;
+  color: #0f4f4b;
+  border-top: 3px solid #0f766e;
+}
+.emar-tabs button strong {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+.emar-tabs button.active strong {
+  background: #0f766e;
+  color: white;
+}
+.emar-controls {
+  min-height: 38px;
+  border: 1px solid #d7e0df;
+  background: #f8fafc;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+}
+.emar-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 900;
+}
+.emar-controls select {
+  height: 24px;
+  border: 1px solid #94a3b8;
+  background: white;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 800;
+  outline: none;
+}
+.emar-toggle input {
+  width: 14px;
+  height: 14px;
+}
+.emar-search {
+  flex: 1 1 220px;
+  min-width: 180px;
+  height: 26px;
+  border: 1px solid #94a3b8;
+  background: white;
+  padding: 0 8px;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 800;
+  outline: none;
+}
+.emar-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 8px;
+  align-items: start;
+}
+.emar-board {
+  min-width: 0;
+  border: 1px solid #b7c9c6;
+  background: white;
+  overflow-x: auto;
+}
+.emar-time-header,
+.emar-row {
+  min-width: 880px;
+  display: grid;
+  grid-template-columns: 270px minmax(420px, 1fr) 180px;
+  gap: 6px;
+  align-items: stretch;
+}
+.emar-time-header {
+  background: #e7f4e2;
+  border-bottom: 1px solid #b7c9c6;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 6px;
+  color: #134e4a;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.emar-time-header div,
+.emar-time-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(54px, 1fr));
+  gap: 3px;
+}
+.emar-time-header strong {
+  text-align: center;
+  color: #1d4ed8;
+  font-size: 12px;
+}
+.emar-time-header strong.focus {
+  background: #cffafe;
+  color: #0f766e;
+}
+.emar-row {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 8px 6px;
+}
+.emar-row:last-child {
+  border-bottom: 0;
+}
+.emar-row.active {
+  border-left: 4px solid #0f766e;
+}
+.emar-row.pending {
+  border-left: 4px solid #f97316;
+}
+.emar-row.held {
+  border-left: 4px solid #7c3aed;
+  background: #faf5ff;
+}
+.emar-row.stopped {
+  border-left: 4px solid #64748b;
+  background: #f8fafc;
+}
+.emar-medication {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+.emar-medication > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.emar-medication strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+.emar-medication p {
+  margin: 0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.emar-medication small {
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.emar-med-meta {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.emar-med-meta span {
+  border: 1px solid #d7e0df;
+  background: #f8fafc;
+  color: #334155;
+  padding: 2px 5px;
+  font-size: 10px;
+  font-weight: 900;
+}
+.emar-time-cell {
+  min-height: 42px;
+  border: 1px solid #d7e0df;
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+}
+.emar-time-cell.focus {
+  box-shadow: inset 0 0 0 2px #0f766e;
+}
+.emar-time-cell.due {
+  background: #fff7ed;
+  border-color: #f97316;
+  color: #9a3412;
+}
+.emar-time-cell.given {
+  background: #f0fdf4;
+  border-color: #16a34a;
+  color: #166534;
+}
+.emar-time-cell.held {
+  background: #faf5ff;
+  border-color: #7c3aed;
+  color: #5b21b6;
+}
+.emar-time-cell.running {
+  background: #eef2ff;
+  border-color: #4f46e5;
+  color: #3730a3;
+}
+.emar-time-cell.prn {
+  background: #fffbeb;
+  border-color: #d97706;
+  color: #92400e;
+}
+.emar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-content: start;
+  justify-content: flex-end;
+}
+.emar-actions button {
+  min-height: 25px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.emar-actions button:hover {
+  border-color: #0f766e;
+  color: #0f766e;
+}
+.emar-side {
+  display: grid;
+  gap: 8px;
+}
+.emar-advisories {
+  border: 1px solid #b7c9c6;
+  background: #eef5f4;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+.emar-advisories header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #134e4a;
+  font-weight: 900;
+}
+.emar-advisories article {
+  border: 1px solid #d7e0df;
+  background: white;
+  padding: 7px;
+  display: grid;
+  gap: 3px;
+}
+.emar-advisories article.high {
+  border-left: 4px solid #be123c;
+}
+.emar-advisories article.warning {
+  border-left: 4px solid #f97316;
+}
+.emar-advisories article.normal,
+.emar-advisories article.education {
+  border-left: 4px solid #0f766e;
+}
+.emar-advisories article strong {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+}
+.emar-advisories article span {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.action-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #d7e0df;
+  padding: 8px;
+  margin-top: 8px;
+}
+.action-strip .v-btn {
+  text-transform: none;
+}
+.chart-dialog {
+  border: 1px solid #86a9a5;
+  border-radius: 4px;
+}
+.dialog-title {
+  min-height: 54px;
+  background: #e7f4e2;
+  border-bottom: 1px solid #b7c9c6;
+  color: #173b39;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+}
+.dialog-title div {
+  display: grid;
+  gap: 2px;
+}
+.dialog-title span {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.dialog-title strong {
+  font-size: 15px;
+  font-weight: 900;
+}
+.dialog-grid {
+  display: grid;
+  gap: 10px;
+}
+.dialog-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.dialog-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.dialog-actions {
+  border-top: 1px solid #d7e0df;
+  background: #f8fafc;
+}
+.dialog-actions span {
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 900;
+}
 .required-dot {
   color: #0f766e;
   font-weight: 900;
@@ -1660,6 +5929,17 @@ function latestByDate(items, field) {
 .discharge-summary h3 {
   margin: 0 0 8px;
   color: #134e4a;
+}
+.planning-comment {
+  min-height: 32px;
+  margin: 0;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 8px;
 }
 .segmented {
   display: inline-flex;
@@ -1802,14 +6082,36 @@ function latestByDate(items, field) {
   .access-strip div {
     flex-wrap: wrap;
   }
-  .chart-frame, .navigator-layout, .sdoh-content, .discharge-summary {
+  .chart-frame, .navigator-layout, .sdoh-content, .discharge-summary, .ai-care-panel, .avatar-grid, .orders-layout, .emar-layout {
     grid-template-columns: 1fr;
+  }
+  .orders-command,
+  .emar-command,
+  .order-card {
+    grid-template-columns: 1fr;
+  }
+  .orders-command,
+  .emar-command {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .orders-tabs,
+  .emar-tabs {
+    overflow-x: auto;
+  }
+  .order-action-buttons {
+    justify-content: flex-start;
+    max-width: none;
   }
   .storyboard {
     display: none;
   }
   .sdoh-popover:before {
     display: none;
+  }
+  .dialog-grid.two,
+  .dialog-grid.three {
+    grid-template-columns: 1fr;
   }
 }
 .clinical-workspace-shell {
