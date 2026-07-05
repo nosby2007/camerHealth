@@ -203,6 +203,65 @@
               />
             </section>
 
+            <section v-else-if="selectedChartTab === 'Parcours Patient'" class="africa-workflow">
+              <div class="africa-command">
+                <div>
+                  <span>Hospital workflow for African care settings</span>
+                  <strong>Simple navigation, offline-first care and protected role access.</strong>
+                </div>
+                <div class="africa-command-actions">
+                  <v-chip small label color="#dcfce7" text-color="#166534" class="font-weight-black">
+                    Offline ready
+                  </v-chip>
+                  <v-chip small label color="#e0f2fe" text-color="#075985" class="font-weight-black">
+                    {{ accessProfile.short }} scope
+                  </v-chip>
+                  <v-btn x-small depressed color="#0f766e" dark @click="openJourneyAction('nurse')">
+                    <v-icon x-small left>mdi-clipboard-pulse-outline</v-icon>Document care
+                  </v-btn>
+                </div>
+              </div>
+
+              <div class="journey-lane" aria-label="Admission to discharge patient pathway">
+                <article
+                  v-for="stage in patientJourneyStages"
+                  :key="stage.key"
+                  :class="['journey-stage', stage.status]"
+                >
+                  <div class="stage-icon">
+                    <v-icon small>{{ stage.icon }}</v-icon>
+                  </div>
+                  <div>
+                    <strong>{{ stage.label }}</strong>
+                    <span>{{ stage.owner }}</span>
+                    <p>{{ stage.detail }}</p>
+                  </div>
+                  <button type="button" @click="openJourneyAction(stage.action)">
+                    {{ stage.actionLabel }}
+                  </button>
+                </article>
+              </div>
+
+              <div class="africa-grid">
+                <FlowSection
+                  title="Department Coverage"
+                  :columns="['Status', 'Owner', 'Next']"
+                  :rows="departmentCoverageRows"
+                />
+                <FlowSection
+                  title="Offline and Low-Bandwidth Readiness"
+                  :columns="['State', 'Fallback', 'Action']"
+                  :rows="offlineReadinessRows"
+                />
+              </div>
+
+              <FlowSection
+                title="My Role - Actions Now"
+                :columns="['Priority', 'Where', 'Action']"
+                :rows="roleActionRows"
+              />
+            </section>
+
             <section v-else-if="selectedChartTab === 'Chart Review'" class="flowsheet">
               <FlowSection
                 title="Encounter Timeline"
@@ -1541,6 +1600,7 @@ const FlowSection = {
 
 const ALL_CLINICAL_TABS = [
   'Summary',
+  'Parcours Patient',
   'Chart Review',
   'Navigators',
   'Avatar',
@@ -2004,6 +2064,7 @@ export default {
     workspaceHeadline() {
       const map = {
         Summary: 'Patient 360 Summary',
+        'Parcours Patient': 'Admission to Discharge Workflow',
         'Chart Review': 'Longitudinal Chart Review',
         Flowsheets: 'Care Schedule Flowsheets',
         Orders: 'Orders and Diagnostics',
@@ -2147,6 +2208,178 @@ export default {
         { label: 'Open tasks', values: { Current: this.patientTasks.length } },
         { label: 'Open orders', values: { Current: this.patientLabOrders.length + this.patientImagingOrders.length + this.patientMedications.length } }
       ]
+    },
+    patientJourneyStages() {
+      const hasVitals = Boolean(this.latestVitalsSummary)
+      const hasClinicalNote = Boolean(this.latestVisit || this.latestNursingNote)
+      const hasDiagnostics = Boolean(this.patientLabOrders.length || this.patientImagingOrders.length)
+      const hasMeds = Boolean(this.patientMedications.length)
+      const hasDischargeDoc = this.patientDocuments.some(doc => /discharge|sortie|avs|after visit/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      return [
+        {
+          key: 'registration',
+          label: 'Admission / Reception',
+          owner: 'Reception + Nurse',
+          detail: 'Identity, contact, consent, payment class and bed/service assignment.',
+          status: this.activePatient.mrn ? 'complete' : 'due',
+          icon: 'mdi-account-plus',
+          action: 'registration',
+          actionLabel: 'Open'
+        },
+        {
+          key: 'triage',
+          label: 'Triage and vitals',
+          owner: 'Nurse / Midwife',
+          detail: hasVitals ? this.latestVitalsSummary : 'Capture vitals, pain score, GCS and first nursing assessment.',
+          status: hasVitals ? 'complete' : 'due',
+          icon: 'mdi-heart-pulse',
+          action: 'nurse',
+          actionLabel: hasVitals ? 'Update' : 'Start'
+        },
+        {
+          key: 'consultation',
+          label: 'Clinical decision',
+          owner: 'Doctor / NP / Midwife',
+          detail: hasClinicalNote ? 'Clinical documentation started.' : 'Diagnosis, plan, orders and escalation decisions.',
+          status: hasClinicalNote ? 'active' : 'due',
+          icon: 'mdi-stethoscope',
+          action: this.canLaunchMedical ? 'medical' : 'notes',
+          actionLabel: this.canLaunchMedical ? 'Assess' : 'Review'
+        },
+        {
+          key: 'care',
+          label: 'Daily care and tasks',
+          owner: 'Nurse + Aide-soignant',
+          detail: this.patientTasks.length ? `${this.patientTasks.length} active task(s) to coordinate.` : 'Timed care, hygiene, mobility, wound care and handoff.',
+          status: this.patientTasks.length ? 'active' : 'warning',
+          icon: 'mdi-clipboard-list-outline',
+          action: 'worklist',
+          actionLabel: 'Work'
+        },
+        {
+          key: 'diagnostics',
+          label: 'Labo / Imagerie',
+          owner: 'Lab + Imaging',
+          detail: hasDiagnostics ? `${this.patientLabOrders.length} lab and ${this.patientImagingOrders.length} imaging item(s).` : 'Specimen, imaging requests and result acknowledgement.',
+          status: hasDiagnostics ? 'active' : 'pending',
+          icon: 'mdi-flask',
+          action: 'lab',
+          actionLabel: 'Order'
+        },
+        {
+          key: 'pharmacy',
+          label: 'Pharmacy / eMAR',
+          owner: 'Pharmacy + Nurse',
+          detail: hasMeds ? `${this.patientMedications.length} medication item(s) active.` : 'Medication profile, dispense, administration and reconciliation.',
+          status: hasMeds ? 'active' : 'pending',
+          icon: 'mdi-pill',
+          action: 'medication',
+          actionLabel: hasMeds ? 'MAR' : 'Add'
+        },
+        {
+          key: 'maternity',
+          label: 'Maternity when needed',
+          owner: 'Sage-femme',
+          detail: 'Pregnancy, labor, delivery, newborn and postpartum checks when applicable.',
+          status: this.currentRole === 'MIDWIFE' ? 'active' : 'pending',
+          icon: 'mdi-baby-face-outline',
+          action: 'maternity',
+          actionLabel: 'Check'
+        },
+        {
+          key: 'billing',
+          label: 'Costs and social support',
+          owner: 'Billing + Social work',
+          detail: 'Deposit, insurance, indigent support, transport and family coordination.',
+          status: this.canViewSocialNeeds ? 'active' : 'pending',
+          icon: 'mdi-cash-register',
+          action: 'social',
+          actionLabel: 'Review'
+        },
+        {
+          key: 'discharge',
+          label: 'Discharge / Follow-up',
+          owner: 'Care team',
+          detail: hasDischargeDoc ? 'Discharge document available.' : 'Instructions, medications, follow-up, supplies and family handoff.',
+          status: hasDischargeDoc ? 'complete' : 'due',
+          icon: 'mdi-logout-variant',
+          action: 'discharge',
+          actionLabel: 'Prepare'
+        }
+      ]
+    },
+    departmentCoverageRows() {
+      return [
+        { label: 'Reception / Admissions', values: { Status: this.activePatient.mrn ? 'Registered' : 'Due', Owner: 'FRONT_DESK', Next: 'Verify identity, contact, consent and payment class' } },
+        { label: 'Infirmier / Infirmiere', values: { Status: this.latestVitalsSummary ? 'Care started' : 'Vitals due', Owner: 'NURSE', Next: 'Document vitals, assessment, tasks and handoff' } },
+        { label: 'Aide-soignant', values: { Status: 'Task view', Owner: 'CNA', Next: 'Hygiene, mobility, meals, safety rounds' } },
+        { label: 'Medecin / NP', values: { Status: this.latestVisit ? 'Encounter filed' : 'Assessment due', Owner: 'DOCTOR / NP', Next: 'Diagnosis, orders, procedure and discharge decisions' } },
+        { label: 'Sage-femme', values: { Status: this.currentRole === 'MIDWIFE' ? 'Focused view' : 'When applicable', Owner: 'MIDWIFE', Next: 'Maternal, newborn and postpartum documentation' } },
+        { label: 'Laborantin', values: { Status: this.patientLabOrders.length ? 'Specimen workflow' : 'No active lab', Owner: 'LAB', Next: 'Collect, validate and publish results' } },
+        { label: 'Imagerie', values: { Status: this.patientImagingOrders.length ? 'Imaging workflow' : 'No active imaging', Owner: 'IMAGING', Next: 'Schedule, perform and report imaging' } },
+        { label: 'Pharmacie', values: { Status: this.patientMedications.length ? 'Medication profile' : 'Med rec due', Owner: 'PHARMACY', Next: 'Dispense, reconcile and support MAR safety' } },
+        { label: 'Major / Surveillant', values: { Status: this.patientTasks.length ? 'Open workload' : 'Stable workload', Owner: 'MAJOR / SUPERVISOR', Next: 'Assign staff, watch blockers, validate handoff' } },
+        { label: 'Facturation / Social', values: { Status: 'Context aware', Owner: 'BILLING / SOCIAL', Next: 'Costs, insurance, indigent support and transport' } }
+      ]
+    },
+    offlineReadinessRows() {
+      const queuedWork = this.patientTasks.length + this.patientDocuments.length + this.patientVitals.length
+      return [
+        { label: 'Patient chart cache', values: { State: 'Ready', Fallback: 'Local browser storage', Action: 'Keep active patient available during outage' } },
+        { label: 'Forms in dialogs', values: { State: 'Ready', Fallback: 'Save when network returns', Action: 'Use Patient 360 dialogs for all entries' } },
+        { label: 'Low bandwidth mode', values: { State: 'Ready', Fallback: 'Text-first flowsheets', Action: 'Avoid heavy navigation and image dependency' } },
+        { label: 'Queued clinical work', values: { State: `${queuedWork} local item(s)`, Fallback: 'Sync audit trail', Action: 'Review before shift handoff' } },
+        { label: 'Shared workstation safety', values: { State: this.accessProfile.audit, Fallback: 'Role-based masking', Action: 'Minimum necessary data by role' } },
+        { label: 'Paper fallback', values: { State: 'Supported', Fallback: 'Print summary / discharge packet', Action: 'Use print only when needed' } }
+      ]
+    },
+    roleActionRows() {
+      const rowsByRole = {
+        NURSE: [
+          ['High', 'Triage / Flowsheets', 'Record vitals, pain, GCS, nursing assessment and care tasks'],
+          ['High', 'MAR / Orders', 'Administer medications, acknowledge results and document response'],
+          ['Today', 'Discharge', 'Teach patient/family and complete handoff']
+        ],
+        DOCTOR: [
+          ['High', 'Clinical decision', 'Review chart, diagnose, place orders and update plan'],
+          ['Today', 'Diagnostics', 'Act on abnormal lab/imaging results'],
+          ['Today', 'Discharge', 'Confirm readiness and final instructions']
+        ],
+        MIDWIFE: [
+          ['High', 'Maternity', 'Track mother, fetus/newborn, labor or postpartum signals'],
+          ['High', 'Triage', 'Capture vitals, bleeding, pain and obstetric warning signs'],
+          ['Today', 'Education', 'Counsel mother/family and document follow-up']
+        ],
+        LAB: [
+          ['High', 'Orders', 'Collect specimen and update status'],
+          ['High', 'Results', 'Validate result and flag critical values'],
+          ['Today', 'Handoff', 'Notify nurse/provider for urgent findings']
+        ],
+        PHARMACY: [
+          ['High', 'Medications', 'Verify allergies, dose, stock and substitutions'],
+          ['High', 'MAR', 'Support administration safety and reconciliation'],
+          ['Today', 'Discharge', 'Prepare take-home medication instructions']
+        ],
+        FRONT_DESK: [
+          ['High', 'Registration', 'Confirm identity, contact, consent and payment class'],
+          ['Today', 'Documents', 'Attach ID, referral, insurance or paper forms'],
+          ['Today', 'Discharge', 'Schedule follow-up and print patient packet']
+        ],
+        CNA: [
+          ['High', 'Work List', 'Complete hygiene, meals, mobility and safety rounds'],
+          ['Today', 'Flowsheets', 'Report abnormal findings to nurse'],
+          ['Today', 'Handoff', 'Document assistance level and unresolved needs']
+        ]
+      }
+      const fallback = [
+        ['High', 'Patient 360', 'Review assigned items and act within role scope'],
+        ['Today', 'Work List', 'Complete, escalate or hand off open tasks'],
+        ['Today', 'Documents', 'File required documentation before shift end']
+      ]
+      return (rowsByRole[this.currentRole] || fallback).map(row => ({
+        label: row[1],
+        values: { Priority: row[0], Where: row[1], Action: row[2] }
+      }))
     },
     chartReviewRows() {
       if (!this.patientVisits.length) {
@@ -3387,6 +3620,60 @@ export default {
       if (value.includes('wound')) return 'wound'
       return 'nursing'
     },
+    openJourneyAction(action) {
+      const target = String(action || '').toLowerCase()
+      if (target === 'nurse') {
+        this.openChartDialog('nurse')
+        return
+      }
+      if (target === 'medical') {
+        this.openChartDialog('medical')
+        return
+      }
+      if (target === 'lab') {
+        this.openOrderComposer('lab')
+        return
+      }
+      if (target === 'medication') {
+        if (this.patientMedications.length && this.visibleChartTabs.includes('MAR')) this.selectedChartTab = 'MAR'
+        else this.openChartDialog('medication')
+        return
+      }
+      if (target === 'registration') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Registration') ? 'Registration' : 'Summary'
+        this.selectNavigator('admission')
+        return
+      }
+      if (target === 'worklist') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Work List') ? 'Work List' : 'Navigators'
+        if (this.visibleChartTabs.includes('Navigators')) this.selectNavigator('worklist')
+        return
+      }
+      if (target === 'maternity') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Care Plan') ? 'Care Plan' : 'Notes'
+        this.forms.document = defaultDialogForms().document
+        this.forms.document.title = 'Maternal / newborn care note'
+        this.forms.document.category = 'Clinical Note'
+        this.forms.document.content = 'Document maternal, newborn, labor or postpartum findings when applicable.'
+        this.openChartDialog('document')
+        return
+      }
+      if (target === 'social') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Navigators') ? 'Navigators' : 'Summary'
+        if (this.visibleChartTabs.includes('Navigators')) this.selectNavigator('sdoh')
+        return
+      }
+      if (target === 'discharge') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Navigators') ? 'Navigators' : 'Care Plan'
+        if (this.visibleChartTabs.includes('Navigators')) this.selectNavigator('discharge')
+        return
+      }
+      if (target === 'notes') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Notes') ? 'Notes' : 'Summary'
+        return
+      }
+      this.selectedChartTab = 'Parcours Patient'
+    },
     orderStatusClass(status) {
       const value = String(status || '').toLowerCase()
       if (/hold|held/.test(value)) return 'held'
@@ -3817,6 +4104,7 @@ export default {
       this.selectedChartTab = tab
       const navMap = {
         Summary: 'admission',
+        'Parcours Patient': 'admission',
         'Chart Review': 'shift',
         Navigators: this.selectedNavigator || 'admission',
         Avatar: 'vitals',
@@ -4781,6 +5069,104 @@ function latestByDate(items, field) {
 .flowsheet-command-center {
   display: grid;
   gap: 8px;
+}
+.africa-workflow {
+  display: grid;
+  gap: 12px;
+}
+.africa-command {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #dbe6e3;
+  border-left: 4px solid #0f766e;
+  padding: 10px 12px;
+}
+.africa-command div:first-child {
+  display: grid;
+  gap: 3px;
+}
+.africa-command span {
+  color: #64748b;
+  font-weight: 800;
+}
+.africa-command strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+.africa-command-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.journey-lane {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(124px, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.journey-stage {
+  min-height: 190px;
+  background: #ffffff;
+  border: 1px solid #dbe6e3;
+  border-top: 4px solid #94a3b8;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 8px;
+  padding: 10px;
+}
+.journey-stage.complete { border-top-color: #16a34a; }
+.journey-stage.active { border-top-color: #0369a1; }
+.journey-stage.due { border-top-color: #be123c; }
+.journey-stage.warning { border-top-color: #f97316; }
+.journey-stage.pending { border-top-color: #64748b; }
+.stage-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: #eef7f5;
+  color: #0f766e;
+  border: 1px solid #cfe5df;
+}
+.journey-stage strong {
+  display: block;
+  color: #0f172a;
+  font-size: 12px;
+}
+.journey-stage span {
+  display: block;
+  color: #0f766e;
+  font-weight: 800;
+  margin-top: 2px;
+}
+.journey-stage p {
+  color: #475569;
+  line-height: 1.35;
+  margin: 6px 0 0;
+}
+.journey-stage button {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 900;
+  padding: 6px 8px;
+  text-align: center;
+  cursor: pointer;
+}
+.journey-stage button:hover {
+  border-color: #0f766e;
+  color: #0f766e;
+}
+.africa-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
+  gap: 12px;
 }
 .flowsheet-actions {
   display: flex !important;
@@ -5969,16 +6355,21 @@ function latestByDate(items, field) {
   .access-strip div {
     flex-wrap: wrap;
   }
-  .chart-frame, .navigator-layout, .sdoh-content, .discharge-summary, .ai-care-panel, .avatar-grid, .orders-layout, .emar-layout {
+  .chart-frame, .navigator-layout, .sdoh-content, .discharge-summary, .ai-care-panel, .avatar-grid, .orders-layout, .emar-layout, .africa-grid {
     grid-template-columns: 1fr;
+  }
+  .journey-lane {
+    grid-template-columns: repeat(9, minmax(180px, 220px));
   }
   .orders-command,
   .emar-command,
+  .africa-command,
   .order-card {
     grid-template-columns: 1fr;
   }
   .orders-command,
-  .emar-command {
+  .emar-command,
+  .africa-command {
     align-items: flex-start;
     flex-direction: column;
   }
