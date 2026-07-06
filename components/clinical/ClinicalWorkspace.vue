@@ -944,18 +944,29 @@
                 </v-btn>
               </div>
               <div v-if="patientCarePlans.length" class="care-plan-grid">
-                <article v-for="plan in patientCarePlans" :key="plan.id" class="care-plan-card">
+                <article v-for="plan in patientCarePlans" :key="plan.id" :class="['care-plan-card', isCarePlanOverdue(plan) ? 'overdue' : '']">
                   <header>
                     <strong>{{ plan.problem }}</strong>
-                    <span :class="['status-chip', plan.status === 'active' ? 'signed' : 'draft']">{{ plan.status === 'active' ? 'signed' : plan.status }}</span>
+                    <div style="display: flex; gap: 6px;">
+                      <span v-if="isCarePlanOverdue(plan)" class="status-chip overdue-flag">Overdue</span>
+                      <span :class="['status-chip', plan.status === 'active' ? 'signed' : plan.status === 'archived' ? 'archived' : 'draft']">{{ plan.status }}</span>
+                    </div>
                   </header>
                   <p v-if="plan.goal"><strong>Goal:</strong> {{ plan.goal }}</p>
                   <p v-if="plan.interventions"><strong>Interventions:</strong> {{ plan.interventions }}</p>
+                  <p v-if="plan.targetDate" class="target-date">
+                    <strong>Target Date:</strong> {{ formatShortDate(plan.targetDate) }}
+                  </p>
                   <div class="care-plan-meta">
                     <span>{{ formatShortDate(plan.createdAt) }} &middot; {{ plan.createdBy }}</span>
-                    <v-btn v-if="plan.status === 'draft'" x-small text color="#0f766e" @click="signCarePlanFromCard(plan.id)">
-                      <v-icon x-small left>mdi-draw-pen</v-icon>Sign
-                    </v-btn>
+                    <div style="display: flex; gap: 4px;">
+                      <v-btn v-if="plan.status === 'draft'" x-small text color="#0f766e" @click="signCarePlanFromCard(plan.id)">
+                        <v-icon x-small left>mdi-draw-pen</v-icon>Sign
+                      </v-btn>
+                      <v-btn v-if="plan.status === 'active'" x-small text color="#64748b" @click="archiveCarePlanFromCard(plan.id)">
+                        <v-icon x-small left>mdi-archive</v-icon>Archive
+                      </v-btn>
+                    </div>
                   </div>
                 </article>
               </div>
@@ -4494,6 +4505,14 @@ export default {
       await this.$store.dispatch('nursing/signCarePlan', id)
       this.toastSuccess('Care plan signed.')
     },
+    async archiveCarePlanFromCard(id) {
+      await this.$store.dispatch('nursing/archiveCarePlan', id)
+      this.toastSuccess('Care plan archived.')
+    },
+    isCarePlanOverdue(plan) {
+      if (!plan.targetDate) return false
+      return new Date(plan.targetDate) < new Date() && plan.status !== 'archived'
+    },
     toastSuccess(message) {
       if (this.$toast && this.$toast.success) this.$toast.success(message)
     },
@@ -6733,6 +6752,10 @@ function latestByDate(items, field) {
   background: #fff;
   padding: 12px;
 }
+.care-plan-card.overdue {
+  border-left: 4px solid #f97316;
+  background: #fffbeb;
+}
 .care-plan-card header {
   display: flex;
   align-items: flex-start;
@@ -6743,11 +6766,18 @@ function latestByDate(items, field) {
 .care-plan-card header strong {
   color: #134e4a;
   font-size: 13px;
+  flex: 1;
 }
 .care-plan-card p {
   font-size: 12.5px;
   color: #334155;
   margin: 4px 0;
+}
+.care-plan-card p.target-date {
+  background: #f0f9ff;
+  padding: 6px 8px;
+  border-radius: 3px;
+  color: #0c4a6e;
 }
 .care-plan-meta {
   display: flex;
@@ -6760,6 +6790,18 @@ function latestByDate(items, field) {
 .care-plan-meta span {
   font-size: 11px;
   color: #64748b;
+}
+.status-chip.overdue-flag {
+  background: #fed7aa;
+  color: #92400e;
+}
+.status-chip.signed {
+  background: #dbeafe;
+  color: #075985;
+}
+.status-chip.archived {
+  background: #e5e7eb;
+  color: #4b5563;
 }
 .notes-layout {
   display: grid;

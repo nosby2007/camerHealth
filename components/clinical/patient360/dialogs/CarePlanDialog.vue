@@ -13,6 +13,16 @@
           <p class="section-label">Choose a care plan to add</p>
           <div class="template-grid">
             <button
+              type="button"
+              class="template-card custom-card"
+              @click="selectCustom"
+              title="Create a custom care plan from scratch"
+            >
+              <v-icon color="#0f766e" size="28">mdi-plus-circle-outline</v-icon>
+              <strong>Create Custom Care Plan</strong>
+              <span>Define your own care plan</span>
+            </button>
+            <button
               v-for="tpl in templates"
               :key="tpl.key"
               type="button"
@@ -32,6 +42,20 @@
           <v-text-field v-model="form.problem" label="Problem" dense outlined :rules="[requiredRule]" />
           <v-textarea v-model="form.goal" label="Goal" rows="2" dense outlined />
           <v-textarea v-model="form.interventions" label="Interventions" rows="3" dense outlined />
+          <v-menu ref="dateMenu" v-model="dateMenuOpen" :close-on-content-click="false" offset-y>
+            <template #activator="{ on, attrs }">
+              <v-text-field
+                :value="formatDateForDisplay(form.targetDate)"
+                label="Target/Reachable Date"
+                readonly
+                dense
+                outlined
+                v-bind="attrs"
+                v-on="on"
+              />
+            </template>
+            <v-date-picker v-model="form.targetDate" @input="dateMenuOpen = false" />
+          </v-menu>
         </section>
       </v-card-text>
       <v-card-actions v-if="selectedTemplate" class="dialog-actions">
@@ -102,6 +126,62 @@ const CARE_PLAN_TEMPLATES = [
     problem: 'Discharge readiness',
     goal: 'Patient/family prepared for safe discharge with follow-up arranged',
     interventions: 'Medication reconciliation, discharge instructions, follow-up appointment, transport and support coordination.'
+  },
+  {
+    key: 'bowel-bladder',
+    label: 'Bowel & Bladder Elimination',
+    problem: 'Altered urinary/bowel elimination',
+    goal: 'Patient achieves normal pattern of elimination or maintains current functional status',
+    interventions: 'Monitor I&O, establish toileting schedule, provide privacy and assistance, offer fluid/dietary adjustment as needed.'
+  },
+  {
+    key: 'breathing',
+    label: 'Respiratory / Breathing',
+    problem: 'Ineffective breathing pattern',
+    goal: 'Patient maintains adequate respiratory effort and O2 saturation >=94%',
+    interventions: 'Monitor respiratory rate, SpO2, and breath sounds q4h, position for optimal ventilation, oxygen therapy as ordered.'
+  },
+  {
+    key: 'cognitive',
+    label: 'Cognitive & Mental Health',
+    problem: 'Acute confusion / anxiety',
+    goal: 'Patient maintains orientation to person, place, time; reports reduced anxiety',
+    interventions: 'Orient to surroundings frequently, provide consistent routine, reduce stimuli, use therapeutic communication, monitor mental status.'
+  },
+  {
+    key: 'sleep',
+    label: 'Sleep & Rest',
+    problem: 'Impaired sleep pattern',
+    goal: 'Patient reports improved sleep quality and feels rested',
+    interventions: 'Establish consistent bedtime routine, minimize noise/light, encourage daytime activity, pain management, herbal tea/relaxation if appropriate.'
+  },
+  {
+    key: 'hydration',
+    label: 'Fluid & Hydration',
+    problem: 'Risk for dehydration',
+    goal: 'Patient maintains adequate fluid balance; urine output >0.5 mL/kg/hr, mucous membranes moist',
+    interventions: 'Monitor I&O q shift, daily weight, vital signs, encourage fluid intake per orders, IV therapy as prescribed.'
+  },
+  {
+    key: 'communication',
+    label: 'Communication & Hearing',
+    problem: 'Impaired verbal communication',
+    goal: 'Patient/family able to communicate needs effectively',
+    interventions: 'Provide hearing aids/assistive devices, speak clearly, use visual aids, allow time for response, document communication barriers.'
+  },
+  {
+    key: 'safety',
+    label: 'Safety & Security',
+    problem: 'Unsafe environment / self-harm risk',
+    goal: 'Patient remains safe; no injury or harm incidents',
+    interventions: 'Implement fall precautions, bed alarm, close supervision, remove environmental hazards, assess suicidal/homicidal ideation if indicated.'
+  },
+  {
+    key: 'social',
+    label: 'Social Support & Coping',
+    problem: 'Limited social support / ineffective coping',
+    goal: 'Patient/family verbalize understanding of condition and engage with support resources',
+    interventions: 'Facilitate family visits, social work referral, identify support systems, teach coping strategies, connect with community resources.'
   }
 ]
 
@@ -116,7 +196,8 @@ export default {
     return {
       templates: CARE_PLAN_TEMPLATES,
       selectedTemplate: null,
-      form: { problem: '', goal: '', interventions: '' },
+      form: { problem: '', goal: '', interventions: '', targetDate: '' },
+      dateMenuOpen: false,
       saving: false,
       requiredRule: value => Boolean(value) || 'Required'
     }
@@ -133,11 +214,21 @@ export default {
   methods: {
     reset() {
       this.selectedTemplate = null
-      this.form = { problem: '', goal: '', interventions: '' }
+      this.form = { problem: '', goal: '', interventions: '', targetDate: '' }
+      this.dateMenuOpen = false
     },
     selectTemplate(tpl) {
       this.selectedTemplate = tpl
-      this.form = { problem: tpl.problem, goal: tpl.goal, interventions: tpl.interventions }
+      this.form = { ...this.form, problem: tpl.problem, goal: tpl.goal, interventions: tpl.interventions }
+    },
+    selectCustom() {
+      this.selectedTemplate = { key: 'custom', label: 'Custom Care Plan' }
+      this.form = { problem: '', goal: '', interventions: '', targetDate: '' }
+    },
+    formatDateForDisplay(date) {
+      if (!date) return '—'
+      const d = new Date(date)
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     },
     async save() {
       if (!this.form.problem) return
@@ -215,6 +306,29 @@ export default {
 .template-card span {
   color: #64748b;
   font-size: 11.5px;
+}
+.template-card.custom-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f0fdfa;
+  border: 2px dashed #0f766e;
+}
+.template-card.custom-card:hover {
+  background: #dcfce7;
+  border-color: #134e4a;
+}
+.template-card.custom-card strong {
+  text-align: center;
+  color: #0f766e;
+  font-size: 12px;
+}
+.template-card.custom-card span {
+  text-align: center;
+  color: #0f766e;
+  font-size: 10px;
 }
 .back-link {
   border: 0;

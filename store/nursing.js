@@ -209,6 +209,14 @@ export const actions = {
     dispatch('audit', { action: 'CARE_PLAN_SIGNED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
     return record
   },
+  archiveCarePlan({ state, commit, dispatch, rootState }, id) {
+    const plan = state.carePlans.find(item => item.id === id)
+    if (!plan) return null
+    const record = { ...plan, status: 'archived', archivedAt: new Date().toISOString(), archivedBy: rootState.auth.fullName || rootState.auth.staffId }
+    commit('UPDATE_RECORD', { collection: 'carePlans', record })
+    dispatch('audit', { action: 'CARE_PLAN_ARCHIVED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
+    return record
+  },
   createDocument({ commit, dispatch, rootState }, document) {
     const record = withBase(rootState, document, 'NDC')
     commit('ADD_RECORD', { collection: 'documents', record })
