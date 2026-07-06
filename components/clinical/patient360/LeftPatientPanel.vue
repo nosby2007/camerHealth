@@ -29,7 +29,7 @@
         <div><span>Bed</span><strong>{{ patient.bed }}</strong></div>
       </div>
 
-      <div class="alert-block code-alert">{{ patient.codeStatus }}</div>
+      <div class="alert-block code-alert">Code: {{ patient.codeStatus }}</div>
       <div class="alert-block critical">Precautions: {{ patient.precautions }}</div>
       <div class="alert-block infection">Infection: {{ patient.infectionStatus }}</div>
       <div class="alert-block wound">Admission wound documentation</div>

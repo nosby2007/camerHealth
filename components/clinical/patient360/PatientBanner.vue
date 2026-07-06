@@ -32,6 +32,15 @@
         {{ skinIntegrity.value }}
       </span>
     </div>
+    <button
+      v-if="closable"
+      type="button"
+      class="patient-banner-close"
+      aria-label="Close patient chart and return to patient list"
+      @click="$emit('close')"
+    >
+      <v-icon small>mdi-close</v-icon>
+    </button>
   </section>
 </template>
 
@@ -41,7 +50,8 @@ export default {
   props: {
     patient: { type: Object, required: true },
     fallRisk: { type: Object, default: null },
-    skinIntegrity: { type: Object, default: null }
+    skinIntegrity: { type: Object, default: null },
+    closable: { type: Boolean, default: false }
   }
 }
 </script>
@@ -98,4 +108,25 @@ export default {
 .safety-badge.precaution { background: #e0f2fe; color: #075985; }
 .safety-badge.fall-risk { background: #fef3c7; color: #78350f; }
 .safety-badge.wound { background: #fef9c3; color: #713f12; }
+.patient-banner-close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 118, 110, 0.3);
+  background: #fff;
+  color: #0f766e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.patient-banner-close:hover {
+  background: #dcfce7;
+}
+.patient-banner-close:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
 </style>

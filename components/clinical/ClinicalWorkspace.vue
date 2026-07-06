@@ -33,13 +33,32 @@
     </header>
 
     <section class="patient-tabs">
-      <button
-        v-for="chart in openCharts"
+      <div
+        v-for="chart in openPatientChartsDisplay"
         :key="chart.id"
-        :class="['patient-tab', { active: chart.id === activeChartId }]"
-        @click="activeChartId = chart.id"
+        :class="['patient-tab', { active: chart.id === activePatientId }]"
       >
-        {{ chart.shortName }}
+        <button type="button" class="patient-tab-label" @click="selectOpenChart(chart)">
+          {{ chart.shortName }}
+        </button>
+        <button
+          v-if="patientScoped"
+          type="button"
+          class="patient-tab-close"
+          :aria-label="`Close ${chart.shortName} chart`"
+          @click.stop="closeOpenChart(chart)"
+        >
+          <v-icon x-small>mdi-close</v-icon>
+        </button>
+      </div>
+      <button
+        v-if="patientScoped"
+        type="button"
+        class="patient-tab-add"
+        aria-label="Open another patient chart"
+        @click="$router.push('/clinical/patients')"
+      >
+        <v-icon x-small>mdi-plus</v-icon>
       </button>
     </section>
 
@@ -59,6 +78,8 @@
       :patient="activePatient"
       :fall-risk="fallRiskEntry"
       :skin-integrity="skinIntegrityEntry"
+      :closable="patientScoped"
+      @close="closePatientChart"
     />
 
     <div class="chart-frame" :class="{ 'left-collapsed': effectiveLeftPanelCollapsed, 'right-collapsed': effectiveRightPanelCollapsed }">
@@ -1705,6 +1726,7 @@ export default {
       rightPanelOverride: null,
       isNarrowRight: false,
       isNarrowBoth: false,
+      openPatientTabs: [],
       selectedNavigator: 'shift',
       selectedNavigatorSection: 'overview',
       activeSdoh: 'food',
@@ -2150,6 +2172,9 @@ export default {
         { id: 'demo-2', shortName: 'Irwin, Charles C' },
         { id: 'demo-3', shortName: 'Rodriguez, Artavia' }
       ]
+    },
+    openPatientChartsDisplay() {
+      return this.patientScoped ? this.openPatientTabs : this.openCharts
     },
     canSeeClinicalHistory() {
       return Boolean(this.accessProfile.clinical)
@@ -3603,7 +3628,7 @@ export default {
           mrn: this.patientScoped ? this.activePatientId : '113332',
           account: this.patientScoped ? this.activePatientId : '125544',
           bed: 'RHQ 2FL-R2208-1',
-          codeStatus: this.maskClinical('Code: Full Resuscitation'),
+          codeStatus: this.maskClinical('Full Resuscitation'),
           precautions: this.maskClinical('Aspiration, bleeding, cardiac'),
           infectionStatus: this.maskClinical('No isolation'),
           attending: 'Raja M Khan, MD',
@@ -3624,7 +3649,7 @@ export default {
         mrn: patient.mrn || patient.externalId || patient.id,
         account: patient.account || patient.id,
         bed: patient.bed || patient.currentDepartment || 'Ambulatory',
-        codeStatus: this.maskClinical(patient.codeStatus || patient.code || 'Code: Full Resuscitation'),
+        codeStatus: this.maskClinical(patient.codeStatus || patient.code || 'Full Resuscitation'),
         precautions: this.maskClinical(patient.precautions || 'Standard'),
         infectionStatus: this.maskClinical(patient.infectionStatus || 'No isolation'),
         attending: patient.attending || patient.provider || patient.referredBy || 'Provider not assigned',
@@ -3663,7 +3688,10 @@ export default {
       if (newRole !== oldRole) this.applyRoleDefaultTab()
     },
     visibleChartTabs: 'normalizeVisibleSelection',
-    visibleNavigatorTabs: 'normalizeVisibleSelection'
+    visibleNavigatorTabs: 'normalizeVisibleSelection',
+    patientId(newId) {
+      if (this.patientScoped) this.registerOpenChart(newId)
+    }
   },
   mounted() {
     this.$store.commit('clinical/LOAD_FROM_STORAGE')
@@ -3673,6 +3701,10 @@ export default {
     this.normalizeVisibleSelection()
     this.applyRoleDefaultTab()
     this.loadLayoutPreferences()
+    if (this.patientScoped) {
+      this.loadOpenPatientTabs()
+      this.registerOpenChart(this.activePatientId)
+    }
     if (process.client) {
       this.updateViewportBreakpoints()
       window.addEventListener('resize', this.updateViewportBreakpoints)
@@ -3716,6 +3748,54 @@ export default {
     toggleRightPanel() {
       this.rightPanelOverride = !this.rightPanelCollapsed
       this.persistLayoutPreferences()
+    },
+    closePatientChart() {
+      this.$router.push('/clinical/patients')
+    },
+    loadOpenPatientTabs() {
+      if (!process.client) return
+      try {
+        const raw = window.sessionStorage.getItem('camero_health_openPatientTabs')
+        if (!raw) return
+        const saved = JSON.parse(raw)
+        if (Array.isArray(saved)) {
+          this.openPatientTabs = saved.filter(item => item && item.id && item.shortName)
+        }
+      } catch (e) {
+        // ignore malformed session data
+      }
+    },
+    persistOpenPatientTabs() {
+      if (!process.client) return
+      window.sessionStorage.setItem('camero_health_openPatientTabs', JSON.stringify(this.openPatientTabs))
+    },
+    registerOpenChart(id) {
+      if (!id || this.openPatientTabs.some(tab => tab.id === id)) return
+      const patient = this.findPatientRecord(id)
+      const shortName = patient
+        ? patient.displayName || patient.name || `${patient.lastName || 'Patient'}, ${patient.firstName || ''}`.trim()
+        : id
+      this.openPatientTabs.push({ id, shortName })
+      if (this.openPatientTabs.length > 8) this.openPatientTabs.shift()
+      this.persistOpenPatientTabs()
+    },
+    selectOpenChart(chart) {
+      if (this.patientScoped) {
+        if (chart.id !== this.activePatientId) this.$router.push('/clinical/patients/' + chart.id)
+      } else {
+        this.activeChartId = chart.id
+      }
+    },
+    closeOpenChart(chart) {
+      const index = this.openPatientTabs.findIndex(tab => tab.id === chart.id)
+      if (index === -1) return
+      const wasActive = chart.id === this.activePatientId
+      this.openPatientTabs.splice(index, 1)
+      this.persistOpenPatientTabs()
+      if (wasActive) {
+        const next = this.openPatientTabs[index] || this.openPatientTabs[index - 1]
+        this.$router.push(next ? '/clinical/patients/' + next.id : '/clinical/patients')
+      }
     },
     updateViewportBreakpoints() {
       this.isNarrowRight = window.innerWidth <= 1280
@@ -4548,15 +4628,63 @@ function latestByDate(items, field) {
 .patient-tab {
   height: 27px;
   min-width: 132px;
+  display: flex;
+  align-items: stretch;
   border: 1px solid #7fb5ae;
   border-bottom: 0;
   background: #dcecea;
   color: #0f3f3b;
   font-weight: 800;
-  cursor: pointer;
 }
 .patient-tab.active {
   background: #f8fbfb;
+}
+.patient-tab-label {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+  padding: 0 8px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.patient-tab-close {
+  flex: 0 0 auto;
+  width: 22px;
+  border: 0;
+  border-left: 1px solid rgba(15, 118, 110, 0.25);
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.patient-tab-close:hover {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+.patient-tab-add {
+  height: 27px;
+  width: 27px;
+  border: 1px solid #7fb5ae;
+  border-bottom: 0;
+  background: #dcecea;
+  color: #0f3f3b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.patient-tab-label:focus-visible,
+.patient-tab-close:focus-visible,
+.patient-tab-add:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: -2px;
 }
 .access-strip {
   min-height: 34px;
