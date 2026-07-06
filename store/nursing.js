@@ -172,6 +172,14 @@ export const actions = {
     dispatch('audit', { action: 'NOTE_SIGNED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
     return record
   },
+  shareClinicalNote({ state, commit, dispatch, rootState }, id) {
+    const note = state.clinicalNotes.find(item => item.id === id)
+    if (!note || note.status === 'draft') return null
+    const record = { ...note, sharedWithCareTeam: true, sharedAt: new Date().toISOString(), sharedBy: rootState.auth.fullName || rootState.auth.staffId }
+    commit('UPDATE_RECORD', { collection: 'clinicalNotes', record })
+    dispatch('audit', { action: 'NOTE_SHARED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
+    return record
+  },
   amendClinicalNote({ state, commit, dispatch, rootState }, { id, amendment }) {
     const note = state.clinicalNotes.find(item => item.id === id)
     if (!note || note.status !== 'signed') return null
@@ -188,9 +196,17 @@ export const actions = {
     return record
   },
   createCarePlan({ commit, dispatch, rootState }, carePlan) {
-    const record = withBase(rootState, { status: 'active', ...carePlan }, 'CPL')
+    const record = withBase(rootState, { status: 'draft', ...carePlan }, 'CPL')
     commit('ADD_RECORD', { collection: 'carePlans', record })
     dispatch('audit', { action: 'CARE_PLAN_CREATED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+  signCarePlan({ state, commit, dispatch, rootState }, id) {
+    const plan = state.carePlans.find(item => item.id === id)
+    if (!plan) return null
+    const record = { ...plan, status: 'active', signedAt: new Date().toISOString(), signedBy: rootState.auth.fullName || rootState.auth.staffId }
+    commit('UPDATE_RECORD', { collection: 'carePlans', record })
+    dispatch('audit', { action: 'CARE_PLAN_SIGNED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
     return record
   },
   createDocument({ commit, dispatch, rootState }, document) {
@@ -215,45 +231,57 @@ export const actions = {
   }
 }
 
+function scoped(items, rootState, rootGetters) {
+  const isClinical = rootGetters['clinical/isClinical']
+  if (!isClinical) return items
+  const facilityId = rootState.auth.facilityId
+  return items.filter(item => !item.facilityId || item.facilityId === facilityId)
+}
+
 export const getters = {
-  getBodyMapMarkers: state => state.bodyMapMarkers,
-  getWounds: state => state.wounds,
-  getWoundAssessments: state => state.woundAssessments,
-  getWoundPhotos: state => state.woundPhotos,
-  getNursingAssessments: state => state.nursingAssessments,
-  getClinicalNotes: state => state.clinicalNotes,
-  getOrders: state => state.orders,
-  getTasks: state => state.tasks,
-  getCarePlans: state => state.carePlans,
-  getDocuments: state => state.documents,
-  getAuditLogs: state => state.auditLogs,
+  getBodyMapMarkers: (state, getters, rootState, rootGetters) => scoped(state.bodyMapMarkers, rootState, rootGetters),
+  getWounds: (state, getters, rootState, rootGetters) => scoped(state.wounds, rootState, rootGetters),
+  getWoundAssessments: (state, getters, rootState, rootGetters) => scoped(state.woundAssessments, rootState, rootGetters),
+  getWoundPhotos: (state, getters, rootState, rootGetters) => scoped(state.woundPhotos, rootState, rootGetters),
+  getNursingAssessments: (state, getters, rootState, rootGetters) => scoped(state.nursingAssessments, rootState, rootGetters),
+  getClinicalNotes: (state, getters, rootState, rootGetters) => scoped(state.clinicalNotes, rootState, rootGetters),
+  getOrders: (state, getters, rootState, rootGetters) => scoped(state.orders, rootState, rootGetters),
+  getTasks: (state, getters, rootState, rootGetters) => scoped(state.tasks, rootState, rootGetters),
+  getCarePlans: (state, getters, rootState, rootGetters) => scoped(state.carePlans, rootState, rootGetters),
+  getDocuments: (state, getters, rootState, rootGetters) => scoped(state.documents, rootState, rootGetters),
+  getAuditLogs: (state, getters, rootState, rootGetters) => scoped(state.auditLogs, rootState, rootGetters),
   patientNursing360: (state, getters, rootState, rootGetters) => patientId => {
     const patients = rootGetters['clinical/getPatients'] || []
     const patient = patients.find(item => item.id === patientId)
+    const forPatient = collection => getters[collection].filter(item => item.patientId === patientId)
     return {
       patient,
-      markers: state.bodyMapMarkers.filter(item => item.patientId === patientId),
-      wounds: state.wounds.filter(item => item.patientId === patientId),
-      woundAssessments: state.woundAssessments.filter(item => item.patientId === patientId),
-      notes: state.clinicalNotes.filter(item => item.patientId === patientId),
-      tasks: state.tasks.filter(item => item.patientId === patientId),
-      orders: state.orders.filter(item => item.patientId === patientId),
-      carePlans: state.carePlans.filter(item => item.patientId === patientId),
-      documents: state.documents.filter(item => item.patientId === patientId),
-      audit: state.auditLogs.filter(item => item.patientId === patientId)
+      markers: forPatient('getBodyMapMarkers'),
+      wounds: forPatient('getWounds'),
+      woundAssessments: forPatient('getWoundAssessments'),
+      notes: forPatient('getClinicalNotes'),
+      tasks: forPatient('getTasks'),
+      orders: forPatient('getOrders'),
+      carePlans: forPatient('getCarePlans'),
+      documents: forPatient('getDocuments'),
+      audit: forPatient('getAuditLogs')
     }
   },
-  woundTrend: state => woundId => state.woundAssessments
+  woundTrend: (state, getters, rootState, rootGetters) => woundId => scoped(state.woundAssessments, rootState, rootGetters)
     .filter(item => item.woundId === woundId)
     .sort((a, b) => new Date(a.assessedAt || a.createdAt) - new Date(b.assessedAt || b.createdAt)),
   nurseDashboardMetrics: (state, getters, rootState, rootGetters) => {
     const patients = rootGetters['clinical/patientDirectory'] || []
+    const tasks = getters.getTasks
+    const wounds = getters.getWounds
+    const notes = getters.getClinicalNotes
+    const woundAssessments = getters.getWoundAssessments
     return {
       assignedPatients: patients.length,
-      openTasks: state.tasks.filter(item => ['pending', 'in_progress'].includes(item.status)).length,
-      activeWounds: state.wounds.filter(item => item.status !== 'healed' && item.status !== 'closed').length,
-      unsignedNotes: state.clinicalNotes.filter(item => item.status !== 'signed').length,
-      woundWarnings: state.woundAssessments.filter(item => item.warningAreaIncreased).length
+      openTasks: tasks.filter(item => ['pending', 'in_progress'].includes(item.status)).length,
+      activeWounds: wounds.filter(item => item.status !== 'healed' && item.status !== 'closed').length,
+      unsignedNotes: notes.filter(item => item.status !== 'signed').length,
+      woundWarnings: woundAssessments.filter(item => item.warningAreaIncreased).length
     }
   }
 }

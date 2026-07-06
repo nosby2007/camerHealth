@@ -824,23 +824,146 @@
               />
             </section>
 
-            <section v-else-if="selectedChartTab === 'Notes'" class="flowsheet">
+            <section v-else-if="selectedChartTab === 'Wound Management'" class="flowsheet wound-management">
               <div class="action-strip">
-                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog(primaryNoteAction.kind)">
-                  <v-icon x-small left>mdi-note-plus</v-icon>{{ primaryNoteAction.label }}
-                </v-btn>
-                <v-btn v-if="canLaunchMedical && primaryNoteAction.kind !== 'medical'" x-small depressed color="#1d4ed8" dark @click="openChartDialog('medical')">
-                  <v-icon x-small left>mdi-medical-bag</v-icon>Medical note
+                <v-btn x-small depressed color="#0f766e" dark @click="dialogs.woundCare = true">
+                  <v-icon x-small left>mdi-bandage</v-icon>Document Wound
                 </v-btn>
               </div>
-              <FlowSection
-                title="Clinical Notes"
-                :columns="['Type', 'Recorded', 'Summary']"
-                :rows="noteRows"
-              />
+              <div v-if="patientWounds.length" class="wound-grid">
+                <WoundCard
+                  v-for="wound in patientWounds"
+                  :key="wound.id"
+                  :wound="wound"
+                  :assessments="woundAssessmentsFor(wound.id)"
+                  @open="dialogs.woundCare = true"
+                />
+              </div>
+              <div v-else class="empty-wounds">
+                <v-icon size="48" color="#94a3b8">mdi-bandage</v-icon>
+                <span>No wounds documented for this patient yet.</span>
+              </div>
             </section>
 
-            <section v-else-if="selectedChartTab === 'Care Plan'" class="flowsheet">
+            <section v-else-if="selectedChartTab === 'Notes'" class="flowsheet notes-workspace">
+              <div class="action-strip">
+                <v-menu v-if="noteMenuOptions.length" offset-y>
+                  <template #activator="{ on, attrs }">
+                    <v-btn x-small depressed color="#0f766e" dark v-bind="attrs" v-on="on">
+                      <v-icon x-small left>mdi-note-plus</v-icon>New Note
+                      <v-icon x-small right>mdi-chevron-down</v-icon>
+                    </v-btn>
+                  </template>
+                  <v-list dense>
+                    <v-list-item v-for="option in noteMenuOptions" :key="option.key" @click="openNoteMenuOption(option)">
+                      <v-list-item-icon><v-icon small>{{ option.icon }}</v-icon></v-list-item-icon>
+                      <v-list-item-title>{{ option.label }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+                <v-btn v-if="canLaunchMedical" x-small depressed color="#1d4ed8" dark @click="openChartDialog('medical')">
+                  <v-icon x-small left>mdi-medical-bag</v-icon>Medical note (legacy)
+                </v-btn>
+              </div>
+
+              <div class="notes-layout">
+                <div class="notes-list">
+                  <button
+                    v-for="note in signableNotes"
+                    :key="note.id"
+                    type="button"
+                    :class="['notes-list-item', { active: selectedNoteId === note.id }]"
+                    @click="selectedNoteId = note.id"
+                  >
+                    <strong>{{ note.title || noteTypeLabel(note.noteType) }}</strong>
+                    <span class="notes-meta">
+                      <span :class="['status-chip', note.status]">{{ note.status }}</span>
+                      {{ formatShortDate(note.createdAt) }} &middot; {{ note.createdBy }}
+                    </span>
+                  </button>
+                  <div v-if="!signableNotes.length" class="notes-empty">No notes yet. Use New Note to document.</div>
+
+                  <template v-if="legacyNoteEntries.length">
+                    <h3 class="legacy-heading">Legacy entries</h3>
+                    <div v-for="entry in legacyNoteEntries" :key="entry.id" class="notes-list-item legacy">
+                      <strong>{{ entry.label }}</strong>
+                      <span class="notes-meta">{{ entry.type }} &middot; {{ entry.recorded }}</span>
+                    </div>
+                  </template>
+                </div>
+
+                <div class="notes-detail">
+                  <template v-if="selectedNote">
+                    <header>
+                      <div>
+                        <span :class="['status-chip', selectedNote.status]">{{ selectedNote.status }}</span>
+                        <h2>{{ selectedNote.title || noteTypeLabel(selectedNote.noteType) }}</h2>
+                        <p>{{ selectedNote.createdBy }} &middot; {{ formatShortDate(selectedNote.createdAt) }}</p>
+                      </div>
+                      <div class="notes-detail-actions">
+                        <v-btn v-if="selectedNote.status === 'draft'" x-small text color="#0f766e" @click="editSelectedNote">Edit</v-btn>
+                        <v-btn v-if="selectedNote.status === 'draft'" x-small depressed color="#0f766e" dark @click="signSelectedNote">
+                          <v-icon x-small left>mdi-draw-pen</v-icon>Sign
+                        </v-btn>
+                        <v-btn v-if="selectedNote.status !== 'draft'" x-small text color="#7c3aed" @click="amendSelectedNote">Amend</v-btn>
+                        <v-btn v-if="selectedNote.status !== 'draft'" x-small text color="#0369a1" :disabled="selectedNote.sharedWithCareTeam" @click="shareSelectedNote">
+                          {{ selectedNote.sharedWithCareTeam ? 'Shared' : 'Share' }}
+                        </v-btn>
+                      </div>
+                    </header>
+                    <p class="notes-body">{{ selectedNote.body }}</p>
+
+                    <div v-if="amendingNoteId === selectedNote.id" class="amend-box">
+                      <v-textarea v-model="amendmentDraft" label="Amendment" rows="2" dense outlined />
+                      <div class="amend-actions">
+                        <v-btn x-small text @click="amendingNoteId = null">Cancel</v-btn>
+                        <v-btn x-small depressed color="#7c3aed" dark @click="submitAmendment">Submit amendment</v-btn>
+                      </div>
+                    </div>
+
+                    <div v-if="selectedNote.amendments && selectedNote.amendments.length" class="notes-amendments">
+                      <h3>Amendments</h3>
+                      <div v-for="amendment in selectedNote.amendments" :key="amendment.id" class="amendment-row">
+                        <span>{{ formatShortDate(amendment.at) }} &middot; {{ amendment.actor }}</span>
+                        <p>{{ amendment.body }}</p>
+                      </div>
+                    </div>
+                  </template>
+                  <div v-else class="notes-empty-detail">
+                    <v-icon size="42" color="#94a3b8">mdi-note-text-outline</v-icon>
+                    <span>Select a note to view details</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Care Plan'" class="flowsheet care-plan-workspace">
+              <div class="action-strip">
+                <v-btn x-small depressed color="#0f766e" dark @click="dialogs.carePlan = true">
+                  <v-icon x-small left>mdi-clipboard-plus</v-icon>Add Care Plan
+                </v-btn>
+              </div>
+              <div v-if="patientCarePlans.length" class="care-plan-grid">
+                <article v-for="plan in patientCarePlans" :key="plan.id" class="care-plan-card">
+                  <header>
+                    <strong>{{ plan.problem }}</strong>
+                    <span :class="['status-chip', plan.status === 'active' ? 'signed' : 'draft']">{{ plan.status === 'active' ? 'signed' : plan.status }}</span>
+                  </header>
+                  <p v-if="plan.goal"><strong>Goal:</strong> {{ plan.goal }}</p>
+                  <p v-if="plan.interventions"><strong>Interventions:</strong> {{ plan.interventions }}</p>
+                  <div class="care-plan-meta">
+                    <span>{{ formatShortDate(plan.createdAt) }} &middot; {{ plan.createdBy }}</span>
+                    <v-btn v-if="plan.status === 'draft'" x-small text color="#0f766e" @click="signCarePlanFromCard(plan.id)">
+                      <v-icon x-small left>mdi-draw-pen</v-icon>Sign
+                    </v-btn>
+                  </div>
+                </article>
+              </div>
+              <div v-else class="empty-wounds">
+                <v-icon size="48" color="#94a3b8">mdi-clipboard-text-outline</v-icon>
+                <span>No care plans documented yet.</span>
+              </div>
+
               <FlowSection
                 v-if="carePlanProblemRows.length"
                 title="Problems (Nursing Assessment)"
@@ -848,7 +971,7 @@
                 :rows="carePlanProblemRows"
               />
               <FlowSection
-                title="Care Plan"
+                title="Care Tasks"
                 :columns="['Owner', 'Status', 'Next Step']"
                 :rows="carePlanRows"
               />
@@ -1575,6 +1698,31 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <NoteDialog
+      :open="dialogs.note"
+      :patient-id="activePatientId"
+      :note-type="noteDialogConfig.noteType"
+      :dialog-title="noteDialogConfig.dialogTitle"
+      :author-role="currentRole"
+      :existing-note="noteDialogConfig.existingNote"
+      @close="closeChartDialog('note')"
+      @saved="handleNoteSaved"
+    />
+    <WoundCareDialog
+      :open="dialogs.woundCare"
+      :patient-id="activePatientId"
+      :author-role="currentRole"
+      @close="closeChartDialog('woundCare')"
+      @saved="handleWoundSaved"
+    />
+    <CarePlanDialog
+      :open="dialogs.carePlan"
+      :patient-id="activePatientId"
+      :author-role="currentRole"
+      @close="closeChartDialog('carePlan')"
+      @saved="handleCarePlanSaved"
+    />
   </div>
 </template>
 
@@ -1583,6 +1731,10 @@ import PatientBanner from '~/components/clinical/patient360/PatientBanner.vue'
 import LeftPatientPanel from '~/components/clinical/patient360/LeftPatientPanel.vue'
 import RightClinicalPanel from '~/components/clinical/patient360/RightClinicalPanel.vue'
 import TabNav from '~/components/clinical/patient360/TabNav.vue'
+import NoteDialog from '~/components/clinical/patient360/dialogs/NoteDialog.vue'
+import WoundCareDialog from '~/components/clinical/patient360/dialogs/WoundCareDialog.vue'
+import WoundCard from '~/components/nursing/WoundCard.vue'
+import CarePlanDialog from '~/components/clinical/patient360/dialogs/CarePlanDialog.vue'
 
 const FlowSection = {
   name: 'FlowSection',
@@ -1712,7 +1864,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2008,8 +2160,15 @@ export default {
         imaging: false,
         medication: false,
         document: false,
-        marAction: false
+        marAction: false,
+        note: false,
+        woundCare: false,
+        carePlan: false
       },
+      noteDialogConfig: { noteType: 'nursing_note', dialogTitle: '', existingNote: null },
+      selectedNoteId: null,
+      amendingNoteId: null,
+      amendmentDraft: '',
       savingDialog: false,
       forms: defaultDialogForms(),
       triageLevels: ['Green', 'Yellow', 'Orange', 'Red'],
@@ -2065,9 +2224,38 @@ export default {
     canLaunchMedical() {
       return ['ADMIN', 'DOCTOR', 'NP'].includes(this.currentRole)
     },
-    primaryNoteAction() {
-      if (['DOCTOR', 'NP'].includes(this.currentRole)) return { label: 'New Progress Note', kind: 'medical' }
-      return { label: 'New Nursing Note', kind: 'nurse' }
+    noteMenuOptions() {
+      const role = this.currentRole
+      const options = []
+      if (['NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'].includes(role)) {
+        options.push({ key: 'assessment', label: 'Nursing Assessment', icon: 'mdi-clipboard-pulse', kind: 'legacy-nurse' })
+        options.push({ key: 'wound', label: 'Wound Care Note', icon: 'mdi-bandage', kind: 'wound' })
+        options.push({ key: 'general', label: 'General Note', icon: 'mdi-note-text', kind: 'note', noteType: 'nursing_note', dialogTitle: 'General Nursing Note' })
+      }
+      if (role === 'NP') {
+        options.push({ key: 'np-encounter', label: 'NP Encounter Note', icon: 'mdi-stethoscope', kind: 'note', noteType: 'progress_note', dialogTitle: 'NP Encounter Note' })
+      }
+      if (role === 'DOCTOR') {
+        options.push({ key: 'progress', label: 'Progress Note', icon: 'mdi-stethoscope', kind: 'note', noteType: 'progress_note', dialogTitle: 'Progress Note' })
+      }
+      return options
+    },
+    signableNotes() {
+      const all = this.$store.getters['nursing/getClinicalNotes'] || []
+      return all
+        .filter(item => item.patientId === this.activePatientId)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    },
+    selectedNote() {
+      return this.signableNotes.find(item => item.id === this.selectedNoteId) || null
+    },
+    legacyNoteEntries() {
+      return this.noteRows.map((row, index) => ({
+        id: 'legacy-' + index,
+        label: row.label,
+        type: row.values.Type,
+        recorded: row.values.Recorded
+      }))
     },
     rightPanelCollapsed() {
       if (this.rightPanelOverride !== null) return this.rightPanelOverride
@@ -2089,6 +2277,10 @@ export default {
       return this.medicalHistory.find(item => item.label === 'Fall risk') || null
     },
     skinIntegrityEntry() {
+      const activeCount = this.patientWounds.filter(item => item.status === 'active' || item.status === 'worsening').length
+      if (activeCount) {
+        return { label: 'Skin integrity', value: activeCount === 1 ? 'Active wound' : `${activeCount} active wounds` }
+      }
       return this.medicalHistory.find(item => item.label === 'Skin integrity') || null
     },
     requiredRule() {
@@ -2248,6 +2440,22 @@ export default {
       const all = this.$store.getters['clinical/getTasks'] || []
       return all.filter(item => item.patientId === this.activePatientId)
     },
+    patientWounds() {
+      const all = this.$store.getters['nursing/getWounds'] || []
+      return all.filter(item => item.patientId === this.activePatientId)
+    },
+    hasWoundAreaWarning() {
+      return this.patientWounds.some(wound => this.woundAssessmentsFor(wound.id).some(item => item.warningAreaIncreased))
+    },
+    patientCarePlans() {
+      const all = this.$store.getters['nursing/getCarePlans'] || []
+      return all
+        .filter(item => item.patientId === this.activePatientId)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    },
+    unsignedNoteCount() {
+      return this.signableNotes.filter(item => item.status === 'draft').length
+    },
     patientLabOrders() {
       const all = this.$store.getters['clinical/getLabOrders'] || []
       return all.filter(item => item.patientId === this.activePatientId)
@@ -2279,13 +2487,21 @@ export default {
       return this.visibleActiveOrders.map(order => ({ label: order.title, values: { Detail: order.detail } }))
     },
     summaryLatestNoteRows() {
-      return this.noteRows.slice(0, 3)
+      const signable = this.signableNotes.slice(0, 3).map(note => ({
+        label: note.title || this.noteTypeLabel(note.noteType),
+        values: { Type: this.noteTypeLabel(note.noteType), Recorded: this.formatShortDate(note.createdAt), Summary: note.status }
+      }))
+      return [...signable, ...this.noteRows].slice(0, 3)
     },
     summaryPendingTaskRows() {
-      return this.patientTasks.slice(0, 5).map(task => ({
+      const legacy = this.patientTasks.map(task => ({
         label: task.title || 'Care task',
         values: { Status: task.status || 'pending' }
       }))
+      const woundFollowUps = this.unsignedNoteCount
+        ? [{ label: `${this.unsignedNoteCount} note(s) awaiting signature`, values: { Status: 'draft' } }]
+        : []
+      return [...woundFollowUps, ...legacy].slice(0, 5)
     },
     emrCommandCards() {
       const hasVitals = Boolean(this.latestVitalsSummary)
@@ -2414,9 +2630,9 @@ export default {
         },
         {
           label: 'Wound and skin',
-          value: this.activePatient.woundStatus || 'Review',
-          action: 'Check dressing, photo, dimensions, pressure risk and supplies.',
-          status: this.activePatient.woundStatus ? 'due' : 'active',
+          value: this.patientWounds.length ? `${this.patientWounds.length} documented` : 'Review',
+          action: this.hasWoundAreaWarning ? 'Wound area increased - reassess and notify provider.' : 'Check dressing, photo, dimensions, pressure risk and supplies.',
+          status: this.hasWoundAreaWarning ? 'due' : (this.patientWounds.length ? 'active' : 'active'),
           icon: 'mdi-bandage'
         },
         {
@@ -2432,6 +2648,13 @@ export default {
           action: 'Close open tasks and document unresolved risks.',
           status: this.latestNursingNote ? 'complete' : 'warning',
           icon: 'mdi-handshake-outline'
+        },
+        {
+          label: 'Documentation',
+          value: this.unsignedNoteCount ? `${this.unsignedNoteCount} unsigned` : 'All signed',
+          action: this.unsignedNoteCount ? "Sign draft notes from today's encounters." : 'All notes signed.',
+          status: this.unsignedNoteCount ? 'warning' : 'complete',
+          icon: 'mdi-draw-pen'
         }
       ]
     },
@@ -2541,20 +2764,38 @@ export default {
       }))
     },
     chartReviewRows() {
-      if (!this.patientVisits.length) {
+      const visitEntries = this.patientVisits.map(visit => ({
+        label: visit.chiefComplaint || visit.diagnosis || 'Clinical encounter',
+        at: visit.createdAt,
+        values: {
+          Type: this.displayEncounterType(visit.encounterType),
+          Recorded: this.formatShortDate(visit.createdAt),
+          Clinician: visit.recordedBy || '-'
+        }
+      }))
+      const noteEntries = this.signableNotes.map(note => ({
+        label: note.title || this.noteTypeLabel(note.noteType),
+        at: note.createdAt,
+        values: {
+          Type: this.noteTypeLabel(note.noteType),
+          Recorded: this.formatShortDate(note.createdAt),
+          Clinician: note.createdBy || '-'
+        }
+      }))
+      const woundEntries = this.patientWounds.flatMap(wound => this.woundAssessmentsFor(wound.id).map(assessment => ({
+        label: `Wound assessment - ${wound.woundType || 'wound'}`,
+        at: assessment.createdAt,
+        values: {
+          Type: 'Wound Assessment',
+          Recorded: this.formatShortDate(assessment.createdAt),
+          Clinician: assessment.createdBy || '-'
+        }
+      })))
+      const combined = [...visitEntries, ...noteEntries, ...woundEntries].sort((a, b) => new Date(b.at) - new Date(a.at))
+      if (!combined.length) {
         return [{ label: 'No encounters filed', values: { Type: '-', Recorded: '-', Clinician: '-' } }]
       }
-      return [...this.patientVisits]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 8)
-        .map(visit => ({
-          label: visit.chiefComplaint || visit.diagnosis || 'Clinical encounter',
-          values: {
-            Type: this.displayEncounterType(visit.encounterType),
-            Recorded: this.formatShortDate(visit.createdAt),
-            Clinician: visit.recordedBy || '-'
-          }
-        }))
+      return combined.slice(0, 8).map(({ label, values }) => ({ label, values }))
     },
     riskReviewRows() {
       const patient = this.findPatientRecord(this.activePatientId)
@@ -3548,15 +3789,33 @@ export default {
       return rows
     },
     skinWoundFlowsheetRows() {
-      return [
+      const scheduleRows = [
         { label: 'Braden Scale - sensory perception', values: { '0800': '3', '1000': '-', '1200': '-', '1400': '-', '1600': 'Recheck', '1800': '-' } },
         { label: 'Moisture', values: { '0800': '4', '1000': '-', '1200': 'Monitor', '1400': '-', '1600': '-', '1800': '-' } },
         { label: 'Activity / mobility', values: { '0800': '2', '1000': 'Assist x1', '1200': '-', '1400': 'Reposition', '1600': '-', '1800': 'Handoff' } },
         { label: 'Nutrition', values: { '0800': '2', '1000': '-', '1200': 'Meal intake', '1400': '-', '1600': '-', '1800': '-' } },
         { label: 'Friction and shear', values: { '0800': '3', '1000': '-', '1200': '-', '1400': 'Reposition', '1600': '-', '1800': '-' } },
-        { label: 'Wound prevention dressing', values: { '0800': 'Assess', '1000': 'Change if due', '1200': '-', '1400': '-', '1600': 'Intact?', '1800': 'Report' } },
-        { label: 'Wound photo / dimensions', values: { '0800': this.activePatient.woundStatus || 'Admission wound', '1000': 'Photo due', '1200': '-', '1400': '-', '1600': '-', '1800': 'File document' } }
+        { label: 'Wound prevention dressing', values: { '0800': 'Assess', '1000': 'Change if due', '1200': '-', '1400': '-', '1600': 'Intact?', '1800': 'Report' } }
       ]
+      if (!this.patientWounds.length) {
+        return [...scheduleRows, { label: 'Wound photo / dimensions', values: { '0800': 'No wounds documented', '1000': '-', '1200': '-', '1400': '-', '1600': '-', '1800': '-' } }]
+      }
+      const woundRows = this.patientWounds.map(wound => {
+        const latest = this.woundAssessmentsFor(wound.id).slice(-1)[0]
+        const summary = latest ? `${latest.surfaceArea} cm2${latest.warningAreaIncreased ? ' (increased)' : ''}` : 'Assess due'
+        return {
+          label: `${wound.woundType || 'Wound'} - ${wound.anatomicalLocation || 'location N/A'}`,
+          values: {
+            '0800': summary,
+            '1000': '-',
+            '1200': '-',
+            '1400': '-',
+            '1600': latest ? (latest.dressingType || 'Dressing due') : 'Assess due',
+            '1800': '-'
+          }
+        }
+      })
+      return [...scheduleRows, ...woundRows]
     },
     flowsheetVitalsRows() {
       if (this.patientVitals.length) {
@@ -3691,6 +3950,8 @@ export default {
     visibleNavigatorTabs: 'normalizeVisibleSelection',
     patientId(newId) {
       if (this.patientScoped) this.registerOpenChart(newId)
+      this.selectedNoteId = null
+      this.amendingNoteId = null
     }
   },
   mounted() {
@@ -4159,6 +4420,80 @@ export default {
     closeChartDialog(kind) {
       this.$set(this.dialogs, kind, false)
     },
+    woundAssessmentsFor(woundId) {
+      return this.$store.getters['nursing/woundTrend'](woundId) || []
+    },
+    noteTypeLabel(type) {
+      const map = {
+        nursing_note: 'General Nursing Note',
+        wound_note: 'Wound Care Note',
+        progress_note: 'Progress Note',
+        incident_note: 'Incident Note',
+        provider_notification: 'Provider Notification',
+        discharge_note: 'Discharge Note'
+      }
+      return map[type] || 'Clinical Note'
+    },
+    openNoteMenuOption(option) {
+      if (option.kind === 'legacy-nurse') {
+        this.openChartDialog('nurse')
+        return
+      }
+      if (option.kind === 'wound') {
+        this.dialogs.woundCare = true
+        return
+      }
+      if (option.kind === 'note') {
+        this.noteDialogConfig = { noteType: option.noteType, dialogTitle: option.dialogTitle, existingNote: null }
+        this.dialogs.note = true
+      }
+    },
+    editSelectedNote() {
+      if (!this.selectedNote) return
+      this.noteDialogConfig = {
+        noteType: this.selectedNote.noteType,
+        dialogTitle: this.selectedNote.title,
+        existingNote: this.selectedNote
+      }
+      this.dialogs.note = true
+    },
+    async signSelectedNote() {
+      if (!this.selectedNoteId) return
+      await this.$store.dispatch('nursing/signClinicalNote', this.selectedNoteId)
+      this.toastSuccess('Note signed.')
+    },
+    amendSelectedNote() {
+      if (!this.selectedNoteId) return
+      this.amendingNoteId = this.selectedNoteId
+      this.amendmentDraft = ''
+    },
+    async submitAmendment() {
+      if (!this.amendmentDraft.trim()) return
+      await this.$store.dispatch('nursing/amendClinicalNote', { id: this.amendingNoteId, amendment: this.amendmentDraft.trim() })
+      this.amendingNoteId = null
+      this.amendmentDraft = ''
+      this.toastSuccess('Amendment recorded.')
+    },
+    async shareSelectedNote() {
+      if (!this.selectedNoteId) return
+      await this.$store.dispatch('nursing/shareClinicalNote', this.selectedNoteId)
+      this.toastSuccess('Note shared with care team.')
+    },
+    handleNoteSaved(note) {
+      this.dialogs.note = false
+      if (note) this.selectedNoteId = note.id
+      this.toastSuccess('Note saved.')
+    },
+    handleWoundSaved() {
+      this.toastSuccess('Wound assessment saved.')
+    },
+    handleCarePlanSaved() {
+      this.toastSuccess('Care plan added.')
+    },
+    async signCarePlanFromCard(id) {
+      await this.$store.dispatch('nursing/signCarePlan', id)
+      this.toastSuccess('Care plan signed.')
+    },
     toastSuccess(message) {
       if (this.$toast && this.$toast.success) this.$toast.success(message)
     },
@@ -4200,6 +4535,18 @@ export default {
           recordedAt: now,
           ...this.forms.nurse.note
         })
+        const assessmentSummary = [
+          this.forms.nurse.encounter.chiefComplaint ? `Chief complaint: ${this.forms.nurse.encounter.chiefComplaint}` : '',
+          this.forms.nurse.note.observation ? `Observation: ${this.forms.nurse.note.observation}` : '',
+          this.forms.nurse.note.response ? `Response: ${this.forms.nurse.note.response}` : ''
+        ].filter(Boolean).join('\n')
+        await this.$store.dispatch('nursing/createClinicalNote', {
+          patientId,
+          noteType: 'nursing_note',
+          title: 'Nursing Assessment',
+          body: assessmentSummary || 'Nursing assessment documented.',
+          authorRole: this.currentRole
+        })
         this.selectedChartTab = 'Notes'
         this.closeChartDialog('nurse')
         this.toastSuccess('Nursing encounter filed in Patient 360.')
@@ -4236,6 +4583,20 @@ export default {
           plan: this.forms.medical.plan,
           outcome: { patientInstructions: this.forms.medical.instructions },
           encounter: { chiefComplaint: this.forms.medical.chiefComplaint }
+        })
+        const progressSummary = [
+          this.forms.medical.chiefComplaint ? `Chief complaint: ${this.forms.medical.chiefComplaint}` : '',
+          this.forms.medical.clinicalFindings ? `Findings: ${this.forms.medical.clinicalFindings}` : '',
+          this.forms.medical.diagnosis ? `Diagnosis: ${this.forms.medical.diagnosis} (${this.forms.medical.severity || 'unspecified severity'})` : '',
+          this.forms.medical.plan ? `Plan: ${this.forms.medical.plan}` : '',
+          this.forms.medical.instructions ? `Patient instructions: ${this.forms.medical.instructions}` : ''
+        ].filter(Boolean).join('\n')
+        await this.$store.dispatch('nursing/createClinicalNote', {
+          patientId,
+          noteType: 'progress_note',
+          title: this.forms.medical.diagnosis ? `Progress Note - ${this.forms.medical.diagnosis}` : 'Progress Note',
+          body: progressSummary || 'Progress note documented.',
+          authorRole: this.currentRole
         })
         this.selectedChartTab = 'Notes'
         this.closeChartDialog('medical')
@@ -6345,6 +6706,202 @@ function latestByDate(items, field) {
 }
 .action-strip .v-btn {
   text-transform: none;
+}
+.wound-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+.empty-wounds {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 0;
+  color: #94a3b8;
+  margin-top: 10px;
+}
+.care-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin: 10px 0;
+}
+.care-plan-card {
+  border: 1px solid #d7e0df;
+  background: #fff;
+  padding: 12px;
+}
+.care-plan-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.care-plan-card header strong {
+  color: #134e4a;
+  font-size: 13px;
+}
+.care-plan-card p {
+  font-size: 12.5px;
+  color: #334155;
+  margin: 4px 0;
+}
+.care-plan-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 6px;
+}
+.care-plan-meta span {
+  font-size: 11px;
+  color: #64748b;
+}
+.notes-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 10px;
+  min-height: 0;
+}
+.notes-list {
+  border: 1px solid #d7e0df;
+  background: #fff;
+  overflow: auto;
+  max-height: 640px;
+}
+.notes-list-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: transparent;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.notes-list-item strong {
+  color: #0f172a;
+  font-size: 12.5px;
+}
+.notes-list-item.active {
+  background: #f0fdfa;
+  box-shadow: inset 3px 0 0 #0f766e;
+}
+.notes-list-item.legacy {
+  cursor: default;
+  color: #64748b;
+}
+.notes-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
+.notes-empty, .notes-empty-detail {
+  padding: 20px 12px;
+  color: #94a3b8;
+  font-size: 12.5px;
+}
+.notes-empty-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  min-height: 200px;
+}
+.legacy-heading {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  padding: 10px 12px 2px;
+  margin: 0;
+}
+.status-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 800;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.status-chip.draft { background: #fef3c7; color: #78350f; }
+.status-chip.signed { background: #dcfce7; color: #14532d; }
+.status-chip.amended { background: #e0f2fe; color: #075985; }
+.notes-detail {
+  border: 1px solid #d7e0df;
+  background: #fff;
+  padding: 14px;
+  overflow: auto;
+}
+.notes-detail header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+.notes-detail header h2 {
+  font-size: 15px;
+  margin: 4px 0 2px;
+  color: #134e4a;
+}
+.notes-detail header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+.notes-detail-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.notes-body {
+  white-space: pre-wrap;
+  color: #1f2937;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.amend-box {
+  background: #faf5ff;
+  border: 1px solid #e9d5ff;
+  padding: 10px;
+  margin: 10px 0;
+}
+.amend-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.notes-amendments h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #7c3aed;
+  margin: 10px 0 4px;
+}
+.amendment-row {
+  border-left: 2px solid #e9d5ff;
+  padding: 4px 0 4px 10px;
+  margin-bottom: 6px;
+}
+.amendment-row span {
+  font-size: 11px;
+  color: #64748b;
+}
+.amendment-row p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
 }
 .chart-dialog {
   border: 1px solid #86a9a5;
