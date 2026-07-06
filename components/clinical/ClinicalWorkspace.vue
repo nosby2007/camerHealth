@@ -55,74 +55,28 @@
       </div>
     </section>
 
-    <div class="chart-frame">
-      <aside class="storyboard">
-        <div class="storyboard-identity">
-          <div class="avatar-ring">
-            <span>{{ activePatient.initials }}</span>
-          </div>
-          <div>
-            <h1>{{ activePatient.name }}</h1>
-            <p>{{ activePatient.gender }}, {{ activePatient.age }} y.o.</p>
-          </div>
-        </div>
+    <PatientBanner
+      :patient="activePatient"
+      :fall-risk="fallRiskEntry"
+      :skin-integrity="skinIntegrityEntry"
+    />
 
-        <div class="demographic-stack">
-          <div><span>DOB</span><strong>{{ activePatient.dob }}</strong></div>
-          <div><span>MRN</span><strong>{{ activePatient.mrn }}</strong></div>
-          <div><span>Account</span><strong>{{ activePatient.account }}</strong></div>
-          <div><span>Bed</span><strong>{{ activePatient.bed }}</strong></div>
-        </div>
-
-        <div class="alert-block code-alert">{{ activePatient.codeStatus }}</div>
-        <div class="alert-block critical">Precautions: {{ activePatient.precautions }}</div>
-        <div class="alert-block infection">Infection: {{ activePatient.infectionStatus }}</div>
-        <div class="alert-block wound">Admission wound documentation</div>
-
-        <div v-if="accessProfile.restrictedNotice" class="restricted-notice">
-          <v-icon x-small color="#92400e">mdi-lock-alert</v-icon>
-          {{ accessProfile.restrictedNotice }}
-        </div>
-
-        <div class="story-section">
-          <span>Attending</span>
-          <strong>{{ activePatient.attending }}</strong>
-        </div>
-        <div class="story-section">
-          <span>Allergies</span>
-          <strong>{{ activePatient.allergies }}</strong>
-        </div>
-        <div class="story-section compact">
-          <span>Admitted</span>
-          <strong>{{ activePatient.admitted }}</strong>
-          <small>{{ activePatient.patientClass }}</small>
-        </div>
-        <div class="story-section compact">
-          <span>Vitals</span>
-          <strong>{{ activePatient.vitals }}</strong>
-          <small>BMI {{ activePatient.bmi }}</small>
-        </div>
-
-        <div class="story-worklist">
-          <h2>Acknowledge orders</h2>
-          <p v-for="item in acknowledgeOrders" :key="item.label">
-            <v-icon x-small :color="item.color">{{ item.icon }}</v-icon>
-            {{ item.label }} <strong>{{ item.count }}</strong>
-          </p>
-        </div>
-      </aside>
+    <div class="chart-frame" :class="{ 'left-collapsed': effectiveLeftPanelCollapsed, 'right-collapsed': effectiveRightPanelCollapsed }">
+      <LeftPatientPanel
+        :patient="activePatient"
+        :access-profile="accessProfile"
+        :acknowledge-orders="acknowledgeOrders"
+        :collapsed="effectiveLeftPanelCollapsed"
+        @toggle="toggleLeftPanel"
+      />
 
       <main class="chart-main">
-        <nav class="chart-tabs">
-          <button
-            v-for="tab in visibleChartTabs"
-            :key="tab"
-            :class="{ active: selectedChartTab === tab }"
-            @click="selectChartTab(tab)"
-          >
-            {{ tab }}
-          </button>
-        </nav>
+        <TabNav
+          :primary-tabs="primaryTabs"
+          :overflow-tabs="overflowTabs"
+          :selected-tab="selectedChartTab"
+          @select="selectChartTab"
+        />
 
         <div class="navigator-layout">
           <nav v-if="selectedChartTab === 'Navigators'" class="navigator-tab-strip">
@@ -200,6 +154,24 @@
                 title="Latest Clinical Signals"
                 :columns="['Last Filed']"
                 :rows="visibleVitalRows"
+              />
+              <FlowSection
+                v-if="summaryActiveOrderRows.length"
+                title="Active Orders Summary"
+                :columns="['Detail']"
+                :rows="summaryActiveOrderRows"
+              />
+              <FlowSection
+                v-if="summaryLatestNoteRows.length"
+                title="Latest Notes"
+                :columns="['Type', 'Recorded', 'Summary']"
+                :rows="summaryLatestNoteRows"
+              />
+              <FlowSection
+                v-if="summaryPendingTaskRows.length"
+                title="Pending Tasks / Required Documentation"
+                :columns="['Status']"
+                :rows="summaryPendingTaskRows"
               />
             </section>
 
@@ -833,10 +805,10 @@
 
             <section v-else-if="selectedChartTab === 'Notes'" class="flowsheet">
               <div class="action-strip">
-                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
-                  <v-icon x-small left>mdi-note-plus</v-icon>Nursing note
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog(primaryNoteAction.kind)">
+                  <v-icon x-small left>mdi-note-plus</v-icon>{{ primaryNoteAction.label }}
                 </v-btn>
-                <v-btn v-if="canLaunchMedical" x-small depressed color="#1d4ed8" dark @click="openChartDialog('medical')">
+                <v-btn v-if="canLaunchMedical && primaryNoteAction.kind !== 'medical'" x-small depressed color="#1d4ed8" dark @click="openChartDialog('medical')">
                   <v-icon x-small left>mdi-medical-bag</v-icon>Medical note
                 </v-btn>
               </div>
@@ -848,6 +820,12 @@
             </section>
 
             <section v-else-if="selectedChartTab === 'Care Plan'" class="flowsheet">
+              <FlowSection
+                v-if="carePlanProblemRows.length"
+                title="Problems (Nursing Assessment)"
+                :columns="['Goal', 'Status']"
+                :rows="carePlanProblemRows"
+              />
               <FlowSection
                 title="Care Plan"
                 :columns="['Owner', 'Status', 'Next Step']"
@@ -1329,52 +1307,21 @@
         </div>
       </main>
 
-      <aside class="clinical-clipboard">
-        <div class="clipboard-tabs">
-          <button class="active">Sidebar Summary</button>
-          <button>Clinical Clipboard</button>
-          <button>Navigators</button>
-        </div>
-
-        <section class="clipboard-panel">
-          <h2>Index</h2>
-          <div class="index-grid">
-            <a v-for="item in visibleSidebarIndex" :key="item" href="#" @click.prevent>{{ item }}</a>
-          </div>
-        </section>
-
-        <section v-if="canSeeClinicalHistory" class="clipboard-panel">
-          <h2>Medical History</h2>
-          <div v-for="item in medicalHistory" :key="item.label" class="history-row">
-            <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
-          </div>
-        </section>
-
-        <section v-if="canViewOrders" class="orders-panel">
-          <div class="orders-header">
-            <strong>Inpatient Orders</strong>
-            <v-btn x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('medication')">New</v-btn>
-          </div>
-          <div v-if="visibleActiveOrders.length" class="order-list">
-            <article v-for="order in visibleActiveOrders" :key="order.title" class="order-row">
-              <v-icon small :color="order.color">{{ order.icon }}</v-icon>
-              <div>
-                <strong>{{ order.title }}</strong>
-                <span>{{ order.detail }}</span>
-              </div>
-            </article>
-          </div>
-          <div v-else class="no-orders">
-            <v-icon size="52" color="#94a3b8">mdi-clipboard-text-outline</v-icon>
-            <span>No Orders</span>
-          </div>
-          <button class="sign-button" @click="selectChartTab('Orders')">
-            <v-icon small>mdi-draw-pen</v-icon>
-            Sign
-          </button>
-        </section>
-      </aside>
+      <RightClinicalPanel
+        :sidebar-index="visibleSidebarIndex"
+        :medical-history="medicalHistory"
+        :can-see-clinical-history="canSeeClinicalHistory"
+        :can-view-orders="canViewOrders"
+        :active-orders="visibleActiveOrders"
+        :lab-orders="patientLabOrders"
+        :imaging-orders="patientImagingOrders"
+        :tasks="patientTasks"
+        :care-team-rows="visibleCareTeamRows"
+        :collapsed="effectiveRightPanelCollapsed"
+        @toggle="toggleRightPanel"
+        @new-order="openChartDialog('medication')"
+        @sign-orders="selectChartTab('Orders')"
+      />
     </div>
 
     <v-dialog v-model="dialogs.nurse" max-width="980" persistent scrollable>
@@ -1611,6 +1558,11 @@
 </template>
 
 <script>
+import PatientBanner from '~/components/clinical/patient360/PatientBanner.vue'
+import LeftPatientPanel from '~/components/clinical/patient360/LeftPatientPanel.vue'
+import RightClinicalPanel from '~/components/clinical/patient360/RightClinicalPanel.vue'
+import TabNav from '~/components/clinical/patient360/TabNav.vue'
+
 const FlowSection = {
   name: 'FlowSection',
   props: {
@@ -1673,6 +1625,13 @@ const ALL_CLINICAL_TABS = [
   'Registration'
 ]
 
+// Tabs shown directly in the tab bar; everything else in visibleChartTabs collapses into the More menu.
+const PRIMARY_TAB_ORDER = ['Summary', 'Chart Review', 'Orders', 'MAR', 'Flowsheets', 'Notes', 'Care Plan']
+
+const RIGHT_PANEL_DEFAULT_COLLAPSED_TABS = ['Notes', 'Flowsheets', 'MAR', 'Orders']
+
+const ADMIN_LIKE_ROLES = ['ADMIN', 'RECORDS', 'BILLING', 'FRONT_DESK']
+
 const TAB_ACCESS = {
   ADMIN: ALL_CLINICAL_TABS,
   DOCTOR: ALL_CLINICAL_TABS,
@@ -1732,7 +1691,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -1742,6 +1701,10 @@ export default {
       activeChartId: this.patientId || 'demo-1',
       previewRole: this.$store.state.auth.role || 'NURSE',
       selectedChartTab: 'Summary',
+      leftPanelCollapsed: false,
+      rightPanelOverride: null,
+      isNarrowRight: false,
+      isNarrowBoth: false,
       selectedNavigator: 'shift',
       selectedNavigatorSection: 'overview',
       activeSdoh: 'food',
@@ -2080,6 +2043,32 @@ export default {
     canLaunchMedical() {
       return ['ADMIN', 'DOCTOR', 'NP'].includes(this.currentRole)
     },
+    primaryNoteAction() {
+      if (['DOCTOR', 'NP'].includes(this.currentRole)) return { label: 'New Progress Note', kind: 'medical' }
+      return { label: 'New Nursing Note', kind: 'nurse' }
+    },
+    rightPanelCollapsed() {
+      if (this.rightPanelOverride !== null) return this.rightPanelOverride
+      return RIGHT_PANEL_DEFAULT_COLLAPSED_TABS.includes(this.selectedChartTab)
+    },
+    effectiveLeftPanelCollapsed() {
+      return this.leftPanelCollapsed || this.isNarrowBoth
+    },
+    effectiveRightPanelCollapsed() {
+      return this.rightPanelCollapsed || this.isNarrowRight
+    },
+    primaryTabs() {
+      return PRIMARY_TAB_ORDER.filter(tab => this.visibleChartTabs.includes(tab))
+    },
+    overflowTabs() {
+      return this.visibleChartTabs.filter(tab => !PRIMARY_TAB_ORDER.includes(tab))
+    },
+    fallRiskEntry() {
+      return this.medicalHistory.find(item => item.label === 'Fall risk') || null
+    },
+    skinIntegrityEntry() {
+      return this.medicalHistory.find(item => item.label === 'Skin integrity') || null
+    },
     requiredRule() {
       return value => Boolean(value) || 'Required'
     },
@@ -2260,6 +2249,18 @@ export default {
         { label: 'Open tasks', values: { Current: this.patientTasks.length } },
         { label: 'Open orders', values: { Current: this.patientLabOrders.length + this.patientImagingOrders.length + this.patientMedications.length } }
       ]
+    },
+    summaryActiveOrderRows() {
+      return this.visibleActiveOrders.map(order => ({ label: order.title, values: { Detail: order.detail } }))
+    },
+    summaryLatestNoteRows() {
+      return this.noteRows.slice(0, 3)
+    },
+    summaryPendingTaskRows() {
+      return this.patientTasks.slice(0, 5).map(task => ({
+        label: task.title || 'Care task',
+        values: { Status: task.status || 'pending' }
+      }))
     },
     emrCommandCards() {
       const hasVitals = Boolean(this.latestVitalsSummary)
@@ -3140,6 +3141,10 @@ export default {
         { label: 'Provider review', values: { Owner: 'DOCTOR', Status: 'Open', 'Next Step': 'Review orders and diagnosis' } }
       ]
     },
+    carePlanProblemRows() {
+      const problems = (this.latestVisit && this.latestVisit.assessment && this.latestVisit.assessment.nursingProblems) || []
+      return problems.map(problem => ({ label: problem, values: { Goal: 'Resolve or stabilize', Status: 'Active' } }))
+    },
     educationRows() {
       const latestNote = latestByDate(this.patientNursingNotes, 'recordedAt')
       return [
@@ -3653,7 +3658,10 @@ export default {
     }
   },
   watch: {
-    currentRole: 'normalizeVisibleSelection',
+    currentRole(newRole, oldRole) {
+      this.normalizeVisibleSelection()
+      if (newRole !== oldRole) this.applyRoleDefaultTab()
+    },
     visibleChartTabs: 'normalizeVisibleSelection',
     visibleNavigatorTabs: 'normalizeVisibleSelection'
   },
@@ -3663,8 +3671,56 @@ export default {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
     }
     this.normalizeVisibleSelection()
+    this.applyRoleDefaultTab()
+    this.loadLayoutPreferences()
+    if (process.client) {
+      this.updateViewportBreakpoints()
+      window.addEventListener('resize', this.updateViewportBreakpoints)
+    }
+  },
+  beforeDestroy() {
+    if (process.client) window.removeEventListener('resize', this.updateViewportBreakpoints)
   },
   methods: {
+    applyRoleDefaultTab() {
+      const adminLike = ADMIN_LIKE_ROLES.includes(this.currentRole)
+      if (adminLike && this.selectedChartTab === 'Summary' && this.visibleChartTabs.includes('Chart Review')) {
+        this.selectChartTab('Chart Review')
+      }
+    },
+    loadLayoutPreferences() {
+      if (!process.client) return
+      try {
+        const raw = window.localStorage.getItem('camero_health_patient360Layout')
+        if (!raw) return
+        const saved = JSON.parse(raw)
+        if (typeof saved.leftPanelCollapsed === 'boolean') this.leftPanelCollapsed = saved.leftPanelCollapsed
+        if (saved.rightPanelOverride === null || typeof saved.rightPanelOverride === 'boolean') {
+          this.rightPanelOverride = saved.rightPanelOverride
+        }
+      } catch (e) {
+        // ignore malformed/legacy layout preferences
+      }
+    },
+    persistLayoutPreferences() {
+      if (!process.client) return
+      window.localStorage.setItem('camero_health_patient360Layout', JSON.stringify({
+        leftPanelCollapsed: this.leftPanelCollapsed,
+        rightPanelOverride: this.rightPanelOverride
+      }))
+    },
+    toggleLeftPanel() {
+      this.leftPanelCollapsed = !this.leftPanelCollapsed
+      this.persistLayoutPreferences()
+    },
+    toggleRightPanel() {
+      this.rightPanelOverride = !this.rightPanelCollapsed
+      this.persistLayoutPreferences()
+    },
+    updateViewportBreakpoints() {
+      this.isNarrowRight = window.innerWidth <= 1280
+      this.isNarrowBoth = window.innerWidth <= 920
+    },
     buildClinicalAiContext() {
       const patient = this.activePatient || {}
       return {
@@ -4529,137 +4585,21 @@ function latestByDate(items, field) {
 }
 .chart-frame {
   display: grid;
-  grid-template-columns: 198px minmax(0, 1fr) 320px;
+  grid-template-columns: var(--left-panel-width, 280px) minmax(0, 1fr) var(--right-panel-width, 320px);
   min-height: calc(100vh - 180px);
 }
-.storyboard {
-  background: #d9efe8;
-  border-right: 2px solid #0f766e;
-  padding: 8px;
-  overflow: auto;
+.chart-frame.left-collapsed {
+  --left-panel-width: 64px;
 }
-.storyboard-identity {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.avatar-ring {
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #f5d0fe, #ddd6fe);
-  border: 1px solid #94a3b8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 20px;
-  color: #6d28d9;
-}
-.storyboard h1 {
-  font-size: 15px;
-  margin: 0;
-  color: #134e4a;
-}
-.storyboard p {
-  margin: 2px 0 0;
-}
-.demographic-stack {
-  display: grid;
-  gap: 3px;
-  margin-bottom: 8px;
-}
-.demographic-stack div, .story-section {
-  display: grid;
-  grid-template-columns: 58px 1fr;
-  gap: 4px;
-  align-items: center;
-}
-.demographic-stack span, .story-section span {
-  color: #315b58;
-  font-weight: 700;
-}
-.demographic-stack strong, .story-section strong {
-  color: #0f172a;
-}
-.alert-block {
-  padding: 4px 6px;
-  margin-bottom: 4px;
-  color: #111827;
-  font-weight: 900;
-  border: 1px solid rgba(0,0,0,0.16);
-}
-.code-alert { background: #f97316; }
-.critical { background: #be123c; color: #fff; }
-.infection { background: #16a34a; color: #fff; }
-.wound { background: #eab308; }
-.restricted-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 5px;
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  color: #78350f;
-  padding: 6px;
-  margin: 6px 0;
-  font-weight: 900;
-}
-.story-section {
-  border-bottom: 1px solid rgba(15,118,110,0.2);
-  padding: 5px 0;
-}
-.story-section.compact {
-  grid-template-columns: 58px 1fr;
-}
-.story-section small {
-  grid-column: 2;
-  color: #475569;
-}
-.story-worklist {
-  margin-top: 10px;
-}
-.story-worklist h2, .clipboard-panel h2 {
-  font-size: 11px;
-  color: #134e4a;
-  text-transform: uppercase;
-  margin: 0 0 6px;
-}
-.story-worklist p {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 4px 0;
+.chart-frame.right-collapsed {
+  --right-panel-width: 64px;
 }
 .chart-main {
   min-width: 0;
+  overflow: auto;
   background: #eef5f4;
   display: flex;
   flex-direction: column;
-}
-.chart-tabs {
-  height: 36px;
-  display: flex;
-  overflow-x: auto;
-  gap: 2px;
-  align-items: end;
-  background: #eaf3f1;
-  border-bottom: 1px solid #cbd5e1;
-}
-.chart-tabs button {
-  height: 31px;
-  border: 0;
-  border-right: 1px solid #cbd5e1;
-  background: transparent;
-  padding: 0 9px;
-  color: #0f3f3b;
-  white-space: nowrap;
-  font-weight: 800;
-  cursor: pointer;
-}
-.chart-tabs button.active {
-  background: #fff;
-  border-top: 3px solid #0f766e;
 }
 .navigator-layout {
   display: grid;
@@ -6404,116 +6344,6 @@ function latestByDate(items, field) {
   background: #0f766e;
   color: white;
 }
-.clinical-clipboard {
-  background: #eef5f4;
-  border-left: 2px solid #0f766e;
-  padding: 8px;
-  overflow: auto;
-}
-.clipboard-tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 8px;
-}
-.clipboard-tabs button {
-  flex: 1;
-  min-height: 30px;
-  border: 1px solid #cbd5e1;
-  background: #e2e8f0;
-  color: #334155;
-  font-weight: 800;
-  cursor: pointer;
-}
-.clipboard-tabs button.active {
-  background: white;
-  border-top: 3px solid #0f766e;
-}
-.clipboard-panel {
-  padding: 8px;
-}
-.index-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 12px;
-}
-.index-grid a {
-  color: #1d4ed8;
-  font-weight: 700;
-  text-decoration: none;
-}
-.history-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 4px 0;
-}
-.history-row span {
-  color: #64748b;
-}
-.orders-panel {
-  min-height: 300px;
-  position: relative;
-}
-.orders-header {
-  height: 34px;
-  background: #e2e8f0;
-  border-bottom: 1px solid #cbd5e1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8px;
-}
-.order-list {
-  display: grid;
-  gap: 6px;
-  padding: 8px;
-}
-.order-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  border: 1px solid #e2e8f0;
-  padding: 8px;
-  background: #fff;
-}
-.order-row div {
-  display: grid;
-  gap: 2px;
-}
-.order-row span {
-  color: #64748b;
-}
-.no-orders {
-  height: 210px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  color: #94a3b8;
-  font-size: 24px;
-  font-weight: 900;
-}
-.sign-button {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  border: 0;
-  background: transparent;
-  color: #7f1d1d;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-@media (max-width: 1280px) {
-  .chart-frame {
-    grid-template-columns: 190px minmax(0, 1fr);
-  }
-  .clinical-clipboard {
-    display: none;
-  }
-}
 @media (max-width: 920px) {
   .chart-topbar {
     grid-template-columns: 1fr;
@@ -6527,7 +6357,7 @@ function latestByDate(items, field) {
   .access-strip div {
     flex-wrap: wrap;
   }
-  .chart-frame, .navigator-layout, .sdoh-content, .discharge-summary, .ai-care-panel, .avatar-grid, .orders-layout, .emar-layout, .command-two-column, .nurse-focus-grid {
+  .navigator-layout, .sdoh-content, .discharge-summary, .ai-care-panel, .avatar-grid, .orders-layout, .emar-layout, .command-two-column, .nurse-focus-grid {
     grid-template-columns: 1fr;
   }
   .command-card-grid {
@@ -6552,9 +6382,6 @@ function latestByDate(items, field) {
   .order-action-buttons {
     justify-content: flex-start;
     max-width: none;
-  }
-  .storyboard {
-    display: none;
   }
   .sdoh-popover:before {
     display: none;
