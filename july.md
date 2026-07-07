@@ -9,5 +9,6 @@
 #9 also thinking about adding the biling section
 #10 also a section for the hospital to add all the possible services of the hospital with their prize already automated as well as adding the all the drugs in the hopsital as well as their price, also a good path from nurse to doctor and pharamcy and finally to the billing unit in terms of billing strategy
 #11 also how do we adapt our system to laboratory and the imaginary unit in terms of real hospital standards....
+Also we noticed some redudances like in the fills of medical doctors and nurses where for nurse work, medical and new reading it was the same aspects that were to be filled in summary, chart review, orders, MAr, flow sheets etc...
 
 These proposal changes are both from our view and from the proposals by the hospitals we saw yesterday
