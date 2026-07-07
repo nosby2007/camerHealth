@@ -1,16 +1,17 @@
 <template>
-  <div :class="['flowsheet-cell', { filled: !!cell, corrected: cell?.source === 'correction' }]">
+  <div :class="['flowsheet-cell', { filled: !!cell, corrected: cell?.source === 'correction', editing: editing }]">
     <input
       v-if="editing"
-      :value="cell?.displayValue || ''"
+      ref="input"
+      v-model="editValue"
       type="text"
       class="cell-input"
       @blur="endEdit"
       @keyup.enter="endEdit"
       @keyup.escape="cancelEdit"
-      @input="updateValue"
+      @click.stop
     />
-    <div v-else class="cell-display" @click="startEdit" :title="cell?.displayValue">
+    <div v-else class="cell-display" @click.stop="startEdit" :title="cell?.displayValue">
       {{ cell?.displayValue || '—' }}
       <v-icon v-if="cell?.source === 'correction'" x-small class="correction-icon">mdi-pencil</v-icon>
     </div>
@@ -43,11 +44,12 @@ export default {
       this.editing = true
       this.editValue = this.cell?.displayValue || ''
       this.$nextTick(() => {
-        this.$el.querySelector('.cell-input')?.focus()
+        this.$refs.input?.focus()
+        this.$refs.input?.select()
       })
     },
     endEdit() {
-      if (this.editValue !== (this.cell?.displayValue || '')) {
+      if (this.editValue.trim() !== '') {
         this.$emit('update', {
           cellId: this.cell?.id || makeId('FLC'),
           rowId: this.rowId,
@@ -57,12 +59,11 @@ export default {
         })
       }
       this.editing = false
+      this.editValue = ''
     },
     cancelEdit() {
       this.editing = false
-    },
-    updateValue(e) {
-      this.editValue = e.target.value
+      this.editValue = ''
     }
   }
 }
@@ -71,13 +72,13 @@ export default {
 <style scoped>
 .flowsheet-cell {
   flex: 0 0 120px;
-  padding: 1px;
+  padding: 0;
   background: #fff;
   border-right: 1px solid #ccc;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  min-height: 32px;
+  min-height: 40px;
   font-size: 12px;
 }
 
@@ -89,9 +90,14 @@ export default {
   background: #fff8dc;
 }
 
+.flowsheet-cell.editing {
+  background: #e8f5f3;
+  padding: 2px;
+}
+
 .cell-display {
   width: 100%;
-  padding: 6px;
+  padding: 8px;
   text-align: center;
   cursor: text;
   color: #333;
@@ -102,15 +108,29 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 4px;
+  user-select: none;
+}
+
+.cell-display:hover {
+  background: rgba(15, 118, 110, 0.05);
 }
 
 .cell-input {
   width: 100%;
-  padding: 4px;
-  border: 1px solid #0f766e;
-  border-radius: 2px;
+  height: 100%;
+  padding: 6px;
+  border: 2px solid #0f766e;
+  border-radius: 0;
   font-size: 12px;
   text-align: center;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.cell-input:focus {
+  outline: none;
+  border-color: #0f766e;
+  box-shadow: inset 0 0 0 1px #0f766e;
 }
 
 .correction-icon {
