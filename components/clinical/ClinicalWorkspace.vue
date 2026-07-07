@@ -937,64 +937,21 @@
               </div>
             </section>
 
-            <section v-else-if="selectedChartTab === 'Care Plan'" class="flowsheet care-plan-workspace">
-              <div class="action-strip">
-                <v-btn x-small depressed color="#0f766e" dark @click="dialogs.carePlan = true">
-                  <v-icon x-small left>mdi-clipboard-plus</v-icon>Add Care Plan
-                </v-btn>
-              </div>
-              <div v-if="patientCarePlans.length" class="care-plan-grid">
-                <article v-for="plan in patientCarePlans" :key="plan.id" :class="['care-plan-card', isCarePlanOverdue(plan) ? 'overdue' : '']">
-                  <header>
-                    <strong>{{ plan.problem }}</strong>
-                    <div style="display: flex; gap: 6px;">
-                      <span v-if="isCarePlanOverdue(plan)" class="status-chip overdue-flag">Overdue</span>
-                      <span :class="['status-chip', plan.status === 'active' ? 'signed' : plan.status === 'archived' ? 'archived' : 'draft']">{{ plan.status }}</span>
-                    </div>
-                  </header>
-                  <p v-if="plan.goal"><strong>Goal:</strong> {{ plan.goal }}</p>
-                  <p v-if="plan.interventions"><strong>Interventions:</strong> {{ plan.interventions }}</p>
-                  <p v-if="plan.targetDate" class="target-date">
-                    <strong>Target Date:</strong> {{ formatShortDate(plan.targetDate) }}
-                  </p>
-                  <div class="care-plan-meta">
-                    <span>{{ formatShortDate(plan.createdAt) }} &middot; {{ plan.createdBy }}</span>
-                    <div style="display: flex; gap: 4px;">
-                      <v-btn v-if="plan.status === 'draft'" x-small text color="#0f766e" @click="signCarePlanFromCard(plan.id)">
-                        <v-icon x-small left>mdi-draw-pen</v-icon>Sign
-                      </v-btn>
-                      <v-btn v-if="plan.status === 'active'" x-small text color="#64748b" @click="archiveCarePlanFromCard(plan.id)">
-                        <v-icon x-small left>mdi-archive</v-icon>Archive
-                      </v-btn>
-                    </div>
-                  </div>
-                </article>
-              </div>
-              <div v-else class="empty-wounds">
-                <v-icon size="48" color="#94a3b8">mdi-clipboard-text-outline</v-icon>
-                <span>No care plans documented yet.</span>
-              </div>
+            <Patient360CarePlanTab
+              v-else-if="selectedChartTab === 'Care Plan'"
+              :patient-id="activePatientId"
+              :encounter-id="currentEncounterId"
+              :admission-id="currentAdmissionId"
+              :role="currentRole"
+            />
 
-              <FlowSection
-                v-if="carePlanProblemRows.length"
-                title="Problems (Nursing Assessment)"
-                :columns="['Goal', 'Status']"
-                :rows="carePlanProblemRows"
-              />
-              <FlowSection
-                title="Care Tasks"
-                :columns="['Owner', 'Status', 'Next Step']"
-                :rows="carePlanRows"
-              />
-            </section>
-
-            <section v-else-if="selectedChartTab === 'Education'" class="flowsheet">
-              <FlowSection
-                title="Patient Education"
-                :columns="['Status', 'Owner', 'Notes']"
-                :rows="educationRows"
-              />
-            </section>
+            <Patient360EducationTab
+              v-else-if="selectedChartTab === 'Education'"
+              :patient-id="activePatientId"
+              :encounter-id="currentEncounterId"
+              :admission-id="currentAdmissionId"
+              :role="currentRole"
+            />
 
             <section v-else-if="selectedChartTab === 'Work List'" class="flowsheet">
               <FlowSection
@@ -1746,6 +1703,8 @@ import NoteDialog from '~/components/clinical/patient360/dialogs/NoteDialog.vue'
 import WoundCareDialog from '~/components/clinical/patient360/dialogs/WoundCareDialog.vue'
 import WoundCard from '~/components/nursing/WoundCard.vue'
 import CarePlanDialog from '~/components/clinical/patient360/dialogs/CarePlanDialog.vue'
+import Patient360CarePlanTab from '~/components/clinical/patient360/care-plan/Patient360CarePlanTab.vue'
+import Patient360EducationTab from '~/components/clinical/patient360/education/Patient360EducationTab.vue'
 
 const FlowSection = {
   name: 'FlowSection',
@@ -1875,7 +1834,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, Patient360CarePlanTab, Patient360EducationTab },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
