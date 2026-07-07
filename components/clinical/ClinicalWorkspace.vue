@@ -953,6 +953,14 @@
               :role="currentRole"
             />
 
+            <Patient360FlowsheetsTab
+              v-else-if="selectedChartTab === 'Flowsheets'"
+              :patient-id="activePatientId"
+              :encounter-id="currentEncounterId"
+              :admission-id="currentAdmissionId"
+              :role="currentRole"
+            />
+
             <section v-else-if="selectedChartTab === 'Work List'" class="flowsheet">
               <FlowSection
                 title="Work List"
@@ -1705,6 +1713,7 @@ import WoundCard from '~/components/nursing/WoundCard.vue'
 import CarePlanDialog from '~/components/clinical/patient360/dialogs/CarePlanDialog.vue'
 import Patient360CarePlanTab from '~/components/clinical/patient360/care-plan/Patient360CarePlanTab.vue'
 import Patient360EducationTab from '~/components/clinical/patient360/education/Patient360EducationTab.vue'
+import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
 
 const FlowSection = {
   name: 'FlowSection',
@@ -1834,7 +1843,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, Patient360CarePlanTab, Patient360EducationTab },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
