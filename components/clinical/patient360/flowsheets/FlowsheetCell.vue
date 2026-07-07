@@ -1,5 +1,5 @@
 <template>
-  <div :class="['flowsheet-cell', { filled: !!cell, corrected: cell?.source === 'correction', editing: editing }]">
+  <div :class="['flowsheet-cell', { filled: !!cell, corrected: cell?.source === 'correction', editing: editing, pending: isPending }]">
     <input
       v-if="editing"
       ref="input"
@@ -14,6 +14,7 @@
     <div v-else class="cell-display" @click.stop="startEdit" :title="cell?.displayValue">
       {{ cell?.displayValue || '—' }}
       <v-icon v-if="cell?.source === 'correction'" x-small class="correction-icon">mdi-pencil</v-icon>
+      <v-icon v-if="isPending" x-small class="pending-icon">mdi-clock-outline</v-icon>
     </div>
   </div>
 </template>
@@ -36,6 +37,12 @@ export default {
     return {
       editing: false,
       editValue: ''
+    }
+  },
+  computed: {
+    isPending() {
+      const pendingCells = this.$store.state.flowsheets.saveState.pendingCells
+      return this.cell?.id && pendingCells[this.cell.id]
     }
   },
   methods: {
@@ -135,5 +142,19 @@ export default {
 
 .correction-icon {
   color: #f59e0b;
+}
+
+.pending-icon {
+  color: #0f766e;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

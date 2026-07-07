@@ -18,9 +18,15 @@
     </div>
 
     <!-- Main Content -->
-    <div class="education-content">
+    <div class="education-content" :class="{ 'tree-collapsed': treeCollapsed }">
       <!-- Left: Education Tree -->
-      <div class="education-tree-panel">
+      <div class="education-tree-panel" v-if="!treeCollapsed">
+        <div class="tree-header">
+          <h4>Topics</h4>
+          <button class="collapse-btn" @click="treeCollapsed = true" title="Collapse sidebar">
+            <v-icon x-small>mdi-chevron-left</v-icon>
+          </button>
+        </div>
         <EducationTree
           :patient-id="patientId"
           :show-active="showActive"
@@ -28,6 +34,9 @@
           @select-point="selectedPointId = $event"
         />
       </div>
+      <button v-else class="expand-tree-btn" @click="treeCollapsed = false" title="Expand sidebar">
+        <v-icon x-small>mdi-chevron-right</v-icon>
+      </button>
 
       <!-- Center: Education Points & Documentation -->
       <div class="education-points-panel">
@@ -143,7 +152,8 @@ export default {
       newPointTitleId: null,
       newPointLabel: '',
       newPointTopic: '',
-      categories: ['general', 'infection', 'safety', 'wound', 'discharge', 'pain', 'nutrition']
+      categories: ['general', 'infection', 'safety', 'wound', 'discharge', 'pain', 'nutrition'],
+      treeCollapsed: false
     }
   },
   computed: {
@@ -256,6 +266,11 @@ export default {
   flex: 1;
   overflow: hidden;
   background: #d7e0df;
+  position: relative;
+}
+
+.education-content.tree-collapsed {
+  grid-template-columns: 40px 1fr 280px;
 }
 
 .education-tree-panel,
@@ -314,5 +329,51 @@ export default {
   font-size: 12px;
   text-align: center;
   padding: 20px;
+}
+
+.tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.tree-header h4 {
+  margin: 0;
+  color: #134e4a;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.collapse-btn,
+.expand-tree-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f766e;
+  transition: background 0.2s ease;
+  border-radius: 3px;
+}
+
+.collapse-btn:hover,
+.expand-tree-btn:hover {
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.expand-tree-btn {
+  width: 100%;
+  height: 100%;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

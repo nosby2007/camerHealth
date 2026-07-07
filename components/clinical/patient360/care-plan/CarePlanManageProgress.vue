@@ -33,13 +33,16 @@
     </div>
 
     <!-- Main Content -->
-    <div class="manage-content">
+    <div class="manage-content" :class="{ 'tree-collapsed': treeCollapsed }">
       <!-- Left Tree -->
-      <div class="tree-panel">
-        <div class="tree-actions">
-          <v-btn x-small text @click="expandAll = !expandAll">
+      <div v-if="!treeCollapsed" class="tree-panel">
+        <div class="tree-header">
+          <v-btn x-small text @click="expandAll = !expandAll" class="expand-collapse-all">
             {{ expandAll ? 'Collapse All' : 'Expand All' }}
           </v-btn>
+          <button class="collapse-btn" @click="treeCollapsed = true" title="Collapse sidebar">
+            <v-icon x-small>mdi-chevron-left</v-icon>
+          </button>
         </div>
         <CarePlanTree
           :patient-id="patientId"
@@ -47,6 +50,9 @@
           @select-goal="selectedGoalId = $event"
         />
       </div>
+      <button v-else class="expand-tree-btn" @click="treeCollapsed = false" title="Expand sidebar">
+        <v-icon x-small>mdi-chevron-right</v-icon>
+      </button>
 
       <!-- Center Progress Documentation -->
       <div class="progress-panel">
@@ -119,6 +125,7 @@ export default {
       showActive: true,
       expandAll: false,
       showAddDialog: false,
+      treeCollapsed: false,
       progressStatuses: ['progressing', 'not_progressing', 'adequate_for_discharge', 'completed', 'unexpected_discharge_disposition'],
       carePlanTypes: ['general', 'fall_risk', 'skin_integrity', 'pain', 'infection', 'nutrition', 'mobility', 'discharge'],
       newPlan: { name: '', type: 'general' }
@@ -240,6 +247,11 @@ export default {
   gap: 0;
   flex: 1;
   overflow: hidden;
+  position: relative;
+}
+
+.manage-content.tree-collapsed {
+  grid-template-columns: 40px 1fr;
 }
 
 .tree-panel,
@@ -316,5 +328,47 @@ export default {
   padding: 12px;
   border-top: 1px solid #d7e0df;
   background: #f8fafc;
+}
+
+.tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.tree-header .expand-collapse-all {
+  flex: 1;
+  text-align: left;
+}
+
+.collapse-btn,
+.expand-tree-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f766e;
+  transition: background 0.2s ease;
+  border-radius: 3px;
+}
+
+.collapse-btn:hover,
+.expand-tree-btn:hover {
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.expand-tree-btn {
+  width: 100%;
+  height: 100%;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

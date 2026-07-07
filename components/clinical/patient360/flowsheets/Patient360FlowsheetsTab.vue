@@ -22,7 +22,7 @@
         <FlowsheetBodySystemNav
           :template-id="selectedTemplateId"
           :sections="sections"
-          @filter-section="filterBySection"
+          @filter-sections="filterBySections"
         />
 
         <div class="flowsheet-grid-container">
@@ -40,12 +40,19 @@
           />
         </div>
 
-        <FlowsheetRightPanel
-          :row-id="selectedRowId"
-          :patient-id="patientId"
-          :encounter-id="encounterId"
-          :last-filed="lastFiledValue"
-        />
+        <div :class="['flowsheet-right-panel', { collapsed: isRightPanelCollapsed }]">
+          <button class="panel-collapse-btn" @click="isRightPanelCollapsed = !isRightPanelCollapsed" :title="isRightPanelCollapsed ? 'Expand' : 'Collapse'">
+            <v-icon x-small>{{ isRightPanelCollapsed ? 'mdi-chevron-left' : 'mdi-chevron-right' }}</v-icon>
+          </button>
+          <div v-if="!isRightPanelCollapsed" class="panel-content">
+            <FlowsheetRightPanel
+              :row-id="selectedRowId"
+              :patient-id="patientId"
+              :encounter-id="encounterId"
+              :last-filed="lastFiledValue"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -115,7 +122,8 @@ export default {
       showDeviceDataDialog: false,
       showCorrectionDialog: false,
       showHistoryDialog: false,
-      filteredBySection: null
+      filteredBySystems: null,
+      isRightPanelCollapsed: false
     }
   },
   computed: {
@@ -129,8 +137,8 @@ export default {
       return this.$store.getters['flowsheets/sectionsForTemplate'](this.selectedTemplateId)
     },
     filteredSections() {
-      if (!this.filteredBySection) return this.sections
-      return this.sections.filter(s => s.bodySystem === this.filteredBySection)
+      if (!this.filteredBySystems || this.filteredBySystems.length === 0) return this.sections
+      return this.sections.filter(s => this.filteredBySystems.includes(s.bodySystem))
     },
     selectedRowId() {
       return this.$store.state.flowsheets.selectedRowId
@@ -149,16 +157,24 @@ export default {
       return this.$store.getters['flowsheets/lastFiledByRow'](this.patientId, this.encounterId, this.selectedRowId)
     }
   },
+  mounted() {
+    // Create initial columns when component mounts
+    this.createInitialColumns()
+    // Initialize API service for backend persistence
+    this.initializeApi()
+  },
   methods: {
     selectTemplate(templateId) {
       this.$store.commit('flowsheets/SET_SELECTED_TEMPLATE', templateId)
-      this.filteredBySection = null
+      this.filteredBySystems = null
+      // Create columns for new template
+      this.createInitialColumns()
     },
     selectRow(rowId) {
       this.$store.commit('flowsheets/SET_SELECTED_ROW', rowId)
     },
-    filterBySection(bodySystem) {
-      this.filteredBySection = bodySystem
+    filterBySections(systems) {
+      this.filteredBySystems = systems
     },
     updateCell(payload) {
       this.$store.dispatch('flowsheets/updateCell', {
@@ -174,11 +190,40 @@ export default {
         encounterId: this.encounterId
       })
     },
+    createInitialColumns() {
+      // Create 3 initial time columns
+      const times = ['08:00', '12:00', '16:00']
+      times.forEach(time => {
+        if (this.$store.state.flowsheets.columns.length < 3) {
+          this.$store.dispatch('flowsheets/createColumn', {
+            patientId: this.patientId,
+            encounterId: this.encounterId,
+            admissionId: this.admissionId,
+            documentedAt: new Date().toISOString(),
+            source: 'manual'
+          })
+        }
+      })
+    },
     addRows(rows) {
-      console.log('Add rows:', rows)
+      // Rows are now already defined in the store templates
+      this.$forceUpdate()
     },
     importDeviceData(data) {
-      console.log('Import device data:', data)
+      // Placeholder for device data import
+      console.log('Importing device data:', data)
+    },
+    initializeApi() {
+      if (!this.$store.$flowsheetApi && !window.$flowsheetApi) {
+        try {
+          const { createFlowsheetApi } = require('~/services/flowsheetApi')
+          const api = createFlowsheetApi(this.$axios)
+          this.$store.$flowsheetApi = api
+          window.$flowsheetApi = api
+        } catch (error) {
+          console.warn('FlowsheetApi service not available (backend may not be configured):', error.message)
+        }
+      }
     }
   }
 }
@@ -206,6 +251,46 @@ export default {
   gap: 1px;
   background: #e8eaea;
   overflow: hidden;
+  transition: grid-template-columns 0.3s ease;
+}
+
+.flowsheet-right-panel {
+  background: #f9f9f9;
+  border-left: 1px solid #e0e0e0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  min-width: 40px;
+}
+
+.flowsheet-right-panel.collapsed {
+  width: 40px;
+  min-width: 40px;
+}
+
+.panel-collapse-btn {
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  cursor: pointer;
+  color: #0f766e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+  min-height: 40px;
+}
+
+.panel-collapse-btn:hover {
+  color: #075d58;
+}
+
+.panel-content {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px;
 }
 
 .flowsheet-grid-container {

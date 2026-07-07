@@ -23,7 +23,7 @@
 
       <template v-if="!collapsedSections[section.id]">
         <FlowsheetRow
-          v-for="row in visibleRows(section.rows)"
+          v-for="row in getVisibleRowsWithChildren(section.rows)"
           :key="row.id"
           :row="row"
           :columns="columns"
@@ -31,8 +31,12 @@
           :encounter-id="encounterId"
           :show-last-filed="showLastFiled"
           :is-selected="row.id === selectedRowId"
+          :has-children="hasChildren(row.id)"
+          :is-collapsed="collapsedRows[row.id]"
+          :indent-level="row.level || 0"
           @select="$emit('select-row', row.id)"
-          @cell-update="$emit('cell-update', $event)"
+          @toggle-collapse="toggleRowCollapse(row.id)"
+          @cell-update="onCellUpdate"
           @cell-correct="$emit('cell-correct', $event)"
         />
       </template>
@@ -61,6 +65,7 @@ export default {
       collapsedSections: {}
     }
   },
+  emits: ['select-row', 'cell-update', 'cell-correct'],
   computed: {
     selectedRowId() {
       return this.$store.state.flowsheets.selectedRowId
@@ -77,11 +82,24 @@ export default {
         ...section,
         rows: section.rows.filter(row => row.status !== 'completed')
       }))
+    },
+    collapsedRows() {
+      return this.$store.state.flowsheets.collapsedRows
     }
   },
   methods: {
     toggleSection(sectionId) {
       this.$set(this.collapsedSections, sectionId, !this.collapsedSections[sectionId])
+    },
+    toggleRowCollapse(rowId) {
+      this.$store.commit('flowsheets/TOGGLE_ROW_COLLAPSE', rowId)
+    },
+    onCellUpdate(event) {
+      // Set the column as the selected column so users can file it
+      if (event.columnId) {
+        this.$store.commit('flowsheets/SET_SELECTED_COLUMN', event.columnId)
+      }
+      this.$emit('cell-update', event)
     },
     visibleRows(rows) {
       if (this.hideCompleted) {
@@ -92,7 +110,28 @@ export default {
           return !cells.every(c => c.status === 'completed')
         })
       }
-      return rows
+      return rows.filter(r => !r.parentId)
+    },
+    getChildRows(parentId) {
+      return this.$store.getters['flowsheets/childRows'](parentId)
+    },
+    hasChildren(rowId) {
+      return this.$store.getters['flowsheets/hasChildren'](rowId)
+    },
+    getVisibleRowsWithChildren(rows) {
+      const result = []
+      const parentRows = this.visibleRows(rows)
+
+      for (const row of parentRows) {
+        result.push(row)
+
+        if (!this.collapsedRows[row.id]) {
+          const children = this.getChildRows(row.id)
+          result.push(...children)
+        }
+      }
+
+      return result
     }
   }
 }
@@ -105,13 +144,15 @@ export default {
 
 .grid-header {
   display: grid;
-  grid-template-columns: 150px 120px 1fr;
+  grid-template-columns: minmax(150px, auto) minmax(120px, auto) 1fr;
   gap: 1px;
   padding: 8px;
   background: #e8eaea;
   border-bottom: 2px solid #999;
   top: 0;
   z-index: 10;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .grid-header.sticky {

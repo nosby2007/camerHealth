@@ -1,8 +1,21 @@
 <template>
-  <div :class="['flowsheet-row', { selected: isSelected }]" @click="$emit('select')">
-    <div class="row-label" :title="row.label">
-      {{ row.label }}
-      <span v-if="row.unit" class="unit">({{ row.unit }})</span>
+  <div :class="['flowsheet-row', { selected: isSelected, 'is-child': indentLevel > 0 }]" :style="{ paddingLeft: `${indentLevel * 24}px` }">
+    <div class="row-label" :title="row.label" @click="$emit('select')">
+      <div class="label-content">
+        <button
+          v-if="hasChildren"
+          class="expand-toggle"
+          @click.stop="$emit('toggle-collapse')"
+          :title="isCollapsed ? 'Expand' : 'Collapse'"
+        >
+          <v-icon x-small>{{ isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-down' }}</v-icon>
+        </button>
+        <span v-else class="expand-spacer"></span>
+        <span class="label-text">
+          {{ row.label }}
+          <span v-if="row.unit" class="unit">({{ row.unit }})</span>
+        </span>
+      </div>
     </div>
 
     <div v-if="showLastFiled" class="last-filed">
@@ -39,9 +52,12 @@ export default {
     patientId: { type: String, required: true },
     encounterId: { type: String, required: true },
     showLastFiled: { type: Boolean, default: true },
-    isSelected: { type: Boolean, default: false }
+    isSelected: { type: Boolean, default: false },
+    hasChildren: { type: Boolean, default: false },
+    isCollapsed: { type: Boolean, default: false },
+    indentLevel: { type: Number, default: 0 }
   },
-  emits: ['select', 'cell-update', 'cell-correct'],
+  emits: ['select', 'cell-update', 'cell-correct', 'toggle-collapse'],
   computed: {
     lastFiled() {
       return this.$store.getters['flowsheets/lastFiledByRow'](this.patientId, this.encounterId, this.row.id)
@@ -58,16 +74,26 @@ export default {
 <style scoped>
 .flowsheet-row {
   display: grid;
-  grid-template-columns: 150px 120px 1fr;
+  grid-template-columns: minmax(150px, auto) minmax(120px, auto) 1fr;
   gap: 1px;
   background: #e8eaea;
   padding: 1px;
   cursor: pointer;
   transition: background 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.flowsheet-row.is-child {
+  background: #f5f5f5;
 }
 
 .flowsheet-row:hover {
   background: #d0e0e0;
+}
+
+.flowsheet-row.is-child:hover {
+  background: #efefef;
 }
 
 .flowsheet-row.selected {
@@ -80,6 +106,49 @@ export default {
   font-size: 12px;
   font-weight: 500;
   color: #333;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.flowsheet-row.is-child .row-label {
+  background: #fafafa;
+  font-weight: 400;
+  padding-left: 0;
+}
+
+.label-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.expand-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f766e;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.expand-toggle:hover {
+  color: #075d58;
+}
+
+.expand-spacer {
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.label-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

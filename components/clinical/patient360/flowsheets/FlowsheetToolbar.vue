@@ -10,6 +10,13 @@
       <v-btn small text @click="insertColumn" title="Insert Column">
         <v-icon x-small left>mdi-plus</v-icon>Insert Col
       </v-btn>
+      <v-btn small :color="isSaving ? 'info' : 'success'" text :disabled="isSaving" @click="fileCurrentColumn" title="File/Save Current Column">
+        <v-icon x-small left>{{ isSaving ? 'mdi-loading' : 'mdi-content-save' }}</v-icon>{{ isSaving ? 'Saving...' : 'File Column' }}
+      </v-btn>
+      <div v-if="saveStatus" :class="['save-status', saveError ? 'error' : 'success']">
+        <v-icon x-small>{{ saveError ? 'mdi-alert-circle' : 'mdi-check-circle' }}</v-icon>
+        <span>{{ saveStatusText }}</span>
+      </div>
       <v-btn small text @click="$emit('device-data')" title="Device Data">
         <v-icon x-small left>mdi-database</v-icon>Device Data
       </v-btn>
@@ -79,6 +86,29 @@ export default {
     },
     smartCollapse() {
       return this.$store.state.flowsheets.smartCollapse
+    },
+    selectedColumnId() {
+      return this.$store.state.flowsheets.selectedColumnId
+    },
+    isSaving() {
+      return this.$store.state.flowsheets.saveState.isSaving
+    },
+    saveError() {
+      return this.$store.state.flowsheets.saveState.saveError
+    },
+    lastSavedAt() {
+      return this.$store.state.flowsheets.saveState.lastSavedAt
+    },
+    saveStatus() {
+      return this.saveError || this.lastSavedAt
+    },
+    saveStatusText() {
+      if (this.saveError) return `Error: ${this.saveError}`
+      if (this.lastSavedAt) {
+        const time = new Date(this.lastSavedAt)
+        return `Saved at ${time.toLocaleTimeString()}`
+      }
+      return ''
     }
   },
   methods: {
@@ -110,6 +140,21 @@ export default {
     },
     openGraph() {
       this.$emit('open-graph')
+    },
+    async fileCurrentColumn() {
+      if (!this.selectedColumnId) {
+        alert('Please select a column to file')
+        return
+      }
+      try {
+        await this.$store.dispatch('flowsheets/fileColumn', {
+          columnId: this.selectedColumnId,
+          patientId: this.patientId,
+          encounterId: this.encounterId
+        })
+      } catch (error) {
+        console.error('Failed to file column:', error)
+      }
     }
   }
 }
@@ -135,5 +180,26 @@ export default {
 .toolbar-section:not(:last-child) {
   border-right: 1px solid #ccc;
   padding-right: 12px;
+}
+
+.save-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.save-status.success {
+  color: #2e7d32;
+  background: #e8f5e9;
+}
+
+.save-status.error {
+  color: #c62828;
+  background: #ffebee;
 }
 </style>

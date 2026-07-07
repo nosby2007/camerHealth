@@ -1,5 +1,20 @@
 import { makeId, withBase } from '~/util/nursing-workflow.cjs'
 
+const createDebouncer = () => {
+  const timers = {}
+  return {
+    debounce(key, fn, delay = 3000) {
+      if (timers[key]) clearTimeout(timers[key])
+      timers[key] = setTimeout(() => {
+        fn()
+        delete timers[key]
+      }, delay)
+    }
+  }
+}
+
+const debouncer = createDebouncer()
+
 const scoped = (arr, rootState, rootGetters) => {
   if (!arr) return []
   const facility = rootState.auth?.facilityId
@@ -44,13 +59,13 @@ const FLOWSHEET_SECTIONS = {
 
 const FLOWSHEET_ROWS = {
   'vital-signs': [
-    { id: 'temp', label: 'Temperature', sectionId: 'vs-1', rowType: 'numeric', unit: '°C', required: true, canGraph: true, calculation: null },
-    { id: 'hr', label: 'Heart Rate', sectionId: 'vs-1', rowType: 'numeric', unit: 'bpm', required: true, canGraph: true, calculation: null },
-    { id: 'rr', label: 'Respiratory Rate', sectionId: 'vs-1', rowType: 'numeric', unit: 'breaths/min', required: true, canGraph: true, calculation: null },
-    { id: 'sbp', label: 'Systolic BP', sectionId: 'vs-1', rowType: 'numeric', unit: 'mmHg', required: true, canGraph: true, calculation: null },
-    { id: 'dbp', label: 'Diastolic BP', sectionId: 'vs-1', rowType: 'numeric', unit: 'mmHg', required: true, canGraph: true, calculation: null },
-    { id: 'spo2', label: 'SpO2', sectionId: 'vs-1', rowType: 'numeric', unit: '%', required: true, canGraph: true, calculation: null },
-    { id: 'glucose', label: 'Blood Glucose', sectionId: 'vs-1', rowType: 'numeric', unit: 'mg/dL', required: false, canGraph: true, calculation: null }
+    { id: 'temp', label: 'Temperature', sectionId: 'vs-1', rowType: 'numeric', unit: '°C', required: true, canGraph: true, calculation: null, parentId: null, level: 0 },
+    { id: 'hr', label: 'Heart Rate', sectionId: 'vs-1', rowType: 'numeric', unit: 'bpm', required: true, canGraph: true, calculation: null, parentId: null, level: 0 },
+    { id: 'rr', label: 'Respiratory Rate', sectionId: 'vs-1', rowType: 'numeric', unit: 'breaths/min', required: true, canGraph: true, calculation: null, parentId: null, level: 0 },
+    { id: 'sbp', label: 'Systolic BP', sectionId: 'vs-1', rowType: 'numeric', unit: 'mmHg', required: true, canGraph: true, calculation: null, parentId: null, level: 0 },
+    { id: 'dbp', label: 'Diastolic BP', sectionId: 'vs-1', rowType: 'numeric', unit: 'mmHg', required: true, canGraph: true, calculation: null, parentId: null, level: 0 },
+    { id: 'spo2', label: 'SpO2', sectionId: 'vs-1', rowType: 'numeric', unit: '%', required: true, canGraph: true, calculation: null, parentId: null, level: 0 },
+    { id: 'glucose', label: 'Blood Glucose', sectionId: 'vs-1', rowType: 'numeric', unit: 'mg/dL', required: false, canGraph: true, calculation: null, parentId: null, level: 0 }
   ],
   'pain': [
     { id: 'pain-score', label: 'Pain Score (0-10)', sectionId: 'pain-1', rowType: 'numeric', unit: null, required: true, canGraph: true, calculation: null },
@@ -63,12 +78,28 @@ const FLOWSHEET_ROWS = {
     { id: 'dressing-change', label: 'Dressing Changed', sectionId: 'wound-1', rowType: 'select', unit: null, required: false, canGraph: false, calculation: null }
   ],
   'assessment': [
-    { id: 'gcs-eye', label: 'GCS - Eye Opening', sectionId: 'neuro-1', rowType: 'numeric', unit: null, required: false, canGraph: false, calculation: null },
-    { id: 'gcs-verbal', label: 'GCS - Verbal Response', sectionId: 'neuro-1', rowType: 'numeric', unit: null, required: false, canGraph: false, calculation: null },
-    { id: 'gcs-motor', label: 'GCS - Motor Response', sectionId: 'neuro-1', rowType: 'numeric', unit: null, required: false, canGraph: false, calculation: null },
-    { id: 'gcs-total', label: 'GCS Total', sectionId: 'neuro-1', rowType: 'calculated', unit: null, required: false, canGraph: false, calculation: 'gcs-total' },
-    { id: 'breath-sounds', label: 'Breath Sounds', sectionId: 'resp-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
-    { id: 'heart-sounds', label: 'Heart Sounds', sectionId: 'cardio-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null }
+    // Neurological Section
+    { id: 'gcs', label: 'Glasgow Coma Scale (GCS)', sectionId: 'neuro-1', rowType: 'group', unit: null, required: false, canGraph: false, calculation: null, parentId: null, level: 0 },
+    { id: 'gcs-eye', label: 'Eye Opening', sectionId: 'neuro-1', rowType: 'numeric', unit: '1-4', required: false, canGraph: false, calculation: null, parentId: 'gcs', level: 1 },
+    { id: 'gcs-verbal', label: 'Verbal Response', sectionId: 'neuro-1', rowType: 'numeric', unit: '1-5', required: false, canGraph: false, calculation: null, parentId: 'gcs', level: 1 },
+    { id: 'gcs-motor', label: 'Motor Response', sectionId: 'neuro-1', rowType: 'numeric', unit: '1-6', required: false, canGraph: false, calculation: null, parentId: 'gcs', level: 1 },
+    { id: 'gcs-total', label: 'Total Score', sectionId: 'neuro-1', rowType: 'calculated', unit: '3-15', required: false, canGraph: false, calculation: 'gcs-total', parentId: 'gcs', level: 1 },
+
+    { id: 'pupil', label: 'Pupil Assessment', sectionId: 'neuro-1', rowType: 'group', unit: null, required: false, canGraph: false, calculation: null, parentId: null, level: 0 },
+    { id: 'pupil-size', label: 'Size (mm)', sectionId: 'neuro-1', rowType: 'numeric', unit: 'mm', required: false, canGraph: false, calculation: null, parentId: 'pupil', level: 1 },
+    { id: 'pupil-react', label: 'Reaction to Light', sectionId: 'neuro-1', rowType: 'select', unit: null, required: false, canGraph: false, calculation: null, parentId: 'pupil', level: 1 },
+
+    // Respiratory Section
+    { id: 'breath', label: 'Breath Sounds Assessment', sectionId: 'resp-1', rowType: 'group', unit: null, required: false, canGraph: false, calculation: null, parentId: null, level: 0 },
+    { id: 'breath-sounds', label: 'Sounds Present', sectionId: 'resp-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null, parentId: 'breath', level: 1 },
+    { id: 'breath-wheeze', label: 'Wheezing', sectionId: 'resp-1', rowType: 'select', unit: null, required: false, canGraph: false, calculation: null, parentId: 'breath', level: 1 },
+    { id: 'breath-crackles', label: 'Crackles', sectionId: 'resp-1', rowType: 'select', unit: null, required: false, canGraph: false, calculation: null, parentId: 'breath', level: 1 },
+
+    // Cardiovascular Section
+    { id: 'heart', label: 'Heart Sounds Assessment', sectionId: 'cardio-1', rowType: 'group', unit: null, required: false, canGraph: false, calculation: null, parentId: null, level: 0 },
+    { id: 'heart-sounds', label: 'Sounds Present', sectionId: 'cardio-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null, parentId: 'heart', level: 1 },
+    { id: 'heart-murmur', label: 'Murmur', sectionId: 'cardio-1', rowType: 'select', unit: null, required: false, canGraph: false, calculation: null, parentId: 'heart', level: 1 },
+    { id: 'heart-irregular', label: 'Irregular Rhythm', sectionId: 'cardio-1', rowType: 'select', unit: null, required: false, canGraph: false, calculation: null, parentId: 'heart', level: 1 }
   ]
 }
 
@@ -85,7 +116,15 @@ export const state = () => ({
   selectedColumnId: null,
   hideCompleted: false,
   smartCollapse: false,
-  showLastFiled: true
+  showLastFiled: true,
+  collapsedRows: {},
+  saveState: {
+    isSaving: false,
+    saveError: null,
+    lastSavedAt: null,
+    pendingCells: {},
+    columnStatus: {}
+  }
 })
 
 export const mutations = {
@@ -115,13 +154,38 @@ export const mutations = {
   },
   UPDATE_CELL(state, cell) {
     const idx = state.cells.findIndex(c => c.id === cell.id)
-    if (idx >= 0) state.cells.splice(idx, 1, cell)
+    if (idx >= 0) {
+      state.cells.splice(idx, 1, cell)
+    } else {
+      state.cells.push(cell)
+    }
   },
   ADD_CORRECTION(state, correction) {
     state.corrections.push(correction)
   },
   ADD_AUDIT(state, log) {
     state.auditLogs.push(log)
+  },
+  TOGGLE_ROW_COLLAPSE(state, rowId) {
+    state.collapsedRows[rowId] = !state.collapsedRows[rowId]
+  },
+  SET_SAVING(state, val) {
+    state.saveState.isSaving = val
+  },
+  SET_SAVE_ERROR(state, error) {
+    state.saveState.saveError = error
+  },
+  SET_LAST_SAVED(state, timestamp) {
+    state.saveState.lastSavedAt = timestamp
+  },
+  ADD_PENDING_CELL(state, { cellId, data }) {
+    state.saveState.pendingCells[cellId] = data
+  },
+  REMOVE_PENDING_CELL(state, cellId) {
+    delete state.saveState.pendingCells[cellId]
+  },
+  SET_COLUMN_STATUS(state, { columnId, status }) {
+    state.saveState.columnStatus[columnId] = status
   }
 }
 
@@ -158,17 +222,80 @@ export const actions = {
       source: 'manual'
     }, 'FLC')
     commit('UPDATE_CELL', cell)
+    commit('ADD_PENDING_CELL', { cellId, data: cell })
+    commit('SET_SAVE_ERROR', null)
+
     dispatch('audit', { action: 'FLOWSHEET_CELL_UPDATED', targetId: cellId, patientId, details: { rowId, value } })
+
+    // Debounced auto-save to backend
+    debouncer.debounce(`cell-${cellId}`, () => {
+      dispatch('persistCell', { cell, patientId, encounterId })
+    }, 3000)
+
     return cell
   },
 
-  fileColumn({ state, commit, dispatch, rootState }, { columnId, patientId, encounterId }) {
-    const column = state.columns.find(c => c.id === columnId)
-    if (column) {
-      const filed = { ...column, status: 'filed', filedAt: new Date().toISOString(), filedBy: rootState.auth?.fullName || rootState.auth?.staffId }
-      commit('ADD_COLUMN', filed)
-      dispatch('audit', { action: 'FLOWSHEET_COLUMN_FILED', targetId: columnId, patientId })
-      return filed
+  async persistCell({ commit, dispatch }, { cell, patientId, encounterId }) {
+    try {
+      commit('SET_SAVING', true)
+      const api = this.$flowsheetApi || window.$flowsheetApi
+      if (!api) {
+        throw new Error('API service not initialized')
+      }
+
+      const result = await api.saveCell({
+        cellId: cell.id,
+        rowId: cell.rowId,
+        columnId: cell.columnId,
+        patientId,
+        encounterId,
+        value: cell.value,
+        displayValue: cell.displayValue,
+        source: cell.source
+      })
+
+      if (result.success) {
+        commit('REMOVE_PENDING_CELL', cell.id)
+        commit('SET_LAST_SAVED', new Date().toISOString())
+        commit('SET_SAVE_ERROR', null)
+      } else {
+        commit('SET_SAVE_ERROR', result.error)
+      }
+      commit('SET_SAVING', false)
+    } catch (error) {
+      commit('SET_SAVE_ERROR', error.message)
+      commit('SET_SAVING', false)
+    }
+  },
+
+  async fileColumn({ state, commit, dispatch, rootState }, { columnId, patientId, encounterId }) {
+    try {
+      commit('SET_SAVING', true)
+      const api = this.$flowsheetApi || window.$flowsheetApi
+      if (!api) {
+        throw new Error('API service not initialized')
+      }
+
+      const result = await api.fileColumn({ columnId, patientId, encounterId })
+      if (result.success) {
+        const column = state.columns.find(c => c.id === columnId)
+        if (column) {
+          const filed = { ...column, status: 'filed', filedAt: new Date().toISOString(), filedBy: rootState.auth?.fullName || rootState.auth?.staffId }
+          commit('ADD_COLUMN', filed)
+          commit('SET_COLUMN_STATUS', { columnId, status: 'filed' })
+          commit('SET_LAST_SAVED', new Date().toISOString())
+          commit('SET_SAVE_ERROR', null)
+          dispatch('audit', { action: 'FLOWSHEET_COLUMN_FILED', targetId: columnId, patientId })
+          commit('SET_SAVING', false)
+          return filed
+        }
+      } else {
+        throw new Error(result.error)
+      }
+    } catch (error) {
+      commit('SET_SAVE_ERROR', error.message)
+      commit('SET_SAVING', false)
+      throw error
     }
   },
 
@@ -253,5 +380,15 @@ export const getters = {
 
   correctionsByOriginalCell: (state) => (cellId) => {
     return state.corrections.filter(c => c.originalCellId === cellId)
+  },
+
+  childRows: (state) => (parentId) => {
+    const allRows = Object.values(state.flowsheetRows).flat()
+    return allRows.filter(r => r.parentId === parentId)
+  },
+
+  hasChildren: (state) => (rowId) => {
+    const allRows = Object.values(state.flowsheetRows).flat()
+    return allRows.some(r => r.parentId === rowId)
   }
 }
