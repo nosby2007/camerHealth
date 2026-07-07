@@ -408,107 +408,6 @@
               />
             </section>
 
-            <section v-else-if="selectedChartTab === 'Flowsheets'" class="flowsheet flowsheet-command-center">
-              <div class="navigator-banner">
-                <div>
-                  <strong>Flowsheets</strong>
-                  <span>Calendrier de soins, taches dues et documentation horaire des soignants</span>
-                </div>
-                <div class="flowsheet-actions">
-                  <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
-                    <v-icon x-small left>mdi-stethoscope</v-icon>Documenter soin
-                  </v-btn>
-                  <v-btn x-small depressed color="#7c3aed" dark @click="openChartDialog('medication')">
-                    <v-icon x-small left>mdi-pill</v-icon>Medicament
-                  </v-btn>
-                  <v-btn x-small depressed color="#475569" dark @click="openChartDialog('document')">
-                    <v-icon x-small left>mdi-file-document-plus</v-icon>Document
-                  </v-btn>
-                </div>
-              </div>
-
-              <section class="ai-care-panel">
-                <div class="ai-care-score">
-                  <span>AI Care Acuity</span>
-                  <strong>{{ effectiveAiCareAcuityScore }}</strong>
-                  <small>{{ effectiveAiCareRiskLabel }}</small>
-                </div>
-                <div class="ai-care-main">
-                  <header>
-                    <div>
-                      <v-icon small color="#0f766e">mdi-brain</v-icon>
-                      <strong>AI Care Copilot</strong>
-                    </div>
-                    <div class="ai-care-tools">
-                      <span>{{ remoteAiCarePlan ? 'ChatGPT active' : 'Local safety engine' }}</span>
-                      <v-btn x-small depressed color="#0f766e" dark :loading="aiCareLoading" @click="refreshAiCarePlan">
-                        <v-icon x-small left>mdi-chat-processing</v-icon>ChatGPT
-                      </v-btn>
-                    </div>
-                  </header>
-                  <p>{{ effectiveAiNextBestAction }}</p>
-                  <small v-if="aiCareError" class="ai-care-error">{{ aiCareError }}</small>
-                  <div class="ai-insight-grid">
-                    <article v-for="insight in effectiveAiCareInsights" :key="insight.title" :class="['ai-insight', insight.level]">
-                      <v-icon x-small>{{ insight.icon }}</v-icon>
-                      <div>
-                        <strong>{{ insight.title }}</strong>
-                        <span>{{ insight.detail }}</span>
-                      </div>
-                    </article>
-                  </div>
-                </div>
-              </section>
-
-              <div class="care-calendar">
-                <article v-for="slot in flowsheetScheduleSlots" :key="slot.time" :class="['care-slot', slot.status]">
-                  <strong>{{ slot.time }}</strong>
-                  <span>{{ slot.label }}</span>
-                  <small>{{ slot.owner }}</small>
-                </article>
-              </div>
-
-              <FlowSection
-                title="Care Schedule - Today"
-                required
-                :columns="flowsheetTimeColumns"
-                :rows="flowsheetScheduleRows"
-              />
-              <FlowSection
-                title="Tasks and Soins Due"
-                required
-                :columns="['Time', 'Priority', 'Status', 'Action']"
-                :rows="flowsheetTaskRows"
-              />
-              <FlowSection
-                title="AI Priority Queue"
-                required
-                :columns="['Reason', 'Owner', 'Next Action']"
-                :rows="effectiveAiPriorityRows"
-              />
-              <FlowSection
-                title="Skin / Wound Assessment and Care"
-                required
-                :columns="flowsheetTimeColumns"
-                :rows="skinWoundFlowsheetRows"
-              />
-              <FlowSection
-                title="Vital Signs, Pain and Safety"
-                :columns="patientVitals.length ? ['Last Filed', 'Next Due', 'Action'] : flowsheetTimeColumns"
-                :rows="flowsheetVitalsRows"
-              />
-              <FlowSection
-                title="Intake, Output and Mobility"
-                :columns="flowsheetTimeColumns"
-                :rows="flowsheetIntakeMobilityRows"
-              />
-              <FlowSection
-                title="Medication Administration Schedule"
-                :columns="['0600', '1000', '1400', '1800']"
-                :rows="visibleMarRows"
-              />
-            </section>
-
             <section v-else-if="selectedChartTab === 'Orders'" class="orders-workspace">
               <div class="orders-command">
                 <div>
@@ -3918,6 +3817,12 @@ export default {
         { label: 'Scheduled meds', count: this.patientMedications.length, icon: 'mdi-pill', color: '#475569' },
         { label: 'Tasks', count: this.patientTasks.length, icon: 'mdi-format-list-checks', color: '#475569' }
       ]
+    },
+    currentEncounterId() {
+      return this.activePatientId ? `${this.activePatientId}-encounter-1` : ''
+    },
+    currentAdmissionId() {
+      return this.activePatientId ? `${this.activePatientId}-admission-1` : ''
     }
   },
   watch: {
