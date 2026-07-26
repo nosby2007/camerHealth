@@ -120,49 +120,6 @@
             :class="{ active: selectedChartTab === tab }"
             @click="selectedChartTab = tab"
           >
-  <div class="clinical-workspace-shell">
-    <header class="workspace-header">
-      <div>
-        <p class="eyebrow">CameroHealth Clinical Workspace</p>
-        <h1>Patient 360 · {{ selectedRoleLabel }}</h1>
-      </div>
-      <div class="header-actions">
-        <span class="pill">Nurse Navigator</span>
-        <span class="pill">Clinical Clipboard</span>
-      </div>
-    </header>
-
-    <section class="role-switcher">
-      <button v-for="role in roles" :key="role.key" :class="['role-btn', { active: selectedRole === role.key }]" @click="selectedRole = role.key">
-        {{ role.label }}
-      </button>
-    </section>
-
-    <div class="patient-360-grid">
-      <aside class="snapshot-panel">
-        <h2>Patient Snapshot</h2>
-        <div class="patient-name">{{ patient.name }}</div>
-        <div class="meta-grid">
-          <div><strong>DOB</strong><span>{{ patient.dob }}</span></div>
-          <div><strong>MRN</strong><span>{{ patient.mrn }}</span></div>
-          <div><strong>Facility</strong><span>{{ patient.facility }}</span></div>
-          <div><strong>Unit/Room</strong><span>{{ patient.unit }}</span></div>
-          <div><strong>Code</strong><span>{{ patient.codeStatus }}</span></div>
-          <div><strong>Allergies</strong><span>{{ patient.allergies }}</span></div>
-          <div><strong>Precautions</strong><span>{{ patient.precautions }}</span></div>
-          <div><strong>Attending</strong><span>{{ patient.attending }}</span></div>
-        </div>
-        <div class="snapshot-card">
-          <h3>Active alerts</h3>
-          <ul>
-            <li v-for="item in patient.alerts" :key="item">{{ item }}</li>
-          </ul>
-        </div>
-      </aside>
-
-      <main class="workspace-panel">
-        <nav class="workspace-tabs">
-          <button v-for="tab in tabs" :key="tab" :class="['tab-btn', { active: selectedTab === tab }]" @click="selectedTab = tab">
             {{ tab }}
           </button>
         </nav>
@@ -220,13 +177,210 @@
             >
               <v-icon x-small left>mdi-medical-bag</v-icon>Medical
             </v-btn>
-            <v-btn x-small depressed color="#0f766e" dark class="font-weight-black">
-              <v-icon x-small left>mdi-plus</v-icon>New Reading
-                </v-btn>
-              </div>
-            </div>
+            <v-btn
+              v-if="activePatientId"
+              x-small
+              depressed
+              color="#00A99D"
+              dark
+              class="font-weight-black"
+              :to="`/clinical/lab?patientId=${activePatientId}`"
+            >
+              <v-icon x-small left>mdi-flask-plus</v-icon>+ Lab Request
+            </v-btn>
+            <v-btn
+              v-if="activePatientId"
+              x-small
+              depressed
+              color="#7C3AED"
+              dark
+              class="font-weight-black"
+              :to="`/clinical/imaging?patientId=${activePatientId}`"
+            >
+              <v-icon x-small left>mdi-radiology-box</v-icon>+ Imaging Request
+            </v-btn>
+          </div>
+        </div>
 
-            <section v-if="selectedNavigator === 'sdoh'" class="sdoh-section">
+            <section v-if="selectedChartTab === 'Lab Results'" class="flowsheet pa-4">
+              <v-card flat tile class="b-1 mb-4">
+                <div class="pa-3 bg-navy white--text d-flex align-center justify-space-between">
+                  <div class="text-caption font-weight-black uppercase ls-1">
+                    <v-icon left small dark>mdi-flask</v-icon>LABORATORY RESULTS & DIAGNOSTICS
+                  </div>
+                  <v-chip x-small dark label color="#00A99D" class="font-weight-black">
+                    {{ patientLabOrders.length }} ORDERS
+                  </v-chip>
+                </div>
+                <div class="pa-4">
+                  <div v-if="patientLabOrders.length === 0" class="pa-8 text-center grey--text">
+                    <v-icon size="48" color="#CBD5E1">mdi-flask-empty-outline</v-icon>
+                    <div class="text-caption mt-2 font-weight-bold">No laboratory orders recorded for this patient</div>
+                  </div>
+                  <v-card v-for="lab in patientLabOrders" :key="lab.id" flat tile class="b-1 pa-4 mb-3 bg-white">
+                    <div class="d-flex align-center justify-space-between mb-2">
+                      <div>
+                        <div class="text-subtitle-2 font-weight-black gov-text-primary uppercase">{{ lab.testName || lab.test }}</div>
+                        <div class="text-caption grey--text">Requested by: {{ lab.orderedBy }} · {{ lab.requestedAt ? new Date(lab.requestedAt).toLocaleDateString('fr-CM') : '—' }}</div>
+                      </div>
+                      <div class="d-flex align-center" style="gap:8px">
+                        <v-chip x-small dark label :color="lab.status === 'Completed' ? '#003366' : '#00A99D'" class="font-weight-black">{{ lab.status }}</v-chip>
+                      </div>
+                    </div>
+                    <div v-if="lab.status === 'Completed'" class="pa-3 bg-grey lighten-4 b-1">
+                      <div class="text-caption font-weight-black teal--text text--darken-3 mb-1">
+                        <v-icon x-small color="#00A99D">mdi-check-decagram</v-icon> Result filed on {{ lab.resultFiledAt || 'Recently' }} by {{ lab.performedBy || 'Lab Tech' }}
+                      </div>
+                      <div class="text-body-2 font-weight-bold" style="white-space:pre-wrap">{{ lab.result }}</div>
+                      <div v-if="lab.interpretation" class="mt-2">
+                        <v-chip x-small dark :color="lab.interpretation === 'Critical' ? '#C0392B' : lab.interpretation === 'Abnormal' ? 'orange' : '#00A99D'" class="font-weight-black">
+                          INTERPRETATION: {{ lab.interpretation }}
+                        </v-chip>
+                      </div>
+                      <div v-if="lab.technicianNotes" class="text-caption font-italic grey--text text--darken-2 mt-2">
+                        Notes: {{ lab.technicianNotes }}
+                      </div>
+                    </div>
+                    <div v-else class="text-caption orange--text font-weight-bold mt-1">
+                      ⏳ Pending test processing in Laboratory department
+                    </div>
+                  </v-card>
+                </div>
+              </v-card>
+
+              <v-card flat tile class="b-1">
+                <div class="pa-3 bg-purple white--text d-flex align-center justify-space-between">
+                  <div class="text-caption font-weight-black uppercase ls-1">
+                    <v-icon left small dark>mdi-radiology-box</v-icon>IMAGING & RADIOLOGY REPORTS
+                  </div>
+                  <v-chip x-small dark label color="purple lighten-2" class="font-weight-black">
+                    {{ patientImagingOrders.length }} ORDERS
+                  </v-chip>
+                </div>
+                <div class="pa-4">
+                  <div v-if="patientImagingOrders.length === 0" class="pa-8 text-center grey--text">
+                    <v-icon size="48" color="#CBD5E1">mdi-radiology-box-outline</v-icon>
+                    <div class="text-caption mt-2 font-weight-bold">No imaging orders recorded for this patient</div>
+                  </div>
+                  <v-card v-for="img in patientImagingOrders" :key="img.id" flat tile class="b-1 pa-4 mb-3 bg-white">
+                    <div class="d-flex align-center justify-space-between mb-2">
+                      <div>
+                        <div class="text-subtitle-2 font-weight-black gov-text-primary uppercase">{{ img.modality }}<span v-if="img.bodyPart"> — {{ img.bodyPart }}</span></div>
+                        <div class="text-caption grey--text">Requested by: {{ img.orderedBy }} · {{ img.requestedAt ? new Date(img.requestedAt).toLocaleDateString('fr-CM') : '—' }}</div>
+                      </div>
+                      <v-chip x-small dark label :color="img.status === 'Completed' ? '#7C3AED' : 'purple'" class="font-weight-black">{{ img.status }}</v-chip>
+                    </div>
+                    <div v-if="img.status === 'Completed'" class="pa-3 bg-grey lighten-4 b-1">
+                      <div class="text-caption font-weight-black purple--text text--darken-2 mb-1">
+                        <v-icon x-small color="#7C3AED">mdi-check-decagram</v-icon> Report filed on {{ img.reportFiledAt || 'Recently' }} by {{ img.reportedBy || 'Radiologist' }}
+                      </div>
+                      <div class="text-body-2 font-weight-bold" style="white-space:pre-wrap">{{ img.report }}</div>
+                      <div v-if="img.impression" class="text-caption font-italic grey--text text--darken-3 mt-2">
+                        <strong>Impression:</strong> {{ img.impression }}
+                      </div>
+                    </div>
+                    <div v-else class="text-caption purple--text font-weight-bold mt-1">
+                      ⏳ Pending examination in Radiology / Imaging department
+                    </div>
+                  </v-card>
+                </div>
+              </v-card>
+            </section>
+
+            <section v-else-if="selectedChartTab === 'Epidemiological Reports'" class="flowsheet pa-4">
+              <v-card flat tile class="b-1 mb-4">
+                <div class="pa-3 bg-navy white--text d-flex align-center justify-space-between">
+                  <div class="text-caption font-weight-black uppercase ls-1">
+                    <v-icon left small dark>mdi-file-document-edit</v-icon>EPIDEMIOLOGICAL INCIDENT REPORTS
+                  </div>
+                  <v-chip x-small dark label color="#00A99D" class="font-weight-black">
+                    {{ patientVisits.length }} REPORTS
+                  </v-chip>
+                </div>
+                <div class="pa-4 pt-2">
+                  <div v-if="patientVisits.length === 0" class="pa-8 text-center grey--text">
+                    <v-icon size="48" color="#CBD5E1">mdi-file-document-outline</v-icon>
+                    <div class="text-caption mt-2 font-weight-bold">No epidemiological reports found for this patient.</div>
+                  </div>
+                  
+                  <v-expansion-panels v-else flat accordion class="gov-panels">
+                    <v-expansion-panel v-for="visit in patientVisits" :key="visit.id || visit.createdAt" class="b-1 mb-2 bg-white rounded-0">
+                      <v-expansion-panel-header class="pa-4">
+                        <template v-slot:default="{ open }">
+                          <div class="d-flex align-center justify-space-between w-100 pr-4">
+                             <div>
+                                <div class="text-subtitle-2 font-weight-black gov-text-primary uppercase">{{ visit.disease }} <v-chip x-small class="ml-2" v-if="visit.severity" dark :color="visit.severity === 'Critical' || visit.severity === 'High' ? '#C0392B' : '#00A99D'">{{visit.severity}}</v-chip></div>
+                                <div class="text-caption grey--text">Filed by: Dr. Signature / Authorized Staff · {{ new Date(visit.createdAt).toLocaleDateString('en-GB') }}</div>
+                             </div>
+                             <v-chip x-small dark label :color="visit.status === 'Suspected' ? 'orange' : '#003366'" class="font-weight-black mr-2">{{ visit.status || 'Reported' }}</v-chip>
+                          </div>
+                        </template>
+                      </v-expansion-panel-header>
+                      <v-expansion-panel-content class="bg-grey lighten-4 pt-2 border-top">
+                         <v-row dense class="mt-2">
+                           <v-col cols="12" md="6">
+                             <div class="text-caption font-weight-black gov-text-secondary mb-2 uppercase ls-1">Assessment & Diagnosis</div>
+                             <div class="text-body-2 mb-1"><span class="font-weight-bold">Symptoms:</span> {{ visit.symptoms && visit.symptoms.length ? visit.symptoms.join(', ') : 'None' }} {{ visit.symptomText ? ' | ' + visit.symptomText : '' }}</div>
+                             <div class="text-body-2 mb-1"><span class="font-weight-bold">Diagnosis:</span> {{ visit.diagnosis || 'Pending' }}</div>
+                             <div class="text-body-2 mb-3" v-if="visit.vitals && (visit.vitals.bloodPressure || visit.vitals.bloodSugar)"><span class="font-weight-bold">Vitals:</span> BP {{ visit.vitals.bloodPressure || 'N/A' }} mmHg, Sugar {{ visit.vitals.bloodSugar || 'N/A' }}</div>
+
+                             <div class="text-caption font-weight-black gov-text-secondary mb-2 uppercase ls-1">Past History</div>
+                             <template v-if="visit.pastHistory">
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.medical"><span class="font-weight-bold">Medical:</span> {{ visit.pastHistory.medical }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.surgical"><span class="font-weight-bold">Surgical:</span> {{ visit.pastHistory.surgical }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.social"><span class="font-weight-bold">Social:</span> {{ visit.pastHistory.social }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.drug"><span class="font-weight-bold">Drug:</span> {{ visit.pastHistory.drug }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.allergy"><span class="font-weight-bold">Allergy:</span> {{ visit.pastHistory.allergy }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.family"><span class="font-weight-bold">Family:</span> {{ visit.pastHistory.family }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.labour"><span class="font-weight-bold">Labour:</span> {{ visit.pastHistory.labour }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.neonatal"><span class="font-weight-bold">Neonatal:</span> {{ visit.pastHistory.neonatal }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.nutritional"><span class="font-weight-bold">Nutritional:</span> {{ visit.pastHistory.nutritional }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.vaccination"><span class="font-weight-bold">Vaccination:</span> {{ visit.pastHistory.vaccination }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.pastHistory.developmental"><span class="font-weight-bold">Developmental:</span> {{ visit.pastHistory.developmental }}</div>
+                             </template>
+                             <div class="text-body-2 mb-1" v-else>No past history recorded.</div>
+                           </v-col>
+
+                           <v-col cols="12" md="6">
+                             <div class="text-caption font-weight-black gov-text-secondary mb-2 uppercase ls-1">Physical Exam Findings</div>
+                             <template v-if="visit.physicalExam">
+                               <div class="text-body-2 mb-1" v-if="visit.physicalExam.anthropometric"><span class="font-weight-bold">Anthropometric:</span> {{ visit.physicalExam.anthropometric }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.physicalExam.headAndNeck"><span class="font-weight-bold">Head & Neck:</span> {{ visit.physicalExam.headAndNeck }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.physicalExam.chest"><span class="font-weight-bold">Chest:</span> {{ visit.physicalExam.chest }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.physicalExam.abdomen"><span class="font-weight-bold">Abdomen:</span> {{ visit.physicalExam.abdomen }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.physicalExam.limbs"><span class="font-weight-bold">Limbs:</span> {{ visit.physicalExam.limbs }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.physicalExam.skin"><span class="font-weight-bold">Skin:</span> {{ visit.physicalExam.skin }}</div>
+                               <div class="text-body-2 mb-1" v-if="visit.physicalExam.neurologic"><span class="font-weight-bold">Neurologic:</span> {{ visit.physicalExam.neurologic }}</div>
+                             </template>
+                             <div class="text-body-2 mb-1" v-else>No physical exam findings recorded.</div>
+                             
+                             <div class="text-caption font-weight-black gov-text-secondary mt-3 mb-2 uppercase ls-1">Investigations & Lab</div>
+                             <div class="text-body-2 mb-1"><span class="font-weight-bold">Lab Results:</span> <span style="white-space:pre-wrap">{{ visit.labResults || 'N/A' }}</span></div>
+                             <div class="text-body-2 mb-1"><span class="font-weight-bold">Imaging Notes:</span> <span style="white-space:pre-wrap">{{ visit.imagingNotes || 'N/A' }}</span></div>
+                           </v-col>
+                         </v-row>
+                         
+                         <v-divider class="my-3"></v-divider>
+                         
+                         <div class="text-caption font-weight-black gov-text-secondary mb-2 uppercase ls-1">Treatment & Conclusion</div>
+                         <v-row dense>
+                            <v-col cols="12" md="6">
+                               <div class="text-body-2 mb-1"><span class="font-weight-bold">Prescription:</span> <span style="white-space:pre-wrap">{{ visit.prescription || 'N/A' }}</span></div>
+                               <div class="text-body-2 mb-1"><span class="font-weight-bold">Treatment Plan:</span> <span style="white-space:pre-wrap">{{ visit.treatment || 'N/A' }}</span></div>
+                            </v-col>
+                            <v-col cols="12" md="6">
+                               <div class="text-body-2 mb-1"><span class="font-weight-bold">Clinical Observations:</span> <span style="white-space:pre-wrap">{{ visit.notes || 'N/A' }}</span></div>
+                               <div class="text-body-2 mt-2" v-if="visit.conclusion"><span class="font-weight-bold">Conclusion:</span> <v-chip x-small dark color="#003366" class="font-weight-bold">{{ visit.conclusion.toUpperCase() }}</v-chip> <span v-if="visit.conclusion === 'Admitted'" class="font-weight-bold text-caption ml-1">WARD: {{visit.admissionWard}}</span> <span v-if="visit.conclusion === 'Referred'" class="font-weight-bold text-caption ml-1">TARGET: {{visit.referralTarget}}</span></div>
+                            </v-col>
+                         </v-row>
+                      </v-expansion-panel-content>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </div>
+              </v-card>
+            </section>
+
+            <section v-else-if="selectedNavigator === 'sdoh'" class="sdoh-section">
               <div class="sdoh-card">
                 <div class="section-title purple">
                   <v-icon small color="#6d28d9">mdi-heart</v-icon>
@@ -445,76 +599,6 @@
             Sign
           </button>
         </section>
-        <section class="workspace-content">
-          <div v-if="selectedTab === 'Summary'" class="content-grid">
-            <article class="card">
-              <h3>{{ selectedRoleLabel }} Workspace</h3>
-              <p>{{ roleSummary }}</p>
-            </article>
-            <article class="card">
-              <h3>Navigator</h3>
-              <ul>
-                <li v-for="item in navigatorSections" :key="item">{{ item }}</li>
-              </ul>
-            </article>
-          </div>
-
-          <div v-else-if="selectedTab === 'Navigator'" class="content-grid">
-            <article class="card" v-for="section in navigatorSections" :key="section">
-              <h3>{{ section }}</h3>
-              <p>{{ navigatorDetails[section] }}</p>
-            </article>
-          </div>
-
-          <div v-else-if="selectedTab === 'Flowsheets'" class="card">
-            <h3>Configurable flowsheets</h3>
-            <ul>
-              <li v-for="flow in flowsheets" :key="flow">{{ flow }}</li>
-            </ul>
-          </div>
-
-          <div v-else-if="selectedTab === 'Orders'" class="card">
-            <h3>Orders queue</h3>
-            <ul>
-              <li v-for="order in orders" :key="order.title">{{ order.title }} · {{ order.status }}</li>
-            </ul>
-          </div>
-
-          <div v-else-if="selectedTab === 'Wound Management'" class="card">
-            <h3>Wound intelligence</h3>
-            <p>{{ woundSummary }}</p>
-          </div>
-
-          <div v-else-if="selectedTab === 'Discharge'" class="card">
-            <h3>Discharge workflow</h3>
-            <p>{{ dischargeSummary }}</p>
-          </div>
-
-          <div v-else class="card">
-            <h3>{{ selectedTab }}</h3>
-            <p>CameroHealth-native workflow content for {{ selectedRoleLabel.toLowerCase() }} tasks is available for future expansion.</p>
-          </div>
-        </section>
-      </main>
-
-      <aside class="clipboard-panel">
-        <h2>Clinical Clipboard</h2>
-        <div class="clipboard-card">
-          <h3>Current meds</h3>
-          <ul>
-            <li v-for="med in clipboard.meds" :key="med">{{ med }}</li>
-          </ul>
-        </div>
-        <div class="clipboard-card">
-          <h3>Tasks</h3>
-          <ul>
-            <li v-for="task in clipboard.tasks" :key="task">{{ task }}</li>
-          </ul>
-        </div>
-        <div class="clipboard-card">
-          <h3>Blood bank report</h3>
-          <p>{{ clipboard.blood }}</p>
-        </div>
       </aside>
     </div>
   </div>
@@ -577,7 +661,8 @@ const ALL_CLINICAL_TABS = [
   'Care Teams',
   'Handoff',
   'Documents',
-  'Registration'
+  'Registration',
+  'Epidemiological Reports'
 ]
 
 const TAB_ACCESS = {
@@ -866,7 +951,7 @@ export default {
     },
     patientVisits() {
       const all = this.$store.getters['clinical/getVisits'] || []
-      return all.filter(item => item.patientId === this.activePatientId)
+      return all.filter(item => item.patientId === this.activePatientId).slice().reverse()
     },
     latestVisit() {
       return latestByDate(this.patientVisits, 'createdAt')
@@ -1811,160 +1896,5 @@ function latestByDate(items, field) {
   .sdoh-popover:before {
     display: none;
   }
-import clinicalWorkflowEngine from '~/services/clinical/workflowEngine';
-
-export default {
-  name: 'ClinicalWorkspace',
-  data() {
-    return {
-      selectedRole: 'NURSE',
-      selectedTab: 'Summary',
-      tabs: ['Summary', 'Navigator', 'Avatar', 'Flowsheets', 'Orders', 'Wound Management', 'Notes', 'Care Plan', 'Education', 'Worklist', 'Immunizations', 'Documents', 'Discharge', 'Transfer', 'Blood Admin', 'Team Conference'],
-      roles: [
-        { key: 'RECEPTION', label: 'Reception' },
-        { key: 'NURSE', label: 'Nurse' },
-        { key: 'DOCTOR', label: 'Doctor' },
-        { key: 'NP', label: 'NP' },
-        { key: 'ADMIN', label: 'Admin' },
-        { key: 'BILLING', label: 'Billing' },
-        { key: 'CASE_MANAGER', label: 'Case Manager' }
-      ],
-      patient: {
-        name: 'Amina Njie',
-        dob: '1987-04-12',
-        mrn: 'MRN-10482',
-        facility: 'Bamenda General',
-        unit: '3B / Room 12 / Bed 2',
-        codeStatus: 'Full',
-        allergies: 'Penicillin',
-        precautions: 'Falls, isolation',
-        attending: 'Dr. K. Saho',
-        alerts: ['New imaging available', 'Orders to acknowledge', 'Wound dressing due']
-      },
-      navigatorSections: ['Shift', 'Admission', 'Discharge', 'Transfer', 'Medication Review', 'Blood Admin', 'Team Conference'],
-      navigatorDetails: {
-        Shift: 'Round checklist, vitals due, pain reassessment, and handoff review.',
-        Admission: 'Admission orders, allergy review, skin assessment, and initial nursing note.',
-        Discharge: 'Expected discharge date, medication reconciliation, home instructions, and summary review.',
-        Transfer: 'Pre-procedure checklist, transport readiness, and receiving department notification.',
-        'Medication Review': 'Medication reconciliation, PRN review, and outpatient medication instructions.',
-        'Blood Admin': 'Type and screen, dual verification, transfusion monitoring and reaction documentation.',
-        'Team Conference': 'Care plan review, provider communication, and discharge readiness updates.'
-      },
-      flowsheets: ['Vital Signs', 'Intake and Output', 'Pain Assessment', 'Mobility', 'Rounds/Safety', 'Comfort and Hygiene', 'IV Assessment', 'Skin/Wound Assessment', 'Braden Scale', 'Delirium/GCS', 'Sepsis Screen', 'Blood Admin', 'Ostomy', 'Wound Measurements'],
-      orders: [
-        { title: 'Wound care dressing', status: 'active' },
-        { title: 'CBC with differential', status: 'scheduled' },
-        { title: 'Medication review', status: 'acknowledge' }
-      ],
-      clipboard: {
-        meds: ['Metformin 500 mg', 'Lisinopril 10 mg', 'Acetaminophen PRN'],
-        tasks: ['Wound dressing due', 'Dr. note to sign', 'Discharge packet pending'],
-        blood: 'Type and screen completed · crossmatch pending'
-      },
-      woundSummary: 'Admission wound documentation, wound measurements, provider notification, and weekly wound report are available from this workspace.',
-      dischargeSummary: 'Discharge milestones, transportation needs, medication reconciliation, education, and summary sign-off are tracked in the discharge navigator.'
-    };
-  },
-  computed: {
-    selectedRoleLabel() {
-      const role = this.roles.find((item) => item.key === this.selectedRole);
-      return role ? role.label : this.selectedRole;
-    },
-    roleSummary() {
-      if (this.selectedRole === 'RECEPTION') {
-        return 'Reception Desk supports registration, demographics, insurance intake, referrals, scheduling, admission creation, and discharge packet preparation.';
-      }
-      if (this.selectedRole === 'NURSE') {
-        return 'Nurse TaskFlow manages assigned patients, tasks, vitals, wound assessments, I/O, notes, handoff, and discharge readiness.';
-      }
-      if (this.selectedRole === 'DOCTOR' || this.selectedRole === 'NP') {
-        return 'Provider Command Center supports orders, diagnosis management, notes to sign, discharge readiness, and CDS alerts.';
-      }
-      if (this.selectedRole === 'ADMIN') {
-        return 'Admin Control Center manages facilities, units, users, templates, RBAC, policies, reports, and audit review.';
-      }
-      if (this.selectedRole === 'BILLING') {
-        return 'Billing workspace focuses on payer configuration, insurance review, charges, and billing documents.';
-      }
-      return 'Case manager workflow aligns discharge planning, referrals, education, and care coordination.';
-    }
-  },
-  methods: {
-    canAccess(action) {
-      return clinicalWorkflowEngine.canAccessRole(this.selectedRole, action);
-    }
-  }
-};
-</script>
-
-<style scoped>
-.clinical-workspace-shell {
-  background: #f5f8fb;
-  color: #15324a;
-  padding: 24px;
-  border-radius: 18px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-}
-.workspace-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-size: 0.72rem;
-  color: #4e7aa7;
-  margin: 0 0 4px 0;
-}
-.header-actions { display: flex; gap: 8px; }
-.pill {
-  background: #dfeefc;
-  color: #14517f;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-}
-.role-switcher, .workspace-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-.role-btn, .tab-btn {
-  border: 1px solid #cdd9e4;
-  background: white;
-  color: #29485d;
-  border-radius: 999px;
-  padding: 7px 12px;
-  cursor: pointer;
-}
-.role-btn.active, .tab-btn.active {
-  background: #14517f;
-  color: white;
-  border-color: #14517f;
-}
-.patient-360-grid {
-  display: grid;
-  grid-template-columns: 1.05fr 2.1fr 0.95fr;
-  gap: 16px;
-}
-.snapshot-panel, .workspace-panel, .clipboard-panel {
-  background: white;
-  border-radius: 16px;
-  padding: 16px;
-  border: 1px solid #e3ebf3;
-}
-.patient-name { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
-.meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.meta-grid div { display: flex; flex-direction: column; gap: 3px; font-size: 0.92rem; }
-.snapshot-card, .card, .clipboard-card {
-  margin-top: 12px;
-  background: #f8fbfe;
-  border-radius: 12px;
-  padding: 12px;
-  border: 1px solid #e7eef5;
-}
-.content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-ul { margin: 0; padding-left: 18px; }
-@media (max-width: 920px) {
-  .patient-360-grid { grid-template-columns: 1fr; }
 }
 </style>

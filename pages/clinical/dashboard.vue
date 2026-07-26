@@ -80,6 +80,57 @@
           </v-row>
         </v-card>
 
+        <!-- Paid Consultation Queue Card -->
+        <v-card flat tile class="gov-card b-1 shadow-sm mb-6">
+          <div class="pa-4 bg-grey lighten-4 border-bottom d-flex align-center flex-wrap" style="gap:10px">
+            <v-icon color="#00A99D" small>mdi-account-check-outline</v-icon>
+            <span class="text-caption font-weight-black grey--text text-uppercase ls-1">CLEARED CONSULTATION QUEUE (PAID AT CASH OFFICE)</span>
+            <v-spacer />
+            <div class="d-flex align-center flex-wrap" style="gap:8px">
+              <span class="text-caption grey--text font-weight-bold">Department:</span>
+              <v-select
+                v-model="doctorFilterDepartment"
+                :items="['General Medicine', 'Maternity', 'Emergency', 'Specialist clinic']"
+                dense hide-details outlined class="bg-white text-caption font-weight-bold"
+                style="max-width: 170px;"
+              ></v-select>
+              <v-chip x-small label color="#00A99D" dark class="font-weight-black">
+                {{ consultationQueue.length }} WAITING
+              </v-chip>
+            </div>
+          </div>
+
+          <v-list v-if="consultationQueue.length > 0" class="pa-0" style="background: white;">
+            <template v-for="(item, idx) in consultationQueue">
+              <v-list-item :key="item.id" class="px-4 py-2 border-bottom">
+                <v-list-item-avatar tile color="#E6F4F1" size="38" class="mr-3">
+                  <v-icon color="#00A99D">mdi-account</v-icon>
+                </v-list-item-avatar>
+                <v-list-item-content>
+                  <v-list-item-title class="font-weight-bold text-body-2">
+                    <nuxt-link :to="`/clinical/patients/${item.patientId}`" class="patient-link">
+                      {{ item.patientName || item.patientId }}
+                    </nuxt-link>
+                  </v-list-item-title>
+                  <v-list-item-subtitle class="text-caption grey--text">
+                    MRN: {{ item.patient ? item.patient.mrn || item.patientId : item.patientId }} · Code: <strong class="teal--text text--darken-2">{{ item.clearanceCode }}</strong> · Paid: {{ formatDate(item.issuedAt) }}
+                  </v-list-item-subtitle>
+                </v-list-item-content>
+                <v-list-item-action>
+                  <v-btn small tile color="#003366" dark class="font-weight-black text-caption" :to="`/clinical/patients/${item.patientId}/encounter/medical`">
+                    <v-icon left x-small>mdi-stethoscope</v-icon>CONSULT PATIENT
+                  </v-btn>
+                </v-list-item-action>
+              </v-list-item>
+            </template>
+          </v-list>
+          <div v-else class="pa-6 text-center grey--text text-caption">
+            <v-icon size="36" color="#CBD5E1" class="mb-2">mdi-check-decagram-outline</v-icon>
+            <div>No patients currently waiting in consultation queue for <strong>{{ doctorFilterDepartment }}</strong></div>
+            <div class="mt-1 font-italic">Patients appear here as soon as they pay consultation fees at the Cash Office.</div>
+          </div>
+        </v-card>
+
         <v-card flat tile class="gov-card b-1 shadow-sm">
           <div class="pa-4 bg-grey lighten-4 border-bottom d-flex align-center">
             <v-icon color="#C0392B" small class="mr-2">mdi-alert-pulse</v-icon>
@@ -137,7 +188,19 @@
 <script>
 export default {
   head: { title: 'Hospital EMR Command Center' },
+  data() {
+    return {
+      doctorFilterDepartment: 'General Medicine'
+    }
+  },
   computed: {
+    doctorDepartment() {
+      return this.doctorFilterDepartment
+    },
+    consultationQueue() {
+      const fn = this.$store.getters['billing/clearedPatientsForDepartment']
+      return fn ? fn(this.doctorDepartment) : []
+    },
     institution() { return this.$store.state.auth.institution || 'Unknown Facility' },
     userRole() { return this.$store.state.auth.role || 'GUEST' },
     patients() { return this.$store.getters['clinical/patientDirectory'] || [] },

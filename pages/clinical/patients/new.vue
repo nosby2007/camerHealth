@@ -17,51 +17,8 @@
     <v-card flat class="pa-6 elevation-1 white bg-white rounded-sm">
       <v-form ref="form" v-model="valid">
 
-        <div class="section-title mb-4">Workflow and Safety</div>
-
-        <v-row class="mb-2">
-          <v-col cols="12" md="4">
-            <label class="form-label">Acuity Level</label>
-            <v-select v-model="form.acuityLevel" :items="['Routine', 'Urgent', 'Emergency']" flat outlined dense class="bg-white rounded-sm"></v-select>
-          </v-col>
-          <v-col cols="12" md="4">
-            <label class="form-label">Route To Department</label>
-            <v-select v-model="form.departmentRouting" :items="departments" flat outlined dense class="bg-white rounded-sm"></v-select>
-          </v-col>
-          <v-col cols="12" md="4">
-            <label class="form-label">Route To Service</label>
-            <v-select v-model="form.serviceRouting" :items="servicesForDepartment" item-text="name" item-value="name" flat outlined dense class="bg-white rounded-sm"></v-select>
-          </v-col>
-        </v-row>
-
-        <v-row class="mb-2">
-          <v-col cols="12" md="4">
-            <label class="form-label">Specialty</label>
-            <v-select v-model="form.specialtyRouting" :items="specialtiesForDepartment" flat outlined dense class="bg-white rounded-sm"></v-select>
-          </v-col>
-          <v-col cols="12" md="4">
-            <label class="form-label">Visit Reason</label>
-            <v-text-field v-model="form.visitReason" flat outlined dense class="bg-white rounded-sm"></v-text-field>
-          </v-col>
-          <v-col cols="12" md="4">
-            <label class="form-label">PHI Access Basis</label>
-            <v-select v-model="form.phiAccessBasis" :items="['Treatment', 'Payment', 'Operations', 'Emergency Override', 'Patient Request']" flat outlined dense class="bg-white rounded-sm"></v-select>
-          </v-col>
-        </v-row>
-
-        <v-row class="mb-2">
-          <v-col cols="12" md="6">
-            <label class="form-label">Known Allergies</label>
-            <v-textarea v-model="form.allergies" rows="2" flat outlined dense class="bg-white rounded-sm" placeholder="Medication, food, latex, other"></v-textarea>
-          </v-col>
-          <v-col cols="12" md="6">
-            <label class="form-label">Current Medications</label>
-            <v-textarea v-model="form.currentMeds" rows="2" flat outlined dense class="bg-white rounded-sm"></v-textarea>
-          </v-col>
-        </v-row>
-
         <div class="section-title mb-4">Patient Identity</div>
-        
+
         <!-- Row 1 -->
         <v-row class="mb-2">
           <v-col cols="12" md="6">
@@ -69,16 +26,16 @@
             <v-text-field v-model="form.firstName" flat outlined dense required :rules="[v => !!v || 'Required']" class="bg-white rounded-sm"></v-text-field>
           </v-col>
           <v-col cols="12" md="6">
-            <label class="form-label">Patient Status</label>
-            <v-combobox v-model="form.patientStatus" :items="['New', 'Returning', 'Continuing', 'Transferred', 'Emergency']" flat outlined dense class="bg-white rounded-sm"></v-combobox>
+            <label class="form-label">Last Name <span class="error--text">*</span></label>
+            <v-text-field v-model="form.lastName" flat outlined dense required :rules="[v => !!v || 'Required']" class="bg-white rounded-sm"></v-text-field>
           </v-col>
         </v-row>
 
         <!-- Row 2 -->
         <v-row class="mb-2">
           <v-col cols="12" md="6">
-            <label class="form-label">Middle Name</label>
-            <v-text-field v-model="form.middleName" flat outlined dense class="bg-white rounded-sm"></v-text-field>
+            <label class="form-label">Patient Status</label>
+            <v-combobox v-model="form.patientStatus" :items="['New', 'Returning', 'Continuing', 'Transferred', 'Emergency']" flat outlined dense class="bg-white rounded-sm"></v-combobox>
           </v-col>
           <v-col cols="12" md="6">
             <label class="form-label">External Patient Id</label>
@@ -89,48 +46,20 @@
         <!-- Row 3 -->
         <v-row class="mb-2">
           <v-col cols="12" md="6">
-            <label class="form-label">Last Name <span class="error--text">*</span></label>
-            <v-text-field v-model="form.lastName" flat outlined dense required :rules="[v => !!v || 'Required']" class="bg-white rounded-sm"></v-text-field>
+            <label class="form-label">Sex</label>
+            <v-select v-model="form.gender" :items="['Male', 'Female', 'Other']" flat outlined dense class="bg-white rounded-sm"></v-select>
           </v-col>
           <v-col cols="12" md="6">
-            <label class="form-label">Blood Type</label>
-            <v-select v-model="form.bloodType" :items="['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']" flat outlined dense class="bg-white rounded-sm"></v-select>
+            <label class="form-label">Age (Years) <span class="error--text">*</span></label>
+            <v-text-field v-model.number="form.age" type="number" flat outlined dense required :rules="[v => !!v && v >= 0 || 'Required and must be >= 0']" class="bg-white rounded-sm"></v-text-field>
           </v-col>
         </v-row>
 
         <!-- Row 4 -->
         <v-row class="mb-2">
           <v-col cols="12" md="6">
-            <label class="form-label">Sex</label>
-            <v-select v-model="form.gender" :items="['Male', 'Female', 'Other']" flat outlined dense class="bg-white rounded-sm"></v-select>
-          </v-col>
-          <v-col cols="12" md="6">
-            <label class="form-label">Clinic Site</label>
-            <v-text-field v-model="form.clinicSite" flat outlined dense class="bg-white rounded-sm"></v-text-field>
-          </v-col>
-        </v-row>
-
-        <!-- Row 5 -->
-        <v-row class="mb-2">
-          <v-col cols="12" md="6">
-            <label class="form-label">Date Of Birth</label>
-            <v-text-field v-model="form.dob" type="date" flat outlined dense class="bg-white rounded-sm"></v-text-field>
-            <div class="text-caption grey--text mt-n4 mb-2">Age: {{ calculatedAge }}</div>
-          </v-col>
-          <v-col cols="12" md="6">
-            <label class="form-label">Referred By</label>
-            <v-text-field v-model="form.referredBy" flat outlined dense class="bg-white rounded-sm"></v-text-field>
-            
-            <label class="form-label mt-2 d-block">Referred Date</label>
-            <v-text-field v-model="form.referredDate" type="date" flat outlined dense class="bg-white rounded-sm"></v-text-field>
-          </v-col>
-        </v-row>
-
-        <!-- Row 6 -->
-        <v-row class="mb-2">
-          <v-col cols="12" md="6">
-            <label class="form-label">Place Of Birth</label>
-            <v-text-field v-model="form.placeOfBirth" flat outlined dense class="bg-white rounded-sm"></v-text-field>
+            <label class="form-label">Blood Type</label>
+            <v-select v-model="form.bloodType" :items="['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']" flat outlined dense class="bg-white rounded-sm"></v-select>
           </v-col>
           <v-col cols="12" md="6">
             <label class="form-label">Religion</label>
@@ -138,7 +67,19 @@
           </v-col>
         </v-row>
 
-        <!-- Row 7 -->
+        <!-- Row 5 -->
+        <v-row class="mb-2">
+          <v-col cols="12" md="6">
+            <label class="form-label">Referred By</label>
+            <v-text-field v-model="form.referredBy" flat outlined dense class="bg-white rounded-sm"></v-text-field>
+          </v-col>
+          <v-col cols="12" md="6">
+            <label class="form-label">Referred Date</label>
+            <v-text-field v-model="form.referredDate" type="date" flat outlined dense class="bg-white rounded-sm"></v-text-field>
+          </v-col>
+        </v-row>
+
+        <!-- Row 6 -->
         <v-row class="mb-2">
           <v-col cols="12" md="6">
             <label class="form-label">Occupation</label>
@@ -150,7 +91,7 @@
           </v-col>
         </v-row>
 
-        <!-- Row 8 -->
+        <!-- Row 7 -->
         <v-row class="mb-2 d-flex align-end">
           <v-col cols="12" md="6">
             <label class="form-label">Patient Type</label>
@@ -187,14 +128,14 @@
         <v-row class="mb-2">
           <v-col cols="12" md="6">
             <label class="form-label">Address</label>
-            <v-textarea v-model="form.address" rows="3" flat outlined dense class="bg-white rounded-sm"></v-textarea>
+            <v-text-field v-model="form.address" flat outlined dense class="bg-white rounded-sm"></v-text-field>
           </v-col>
           <v-col cols="12" md="6">
             <label class="form-label">Country</label>
             <v-combobox v-model="form.country" :items="['Cameroon', 'Nigeria', 'Chad', 'Central African Republic', 'Equatorial Guinea', 'Gabon', 'Congo']" flat outlined dense class="bg-white rounded-sm"></v-combobox>
           </v-col>
         </v-row>
-        
+
         <v-divider class="my-6"></v-divider>
 
         <div class="section-title mb-4">Emergency Contact and Payer</div>
@@ -229,23 +170,78 @@
           </v-col>
         </v-row>
 
-        <div class="section-title mb-4">Clinical Background</div>
+        <v-divider class="my-6"></v-divider>
+
+        <div class="section-title mb-4">Workflow and Safety</div>
 
         <v-row class="mb-2">
           <v-col cols="12" md="4">
-            <label class="form-label">Medical History</label>
-            <v-textarea v-model="form.medicalHistory" rows="3" flat outlined dense class="bg-white rounded-sm"></v-textarea>
+            <label class="form-label">Acuity Level</label>
+            <v-select v-model="form.acuityLevel" :items="['Routine', 'Urgent', 'Emergency']" flat outlined dense class="bg-white rounded-sm"></v-select>
           </v-col>
           <v-col cols="12" md="4">
-            <label class="form-label">Surgical History</label>
-            <v-textarea v-model="form.surgicalHistory" rows="3" flat outlined dense class="bg-white rounded-sm"></v-textarea>
+            <label class="form-label">Route To Department</label>
+            <v-select v-model="form.departmentRouting" :items="departments" flat outlined dense class="bg-white rounded-sm"></v-select>
           </v-col>
           <v-col cols="12" md="4">
-            <label class="form-label">Family History</label>
-            <v-textarea v-model="form.familyHistory" rows="3" flat outlined dense class="bg-white rounded-sm"></v-textarea>
+            <label class="form-label">Route To Service</label>
+            <v-select v-model="form.serviceRouting" :items="servicesForDepartment" item-text="name" item-value="name" flat outlined dense class="bg-white rounded-sm"></v-select>
           </v-col>
         </v-row>
-        
+
+        <v-row class="mb-2">
+          <v-col cols="12" md="4">
+            <label class="form-label">Specialty</label>
+            <v-select v-model="form.specialtyRouting" :items="specialtiesForDepartment" flat outlined dense class="bg-white rounded-sm"></v-select>
+          </v-col>
+          <v-col cols="12" md="4">
+            <label class="form-label">Visit Reason</label>
+            <v-text-field v-model="form.visitReason" flat outlined dense class="bg-white rounded-sm"></v-text-field>
+          </v-col>
+          <v-col cols="12" md="4">
+            <label class="form-label">PHI Access Basis</label>
+            <v-select v-model="form.phiAccessBasis" :items="['Treatment', 'Payment', 'Operations', 'Emergency Override', 'Patient Request']" flat outlined dense class="bg-white rounded-sm"></v-select>
+          </v-col>
+        </v-row>
+
+        <v-divider class="my-6"></v-divider>
+
+        <div class="section-title mb-4">Vital Signs <span class="text-caption font-weight-regular grey--text">(optional — record at intake if available)</span></div>
+
+        <v-row class="mb-2">
+          <v-col cols="12" md="3">
+            <label class="form-label">Temperature (°C)</label>
+            <v-text-field v-model.number="form.vitals.temperature" type="number" step="0.1" flat outlined dense class="bg-white rounded-sm" placeholder="e.g. 37.0"></v-text-field>
+          </v-col>
+          <v-col cols="12" md="3">
+            <label class="form-label">Blood Pressure (mmHg)</label>
+            <v-text-field v-model="form.vitals.bloodPressure" flat outlined dense class="bg-white rounded-sm" placeholder="e.g. 120/80"></v-text-field>
+          </v-col>
+          <v-col cols="12" md="3">
+            <label class="form-label">Pulse Rate (bpm)</label>
+            <v-text-field v-model.number="form.vitals.pulseRate" type="number" flat outlined dense class="bg-white rounded-sm" placeholder="e.g. 72"></v-text-field>
+          </v-col>
+          <v-col cols="12" md="3">
+            <label class="form-label">Oxygen Saturation (%)</label>
+            <v-text-field v-model.number="form.vitals.oxygenSaturation" type="number" flat outlined dense class="bg-white rounded-sm" placeholder="e.g. 98"></v-text-field>
+          </v-col>
+        </v-row>
+
+        <v-row class="mb-2">
+          <v-col cols="12" md="4">
+            <label class="form-label">Respiratory Rate (/min)</label>
+            <v-text-field v-model.number="form.vitals.respiratoryRate" type="number" flat outlined dense class="bg-white rounded-sm" placeholder="e.g. 16"></v-text-field>
+          </v-col>
+          <v-col cols="12" md="4">
+            <label class="form-label">Weight (kg)</label>
+            <v-text-field v-model.number="form.vitals.weight" type="number" step="0.1" flat outlined dense class="bg-white rounded-sm" placeholder="e.g. 70"></v-text-field>
+          </v-col>
+          <v-col cols="12" md="4">
+            <label class="form-label">Height (cm)</label>
+            <v-text-field v-model.number="form.vitals.height" type="number" flat outlined dense class="bg-white rounded-sm" placeholder="e.g. 170"></v-text-field>
+          </v-col>
+        </v-row>
+
         <!-- Actions -->
         <div class="d-flex justify-end pt-2 pb-6">
           <v-btn color="#f86c6b" dark depressed class="text-none px-6 mr-3" style="border-radius: 4px;" @click="$router.push('/clinical/patients')">
@@ -267,17 +263,14 @@ export default {
       valid: false,
       form: { 
           firstName: '', 
-          middleName: '', 
           lastName: '', 
-          dob: '', 
+          age: null, 
           gender: 'Male', 
           bloodType: '', 
           patientStatus: 'New',
           externalId: '',
-          clinicSite: '',
           referredBy: '',
           referredDate: '',
-          placeOfBirth: '',
           religion: '',
           occupation: '',
           parentGuardian: '',
@@ -289,17 +282,21 @@ export default {
           specialtyRouting: '',
           phiAccessBasis: 'Treatment',
           visitReason: '',
-          allergies: '',
-          currentMeds: '',
+          vitals: {
+            temperature: null,
+            bloodPressure: '',
+            pulseRate: null,
+            oxygenSaturation: null,
+            respiratoryRate: null,
+            weight: null,
+            height: null
+          },
           emergencyContactName: '',
           emergencyContactRelationship: '',
           emergencyContactPhone: '',
           insuranceProvider: '',
           policyNumber: '',
           consentStatus: 'Pending',
-          medicalHistory: '',
-          surgicalHistory: '',
-          familyHistory: '',
           phone: '', 
           email: '', 
           address: '',
@@ -323,22 +320,18 @@ export default {
     },
     specialtiesForDepartment() {
       return this.selectedDepartment ? (this.selectedDepartment.specialties || []) : this.$store.getters['facility/getSpecialties'] || []
-    },
-    calculatedAge() {
-      if (!this.form.dob) return "0 months 0 days";
-      const diff = new Date().getTime() - new Date(this.form.dob).getTime();
-      const ageDate = new Date(diff); 
-      return Math.abs(ageDate.getUTCFullYear() - 1970) + " years";
     }
   },
   methods: {
     savePatient() {
       if (this.$refs.form.validate()) {
+        const approxDob = this.form.age ? `${new Date().getFullYear() - Number(this.form.age)}-01-01` : ''
         const fullRecord = { 
             ...this.form, 
+            dob: approxDob,
             name: `${this.form.firstName} ${this.form.lastName}`,
-          age: this.calculatedAge,
-          patientStatus: this.form.acuityLevel === 'Emergency' ? 'Emergency' : this.form.patientStatus
+            age: this.form.age ? `${this.form.age} years` : 'Unknown',
+            patientStatus: this.form.acuityLevel === 'Emergency' ? 'Emergency' : this.form.patientStatus
         }
         this.$store.dispatch('clinical/registerPatient', fullRecord)
         this.$refs.form.reset(); 

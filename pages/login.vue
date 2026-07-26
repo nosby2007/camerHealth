@@ -114,7 +114,8 @@ export default {
         { value: 'LAB',     label: 'Lab',     icon: 'mdi-flask'           },
         { value: 'PHARMACY', label: 'Pharmacy', icon: 'mdi-pill'          },
         { value: 'FRONT_DESK', label: 'Reception', icon: 'mdi-desk'       },
-        { value: 'IMAGING', label: 'Imaging', icon: 'mdi-radiology-box'   }
+        { value: 'IMAGING', label: 'Imaging', icon: 'mdi-radiology-box'   },
+        { value: 'BILLING', label: 'Cash Office', icon: 'mdi-cash-register' }
       ]
     }
   },
@@ -152,7 +153,7 @@ export default {
         NURSING_SUPERVISOR: '/clinical/patients',
         LAB: '/clinical/lab',
         IMAGING: '/clinical/imaging',
-        PHARMACY: '/clinical/medications',
+        PHARMACY: '/clinical/pharmacy',
         FRONT_DESK: '/clinical/patients',
         RECORDS: '/clinical/patients',
         SOCIAL_WORKER: '/clinical/patients',

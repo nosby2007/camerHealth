@@ -29,6 +29,14 @@ export const mutations = {
     state.patients.push(patient)
     saveToLocalStorage('patients', state.patients)
   },
+  UPDATE_PATIENT_ADMISSION_FLAG(state, payload) {
+    const p = state.patients.find(pt => pt.id === payload.patientId)
+    if (p) {
+        p.pendingAdmission = payload.ward
+        p.admissionStatus = payload.status
+        saveToLocalStorage('patients', state.patients)
+    }
+  },
   ADD_VISIT(state, visit) {
     state.visits.push(visit)
     saveToLocalStorage('visits', state.visits)

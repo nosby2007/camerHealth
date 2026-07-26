@@ -143,7 +143,10 @@ export default {
         { icon: 'mdi-file-export',      titleKey: 'menu.field_input',  to: '/clinical/reports',      roles: ['ADMIN'] },
         // ── Lab & Imaging ──
         { icon: 'mdi-flask',            titleKey: 'Laboratory',        to: '/clinical/lab',          roles: ['LAB', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] },
-        { icon: 'mdi-radiology-box',    titleKey: 'Imaging',           to: '/clinical/imaging',      roles: ['IMAGING', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] }
+        { icon: 'mdi-radiology-box',    titleKey: 'Imaging',           to: '/clinical/imaging',      roles: ['IMAGING', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] },
+        { icon: 'mdi-cash-register',    titleKey: 'Cash Office',       to: '/clinical/billing',      roles: ['BILLING', 'ADMIN'] },
+        { icon: 'mdi-format-list-bulleted', titleKey: 'Price List',      to: '/clinical/catalog',      roles: ['BILLING', 'ADMIN'] },
+        { icon: 'mdi-tag-multiple',      titleKey: 'Price Catalog',     to: '/admin/tarification',    roles: ['ADMIN'] }
       ]
     };
   },
