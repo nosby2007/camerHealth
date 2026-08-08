@@ -39,9 +39,26 @@ function taskFromProviderOrder(order, assignedNurse) {
   }
 }
 
+function makeId(prefix = 'ID') {
+  const timestamp = Date.now().toString(36)
+  const random = Math.random().toString(36).substring(2, 9)
+  return `${prefix}-${timestamp}-${random}`
+}
+
+function withBase(rootState, data, prefix) {
+  return {
+    id: data.id || makeId(prefix),
+    facilityId: rootState.auth?.facilityId || '',
+    institution: rootState.auth?.institution || '',
+    ...data
+  }
+}
+
 module.exports = {
   calculateWoundSurfaceArea,
   calculateWoundVolume,
   hasWoundAreaIncreased,
-  taskFromProviderOrder
+  taskFromProviderOrder,
+  makeId,
+  withBase
 }

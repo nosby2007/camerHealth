@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "camero-health-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "cross-env",
+        "API_URL=http://localhost:8000/api",
+        "VUE_APP_GOOGLE_MAPS_API_KEY=local-preview-placeholder",
+        "SUPABASE_URL=http://localhost:54321",
+        "SUPABASE_KEY=local-preview-placeholder",
+        "CLIENT_ID=local-preview-placeholder",
+        "nuxt",
+        "--port",
+        "8000"
+      ],
+      "port": 8000
+    }
+  ]
+}

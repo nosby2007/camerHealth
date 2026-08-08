@@ -56,6 +56,9 @@ export default {
     ENABLE_SUPABASE_AUTH: parseBooleanFlag(process.env.ENABLE_SUPABASE_AUTH, false),
     STAFF_INVITE_ENDPOINT: process.env.STAFF_INVITE_ENDPOINT || ''
   },
+  serverMiddleware: [
+    { path: '/api/clinical/ai-care-plan', handler: '~/api/clinical/ai-care-plan.js' }
+  ],
   mode: "spa",
   /*
    ** Headers of the page

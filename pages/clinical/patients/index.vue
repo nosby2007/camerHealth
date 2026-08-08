@@ -21,7 +21,7 @@
       <div class="d-flex flex-wrap align-center justify-space-between" style="gap:12px">
         <span>No patients found. <nuxt-link to="/clinical/patients/new" class="empty-link">Create a new patient record?</nuxt-link></span>
         <v-btn small depressed color="#003366" dark class="font-weight-black text-caption" @click="provisionWorkflowDemo">
-          <v-icon left small>mdi-database-plus</v-icon>Provision demo workflow
+          <v-icon left small>mdi-database-plus</v-icon>Provision demo chart
         </v-btn>
       </div>
     </v-card>
@@ -173,7 +173,7 @@ export default {
     },
     async provisionWorkflowDemo() {
       const patientId = await this.$store.dispatch('clinical/provisionPatientWorkflowDemo')
-      this.$toast.success('Demo patient workflow provisioned.')
+      this.$toast.success('Demo patient chart provisioned.')
       this.$router.push('/clinical/patients/' + patientId)
     },
     openPatient(patient) {
