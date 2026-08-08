@@ -75,7 +75,7 @@ const CLINICAL_PERMITTED = {
   PHARMACY: ['/clinical', '/clinical/medications', '/clinical/dashboard'],
   MAJOR_SERVICE: ['/clinical'],
   NURSING_SUPERVISOR: ['/clinical'],
-  BILLING: ['/clinical/billing', '/clinical/dashboard', '/clinical/insurance'],
+  BILLING: ['/clinical/billing', '/clinical/catalog', '/clinical/dashboard', '/clinical/insurance'],
   RECORDS: ['/clinical', '/clinical/patients', '/clinical/dashboard'],
   FRONT_DESK: ['/clinical', '/clinical/patients', '/clinical/appointments', '/clinical/dashboard'],
   SOCIAL_WORKER: ['/clinical'],
@@ -98,10 +98,12 @@ export default function ({ store, redirect, route }) {
 
   // ── 1. Layer selector & open routes — always allow ──────────────────────────
   if (OPEN_ROUTES.includes(path)) {
-    // If already authenticated, skip straight to home
-    if (isAuthenticated && role) {
-      const home = CLINICAL_HOME[role] || MINISTRY_HOME[role]
-      if (home) return redirect(home)
+    // / is always the entry point — never auto-redirect away from it
+    if (path !== '/') {
+      if (isAuthenticated && role) {
+        const home = CLINICAL_HOME[role] || MINISTRY_HOME[role]
+        if (home) return redirect(home)
+      }
     }
     // /register only valid when facility not yet set up
     if (path === '/register' && setupComplete) return redirect('/login')

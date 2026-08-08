@@ -191,7 +191,7 @@
               <v-tooltip bottom>
                 <template v-slot:activator="{ on }">
                   <v-btn icon x-small v-on="on" :to="patientDetailsRoute(item.patientId)" class="mr-1">
-                    <v-icon small color="#003366">mdi-account-card-details-outline</v-icon>
+                    <v-icon small color="#003366">mdi-eye</v-icon>
                   </v-btn>
                 </template>
                 <span>Patient details</span>
@@ -263,6 +263,11 @@
 <script>
 export default {
   head: { title: 'Inpatient' },
+  mounted() {
+    this.$store.commit('clinical/LOAD_FROM_STORAGE')
+    this.$store.commit('facility/RELOAD_FROM_STORAGE')
+    this.$store.dispatch('billing/loadFromStorage')
+  },
   data() {
     return {
       valid: false,
@@ -332,7 +337,14 @@ export default {
     },
     cancelEdit() { this.editingId = null; this.$refs.form.reset(); this.form.admissionType = 'Medical' },
     setStatus(item, status) { this.$store.dispatch('clinical/updateInpatient', { ...item, status }) },
-    confirmDischarge(item) { this.dischargeTarget = item; this.dischargeNote = ''; this.dischargeDialog = true },
+    confirmDischarge(item) {
+      const balance = this.$store.getters['billing/getPatientBalance'](item.patientId)
+      if (balance > 0) {
+        this.$toast.error(`Cannot discharge: outstanding balance of XAF ${balance.toLocaleString()}. Patient must settle billing first.`)
+        return
+      }
+      this.dischargeTarget = item; this.dischargeNote = ''; this.dischargeDialog = true
+    },
     doDischarge() {
       this.loading = true
       this.$store.dispatch('clinical/updateInpatient', { ...this.dischargeTarget, status: 'Discharged', dischargeNote: this.dischargeNote, dischargeDate: new Date().toISOString().slice(0, 10) })

@@ -1,155 +1,606 @@
-
 <template>
-  <v-container fluid class="gov-content pa-10">
-    <v-row class="mb-10 no-gutters align-center">
-      <v-col>
-        <div class="d-flex align-center">
-          <v-avatar tile color="#00A99D" size="48" class="mr-4 shadow-sm">
-            <v-icon dark>mdi-radiology-box</v-icon>
-          </v-avatar>
+  <v-container fluid class="pa-0 fill-height imaging-bg">
+    <v-row no-gutters class="fill-height">
+
+      <!-- ── LEFT: Worklist ─────────────────────────────── -->
+      <v-col cols="12" md="4" lg="3" class="worklist-panel b-right d-flex flex-column">
+        <div class="pa-4 bg-purple white--text d-flex align-center justify-space-between">
           <div>
-            <span class="text-caption font-weight-black grey--text text-uppercase ls-1">DIAGNOSTIC IMAGING UNIT</span>
-            <h1 class="text-h4 font-weight-black gov-text-primary ls-tight uppercase">IMAGING ORDERS</h1>
+            <div class="text-caption font-weight-black ls-1 opacity-75">
+              {{ isDoctorOrAdmin ? 'PHYSICIAN IMAGING MANAGEMENT' : 'DIAGNOSTIC IMAGING' }}
+            </div>
+            <div class="text-subtitle-2 font-weight-black">RADIOLOGY ORDERS & REPORTS</div>
+          </div>
+          <v-avatar tile color="rgba(255,255,255,0.15)" size="36">
+            <v-icon dark small>mdi-radiology-box</v-icon>
+          </v-avatar>
+        </div>
+
+        <!-- Doctor Action: Create New Imaging Request -->
+        <div class="pa-3 bg-grey lighten-4 b-bottom">
+          <v-btn
+            color="#7C3AED" dark block tile height="38" depressed
+            class="font-weight-black text-caption"
+            @click="openNewOrderDialog()"
+          >
+            <v-icon left small>mdi-plus-circle</v-icon> CREATE NEW IMAGING REQUEST
+          </v-btn>
+        </div>
+
+        <!-- Filters -->
+        <div class="pa-3 b-bottom bg-white">
+          <v-text-field
+            v-model="search"
+            prepend-inner-icon="mdi-magnify"
+            placeholder="Search patient or exam..."
+            outlined tile dense hide-details
+            class="rounded-0 mb-2"
+          ></v-text-field>
+          <div class="d-flex" style="gap:6px">
+            <v-btn
+              v-for="f in statusFilters" :key="f.value"
+              x-small tile depressed
+              :color="statusFilter === f.value ? '#7C3AED' : '#F1F5F9'"
+              :dark="statusFilter === f.value"
+              class="font-weight-black text-caption flex-grow-1"
+              @click="statusFilter = f.value"
+            >{{ f.label }}</v-btn>
+          </div>
+        </div>
+
+        <!-- Order list -->
+        <div class="flex-grow-1 overflow-y-auto">
+          <div
+            v-for="order in filteredOrders" :key="order.id"
+            :class="['worklist-item pa-4 b-bottom', selectedOrder && selectedOrder.id === order.id ? 'worklist-item--active' : '']"
+            @click="selectOrder(order)"
+          >
+            <div class="d-flex align-center justify-space-between mb-1">
+              <span class="text-caption font-weight-black gov-text-primary uppercase">{{ order.patientName }}</span>
+              <v-chip x-small dark label :color="priorityColor(order.priority)" class="font-weight-black">{{ order.priority }}</v-chip>
+            </div>
+            <div class="text-caption grey--text mb-1">{{ order.modality }}<span v-if="order.bodyPart"> — {{ order.bodyPart }}</span></div>
+            <div class="d-flex align-center justify-space-between">
+              <v-chip x-small outlined :color="statusColor(order.status)" class="font-weight-black">{{ order.status }}</v-chip>
+              <div class="d-flex align-center" style="gap:4px">
+                <v-icon x-small :color="order.paymentStatus === 'Paid' ? '#00A99D' : 'orange'">
+                  {{ order.paymentStatus === 'Paid' ? 'mdi-cash-check' : 'mdi-cash-clock' }}
+                </v-icon>
+                <span class="text-caption" :class="order.paymentStatus === 'Paid' ? 'success--text' : 'orange--text'" style="font-size:9px;font-weight:800">
+                  {{ order.paymentStatus === 'Paid' ? 'PAID' : 'UNPAID' }}
+                </span>
+              </div>
+            </div>
+            <div class="text-caption grey--text mt-1" style="font-size:10px">{{ order.requestedAt }} · {{ order.orderedBy }}</div>
+          </div>
+          <div v-if="filteredOrders.length === 0" class="pa-8 text-center grey--text text-caption">
+            <v-icon size="40" color="#E2E8F0" class="mb-2 d-block">mdi-radiology-box-outline</v-icon>
+            No imaging orders found
           </div>
         </div>
       </v-col>
+
+      <!-- ── RIGHT: Order Detail / Report View & Entry ──────────── -->
+      <v-col cols="12" md="8" lg="9" class="d-flex flex-column">
+        <!-- Empty state -->
+        <div v-if="!selectedOrder" class="fill-height d-flex align-center justify-center">
+          <div class="text-center grey--text">
+            <v-icon size="72" color="#E2E8F0">mdi-radiology-box-outline</v-icon>
+            <div class="text-caption font-weight-black mt-4 uppercase ls-1">Select an imaging order to view details</div>
+            <v-btn color="#7C3AED" dark tile depressed class="mt-4 font-weight-black text-caption" @click="openNewOrderDialog()">
+              <v-icon left small>mdi-plus</v-icon>CREATE IMAGING REQUEST
+            </v-btn>
+          </div>
+        </div>
+
+        <template v-else>
+          <!-- Header -->
+          <div class="pa-6 bg-white b-bottom">
+            <div class="d-flex align-center justify-space-between">
+              <div>
+                <div class="section-label mb-1">IMAGING ORDER — {{ selectedOrder.id }}</div>
+                <div class="text-h6 font-weight-black gov-text-primary uppercase">
+                  {{ selectedOrder.modality }}<span v-if="selectedOrder.bodyPart"> — {{ selectedOrder.bodyPart }}</span>
+                </div>
+                <div class="text-caption grey--text mt-1">
+                  Patient: <strong>{{ selectedOrder.patientName }}</strong> ({{ selectedOrder.patientId }})
+                  · Requested by: <strong>{{ selectedOrder.orderedBy }}</strong>
+                  · Date: {{ selectedOrder.requestedAt }}
+                </div>
+              </div>
+              <div class="d-flex align-center" style="gap:8px">
+                <v-btn
+                  x-small outlined tile color="#7C3AED"
+                  class="font-weight-black text-caption"
+                  :to="`/clinical/patients/${selectedOrder.patientId}`"
+                >
+                  <v-icon left x-small>mdi-account</v-icon>VIEW PATIENT 360
+                </v-btn>
+                <v-chip label dark :color="priorityColor(selectedOrder.priority)" class="font-weight-black">
+                  {{ selectedOrder.priority }}
+                </v-chip>
+                <v-chip label :color="statusColor(selectedOrder.status)" dark class="font-weight-black">
+                  {{ selectedOrder.status }}
+                </v-chip>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Gate Banner -->
+          <v-alert
+            v-if="selectedOrder.paymentStatus !== 'Paid'"
+            dense text type="warning"
+            class="mx-6 mt-4 mb-0 rounded-0 font-weight-bold text-caption"
+            color="orange"
+            border="left"
+          >
+            <div class="d-flex align-center justify-space-between">
+              <div>
+                <v-icon left small color="orange">mdi-cash-lock</v-icon>
+                <strong>PAYMENT PENDING AT CASH OFFICE</strong> —
+                Patient must clear imaging fees at the Cash Office before the imaging scan can be performed.
+              </div>
+              <v-btn v-if="!isDoctorOrAdmin" x-small tile outlined color="orange" class="font-weight-black text-caption" @click="markAsPaid">
+                MARK AS PAID (OVERRIDE)
+              </v-btn>
+            </div>
+          </v-alert>
+
+          <v-alert
+            v-else
+            dense text type="success"
+            class="mx-6 mt-4 mb-0 rounded-0 font-weight-bold text-caption"
+            color="#7C3AED" border="left"
+          >
+            <v-icon left small color="#7C3AED">mdi-cash-check</v-icon>
+            <strong>PAYMENT CONFIRMED AT CASH OFFICE</strong> — Cleared for imaging acquisition & radiologist report.
+          </v-alert>
+
+          <!-- Body: Order Info + Radiology Report -->
+          <div class="flex-grow-1 overflow-y-auto pa-6">
+            <v-row>
+              <!-- Left: Order Info -->
+              <v-col cols="12" lg="5">
+                <v-card flat tile class="b-1 mb-4 overflow-hidden">
+                  <div class="pa-3 bg-grey lighten-4 border-bottom font-weight-black text-caption uppercase ls-1">
+                    <v-icon left x-small>mdi-clipboard-text</v-icon> EXAM INFORMATION
+                  </div>
+                  <div class="pa-4">
+                    <div class="detail-row">
+                      <span class="detail-label">Modality</span>
+                      <span class="detail-value font-weight-black">{{ selectedOrder.modality }}</span>
+                    </div>
+                    <div class="detail-row" v-if="selectedOrder.bodyPart">
+                      <span class="detail-label">Anatomical Region</span>
+                      <span class="detail-value">{{ selectedOrder.bodyPart }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Patient Name</span>
+                      <span class="detail-value font-weight-black">{{ selectedOrder.patientName }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Patient ID</span>
+                      <span class="detail-value">{{ selectedOrder.patientId }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Priority</span>
+                      <v-chip x-small dark label :color="priorityColor(selectedOrder.priority)" class="font-weight-black">
+                        {{ selectedOrder.priority }}
+                      </v-chip>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Requested by</span>
+                      <span class="detail-value">{{ selectedOrder.orderedBy || '—' }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Request Date</span>
+                      <span class="detail-value">{{ selectedOrder.requestedAt }}</span>
+                    </div>
+                    <div class="detail-row" v-if="selectedOrder.clinicalNotes">
+                      <span class="detail-label">Clinical Indication</span>
+                      <span class="detail-value font-italic" style="max-width:55%">{{ selectedOrder.clinicalNotes }}</span>
+                    </div>
+                  </div>
+                </v-card>
+
+                <!-- Workflow Status & Actions -->
+                <v-card flat tile class="b-1 overflow-hidden">
+                  <div class="pa-3 bg-grey lighten-4 border-bottom font-weight-black text-caption uppercase ls-1">
+                    <v-icon left x-small>mdi-timeline-check</v-icon> WORKFLOW STATUS
+                  </div>
+                  <div class="pa-4">
+                    <template v-if="!isDoctorOrAdmin">
+                      <v-btn
+                        v-if="selectedOrder.status === 'Requested'"
+                        :disabled="selectedOrder.paymentStatus !== 'Paid'"
+                        color="#7C3AED" dark block height="40" tile depressed
+                        class="font-weight-black text-caption mb-3"
+                        @click="setStatus('In Progress')"
+                      >
+                        <v-icon left small>mdi-play-circle</v-icon> START SCAN / ACQUISITION
+                      </v-btn>
+                      <v-btn
+                        v-if="selectedOrder.status === 'In Progress'"
+                        color="#003366" dark block height="40" tile depressed
+                        class="font-weight-black text-caption mb-3"
+                        @click="reportDialog = true"
+                      >
+                        <v-icon left small>mdi-draw</v-icon> ENTER RADIOLOGY REPORT
+                      </v-btn>
+                    </template>
+
+                    <div v-if="selectedOrder.status === 'Completed'" class="text-center pa-4">
+                      <v-icon size="36" color="#7C3AED">mdi-check-decagram</v-icon>
+                      <div class="text-caption font-weight-black purple--text text--darken-2 mt-2">RADIOLOGY REPORT FILED</div>
+                      <div class="text-caption grey--text">{{ selectedOrder.reportFiledAt }}</div>
+                      <v-btn
+                        v-if="!isDoctorOrAdmin"
+                        x-small tile outlined color="#7C3AED" class="mt-3 font-weight-black text-caption"
+                        @click="reportDialog = true"
+                      >
+                        <v-icon left x-small>mdi-pencil</v-icon> AMEND REPORT
+                      </v-btn>
+                    </div>
+
+                    <div v-if="selectedOrder.status === 'Requested' && selectedOrder.paymentStatus !== 'Paid'" class="text-caption orange--text font-weight-black text-center mt-2">
+                      ⚠ Waiting for patient to clear imaging fees at Cash Office
+                    </div>
+                    <div v-if="selectedOrder.status === 'Requested' && selectedOrder.paymentStatus === 'Paid'" class="text-caption purple--text font-weight-black text-center mt-2">
+                      ✔ Paid at Cash Office — Imaging technician is performing scan
+                    </div>
+                  </div>
+                </v-card>
+              </v-col>
+
+              <!-- Right: Radiology Report Display -->
+              <v-col cols="12" lg="7">
+                <v-card flat tile class="b-1 overflow-hidden">
+                  <div class="pa-3 d-flex align-center justify-space-between border-bottom"
+                    :style="selectedOrder.status === 'Completed' ? 'background:#7C3AED' : 'background:#F8FAFC'">
+                    <div class="font-weight-black text-caption uppercase ls-1"
+                      :class="selectedOrder.status === 'Completed' ? 'white--text' : 'grey--text'">
+                      <v-icon left x-small :color="selectedOrder.status === 'Completed' ? 'white' : 'grey'">mdi-radiology-box</v-icon>
+                      RADIOLOGY REPORT
+                    </div>
+                    <v-chip x-small dark :color="statusColor(selectedOrder.status)" class="font-weight-black">
+                      {{ selectedOrder.status }}
+                    </v-chip>
+                  </div>
+                  <div v-if="selectedOrder.status === 'Completed'" class="pa-6">
+                    <div class="result-chip purple--text font-weight-black text-caption mb-4">
+                      <v-icon small color="#7C3AED" class="mr-1">mdi-check-circle</v-icon>
+                      Reported by {{ selectedOrder.reportedBy }} on {{ selectedOrder.reportFiledAt }}
+                    </div>
+                    <div class="result-block pa-4 mb-4">
+                      <div class="text-caption font-weight-black grey--text uppercase mb-2">RADIOLOGICAL FINDINGS</div>
+                      <div class="text-body-2 font-weight-medium" style="white-space:pre-wrap">{{ selectedOrder.report }}</div>
+                    </div>
+                    <div v-if="selectedOrder.impression" class="result-block pa-4 mb-4" style="background:#F5F3FF; border-color:#DDD6FE">
+                      <div class="text-caption font-weight-black purple--text text--darken-3 uppercase mb-2">IMPRESSION / CONCLUSION</div>
+                      <div class="text-body-2 font-weight-bold purple--text text--darken-4">{{ selectedOrder.impression }}</div>
+                    </div>
+                    <div v-if="selectedOrder.recommendations" class="result-block pa-4">
+                      <div class="text-caption font-weight-black grey--text uppercase mb-2">RECOMMENDATIONS</div>
+                      <div class="text-caption font-italic">{{ selectedOrder.recommendations }}</div>
+                    </div>
+                  </div>
+                  <div v-else class="pa-8 text-center grey--text">
+                    <v-icon size="48" color="#E2E8F0">mdi-radiology-box-outline</v-icon>
+                    <div class="text-caption mt-3">No radiology report filed yet. Pending scan performance.</div>
+                  </div>
+                </v-card>
+              </v-col>
+            </v-row>
+          </div>
+        </template>
+      </v-col>
     </v-row>
 
-    <v-row class="no-gutters">
-      <v-col cols="12" lg="4">
-        <v-card flat tile class="gov-card b-1 overflow-hidden shadow-sm">
-          <div class="pa-4 bg-navy white--text font-weight-black text-caption ls-1 uppercase">
-            NEW IMAGING REQUEST
-          </div>
-          <div class="pa-8">
-            <v-form ref="form" v-model="valid">
-              <v-autocomplete v-model="form.patientId" :items="patients" item-text="name" item-value="id" label="Patient" flat outlined tile dense required :rules="[v => !!v || 'Required']" class="mb-4 rounded-0"></v-autocomplete>
-              <v-select v-model="form.modality" :items="modalities" label="Imaging Modality" flat outlined tile dense required :rules="[v => !!v || 'Required']" class="mb-4 rounded-0"></v-select>
-              <v-text-field v-model="form.bodyPart" label="Body Part / Region" flat outlined tile dense required :rules="[v => !!v || 'Required']" class="mb-4 rounded-0"></v-text-field>
-              <v-select v-model="form.priority" :items="['Routine', 'Urgent', 'Emergency']" label="Priority" flat outlined tile dense class="mb-4 rounded-0"></v-select>
-              <v-textarea v-model="form.clinicalIndication" label="Clinical Indication" rows="2" flat outlined tile dense class="mb-8 rounded-0"></v-textarea>
-              <v-btn color="#00A99D" dark block height="48" tile depressed :disabled="!valid" @click="save" class="font-weight-black text-caption ls-1">
-                SUBMIT REQUEST <v-icon right small>mdi-radiology-box-outline</v-icon>
-              </v-btn>
-            </v-form>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="8" class="pl-lg-8">
-        <v-card flat tile class="gov-card b-1 overflow-hidden shadow-sm">
-          <div class="pa-4 bg-grey lighten-4 d-flex align-center border-bottom">
-            <v-text-field v-model="search" prepend-inner-icon="mdi-magnify" label="Search imaging orders..." single-line hide-details flat outlined tile dense class="bg-white rounded-0 max-400"></v-text-field>
-            <v-spacer />
-            <v-btn-toggle v-model="statusFilter" tile dense class="ml-4">
-              <v-btn x-small value="" class="font-weight-black text-caption">ALL</v-btn>
-              <v-btn x-small value="Requested" class="font-weight-black text-caption">PENDING</v-btn>
-              <v-btn x-small value="Completed" class="font-weight-black text-caption">REPORTED</v-btn>
-            </v-btn-toggle>
-          </div>
-          <v-data-table :headers="headers" :items="filteredOrders" :search="search" class="gov-spreadsheet-table" tile elevation="0">
-            <template v-slot:item.patientName="{ item }">
-              <span class="text-body-2 font-weight-black gov-text-primary">{{ item.patientName.toUpperCase() }}</span>
-            </template>
-            <template v-slot:item.priority="{ item }">
-              <v-chip x-small dark label :color="priorityColor(item.priority)" class="font-weight-black">{{ item.priority }}</v-chip>
-            </template>
-            <template v-slot:item.status="{ item }">
-              <v-chip x-small dark label :color="item.status === 'Completed' ? '#003366' : '#00A99D'" class="font-weight-black">{{ item.status.toUpperCase() }}</v-chip>
-            </template>
-            <template v-slot:item.actions="{ item }">
-              <v-btn icon x-small @click="openReport(item)" :disabled="item.status === 'Completed'">
-                <v-icon small color="#00A99D">mdi-file-document-edit</v-icon>
-              </v-btn>
-            </template>
-          </v-data-table>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <v-dialog v-model="reportDialog" max-width="500" persistent>
+    <!-- ── DIALOG: Doctor Create New Imaging Request ──────────── -->
+    <v-dialog v-model="newOrderDialog" max-width="580" persistent>
       <v-card flat tile>
-        <div class="pa-4 bg-navy white--text font-weight-black text-caption ls-1 uppercase">ENTER IMAGING REPORT</div>
-        <div class="pa-8">
-          <div class="text-caption font-weight-black grey--text mb-4 uppercase">{{ selectedOrder ? selectedOrder.modality + ' — ' + selectedOrder.bodyPart : '' }}</div>
-          <v-textarea v-model="reportText" label="Radiologist Report / Findings" rows="5" flat outlined tile dense class="mb-6 rounded-0"></v-textarea>
-          <v-row dense>
-            <v-col cols="8">
-              <v-btn color="#00A99D" dark block height="44" tile depressed @click="submitReport" class="font-weight-black text-caption">SUBMIT REPORT</v-btn>
-            </v-col>
-            <v-col cols="4">
-              <v-btn block height="44" tile depressed @click="reportDialog = false" class="font-weight-black text-caption">CANCEL</v-btn>
-            </v-col>
-          </v-row>
+        <div class="pa-4 bg-purple white--text font-weight-black text-caption uppercase ls-1 d-flex align-center justify-space-between">
+          <span><v-icon left small dark>mdi-plus-circle</v-icon>CREATE NEW IMAGING REQUEST</span>
+          <v-btn icon dark x-small @click="newOrderDialog = false"><v-icon>mdi-close</v-icon></v-btn>
+        </div>
+        <div class="pa-6">
+          <label class="form-label">Select Patient <span class="error--text">*</span></label>
+          <v-autocomplete
+            v-model="newOrderForm.patientId"
+            :items="patientSelectItems"
+            item-text="text" item-value="id"
+            outlined tile dense class="rounded-0 mb-4"
+            placeholder="Search patient by name or ID..."
+          ></v-autocomplete>
+
+          <label class="form-label">Imaging Modality / Exam <span class="error--text">*</span></label>
+          <v-combobox
+            v-model="newOrderForm.modality"
+            :items="commonModalities"
+            outlined tile dense class="rounded-0 mb-4"
+            placeholder="Choose or type imaging exam..."
+          ></v-combobox>
+
+          <label class="form-label">Body Part / Anatomical Region</label>
+          <v-text-field
+            v-model="newOrderForm.bodyPart"
+            outlined tile dense class="rounded-0 mb-4"
+            placeholder="e.g. Chest, Right Knee, Abdomen, Brain..."
+          ></v-text-field>
+
+          <label class="form-label">Priority</label>
+          <v-btn-toggle v-model="newOrderForm.priority" mandatory class="mb-4 d-flex" tile dense>
+            <v-btn value="Routine" small tile class="flex-grow-1 font-weight-black text-caption">Routine</v-btn>
+            <v-btn value="Urgent" small tile class="flex-grow-1 font-weight-black text-caption warning--text">Urgent</v-btn>
+            <v-btn value="STAT" small tile class="flex-grow-1 font-weight-black text-caption error--text">🔴 STAT (Emergency)</v-btn>
+          </v-btn-toggle>
+
+          <label class="form-label">Clinical Indication / Reason for Imaging</label>
+          <v-textarea
+            v-model="newOrderForm.clinicalNotes"
+            outlined tile dense rows="3"
+            class="rounded-0 mb-2"
+            placeholder="e.g. Persistent cough 2 weeks, trauma to right leg, acute abdominal pain..."
+          ></v-textarea>
+        </div>
+        <div class="pa-4 d-flex justify-end b-top" style="gap:8px">
+          <v-btn text tile class="font-weight-black text-caption" @click="newOrderDialog = false">CANCEL</v-btn>
+          <v-btn
+            color="#7C3AED" dark tile depressed
+            :disabled="!newOrderForm.patientId || !newOrderForm.modality"
+            @click="submitNewOrder"
+            class="font-weight-black text-caption px-6"
+          >
+            <v-icon left small>mdi-check-decagram</v-icon> VALIDATE & SEND IMAGING REQUEST
+          </v-btn>
         </div>
       </v-card>
     </v-dialog>
+
+    <!-- ── DIALOG: Radiologist Report Entry ──────────── -->
+    <v-dialog v-model="reportDialog" max-width="560" persistent>
+      <v-card flat tile>
+        <div class="pa-4 bg-purple white--text font-weight-black text-caption uppercase ls-1">
+          <v-icon left small dark>mdi-radiology-box</v-icon>
+          RECORD RADIOLOGY REPORT — {{ selectedOrder ? selectedOrder.modality : '' }}
+        </div>
+        <div class="pa-6">
+          <div class="text-caption font-weight-black grey--text uppercase ls-1 mb-1">Patient</div>
+          <div class="text-subtitle-2 font-weight-black gov-text-primary mb-4">{{ selectedOrder ? selectedOrder.patientName : '' }}</div>
+
+          <label class="form-label">Radiological Findings <span class="error--text">*</span></label>
+          <v-textarea
+            v-model="reportForm.report"
+            outlined tile dense rows="4"
+            class="rounded-0 mb-4"
+            placeholder="Describe parenchymal, osseous, vascular or soft tissue findings..."
+          ></v-textarea>
+
+          <label class="form-label">Impression / Conclusion</label>
+          <v-textarea
+            v-model="reportForm.impression"
+            outlined tile dense rows="2"
+            class="rounded-0 mb-4"
+            placeholder="Main radiological diagnosis / conclusion..."
+          ></v-textarea>
+
+          <label class="form-label">Recommendations (optional)</label>
+          <v-textarea
+            v-model="reportForm.recommendations"
+            outlined tile dense rows="2"
+            class="rounded-0 mb-4"
+            placeholder="e.g. Recommend follow-up CT scan in 4 weeks, clinical correlation..."
+          ></v-textarea>
+        </div>
+        <div class="pa-4 d-flex justify-end b-top" style="gap:8px">
+          <v-btn text tile class="font-weight-black text-caption" @click="reportDialog = false">CANCEL</v-btn>
+          <v-btn
+            color="#7C3AED" dark tile depressed
+            :disabled="!reportForm.report"
+            @click="submitReport"
+            class="font-weight-black text-caption px-6"
+          >
+            <v-icon left small>mdi-check-decagram</v-icon> FILE RADIOLOGY REPORT
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
   </v-container>
 </template>
 
 <script>
 export default {
-  head: { title: 'Imaging' },
+  layout: 'admins',
+  head: { title: 'Diagnostic Imaging Management' },
   data() {
     return {
-      valid: false, search: '', statusFilter: '', reportDialog: false, selectedOrder: null, reportText: '',
-      form: { patientId: '', modality: '', bodyPart: '', priority: 'Routine', clinicalIndication: '' },
-      modalities: ['X-Ray', 'Ultrasound', 'CT Scan', 'MRI', 'Mammography', 'Fluoroscopy', 'Echocardiogram'],
-      headers: [
-        { text: 'PATIENT', value: 'patientName' },
-        { text: 'MODALITY', value: 'modality' },
-        { text: 'BODY PART', value: 'bodyPart' },
-        { text: 'PRIORITY', value: 'priority', align: 'center' },
-        { text: 'STATUS', value: 'status', align: 'center' },
-        { text: 'DATE', value: 'requestedAt' },
-        { text: '', value: 'actions', sortable: false, align: 'right' }
+      search: '',
+      statusFilter: '',
+      selectedOrder: null,
+      newOrderDialog: false,
+      reportDialog: false,
+      newOrderForm: { patientId: '', modality: '', bodyPart: '', priority: 'Routine', clinicalNotes: '' },
+      reportForm: { report: '', impression: '', recommendations: '' },
+      statusFilters: [
+        { value: '', label: 'ALL' },
+        { value: 'Requested', label: 'PENDING' },
+        { value: 'In Progress', label: 'IN PROGRESS' },
+        { value: 'Completed', label: 'DONE' }
+      ],
+      commonModalities: [
+        'Chest X-Ray', 'Abdominal X-Ray', 'Bone / Extremity X-Ray',
+        'Abdominal Ultrasound', 'Obstetric Ultrasound', 'Pelvic Ultrasound',
+        'Brain CT Scan', 'Chest CT Scan', 'Abdominal CT Scan',
+        'Brain MRI', 'Spine MRI', 'Mammography', 'ECG (Electrocardiogram)'
       ]
     }
   },
   computed: {
-    patients() { return this.$store.getters['clinical/getPatients'] },
-    orders() {
-      return this.$store.getters['clinical/getImagingOrders'].map(o => {
+    userRole() { return this.$store.state.auth.role || 'DOCTOR' },
+    isDoctorOrAdmin() {
+      return ['DOCTOR', 'ADMIN', 'NP', 'MAJOR_SERVICE'].includes(this.userRole)
+    },
+    patients() { return this.$store.getters['clinical/getPatients'] || [] },
+    patientSelectItems() {
+      return this.patients.map(p => ({
+        id: p.id,
+        text: `${p.name || (p.firstName + ' ' + p.lastName)} (${p.id} · ${p.gender || ''})`
+      }))
+    },
+    allOrders() {
+      return (this.$store.getters['clinical/getImagingOrders'] || []).map(o => {
         const p = this.patients.find(pt => pt.id === o.patientId)
-        return { ...o, patientName: p ? p.name : 'Unknown', requestedAt: new Date(o.requestedAt).toLocaleDateString() }
+        const paid = this.isOrderPaid(o)
+        return {
+          ...o,
+          patientName: p ? (p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()) : o.patientId,
+          requestedAt: o.requestedAt ? new Date(o.requestedAt).toLocaleDateString('fr-CM') : '—',
+          paymentStatus: paid ? 'Paid' : 'Unpaid'
+        }
       }).reverse()
     },
     filteredOrders() {
-      if (!this.statusFilter) return this.orders
-      return this.orders.filter(o => o.status === this.statusFilter)
+      let list = this.allOrders
+      if (this.statusFilter) list = list.filter(o => o.status === this.statusFilter)
+      if (this.search) {
+        const q = this.search.toLowerCase()
+        list = list.filter(o =>
+          (o.patientName || '').toLowerCase().includes(q) ||
+          (o.modality || '').toLowerCase().includes(q) ||
+          (o.id || '').toLowerCase().includes(q)
+        )
+      }
+      return list
+    }
+  },
+  mounted() {
+    this.$store.commit('clinical/LOAD_FROM_STORAGE')
+    this.$store.dispatch('billing/loadFromStorage')
+    if (this.$route.query && this.$route.query.patientId) {
+      this.openNewOrderDialog(this.$route.query.patientId)
     }
   },
   methods: {
-    save() {
-      if (!this.$refs.form.validate()) return
-      this.$store.dispatch('clinical/orderImaging', this.form)
-      this.$toast.success('Imaging request submitted.')
-      this.$refs.form.reset()
-      this.form.priority = 'Routine'
+    isOrderPaid(order) {
+      const statement = this.$store.getters['billing/statementForPatient'](order.patientId)
+      if (!statement) return false
+      const imgCharge = (statement.charges || []).find(c =>
+        c.sourceType === 'imaging_order' && c.sourceId === order.id
+      )
+      if (!imgCharge) return false
+      return statement.amountPaid >= imgCharge.total && imgCharge.total > 0
     },
-    openReport(item) { this.selectedOrder = item; this.reportText = item.report || ''; this.reportDialog = true },
+    selectOrder(order) {
+      this.selectedOrder = order
+      this.reportForm = {
+        report: order.report || '',
+        impression: order.impression || '',
+        recommendations: order.recommendations || ''
+      }
+    },
+    openNewOrderDialog(patientId = '') {
+      this.newOrderForm = {
+        patientId: patientId || (this.patients.length ? this.patients[0].id : ''),
+        modality: 'Chest X-Ray',
+        bodyPart: 'Chest',
+        priority: 'Routine',
+        clinicalNotes: ''
+      }
+      this.newOrderDialog = true
+    },
+    async submitNewOrder() {
+      if (!this.newOrderForm.patientId || !this.newOrderForm.modality) return
+      const orderedBy = this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Doctor'
+      const modality = typeof this.newOrderForm.modality === 'string' ? this.newOrderForm.modality : this.newOrderForm.modality.text || 'Imaging'
+
+      const imgOrder = await this.$store.dispatch('clinical/orderImaging', {
+        patientId: this.newOrderForm.patientId,
+        modality,
+        bodyPart: this.newOrderForm.bodyPart,
+        priority: this.newOrderForm.priority,
+        clinicalNotes: this.newOrderForm.clinicalNotes,
+        orderedBy
+      })
+
+      await this.$store.dispatch('clinical/createTask', {
+        patientId: this.newOrderForm.patientId,
+        relatedType: 'imaging',
+        relatedId: imgOrder.id,
+        title: 'Process imaging order: ' + modality,
+        assignedToRole: 'IMAGING',
+        actionReason: 'Imaging order requested by ' + orderedBy
+      })
+
+      this.newOrderDialog = false
+      this.$toast.success('Imaging request created! Sent to Cash Office & Radiology Workbench.')
+
+      const created = this.allOrders.find(o => o.id === imgOrder.id)
+      if (created) this.selectOrder(created)
+    },
+    setStatus(status) {
+      const updated = { ...this.selectedOrder, status }
+      this.$store.dispatch('clinical/updateImagingOrder', updated)
+      this.selectedOrder = { ...this.selectedOrder, status }
+      this.$toast.success('Status updated to ' + status)
+    },
+    markAsPaid() {
+      const updated = { ...this.selectedOrder, paymentStatus: 'Paid' }
+      this.$store.dispatch('clinical/updateImagingOrder', updated)
+      this.selectedOrder = { ...this.selectedOrder, paymentStatus: 'Paid' }
+      this.$toast.warning('Payment marked manually — ensure Cash Office receipt exists.')
+    },
     submitReport() {
-      this.$store.dispatch('clinical/updateImagingOrder', { ...this.selectedOrder, status: 'Completed', report: this.reportText })
-      this.$toast.success('Imaging report submitted.')
-      this.reportDialog = false; this.reportText = ''
+      if (!this.reportForm.report) return
+      const now = new Date().toISOString()
+      const reportedBy = this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Radiologist'
+      const updated = {
+        ...this.selectedOrder,
+        status: 'Completed',
+        report: this.reportForm.report,
+        impression: this.reportForm.impression,
+        recommendations: this.reportForm.recommendations,
+        reportedBy,
+        reportFiledAt: new Date(now).toLocaleDateString('fr-CM') + ' ' + new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+      this.$store.dispatch('clinical/updateImagingOrder', updated)
+      this.selectedOrder = updated
+      this.reportDialog = false
+      this.$toast.success('Radiology report filed & transmitted to doctor chart.')
     },
-    priorityColor(p) { return { Routine: '#6B7280', Urgent: '#F4A300', Emergency: '#C0392B' }[p] || '#6B7280' }
+    priorityColor(p) { return { Routine: '#6B7280', Urgent: '#F4A300', STAT: '#C0392B' }[p] || '#6B7280' },
+    statusColor(s) { return { Requested: '#7C3AED', 'In Progress': '#D97706', Completed: '#003366' }[s] || '#6B7280' }
   }
 }
 </script>
 
 <style scoped>
-.gov-card { background: white !important; }
-.bg-navy { background-color: #00A99D !important; }
+.imaging-bg { background: #F8FAFC; }
 .gov-text-primary { color: #1B1F23 !important; }
+.ls-1 { letter-spacing: 0.8px; }
+.uppercase { text-transform: uppercase; }
+.b-right { border-right: 1px solid #E5E7EB; }
+.b-bottom { border-bottom: 1px solid #E5E7EB; }
+.b-top { border-top: 1px solid #E5E7EB; }
 .b-1 { border: 1px solid #E5E7EB; }
 .border-bottom { border-bottom: 1px solid #E5E7EB; }
-.bg-white { background: white !important; }
-.max-400 { max-width: 400px; }
-.shadow-sm { box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important; }
-.ls-tight { letter-spacing: -1.2px !important; }
-.ls-1 { letter-spacing: 0.8px !important; }
-.uppercase { text-transform: uppercase; }
-.gov-spreadsheet-table { background: white !important; }
-.gov-spreadsheet-table ::v-deep th { background: #F8FAFC !important; color: #1B1F23 !important; font-size: 10px !important; font-weight: 800; text-transform: uppercase; }
+
+.worklist-panel { background: white; }
+.worklist-item { cursor: pointer; transition: background 0.15s; }
+.worklist-item:hover { background: #F8FAFC; }
+.worklist-item--active { background: #F5F3FF !important; border-left: 3px solid #7C3AED; }
+
+.section-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: #7C3AED;
+  border-left: 3px solid #7C3AED; padding-left: 8px;
+}
+.form-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #374151; display: block; margin-bottom: 4px; }
+
+.detail-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #F3F4F6; }
+.detail-row:last-child { border-bottom: none; }
+.detail-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #9CA3AF; letter-spacing: 0.5px; }
+.detail-value { font-size: 12px; color: #1B1F23; text-align: right; max-width: 60%; }
+
+.result-block { background: #F8FAFC; border: 1px solid #E5E7EB; }
 </style>

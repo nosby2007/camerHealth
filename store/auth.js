@@ -97,6 +97,12 @@ export const mutations = {
     state.apiToken        = null
     state.loginError      = null
     clearSession()
+    if (process.client) {
+      localStorage.removeItem('camero_auth_role')
+      localStorage.removeItem('camero_auth_staffId')
+      localStorage.removeItem('camero_auth_institution')
+      localStorage.removeItem('camero_auth_region')
+    }
   },
   SET_LOGIN_ERROR(state, msg) {
     state.loginError = msg
@@ -142,17 +148,8 @@ export const mutations = {
     }
   },
   loadFromStorage(state) {
-    // Restore ministry session from localStorage on page reload
-    if (process.client) {
-      const role = localStorage.getItem('camero_auth_role')
-      if (role === 'PUBLIC_HEALTH_OFFICER' || role === 'EPIDEMIOLOGIST') {
-        state.role        = role
-        state.staffId     = localStorage.getItem('camero_auth_staffId')     || ''
-        state.institution = localStorage.getItem('camero_auth_institution') || ''
-        state.region      = localStorage.getItem('camero_auth_region')      || ''
-        state.isAuthenticated = true
-      }
-    }
+    // Ministry session is NOT auto-restored on page load.
+    // User must explicitly log in via /ministry-login each session.
   }
 }
 

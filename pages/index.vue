@@ -79,15 +79,6 @@ export default {
   head: { title: 'CameroHealth — Select Layer' },
   mounted() {
     this.$store.commit('facility/RELOAD_FROM_STORAGE')
-    // If already authenticated, skip layer selection
-    if (this.$store.state.auth.isAuthenticated && this.$store.state.auth.role) {
-      const home = {
-        ADMIN: '/admin', DOCTOR: '/clinical/dashboard', NURSE: '/clinical/dashboard',
-        NP: '/clinical/dashboard', CNA: '/clinical/nursing', LAB: '/clinical/lab',
-        IMAGING: '/clinical/imaging', BILLING: '/clinical/billing', PUBLIC_HEALTH_OFFICER: '/ministry'
-      }
-      this.$router.push(home[this.$store.state.auth.role] || '/login')
-    }
   },
   methods: {
     selectClinical() {

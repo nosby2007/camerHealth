@@ -1,0 +1,143 @@
+{
+  "app": {
+    "stage": "PRODUCTION",
+    "name": "CameroHealth",
+    "tagline": "Digitalising Health, Improving Care",
+    "clinical_layer": "Clinical Layer",
+    "national_layer": "National Health Statistics",
+    "ministry_portal": "Ministry of Public Health - Surveillance Portal"
+  },
+  "titles": {
+    "dashboard": "DASHBOARD",
+    "live_status": "CAMEROON INTEGRATED DISEASE SURVEILLANCE",
+    "surveillance": "SURVEILLANCE",
+    "reports": "REPORTS",
+    "maps": "MEDICAL MAP"
+  },
+  "login": "LOG IN",
+  "logout": "LOG OUT",
+  "refresh": "REFRESH",
+  "covid_stages": {
+    "quarantined": "Tested",
+    "confirmed": "Confirmed",
+    "hospitalized": "Hospitalized",
+    "hospitalized_icu": "Hospitalized (ICU)",
+    "hospitalized_stable": "Stable",
+    "hospitalized_critical": "Critical",
+    "recovered": "Recovered",
+    "dead": "Deceased"
+  },
+  "calendar": {
+    "days": "Days",
+    "hour": "Hour",
+    "month": "Month",
+    "hours": "Hours"
+  },
+  "chart_titles": {
+    "monthly": "Monthly",
+    "daily": "Daily",
+    "hourly": "Cases by Hour of Day",
+    "total": "Total",
+    "confirmed": "Confirmed",
+    "total_by_age_and_gender": "Cases by age and gender",
+    "total_by_age_and_sex": "Cases by age and sex",
+    "cases_by_region": "Cases by region (Top 20)",
+    "cases_by_zone": "Cases by zone",
+    "last_7_days": "Last 7 days",
+    "last_30_days": "Last 30 days"
+  },
+  "menu": {
+    "dashboard": "Dashboard",
+    "cases": "Cases",
+    "surveillance": "Surveillance",
+    "map": "Medical Resource Map",
+    "reports": "Reports",
+    "global_data": "Global Data",
+    "languages": "Languages",
+    "bulk_sms": "Bulk SMS",
+    "users": "Users",
+    "clinical": "Clinical Data",
+    "patients": "Patient Registry",
+    "visits": "Visit Logging",
+    "field_input": "Facility Reports"
+  },
+  "lang": {
+    "english": "English",
+    "french": "French"
+  },
+  "diseases": {
+    "select": "Select disease",
+    "malaria": "Malaria",
+    "cholera": "Cholera",
+    "monkeypox": "Mpox",
+    "tb": "Tuberculosis",
+    "measles": "Measles",
+    "polio": "Polio"
+  },
+  "alerts": {
+    "title": "Outbreak alerts",
+    "threshold_exceeded": "Threshold exceeded",
+    "increasing_trend": "Increasing trend",
+    "district": "District",
+    "cases_above_baseline": "Cases above baseline",
+    "no_alerts": "No alerts"
+  },
+  "statistics": {
+    "total_cases": "Total cases",
+    "total_deaths": "Total deaths",
+    "total_recovered": "Total recovered",
+    "active_cases": "Active cases",
+    "critical_condition": "Critical condition",
+    "hospitalization_rate": "Hospitalization rate",
+    "mortality_rate": "Mortality rate",
+    "recovery_rate": "Recovery rate"
+  },
+  "common": {
+    "loading": "Loading...",
+    "no_data": "No data available",
+    "error": "Error",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "date": "Date",
+    "region": "Region",
+    "district": "District",
+    "health_facility": "Health facility"
+  },
+  "shell": {
+    "session_staff": "SESSION: STAFF",
+    "session_officer": "SESSION: OFFICER",
+    "authorized_user": "Authorized User",
+    "staff_id": "STAFF ID",
+    "terminate_session": "TERMINATE AUTH SESSION",
+    "dismiss": "DISMISS"
+  },
+  "entry": {
+    "select_layer": "SELECT YOUR ACCESS LAYER",
+    "clinical_description": "Hospital staff, doctors, nurses, laboratory and imaging personnel",
+    "facility_access": "FACILITY ACCESS",
+    "national_description": "MINSANTE public health officers, national surveillance and epidemiology",
+    "national_access": "NATIONAL ACCESS"
+  },
+  "notice": {
+    "authorized_title": "Notice to Authorized Users",
+    "authorized_body": "This CameroHealth infrastructure is restricted to authorized Ministerial Personnel or Hospital Personnel. All sessions are audited under National Health Security Protocol."
+  },
+  "menu_clinical": {
+    "admin_dashboard": "Admin Dashboard",
+    "staff_accounts": "Staff Accounts",
+    "audit_log": "Audit Log",
+    "patient_listing": "Patient Listing",
+    "new_patient": "New Patient",
+    "outpatient": "Outpatient",
+    "inpatient": "Inpatient",
+    "appointments": "Appointments",
+    "medications": "Medications",
+    "laboratory": "Laboratory",
+    "imaging": "Imaging"
+  }
+}

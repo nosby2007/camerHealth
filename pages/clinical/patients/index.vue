@@ -63,7 +63,7 @@
           class="bg-white rounded-sm filter-control"
         ></v-select>
       </div>
-      
+
       <v-data-table
         :headers="headers"
         :items="filteredPatients"
@@ -83,11 +83,19 @@
           <v-chip x-small label dark :color="riskColor(item.riskLevel)" class="font-weight-black">{{ item.riskLevel.toUpperCase() }}</v-chip>
         </template>
         <template v-slot:item.currentDepartment="{ item }">
-          <span class="font-weight-bold">{{ item.currentDepartment }}</span>
+          <div class="d-flex align-center flex-wrap" style="gap:4px">
+            <span class="font-weight-bold">{{ item.currentDepartment }}</span>
+            <v-chip v-if="hasConsultationClearance(item.id)" x-small label color="#00A99D" dark class="font-weight-black">
+              <v-icon x-small left>mdi-check-decagram</v-icon>CLEARED: {{ getClearanceDepartment(item.id) }}
+            </v-chip>
+            <v-chip v-if="item.pendingAdmission" x-small label color="#C0392B" dark class="font-weight-black mt-1">
+              <v-icon x-small left>mdi-bed</v-icon>ADMISSION PENDING: {{ item.pendingAdmission.toUpperCase() }}
+            </v-chip>
+          </div>
           <div v-if="item.serviceRouting || item.specialtyRouting" class="text-caption grey--text text-truncate" style="max-width:220px">
             {{ item.serviceRouting || 'Service pending' }}<span v-if="item.specialtyRouting"> · {{ item.specialtyRouting }}</span>
           </div>
-          <div v-if="item.riskReasons.length" class="text-caption grey--text text-truncate" style="max-width:220px">{{ item.riskReasons.join(', ') }}</div>
+          <div v-if="item.riskReasons && item.riskReasons.length" class="text-caption grey--text text-truncate" style="max-width:220px">{{ item.riskReasons.join(', ') }}</div>
         </template>
         <template v-slot:item.openOrders="{ item }">
           <span class="font-weight-bold">{{ item.openOrders.length }}</span>
@@ -156,6 +164,13 @@ export default {
     }
   },
   methods: {
+    hasConsultationClearance(patientId) {
+      return !!this.$store.getters['billing/getPaymentClearance'](patientId, 'consultation')
+    },
+    getClearanceDepartment(patientId) {
+      const clr = this.$store.getters['billing/getPaymentClearance'](patientId, 'consultation')
+      return clr ? (clr.department || 'General Medicine') : ''
+    },
     async provisionWorkflowDemo() {
       const patientId = await this.$store.dispatch('clinical/provisionPatientWorkflowDemo')
       this.$toast.success('Demo patient chart provisioned.')
@@ -203,17 +218,17 @@ export default {
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
 }
-.hospital-table ::v-deep th { 
-  background-color: #E2E8F0 !important; 
-  color: #64748B !important; 
-  font-size: 13px !important; 
-  font-weight: 600; 
-  height: 48px !important; 
-  text-transform: capitalize; 
+.hospital-table ::v-deep th {
+  background-color: #E2E8F0 !important;
+  color: #64748B !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  height: 48px !important;
+  text-transform: capitalize;
 }
-.hospital-table ::v-deep td { 
-  border-bottom: 1px solid #F1F5F9 !important; 
-  height: 50px !important; 
+.hospital-table ::v-deep td {
+  border-bottom: 1px solid #F1F5F9 !important;
+  height: 50px !important;
   color: #1B1F23;
   font-size: 14px;
 }

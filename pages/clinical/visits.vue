@@ -81,20 +81,46 @@
               <v-textarea v-model="form.symptomText" label="Symptom Details (Free text)" rows="2" outlined tile dense class="mb-6 rounded-0"></v-textarea>
 
               <div class="gov-input-section pa-5 mb-4">
+                <div class="text-caption font-weight-black gov-text-secondary mb-3 uppercase ls-1">Past History</div>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.medical" label="Medical history" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.surgical" label="Surgical history" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.social" label="Social history" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.drug" label="Drug history" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.allergy" label="Allergy" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.family" label="Family history" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.labour" label="Labour history" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.neonatal" label="Neonatal history" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.nutritional" label="Nutritional history" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.vaccination" label="Vaccination history" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.pastHistory.developmental" label="Developmental history" outlined tile dense class="mb-0 bg-white rounded-0"></v-textarea>
+              </div>
+
+              <div class="gov-input-section pa-5 mb-4">
+                <div class="text-caption font-weight-black gov-text-secondary mb-3 uppercase ls-1">Physical Exam Findings</div>
+                <v-textarea auto-grow rows="1" v-model="form.physicalExam.anthropometric" label="Anthropometric measurement" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.physicalExam.headAndNeck" label="Head and neck" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.physicalExam.chest" label="Chest" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.physicalExam.abdomen" label="Abdomen" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.physicalExam.limbs" label="Limbs" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.physicalExam.skin" label="Skin" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.physicalExam.neurologic" label="Neurologic system" outlined tile dense class="mb-0 bg-white rounded-0"></v-textarea>
+              </div>
+
+              <div class="gov-input-section pa-5 mb-4">
                 <div class="text-caption font-weight-black gov-text-secondary mb-3 uppercase ls-1">Diagnosis</div>
-                <v-textarea v-model="form.diagnosis" label="Diagnosis" rows="2" outlined tile dense class="bg-white rounded-0 mb-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.diagnosis" label="Diagnosis" outlined tile dense class="bg-white rounded-0 mb-0"></v-textarea>
               </div>
 
               <div class="gov-input-section pa-5 mb-4">
                 <div class="text-caption font-weight-black gov-text-secondary mb-3 uppercase ls-1">Investigations</div>
-                <v-text-field v-model="form.labResults"    label="Lab Results"         outlined tile dense class="mb-2 bg-white rounded-0"></v-text-field>
-                <v-text-field v-model="form.imagingNotes"  label="Imaging / CT Notes"  outlined tile dense class="mb-0 bg-white rounded-0"></v-text-field>
+                <v-textarea auto-grow rows="1" v-model="form.labResults"    label="Lab Results"         outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.imagingNotes"  label="Imaging / CT Notes"  outlined tile dense class="mb-0 bg-white rounded-0"></v-textarea>
               </div>
 
               <div class="gov-input-section pa-5 mb-6">
                 <div class="text-caption font-weight-black gov-text-secondary mb-3 uppercase ls-1">Treatment</div>
-                <v-text-field v-model="form.prescription"  label="Prescription / Protocol" outlined tile dense class="mb-2 bg-white rounded-0"></v-text-field>
-                <v-textarea   v-model="form.treatment"     label="Treatment Plan"          rows="2" outlined tile dense class="bg-white rounded-0 mb-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.prescription"  label="Prescription / Protocol" outlined tile dense class="mb-2 bg-white rounded-0"></v-textarea>
+                <v-textarea auto-grow rows="1" v-model="form.treatment"     label="Treatment Plan"          outlined tile dense class="bg-white rounded-0 mb-0"></v-textarea>
               </div>
 
               <v-expand-transition>
@@ -111,7 +137,18 @@
                 </div>
               </v-expand-transition>
 
-              <v-textarea v-model="form.notes" label="Authorized Clinical Observations" rows="3" flat outlined tile dense class="mb-10 rounded-0 font-weight-bold gov-text-primary"></v-textarea>
+              <v-textarea v-model="form.notes" label="Authorized Clinical Observations" rows="3" flat outlined tile dense class="mb-6 rounded-0 font-weight-bold gov-text-primary"></v-textarea>
+
+              <div class="gov-input-section pa-5 mb-10">
+                <div class="text-caption font-weight-black gov-text-secondary mb-3 uppercase ls-1">Doctor's Conclusion</div>
+                <v-select v-model="form.conclusion" :items="['Discharged', 'Admitted', 'Referred', 'Kept in observation']" label="Action Taken / Conclusion" outlined tile dense class="mb-2 bg-white rounded-0"></v-select>
+                <v-expand-transition>
+                   <v-select v-if="form.conclusion === 'Admitted'" v-model="form.admissionWard" :items="wards" label="Ward / Unit for Admission" outlined tile dense class="bg-white rounded-0 mb-0"></v-select>
+                </v-expand-transition>
+                <v-expand-transition>
+                   <v-text-field v-if="form.conclusion === 'Referred'" v-model="form.referralTarget" label="Referred To (Institution / Specialist)" outlined tile dense class="bg-white rounded-0 mb-0"></v-text-field>
+                </v-expand-transition>
+              </div>
               
               <v-row dense>
                 <v-col cols="8">
@@ -160,7 +197,7 @@
               <v-tooltip bottom>
                 <template v-slot:activator="{ on }">
                   <v-btn icon x-small v-on="on" :to="patientDetailsRoute(item.patientId)" class="mr-1">
-                    <v-icon small color="#003366">mdi-account-card-details-outline</v-icon>
+                    <v-icon small color="#003366">mdi-eye</v-icon>
                   </v-btn>
                 </template>
                 <span>Patient details</span>
@@ -223,6 +260,36 @@
           </v-row>
        </div>
 
+       <div class="print-section mb-8">
+          <div class="text-caption font-weight-black bg-grey-lighten-4 pa-2 border-bottom uppercase mb-4">PAST HISTORY</div>
+          <v-row dense>
+             <v-col cols="6"><span class="font-weight-bold mr-2">MEDICAL:</span> {{ form.pastHistory.medical || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">SURGICAL:</span> {{ form.pastHistory.surgical || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">SOCIAL:</span> {{ form.pastHistory.social || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">DRUG:</span> {{ form.pastHistory.drug || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">ALLERGY:</span> {{ form.pastHistory.allergy || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">FAMILY:</span> {{ form.pastHistory.family || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">LABOUR:</span> {{ form.pastHistory.labour || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">NEONATAL:</span> {{ form.pastHistory.neonatal || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">NUTRITIONAL:</span> {{ form.pastHistory.nutritional || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">VACCINATION:</span> {{ form.pastHistory.vaccination || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">DEVELOPMENTAL:</span> {{ form.pastHistory.developmental || 'N/A' }}</v-col>
+          </v-row>
+       </div>
+
+       <div class="print-section mb-8">
+          <div class="text-caption font-weight-black bg-grey-lighten-4 pa-2 border-bottom uppercase mb-4">PHYSICAL EXAM FINDINGS</div>
+          <v-row dense>
+             <v-col cols="6"><span class="font-weight-bold mr-2">ANTHROPOMETRIC:</span> {{ form.physicalExam.anthropometric || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">HEAD AND NECK:</span> {{ form.physicalExam.headAndNeck || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">CHEST:</span> {{ form.physicalExam.chest || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">ABDOMEN:</span> {{ form.physicalExam.abdomen || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">LIMBS:</span> {{ form.physicalExam.limbs || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">SKIN:</span> {{ form.physicalExam.skin || 'N/A' }}</v-col>
+             <v-col cols="6"><span class="font-weight-bold mr-2">NEUROLOGIC:</span> {{ form.physicalExam.neurologic || 'N/A' }}</v-col>
+          </v-row>
+       </div>
+
        <div class="print-section mb-8" v-if="isChronic">
           <div class="text-caption font-weight-black bg-grey-lighten-4 pa-2 border-bottom uppercase mb-4">CLINICAL VITALS (CHRONIC)</div>
           <v-row dense>
@@ -242,6 +309,13 @@
           <div class="mb-4"><span class="font-weight-bold">PRESCRIPTION:</span> {{ form.prescription || 'NONE PRESCRIBED' }}</div>
           <div class="mb-4"><span class="font-weight-bold">TREATMENT PLAN:</span> {{ form.treatment || 'NONE RECORDED' }}</div>
           <div class="mb-4 border pa-4 font-italic"><span class="font-weight-black block mb-2">CLINICAL OBSERVATIONS:</span> {{ form.notes || 'No additional comments provided' }}</div>
+       </div>
+
+       <div class="print-section mb-8">
+          <div class="text-caption font-weight-black bg-grey-lighten-4 pa-2 border-bottom uppercase mb-4">DOCTOR'S CONCLUSION</div>
+          <div class="mb-2"><span class="font-weight-bold">CONCLUSION:</span> {{ form.conclusion || 'N/A' }}</div>
+          <div class="mb-2" v-if="form.conclusion === 'Admitted'"><span class="font-weight-bold">WARD/UNIT:</span> {{ form.admissionWard }}</div>
+          <div class="mb-2" v-if="form.conclusion === 'Referred'"><span class="font-weight-bold">REFERRED TO:</span> {{ form.referralTarget }}</div>
        </div>
 
        <div class="print-footer mt-12 pt-12 border-top d-flex justify-space-between align-end">
@@ -265,8 +339,17 @@ export default {
       form: { 
         patientId: '', disease: '', status: 'Suspected', severity: 'Low', symptoms: [], symptomText: '',
         diagnosis: '', labResults: '', imagingNotes: '', prescription: '', treatment: '',
-        notes: '', vitals: { bloodPressure: '', bloodSugar: '' } 
+        notes: '', vitals: { bloodPressure: '', bloodSugar: '' },
+        pastHistory: {
+          medical: '', surgical: '', social: '', drug: '', allergy: '',
+          family: '', labour: '', neonatal: '', nutritional: '', vaccination: '', developmental: ''
+        },
+        physicalExam: {
+          anthropometric: '', headAndNeck: '', chest: '', abdomen: '', limbs: '', skin: '', neurologic: ''
+        },
+        conclusion: '', admissionWard: '', referralTarget: ''
       },
+      wards: ['General Medicine', 'Surgery', 'Maternity', 'Paediatrics', 'ICU', 'Orthopaedics', 'Cardiology', 'Neurology', 'Oncology', 'Isolation'],
       headers: [
         { text: 'IDENTIFIED CASE', value: 'patientName' },
         { text: 'EPIDEMIOLOGICAL FOCUS', value: 'disease' },
@@ -327,7 +410,16 @@ export default {
       if (this.$refs.form.validate()) {
         const info = diseaseInfo[this.form.disease.toLowerCase().replace(/\s+/g, '_')] || {};
         this.$store.dispatch('clinical/logVisit', { ...this.form, type: info.type || 'Infectious' })
-        this.$refs.form.reset(); this.form.status = 'Suspected'; this.form.severity = 'Low';
+        
+        if (this.form.conclusion === 'Admitted') {
+            this.$store.commit('clinical/UPDATE_PATIENT_ADMISSION_FLAG', { 
+                patientId: this.form.patientId, 
+                ward: this.form.admissionWard,
+                status: 'Needs Admission'
+            });
+        }
+        
+        this.$refs.form.reset(); this.form.status = 'Suspected'; this.form.severity = 'Low'; this.form.conclusion = '';
         this.$toast.success('Clinical incident record committed safely.');
       } else {
         this.$toast.error('Please complete mandatory fields.');

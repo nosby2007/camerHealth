@@ -54,7 +54,119 @@
       </div>
     </v-card>
 
-    <v-form ref="form" v-model="valid">
+    <!-- Context: Diagnostic Results & Active Orders for Doctor Review -->
+    <v-card flat tile class="mb-6 gov-card b-1 shadow-sm" v-if="patientLabOrders.length || patientImagingOrders.length">
+      <div class="pa-3 bg-navy white--text d-flex align-center justify-space-between">
+        <div class="text-caption font-weight-black uppercase ls-1">
+          <v-icon left small dark>mdi-flask-outline</v-icon>PATIENT DIAGNOSTIC HISTORY & FILED RESULTS
+        </div>
+        <v-chip x-small dark label color="#00A99D" class="font-weight-black">
+          {{ completedDiagnosticsCount }} COMPLETED RESULTS
+        </v-chip>
+      </div>
+      <div class="pa-4">
+        <v-row>
+          <!-- Lab Orders & Results -->
+          <v-col cols="12" md="6" v-if="patientLabOrders.length">
+            <div class="text-caption font-weight-black grey--text text-uppercase mb-2">LABORATORY ORDERS & RESULTS</div>
+            <v-card v-for="lab in patientLabOrders" :key="lab.id" flat tile class="b-1 pa-3 mb-2 bg-white">
+              <div class="d-flex align-center justify-space-between mb-1">
+                <span class="text-caption font-weight-black gov-text-primary uppercase">{{ lab.testName || lab.test }}</span>
+                <v-chip x-small label dark :color="lab.status === 'Completed' ? '#003366' : '#00A99D'" class="font-weight-black">{{ lab.status }}</v-chip>
+              </div>
+              <div v-if="lab.status === 'Completed'" class="pa-2 mt-2 bg-grey lighten-4 border-left-teal">
+                <div class="text-caption font-weight-black teal--text text--darken-3 mb-1">
+                  <v-icon x-small color="#00A99D">mdi-check-circle</v-icon> Result filed on {{ lab.resultFiledAt || 'Recently' }} by {{ lab.performedBy || 'Lab Tech' }}:
+                </div>
+                <div class="text-caption font-weight-bold" style="white-space:pre-wrap">{{ lab.result }}</div>
+                <div v-if="lab.interpretation" class="mt-1">
+                  <v-chip x-small dark :color="lab.interpretation === 'Critical' ? '#C0392B' : lab.interpretation === 'Abnormal' ? 'orange' : '#00A99D'" class="font-weight-black">
+                    {{ lab.interpretation }}
+                  </v-chip>
+                </div>
+              </div>
+              <div v-else class="text-caption grey--text font-italic mt-1">
+                Requested by {{ lab.orderedBy }} on {{ formatDate(lab.requestedAt) }} — Awaiting lab technician processing
+              </div>
+            </v-card>
+          </v-col>
+
+          <!-- Imaging Orders & Reports -->
+          <v-col cols="12" md="6" v-if="patientImagingOrders.length">
+            <div class="text-caption font-weight-black grey--text text-uppercase mb-2">IMAGING ORDERS & RADIOLOGY REPORTS</div>
+            <v-card v-for="img in patientImagingOrders" :key="img.id" flat tile class="b-1 pa-3 mb-2 bg-white">
+              <div class="d-flex align-center justify-space-between mb-1">
+                <span class="text-caption font-weight-black gov-text-primary uppercase">{{ img.modality }}<span v-if="img.bodyPart"> — {{ img.bodyPart }}</span></span>
+                <v-chip x-small label dark :color="img.status === 'Completed' ? '#7C3AED' : 'purple'" class="font-weight-black">{{ img.status }}</v-chip>
+              </div>
+              <div v-if="img.status === 'Completed'" class="pa-2 mt-2 bg-grey lighten-4 border-left-purple">
+                <div class="text-caption font-weight-black purple--text text--darken-2 mb-1">
+                  <v-icon x-small color="#7C3AED">mdi-check-circle</v-icon> Report filed on {{ img.reportFiledAt || 'Recently' }} by {{ img.reportedBy || 'Radiologist' }}:
+                </div>
+                <div class="text-caption font-weight-bold" style="white-space:pre-wrap">{{ img.report }}</div>
+                <div v-if="img.impression" class="text-caption font-italic mt-1 grey--text text--darken-3">
+                  <strong>Impression:</strong> {{ img.impression }}
+                </div>
+              </div>
+              <div v-else class="text-caption grey--text font-italic mt-1">
+                Requested by {{ img.orderedBy }} on {{ formatDate(img.requestedAt) }} — Awaiting radiologist report
+              </div>
+            </v-card>
+          </v-col>
+        </v-row>
+      </div>
+    </v-card>
+
+    <!-- ── Payment Clearance Status Banner ── -->
+    <v-alert v-if="hasConsultationClearance && clearanceInfo" dense text type="success" color="#00A99D" class="mb-6 rounded-0 font-weight-bold text-caption">
+      <div class="d-flex align-center justify-space-between">
+        <div>
+          <v-icon left small color="#00A99D">mdi-check-decagram</v-icon>
+          <strong>CONSULTATION PAID & CLEARED</strong> — Department: <span class="text-uppercase">{{ clearanceInfo.department || 'General Medicine' }}</span>
+        </div>
+        <div>
+          Code: <strong class="ls-1">{{ clearanceInfo.clearanceCode }}</strong> · Issued by {{ clearanceInfo.issuedBy }}
+        </div>
+      </div>
+    </v-alert>
+
+    <v-alert v-if="!hasConsultationClearance && !emergencyOverride" dense text type="warning" class="mb-6 rounded-0 font-weight-bold text-caption">
+      <div class="d-flex align-center justify-space-between">
+        <div>
+          <v-icon left small color="orange">mdi-cash-lock</v-icon>
+          <strong>CONSULTATION NOT YET PAID</strong><br>
+          This patient has not obtained a consultation clearance from the Cash Office.
+          Please direct the patient to the Cash Office to pay the consultation fee before proceeding.
+        </div>
+        <div class="d-flex" style="gap:8px">
+          <v-btn small tile outlined color="#003366" class="font-weight-black text-caption" @click="$router.go(-1)">
+            <v-icon left x-small>mdi-arrow-left</v-icon>GO BACK
+          </v-btn>
+          <v-btn v-if="isAdminOrDoctor" small tile depressed color="orange" dark class="font-weight-black text-caption" @click="emergencyOverride = true">
+            <v-icon left x-small>mdi-alert</v-icon>EMERGENCY OVERRIDE
+          </v-btn>
+        </div>
+      </div>
+    </v-alert>
+
+    <!-- Emergency Override Reason Dialog -->
+    <v-dialog v-model="overrideDialog" max-width="420" persistent>
+      <v-card flat tile>
+        <div class="pa-4 bg-orange white--text font-weight-black text-caption uppercase">EMERGENCY OVERRIDE</div>
+        <div class="pa-6">
+          <v-alert dense text type="warning" class="mb-4 text-caption rounded-0">
+            You are bypassing the payment clearance requirement. Enter the reason for this override.
+          </v-alert>
+          <v-textarea v-model="overrideReason" label="Override reason (required)" outlined tile dense rows="3" class="rounded-0"></v-textarea>
+        </div>
+        <div class="pa-4 d-flex justify-end b-top">
+          <v-btn text tile class="mr-2 font-weight-black text-caption" @click="overrideDialog = false">CANCEL</v-btn>
+          <v-btn color="orange" dark tile depressed :disabled="!overrideReason" @click="confirmOverride" class="font-weight-black text-caption">CONFIRM OVERRIDE</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <v-form ref="form" v-model="valid" v-if="hasConsultationClearance || emergencyOverride">
       <v-row>
 
         <!-- ── COLONNE GAUCHE ─────────────────────────────────────────────── -->
@@ -346,72 +458,9 @@
 export default {
   layout: 'admins',
 
-  data() {
-    return {
-      valid: false,
-      saving: false,
-
-      encounter: {
-        chiefComplaint: '', historyOfIllness: '', medicalHistory: '',
-        surgicalHistory: '', familyHistory: '', allergies: '',
-        currentMeds: '', riskFactors: []
-      },
-
-      exam: {
-        generalState: 'Good general condition',
-        cardiovascular: '', respiratory: '', abdominal: '',
-        neurological: '', other: '', clinicalFindings: ''
-      },
-
-      diagnosis: {
-        primary: '', differentials: [], comorbidities: [],
-        severity: 'Mild'
-      },
-
-      plan: {
-        medications: '', labOrders: [], imagingOrders: [], otherOrders: ''
-      },
-
-      prescriptionRows: [
-        { medication: '', dosage: '', route: 'Oral', frequency: '', duration: '', dispenseAt: 'Hospital pharmacy', instructions: '' }
-      ],
-
-      commonMedications: [
-        'Paracetamol', 'Ibuprofen', 'Amoxicillin', 'Amoxicillin-Clavulanate', 'Ceftriaxone',
-        'Metronidazole', 'Ciprofloxacin', 'Azithromycin', 'Doxycycline', 'Artemether-Lumefantrine',
-        'Quinine', 'ORS', 'Zinc Sulfate', 'Omeprazole', 'Amlodipine', 'Metformin', 'Salbutamol',
-        'Normal Saline', 'Ringer Lactate', 'Iron + Folic Acid'
-      ],
-      routes: ['Oral', 'IV', 'IM', 'Topical', 'Inhalation', 'Sublingual', 'Rectal'],
-      frequencies: ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'Every 8 hours', 'Every 6 hours', 'As needed (PRN)', 'Single dose'],
-
-      soap: {
-        subjective: '', objective: '', assessment: '', plan: ''
-      },
-
-      outcome: {
-        decision: '', nextAppointment: '', patientInstructions: ''
-      },
-
-      admission: {
-        ward: 'General Medicine', bedNumber: '', admissionType: 'Medical', admissionReason: ''
-      },
-      wards: ['General Medicine', 'Emergency Observation', 'Maternity', 'Paediatrics', 'Surgery', 'Isolation'],
-      admissionTypes: ['Emergency', 'Medical', 'Surgical', 'Maternity', 'Paediatric', 'Observation'],
-
-      referral: {
-        toFacility: '', specialty: 'General Medicine', priority: 'Routine', reason: ''
-      },
-      referralSpecialties: ['General Medicine', 'Emergency', 'Surgery', 'Obstetrics', 'Paediatrics', 'Internal Medicine', 'Radiology', 'Laboratory'],
-
-      discharge: {
-        condition: '', warningSigns: '', homeCare: ''
-      },
-
-      billing: {
-        consultationFee: 5000,
-        paymentClass: 'Cash'
-      }
+  mounted() {
+    if (process.client) {
+      this.$store.dispatch('billing/loadFromStorage')
     }
   },
 
@@ -422,15 +471,99 @@ export default {
     },
     patientName() {
       if (!this.patient) return this.$route.params.id
-      return `${this.patient.firstName || ''} ${this.patient.lastName || ''}`.trim().toUpperCase()
+      return (this.patient.firstName || '') + ' ' + (this.patient.lastName || '').trim().toUpperCase()
     },
     hasAllergy() { return !!(this.patient && this.patient.allergies && this.patient.allergies.trim()) },
-
+    hasConsultationClearance() {
+      if (!process.client) return true
+      return !!this.$store.getters['billing/getPaymentClearance'](this.$route.params.id, 'consultation')
+    },
+    clearanceInfo() {
+      if (!process.client) return null
+      return this.$store.getters['billing/getPaymentClearance'](this.$route.params.id, 'consultation')
+    },
+    isAdminOrDoctor() {
+      const role = this.$store.state.auth.role
+      return role === 'ADMIN' || role === 'DOCTOR' || role === 'NP'
+    },
     lastVitals() {
       const all = (this.$store.getters['clinical/getVitalSigns'] || [])
         .filter(v => v.patientId === this.$route.params.id)
       if (!all.length) return null
       return [...all].sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt))[0]
+    },
+    patientLabOrders() {
+      return (this.$store.getters['clinical/getLabOrders'] || [])
+        .filter(l => l.patientId === this.$route.params.id)
+    },
+    patientImagingOrders() {
+      return (this.$store.getters['clinical/getImagingOrders'] || [])
+        .filter(i => i.patientId === this.$route.params.id)
+    },
+    completedDiagnosticsCount() {
+      const labDone = this.patientLabOrders.filter(l => l.status === 'Completed').length
+      const imgDone = this.patientImagingOrders.filter(i => i.status === 'Completed').length
+      return labDone + imgDone
+    }
+  },
+
+  data() {
+    return {
+      valid: false,
+      saving: false,
+      emergencyOverride: false,
+      overrideDialog: false,
+      overrideReason: '',
+      encounter: {
+        chiefComplaint: '', historyOfIllness: '', medicalHistory: '',
+        surgicalHistory: '', familyHistory: '', allergies: '',
+        currentMeds: '', riskFactors: []
+      },
+      exam: {
+        generalState: 'Good general condition',
+        cardiovascular: '', respiratory: '', abdominal: '',
+        neurological: '', other: '', clinicalFindings: ''
+      },
+      diagnosis: {
+        primary: '', differentials: [], comorbidities: [],
+        severity: 'Mild'
+      },
+      plan: {
+        medications: '', labOrders: [], imagingOrders: [], otherOrders: ''
+      },
+      prescriptionRows: [
+        { medication: '', dosage: '', route: 'Oral', frequency: '', duration: '', dispenseAt: 'Hospital pharmacy', instructions: '' }
+      ],
+      commonMedications: [
+        'Paracetamol', 'Ibuprofen', 'Amoxicillin', 'Amoxicillin-Clavulanate', 'Ceftriaxone',
+        'Metronidazole', 'Ciprofloxacin', 'Azithromycin', 'Doxycycline', 'Artemether-Lumefantrine',
+        'Quinine', 'ORS', 'Zinc Sulfate', 'Omeprazole', 'Amlodipine', 'Metformin', 'Salbutamol',
+        'Normal Saline', 'Ringer Lactate', 'Iron + Folic Acid'
+      ],
+      routes: ['Oral', 'IV', 'IM', 'Topical', 'Inhalation', 'Sublingual', 'Rectal'],
+      frequencies: ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'Every 8 hours', 'Every 6 hours', 'As needed (PRN)', 'Single dose'],
+      soap: {
+        subjective: '', objective: '', assessment: '', plan: ''
+      },
+      outcome: {
+        decision: '', nextAppointment: '', patientInstructions: ''
+      },
+      admission: {
+        ward: 'General Medicine', bedNumber: '', admissionType: 'Medical', admissionReason: ''
+      },
+      wards: ['General Medicine', 'Emergency Observation', 'Maternity', 'Paediatrics', 'Surgery', 'Isolation'],
+      admissionTypes: ['Emergency', 'Medical', 'Surgical', 'Maternity', 'Paediatric', 'Observation'],
+      referral: {
+        toFacility: '', specialty: 'General Medicine', priority: 'Routine', reason: ''
+      },
+      referralSpecialties: ['General Medicine', 'Emergency', 'Surgery', 'Obstetrics', 'Paediatrics', 'Internal Medicine', 'Radiology', 'Laboratory'],
+      discharge: {
+        condition: '', warningSigns: '', homeCare: ''
+      },
+      billing: {
+        consultationFee: 5000,
+        paymentClass: 'Cash'
+      }
     }
   },
 
@@ -443,34 +576,31 @@ export default {
       if (!iso) return '—'
       return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     },
-
+    confirmOverride() {
+      if (!this.overrideReason) return
+      this.overrideDialog = false
+      this.emergencyOverride = true
+      this.$toast.warning('Emergency override applied: ' + this.overrideReason)
+    },
     addPrescription() {
       this.prescriptionRows.push({ medication: '', dosage: '', route: 'Oral', frequency: '', duration: '', dispenseAt: 'Hospital pharmacy', instructions: '' })
     },
-
     removePrescription(index) {
       if (this.prescriptionRows.length > 1) this.prescriptionRows.splice(index, 1)
     },
-
     async save() {
       if (!this.$refs.form.validate()) return
       this.saving = true
       try {
-        const patientId  = this.$route.params.id
-        const recordedBy = this.$store.state.auth.fullName
-        const now        = new Date().toISOString()
+        const patientId = this.$route.params.id
+        const recordedBy = this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Doctor'
+        const now = new Date().toISOString()
 
-        // 1. Record the medical encounter
         await this.$store.dispatch('clinical/logVisit', {
-          patientId,
-          encounterType: 'MÉDICAL',
-          chiefComplaint: this.encounter.chiefComplaint,
-          diagnosis: this.diagnosis.primary,
-          recordedBy,
-          createdAt: now
+          patientId, encounterType: 'MÉDICAL', chiefComplaint: this.encounter.chiefComplaint,
+          diagnosis: this.diagnosis.primary, recordedBy, createdAt: now
         })
 
-        // 2. Record the complete medical note
         await this.$store.dispatch('clinical/addMedicalNote', {
           patientId, recordedBy, recordedAt: now,
           diagnosis: this.diagnosis.primary,
@@ -489,138 +619,81 @@ export default {
           encounter: { ...this.encounter }
         })
 
-        // 3. Create structured medication orders and legacy free-text fallback
-        const structuredPrescriptions = this.prescriptionRows.filter(row => row.medication)
-        for (const prescription of structuredPrescriptions) {
-          const medicationOrder = await this.$store.dispatch('clinical/prescribeMedication', {
-            patientId,
-            medication: prescription.medication,
-            dosage: prescription.dosage,
-            route: prescription.route,
-            frequency: prescription.frequency,
-            duration: prescription.duration,
-            notes: prescription.instructions,
-            dispenseAt: prescription.dispenseAt,
-            prescribedBy: recordedBy
+        const structuredRx = this.prescriptionRows.filter(row => row.medication)
+        for (const rx of structuredRx) {
+          const medOrder = await this.$store.dispatch('clinical/prescribeMedication', {
+            patientId, medication: rx.medication, dosage: rx.dosage,
+            route: rx.route, frequency: rx.frequency, duration: rx.duration,
+            notes: rx.instructions, dispenseAt: rx.dispenseAt, prescribedBy: recordedBy
           })
           await this.$store.dispatch('clinical/createTask', {
-            patientId,
-            relatedType: 'medication',
-            relatedId: medicationOrder.id,
-            title: `Administer ${prescription.medication}`,
-            assignedToRole: 'NURSE',
-            actionReason: `Medication order ${medicationOrder.id} generated from medical encounter`
+            patientId, relatedType: 'medication', relatedId: medOrder.id,
+            title: 'Administer ' + rx.medication, assignedToRole: 'NURSE',
+            actionReason: 'Medication order ' + medOrder.id
           })
         }
 
-        if (this.plan.medications && structuredPrescriptions.length === 0) {
-          const medicationOrder = await this.$store.dispatch('clinical/prescribeMedication', {
-            patientId,
-            medication: 'Free-text prescription',
-            prescriptionText: this.plan.medications,
-            prescribedBy: recordedBy
+        if (this.plan.medications && structuredRx.length === 0) {
+          const medOrder = await this.$store.dispatch('clinical/prescribeMedication', {
+            patientId, medication: 'Free-text prescription',
+            prescriptionText: this.plan.medications, prescribedBy: recordedBy
           })
           await this.$store.dispatch('clinical/createTask', {
-            patientId,
-            relatedType: 'medication',
-            relatedId: medicationOrder.id,
-            title: 'Administer prescribed medication',
-            assignedToRole: 'NURSE',
-            actionReason: `Medication order ${medicationOrder.id} generated from medical encounter`
+            patientId, relatedType: 'medication', relatedId: medOrder.id,
+            title: 'Administer prescribed medication', assignedToRole: 'NURSE',
+            actionReason: 'Medication order ' + medOrder.id
           })
         }
 
-        // 4. Create laboratory orders if selected
         for (const test of this.plan.labOrders) {
-          const labOrder = await this.$store.dispatch('clinical/orderLab', {
-            patientId, testName: test, orderedBy: recordedBy
-          })
-          await this.$store.dispatch('clinical/createTask', {
-            patientId,
-            relatedType: 'lab',
-            relatedId: labOrder.id,
-            title: `Process lab order: ${test}`,
-            assignedToRole: 'LAB',
-            actionReason: `Lab order ${labOrder.id} generated from medical encounter`
-          })
+          const labOrder = await this.$store.dispatch('clinical/orderLab', { patientId, testName: test, orderedBy: recordedBy })
+          await this.$store.dispatch('clinical/createTask', { patientId, relatedType: 'lab', relatedId: labOrder.id, title: 'Process lab order: ' + test, assignedToRole: 'LAB', actionReason: 'Lab order ' + labOrder.id })
         }
 
-        // 5. Create imaging orders
         for (const img of this.plan.imagingOrders) {
-          const imagingOrder = await this.$store.dispatch('clinical/orderImaging', {
-            patientId, modality: img, orderedBy: recordedBy
-          })
-          await this.$store.dispatch('clinical/createTask', {
-            patientId,
-            relatedType: 'imaging',
-            relatedId: imagingOrder.id,
-            title: `Process imaging order: ${img}`,
-            assignedToRole: 'IMAGING',
-            actionReason: `Imaging order ${imagingOrder.id} generated from medical encounter`
-          })
+          const imgOrder = await this.$store.dispatch('clinical/orderImaging', { patientId, modality: img, orderedBy: recordedBy })
+          await this.$store.dispatch('clinical/createTask', { patientId, relatedType: 'imaging', relatedId: imgOrder.id, title: 'Process imaging order: ' + img, assignedToRole: 'IMAGING', actionReason: 'Imaging order ' + imgOrder.id })
         }
 
-        // 6. Admit the patient if needed
         if (this.outcome.decision === 'Admission') {
           await this.$store.dispatch('clinical/admitPatient', {
-            patientId,
-            admittedBy: recordedBy,
-            diagnosis: this.diagnosis.primary,
-            ward: this.admission.ward,
-            bedNumber: this.admission.bedNumber,
+            patientId, admittedBy: recordedBy, diagnosis: this.diagnosis.primary,
+            ward: this.admission.ward, bedNumber: this.admission.bedNumber,
             admissionType: this.admission.admissionType,
             admissionReason: this.admission.admissionReason || this.encounter.chiefComplaint,
             treatment: this.soap.plan || this.plan.medications,
-            attendingDoctor: recordedBy,
-            admissionDate: new Date().toISOString().slice(0, 10)
+            attendingDoctor: recordedBy, admissionDate: now.slice(0, 10)
           })
         }
 
         if (this.outcome.decision === 'Inter-facility referral') {
           await this.$store.dispatch('clinical/createReferral', {
-            patientId,
-            toFacility: this.referral.toFacility || 'Higher-level referral facility',
-            specialty: this.referral.specialty,
-            priority: this.referral.priority,
+            patientId, toFacility: this.referral.toFacility || 'Higher-level facility',
+            specialty: this.referral.specialty, priority: this.referral.priority,
             reason: this.referral.reason || this.diagnosis.primary,
-            clinicalSummary: `${this.encounter.chiefComplaint}. Diagnosis: ${this.diagnosis.primary}. Treatment: ${this.soap.plan || this.plan.medications}`,
+            clinicalSummary: this.encounter.chiefComplaint + '. Diagnosis: ' + this.diagnosis.primary,
             createdBy: recordedBy
           })
         }
 
         if (this.outcome.nextAppointment) {
           await this.$store.dispatch('clinical/scheduleAppointment', {
-            patientId,
-            date: this.outcome.nextAppointment,
-            time: '08:00',
-            provider: recordedBy,
-            type: 'Medical follow-up',
-            reason: this.diagnosis.primary
-          })
-        }
-
-        if (this.billing.consultationFee || this.plan.labOrders.length || this.plan.imagingOrders.length) {
-          await this.$store.dispatch('clinical/createInvoice', {
-            patientId,
-            amount: Number(this.billing.consultationFee || 0) + (this.plan.labOrders.length * 2500) + (this.plan.imagingOrders.length * 5000),
-            paymentMethod: this.billing.paymentClass,
-            description: `Medical consultation: ${this.diagnosis.primary}`,
-            createdBy: recordedBy
+            patientId, date: this.outcome.nextAppointment, time: '08:00',
+            provider: recordedBy, type: 'Medical follow-up', reason: this.diagnosis.primary
           })
         }
 
         if (this.outcome.decision === 'Discharge home') {
           await this.$store.dispatch('clinical/createDocument', {
-            patientId,
-            title: `Discharge summary - ${this.diagnosis.primary}`,
+            patientId, title: 'Discharge summary - ' + this.diagnosis.primary,
             category: 'Discharge Summary',
-            content: `Diagnosis: ${this.diagnosis.primary}\nCondition: ${this.discharge.condition}\nTreatment: ${this.soap.plan || this.plan.medications}\nInstructions: ${this.outcome.patientInstructions}\nReturn if: ${this.discharge.warningSigns}\nHome care: ${this.discharge.homeCare}`,
+            content: 'Diagnosis: ' + this.diagnosis.primary + '\nCondition: ' + this.discharge.condition + '\nTreatment: ' + (this.soap.plan || this.plan.medications) + '\nInstructions: ' + this.outcome.patientInstructions,
             status: 'Filed'
           })
         }
 
         this.$toast.success('Medical consultation saved successfully')
-        this.$router.push(`/clinical/patients/${patientId}`)
+        this.$router.push('/clinical/patients/' + patientId)
       } catch (e) {
         this.$toast.error('An error occurred while saving the record')
       } finally {
