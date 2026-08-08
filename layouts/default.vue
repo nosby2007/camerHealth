@@ -132,7 +132,7 @@ export default {
         { icon: 'mdi-account-multiple', titleKey: 'Staff Accounts',    to: '/admin/staff',           roles: ['ADMIN'] },
         { icon: 'mdi-history',          titleKey: 'Audit Log',         to: '/admin/audit',           roles: ['ADMIN'] },
         { icon: 'mdi-shield-crown',     titleKey: 'Super Admin',       to: '/super-admin',           roles: ['ADMIN'] },
-        { icon: 'mdi-monitor-dashboard', titleKey: 'Patient Workflow 360', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
+        { icon: 'mdi-monitor-dashboard', titleKey: 'EMR Command Center', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
         // ── Patient Modules ──
         { icon: 'mdi-account-group',    titleKey: 'Patient Listing',   to: '/clinical/patients',     roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS', 'FRONT_DESK'] },
         { icon: 'mdi-account-plus',     titleKey: 'New Patient',       to: '/clinical/patients/new', roles: ['ADMIN', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },

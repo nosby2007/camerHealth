@@ -11,6 +11,74 @@ const scoped = (arr, rootState, rootGetters) => {
   })
 }
 
+const DEFAULT_CARE_PLAN_TEMPLATES = [
+  {
+    name: 'General Hospital Daily Care',
+    type: 'general',
+    problems: [
+      {
+        label: 'Daily nursing needs',
+        goals: [
+          'Vitals, pain, intake/output and safety checks documented per schedule',
+          'Patient/family understands the care plan for the current shift'
+        ]
+      }
+    ]
+  },
+  {
+    name: 'Infection Prevention',
+    type: 'infection',
+    problems: [
+      {
+        label: 'Risk for infection or active infection',
+        goals: [
+          'Temperature, wound/line signs and antibiotics monitored',
+          'Hand hygiene and isolation instructions reinforced with patient/family'
+        ]
+      }
+    ]
+  },
+  {
+    name: 'Skin / Wound Integrity',
+    type: 'skin_integrity',
+    problems: [
+      {
+        label: 'Risk for pressure injury or wound deterioration',
+        goals: [
+          'Skin/wound assessed and dressing plan followed',
+          'Turning, hygiene and nutrition support completed as scheduled'
+        ]
+      }
+    ]
+  },
+  {
+    name: 'Mobility and Fall Prevention',
+    type: 'fall_risk',
+    problems: [
+      {
+        label: 'Fall risk or impaired mobility',
+        goals: [
+          'Patient mobilizes safely with assistance as ordered',
+          'Family/patient calls staff before standing or transfer'
+        ]
+      }
+    ]
+  },
+  {
+    name: 'Discharge Readiness',
+    type: 'discharge',
+    problems: [
+      {
+        label: 'Needs coordinated discharge plan',
+        goals: [
+          'Medication, education, follow-up, transport and caregiver plan confirmed',
+          'Financial/social barriers escalated before discharge'
+        ]
+      }
+    ]
+  }
+]
+
 export const state = () => ({
   carePlans: [],
   carePlanProblems: [],
@@ -95,50 +163,51 @@ export const actions = {
   },
 
   syncCarePlanFromClinicalData({ state, commit, dispatch, rootState }, { patientId, encounterId, admissionId }) {
-    const clinical = rootState.clinical || {}
-    const patient = clinical.patients?.find(p => p.id === patientId) || {}
-
     // Create default care plans if none exist
     const existingPlans = state.carePlans.filter(p => p.patientId === patientId && p.encounterId === encounterId)
     if (existingPlans.length === 0) {
-      const generalPlan = withBase(rootState, {
-        patientId,
-        encounterId,
-        admissionId,
-        name: 'General Care Plan',
-        type: 'general',
-        status: 'active',
-        source: 'system'
-      }, 'CPL')
-      commit('ADD_CARE_PLAN', generalPlan)
-
-      // Add default problems based on clinical data
-      if (patient.fallRisk) {
-        const fallPlan = withBase(rootState, {
+      DEFAULT_CARE_PLAN_TEMPLATES.forEach((template, planIdx) => {
+        const plan = withBase(rootState, {
           patientId,
           encounterId,
           admissionId,
-          name: 'CIRH Falls Care Plan',
-          type: 'fall_risk',
+          name: template.name,
+          type: template.type,
           status: 'active',
-          source: 'system'
+          source: 'system',
+          sortOrder: planIdx
         }, 'CPL')
-        commit('ADD_CARE_PLAN', fallPlan)
-      }
+        commit('ADD_CARE_PLAN', plan)
 
-      // Add skin integrity plan if wounds
-      if (patient.woundStatus || patient.skinRisk) {
-        const skinPlan = withBase(rootState, {
-          patientId,
-          encounterId,
-          admissionId,
-          name: 'Potential for Compromised Skin Integrity',
-          type: 'skin_integrity',
-          status: 'active',
-          source: 'system'
-        }, 'CPL')
-        commit('ADD_CARE_PLAN', skinPlan)
-      }
+        template.problems.forEach((problemTemplate, problemIdx) => {
+          const problem = withBase(rootState, {
+            carePlanId: plan.id,
+            patientId,
+            encounterId,
+            admissionId,
+            label: problemTemplate.label,
+            status: 'active',
+            source: 'system',
+            sortOrder: problemIdx
+          }, 'PBL')
+          commit('ADD_PROBLEM', problem)
+
+          problemTemplate.goals.forEach((goalLabel, goalIdx) => {
+            commit('ADD_GOAL', withBase(rootState, {
+              carePlanId: plan.id,
+              problemId: problem.id,
+              patientId,
+              encounterId,
+              admissionId,
+              label: goalLabel,
+              description: 'Prefilled goal for Cameroon general hospital workflow.',
+              status: 'active',
+              source: 'system',
+              sortOrder: goalIdx
+            }, 'GOL'))
+          })
+        })
+      })
     }
   },
 

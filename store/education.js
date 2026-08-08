@@ -11,6 +11,34 @@ const scoped = (arr, rootState, rootGetters) => {
   })
 }
 
+const DEFAULT_EDUCATION_POINTS = {
+  general: [
+    { label: 'Explain daily care plan and call bell use', topic: 'Care participation', description: 'Patient/family knows who to call, when to ask for help and what care is planned today.' },
+    { label: 'Review warning signs to report immediately', topic: 'Safety', description: 'Fever, severe pain, bleeding, breathing difficulty, confusion, fall or worsening symptoms.' }
+  ],
+  infection: [
+    { label: 'Hand hygiene and visitor precautions', topic: 'Infection prevention', description: 'Hand washing, clean environment, mask/isolation instructions when needed.' },
+    { label: 'Antibiotic adherence and fever escalation', topic: 'Medication safety', description: 'Complete prescribed medicine and report fever, rash, diarrhea or breathing difficulty.' }
+  ],
+  safety: [
+    { label: 'Fall prevention and safe mobility', topic: 'Fall safety', description: 'Call before standing, use footwear/walker, keep belongings and call light close.' }
+  ],
+  wound: [
+    { label: 'Keep dressing clean and dry', topic: 'Wound care', description: 'Do not remove dressing unless instructed; report odor, drainage, bleeding or spreading redness.' },
+    { label: 'Nutrition for wound healing', topic: 'Nutrition', description: 'Encourage protein, fluids and diabetes control when relevant.' }
+  ],
+  discharge: [
+    { label: 'Medication plan and follow-up appointment', topic: 'Discharge', description: 'Confirm dose timing, available supply, return date and transport/caregiver plan.' },
+    { label: 'Return precautions after discharge', topic: 'Discharge safety', description: 'Return for fever, bleeding, severe pain, breathing difficulty, confusion or wound deterioration.' }
+  ],
+  pain: [
+    { label: 'Pain scale and relief plan', topic: 'Pain', description: 'Report pain early, use positioning, prescribed analgesics and non-drug comfort measures.' }
+  ],
+  nutrition: [
+    { label: 'Hydration and diet plan', topic: 'Nutrition', description: 'Review oral intake targets, restrictions and family-supported meals where appropriate.' }
+  ]
+}
+
 export const state = () => ({
   educationTitles: [],
   educationPoints: [],
@@ -111,6 +139,20 @@ export const actions = {
           sortOrder: idx
         }, 'EDT')
         commit('ADD_TITLE', title)
+
+        ;(DEFAULT_EDUCATION_POINTS[t.category] || []).forEach((point, pointIdx) => {
+          commit('ADD_POINT', withBase(rootState, {
+            titleId: title.id,
+            patientId,
+            encounterId,
+            admissionId,
+            ...point,
+            status: 'active',
+            requiredLearners: ['Patient', 'Family/Caregiver'],
+            sortOrder: pointIdx,
+            systemGenerated: true
+          }, 'EDP'))
+        })
       })
     }
   },

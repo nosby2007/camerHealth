@@ -117,12 +117,15 @@
               <a
                 v-for="section in activeNavigatorSections"
                 :key="section.key"
-                :class="{ active: selectedNavigatorSection === section.key }"
+                :class="['navigator-section-link', navigatorSectionStatus(section).status, { active: selectedNavigatorSection === section.key }]"
                 href="#"
                 @click.prevent="selectedNavigatorSection = section.key"
               >
                 <small v-if="section.group">{{ section.group }}</small>
-                {{ section.label }}
+                <span>
+                  {{ section.label }}
+                  <i>{{ navigatorSectionStatus(section).label }}</i>
+                </span>
               </a>
             </div>
           </aside>
@@ -165,17 +168,120 @@
               </div>
             </div>
 
-            <section v-if="selectedChartTab === 'Summary'" class="flowsheet">
-              <FlowSection
-                title="Patient Snapshot"
-                :columns="['Current']"
-                :rows="summaryRows"
-              />
-              <FlowSection
-                title="Latest Clinical Signals"
-                :columns="['Last Filed']"
-                :rows="visibleVitalRows"
-              />
+            <section v-if="selectedChartTab === 'Navigators'" class="navigator-focus-panel">
+              <div class="navigator-focus-head">
+                <div>
+                  <span>{{ activeNavigator.label }}</span>
+                  <strong>{{ activeNavigatorSectionMeta.label }}</strong>
+                  <p>{{ activeNavigatorSectionMeta.detail }}</p>
+                </div>
+                <div class="navigator-focus-actions">
+                  <v-btn
+                    v-for="action in navigatorQuickActions"
+                    :key="action.label"
+                    x-small
+                    :text="!action.primary"
+                    :depressed="action.primary"
+                    :color="action.color"
+                    :dark="action.primary"
+                    @click="openCommandAction(action.action)"
+                  >
+                    <v-icon x-small left>{{ action.icon }}</v-icon>{{ action.label }}
+                  </v-btn>
+                </div>
+              </div>
+              <div class="navigator-focus-grid">
+                <article v-for="row in navigatorSectionProgressRows" :key="row.label" :class="row.status">
+                  <span>{{ row.label }}</span>
+                  <strong>{{ row.value }}</strong>
+                  <small>{{ row.detail }}</small>
+                </article>
+              </div>
+            </section>
+
+            <section v-if="selectedChartTab === 'Summary'" class="patient-summary-dashboard">
+              <div class="summary-hero">
+                <div>
+                  <span>Patient summary</span>
+                  <strong>{{ summaryHeadline }}</strong>
+                  <p>{{ summaryNarrative }}</p>
+                </div>
+                <div class="summary-actions">
+                  <v-btn x-small depressed color="#003366" dark @click="openCommandAction('nurse')">
+                    <v-icon x-small left>mdi-stethoscope</v-icon>Nurse entry
+                  </v-btn>
+                  <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('flowsheet')">
+                    <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed care
+                  </v-btn>
+                  <v-btn x-small text color="#7c3aed" @click="openCommandAction('handoff')">
+                    <v-icon x-small left>mdi-handshake-outline</v-icon>Handoff
+                  </v-btn>
+                </div>
+              </div>
+
+              <div class="summary-status-grid">
+                <article v-for="item in summaryStatusCards" :key="item.label" :class="['summary-status-card', item.status]">
+                  <v-icon small>{{ item.icon }}</v-icon>
+                  <div>
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <p>{{ item.detail }}</p>
+                  </div>
+                </article>
+              </div>
+
+              <div class="summary-columns">
+                <section class="summary-panel">
+                  <header>
+                    <span>Today priorities</span>
+                    <strong>What must move before handoff</strong>
+                  </header>
+                  <div class="summary-list">
+                    <button
+                      v-for="item in summaryPriorityItems"
+                      :key="item.label"
+                      type="button"
+                      @click="openCommandAction(item.action)"
+                    >
+                      <i :class="item.level"></i>
+                      <div>
+                        <strong>{{ item.label }}</strong>
+                        <span>{{ item.detail }}</span>
+                      </div>
+                    </button>
+                  </div>
+                </section>
+
+                <section class="summary-panel">
+                  <header>
+                    <span>Care continuity</span>
+                    <strong>Last filed and next owner</strong>
+                  </header>
+                  <div class="summary-timeline">
+                    <article v-for="item in summaryContinuityItems" :key="item.label">
+                      <small>{{ item.time }}</small>
+                      <div>
+                        <strong>{{ item.label }}</strong>
+                        <span>{{ item.detail }}</span>
+                      </div>
+                    </article>
+                  </div>
+                </section>
+              </div>
+
+              <div class="summary-columns">
+                <FlowSection
+                  title="Patient Snapshot"
+                  :columns="['Current']"
+                  :rows="summaryRows"
+                />
+                <FlowSection
+                  title="Latest Clinical Signals"
+                  :columns="['Last Filed']"
+                  :rows="visibleVitalRows"
+                />
+              </div>
+
               <FlowSection
                 v-if="summaryActiveOrderRows.length"
                 title="Active Orders Summary"
@@ -248,6 +354,19 @@
                 />
               </div>
 
+              <div class="command-two-column">
+                <FlowSection
+                  title="360 Patient Cycle"
+                  :columns="['State', 'Lead', 'Next']"
+                  :rows="patientCycleRows"
+                />
+                <FlowSection
+                  title="Department Handoff Matrix"
+                  :columns="['From', 'To', 'Action']"
+                  :rows="departmentHandoffRows"
+                />
+              </div>
+
               <FlowSection
                 title="My Role - Actions Now"
                 :columns="['Priority', 'Where', 'Action']"
@@ -264,6 +383,12 @@
                 <div class="command-brief-actions">
                   <v-btn x-small depressed color="#003366" dark @click="openCommandAction('nurse')">
                     <v-icon x-small left>mdi-stethoscope</v-icon>New nursing entry
+                  </v-btn>
+                  <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('flowsheet')">
+                    <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed flowsheet
+                  </v-btn>
+                  <v-btn x-small depressed color="#be123c" dark @click="openCommandAction('body')">
+                    <v-icon x-small left>mdi-human</v-icon>Body assessment
                   </v-btn>
                   <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('medication')">
                     <v-icon x-small left>mdi-pill</v-icon>MAR
@@ -319,47 +444,120 @@
             </section>
 
             <section v-else-if="selectedChartTab === 'Avatar'" class="avatar-workspace">
-              <div class="navigator-banner">
+              <div class="avatar-command">
                 <div>
-                  <strong>Patient Avatar</strong>
-                  <span>Vue corporelle interactive pour localiser les soins, risques, lignes, douleur et plaies</span>
+                  <span>Clinical avatar</span>
+                  <strong>Body map for risks, wounds, pain, lines, mobility and medication workload</strong>
+                  <p>{{ avatarNarrative }}</p>
                 </div>
                 <div class="flowsheet-actions">
-                  <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
-                    <v-icon x-small left>mdi-stethoscope</v-icon>Assess
+                  <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('body')">
+                    <v-icon x-small left>mdi-human</v-icon>Body assessment
                   </v-btn>
-                  <v-btn x-small depressed color="#475569" dark @click="openChartDialog('document')">
-                    <v-icon x-small left>mdi-camera-plus</v-icon>Photo / doc
+                  <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('flowsheet')">
+                    <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed care
+                  </v-btn>
+                  <v-btn x-small text color="#7c3aed" @click="dialogs.woundCare = true">
+                    <v-icon x-small left>mdi-bandage</v-icon>Wound care
                   </v-btn>
                 </div>
               </div>
 
+              <div class="avatar-zone-strip">
+                <button
+                  v-for="zone in avatarZones"
+                  :key="zone.key"
+                  type="button"
+                  :class="['avatar-zone-card', zone.status, { selected: activeAvatarZone === zone.key }]"
+                  @click="activeAvatarZone = zone.key"
+                >
+                  <v-icon small :color="zone.color">{{ zone.icon }}</v-icon>
+                  <strong>{{ zone.short }}</strong>
+                  <span>{{ zone.statusLabel }}</span>
+                </button>
+              </div>
+
               <div class="avatar-grid">
                 <section class="patient-body-panel" aria-label="Patient body avatar">
+                  <div class="avatar-placement-palette" aria-label="Avatar placement tools">
+                    <button
+                      v-for="tool in avatarPlacementTools"
+                      :key="tool.key"
+                      type="button"
+                      draggable="true"
+                      :class="{ active: selectedAvatarTool === tool.key }"
+                      @click="selectAvatarTool(tool.key)"
+                      @dragstart="startAvatarToolDrag($event, tool.key)"
+                    >
+                      <v-icon small :color="tool.color">{{ tool.icon }}</v-icon>
+                      <span>{{ tool.label }}</span>
+                    </button>
+                  </div>
                   <div class="avatar-legend">
                     <span><i class="risk"></i>Risk</span>
                     <span><i class="active"></i>Active care</span>
                     <span><i class="stable"></i>Stable</span>
                   </div>
+                  <div class="avatar-view-toggle">
+                    <button :class="{ active: avatarView === 'front' }" type="button" @click="avatarView = 'front'">Front</button>
+                    <button :class="{ active: avatarView === 'back' }" type="button" @click="avatarView = 'back'">Back</button>
+                  </div>
                   <div class="body-canvas">
-                    <div class="body-figure">
+                    <div
+                      ref="avatarBodyFigure"
+                      :class="['body-figure', avatarView, avatarAnatomy, { 'with-image': avatarImageSrc, placing: selectedAvatarTool }]"
+                      @click="handleAvatarCanvasClick"
+                      @dragover.prevent
+                      @drop.prevent="handleAvatarDrop"
+                    >
+                      <img
+                        v-if="avatarImageSrc"
+                        class="body-avatar-image"
+                        :src="avatarImageSrc"
+                        :alt="`${avatarAnatomyLabel} ${avatarView} body avatar`"
+                      >
                       <button
-                        v-for="zone in avatarZones"
+                        v-for="zone in visibleAvatarZones"
                         :key="zone.key"
                         :class="['body-zone', zone.key, zone.status, { selected: activeAvatarZone === zone.key }]"
                         type="button"
-                        @click="activeAvatarZone = zone.key"
+                        @click.stop="activeAvatarZone = zone.key"
                       >
                         <v-icon x-small>{{ zone.icon }}</v-icon>
                         <span>{{ zone.short }}</span>
                       </button>
+                      <button
+                        v-for="item in visibleAvatarPlacements"
+                        :key="item.id"
+                        type="button"
+                        :class="['avatar-sticker', item.type, avatarPlacementStatusClass(item)]"
+                        :style="avatarPlacementStyle(item)"
+                        :title="`${item.label} - ${item.region}`"
+                        @click.stop="openAvatarPlacement(item)"
+                      >
+                        <v-icon x-small>{{ item.icon }}</v-icon>
+                      </button>
                       <div class="body-head"></div>
+                      <div class="body-ear left"></div>
+                      <div class="body-ear right"></div>
+                      <div v-if="avatarView === 'front'" class="body-face"></div>
                       <div class="body-neck"></div>
+                      <div class="body-shoulder"></div>
                       <div class="body-torso"></div>
+                      <div v-if="avatarView === 'front' && avatarAnatomy === 'female'" class="body-breast left"></div>
+                      <div v-if="avatarView === 'front' && avatarAnatomy === 'female'" class="body-breast right"></div>
+                      <div v-if="avatarView === 'front'" class="body-pelvis"></div>
+                      <div v-if="avatarView === 'back'" class="body-spine"></div>
+                      <div v-if="avatarView === 'back'" class="body-glute left"></div>
+                      <div v-if="avatarView === 'back'" class="body-glute right"></div>
                       <div class="body-arm left"></div>
                       <div class="body-arm right"></div>
+                      <div class="body-hand left"></div>
+                      <div class="body-hand right"></div>
                       <div class="body-leg left"></div>
                       <div class="body-leg right"></div>
+                      <div class="body-foot left"></div>
+                      <div class="body-foot right"></div>
                     </div>
                   </div>
                 </section>
@@ -373,24 +571,38 @@
                     <span>{{ activeAvatarZoneRecord.statusLabel }}</span>
                   </header>
                   <p>{{ activeAvatarZoneRecord.detail }}</p>
+                  <div class="avatar-placement-summary">
+                    <span>{{ avatarPlacements.length }} placed item(s)</span>
+                    <strong v-if="selectedAvatarToolRecord">Click anatomy to place: {{ selectedAvatarToolRecord.label }}</strong>
+                    <strong v-else>Select or drag a sticker to document exact location.</strong>
+                  </div>
                   <div class="avatar-actions">
-                    <button @click="openChartDialog('nurse')">
+                    <button @click="openAvatarAction(activeAvatarZoneRecord.primaryAction)">
                       <v-icon x-small>mdi-note-plus</v-icon>
-                      Document assessment
+                      {{ activeAvatarZoneRecord.primaryActionLabel }}
                     </button>
-                    <button v-if="activeAvatarZoneRecord.key === 'skin'" @click="openChartDialog('document')">
+                    <button v-if="activeAvatarZoneRecord.key === 'skin'" @click="dialogs.woundCare = true">
+                      <v-icon x-small>mdi-bandage</v-icon>
+                      Wound reassessment
+                    </button>
+                    <button @click="openCommandAction('flowsheet')">
+                      <v-icon x-small>mdi-clock-edit-outline</v-icon>
+                      Timed flowsheet
+                    </button>
+                    <button @click="openChartDialog('document')">
                       <v-icon x-small>mdi-camera-plus</v-icon>
-                      File wound photo
-                    </button>
-                    <button v-if="activeAvatarZoneRecord.key === 'meds'" @click="openChartDialog('medication')">
-                      <v-icon x-small>mdi-pill-plus</v-icon>
-                      Medication action
+                      Photo / document
                     </button>
                   </div>
                   <FlowSection
                     title="Selected Zone Detail"
                     :columns="['Status', 'Evidence', 'Action']"
                     :rows="activeAvatarRows"
+                  />
+                  <FlowSection
+                    title="Placed LDA / Wound / Devices"
+                    :columns="['Type', 'Region', 'Status']"
+                    :rows="avatarPlacementRows"
                   />
                 </section>
               </div>
@@ -405,6 +617,11 @@
                 title="Lines, Wounds and Care Targets"
                 :columns="['Location', 'Status', 'Next Step']"
                 :rows="avatarCareTargetRows"
+              />
+              <FlowSection
+                title="Avatar Priorities"
+                :columns="['Reason', 'Owner', 'Next Action']"
+                :rows="avatarPriorityRows"
               />
             </section>
 
@@ -1574,6 +1791,63 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="dialogs.avatarPlacement" max-width="720" persistent scrollable>
+      <v-card class="chart-dialog avatar-placement-dialog">
+        <v-card-title class="dialog-title">
+          <div>
+            <span>Avatar LDA / device map</span>
+            <strong>{{ avatarPlacementDialogTitle }}</strong>
+          </div>
+          <v-btn icon small @click="closeAvatarPlacementDialog"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <div class="dialog-grid two">
+            <v-select
+              v-model="forms.avatarPlacement.type"
+              :items="avatarPlacementTools"
+              item-text="label"
+              item-value="key"
+              label="Element"
+              dense
+              outlined
+            />
+            <v-text-field v-model="forms.avatarPlacement.region" label="Detected region" dense outlined />
+            <v-select v-model="forms.avatarPlacement.status" :items="avatarPlacementStatusOptions" label="Status" dense outlined />
+            <v-text-field v-model="forms.avatarPlacement.view" label="View" dense outlined readonly />
+            <v-text-field v-model="forms.avatarPlacement.siteCare" :label="avatarPlacementSiteCareLabel" dense outlined />
+            <v-text-field v-model="forms.avatarPlacement.dressing" label="Dressing / securement" dense outlined />
+          </div>
+          <v-textarea
+            v-model="forms.avatarPlacement.notes"
+            :label="avatarPlacementNotesLabel"
+            rows="4"
+            dense
+            outlined
+          />
+          <div class="avatar-placement-hint">
+            <v-icon small color="#0f766e">mdi-map-marker-radius</v-icon>
+            <span>{{ forms.avatarPlacement.label }} placed on {{ forms.avatarPlacement.region }} at {{ forms.avatarPlacement.x }}%, {{ forms.avatarPlacement.y }}%.</span>
+          </div>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <v-btn
+            v-if="forms.avatarPlacement.id"
+            text
+            color="#be123c"
+            small
+            @click="removeAvatarPlacement(forms.avatarPlacement.id)"
+          >
+            <v-icon x-small left>mdi-delete</v-icon>Remove
+          </v-btn>
+          <v-spacer />
+          <v-btn text small @click="closeAvatarPlacementDialog">Cancel</v-btn>
+          <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveAvatarPlacement">
+            <v-icon x-small left>mdi-content-save</v-icon>Save location
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <NoteDialog
       :open="dialogs.note"
       :patient-id="activePatientId"
@@ -1598,6 +1872,12 @@
       @close="closeChartDialog('carePlan')"
       @saved="handleCarePlanSaved"
     />
+    <BodyAssessmentDialog
+      :value="showBodyAssessmentDialog"
+      :gender="avatarAnatomy"
+      @input="showBodyAssessmentDialog = $event"
+      @save="handleBodyAssessmentSave"
+    />
   </div>
 </template>
 
@@ -1613,6 +1893,11 @@ import CarePlanDialog from '~/components/clinical/patient360/dialogs/CarePlanDia
 import Patient360CarePlanTab from '~/components/clinical/patient360/care-plan/Patient360CarePlanTab.vue'
 import Patient360EducationTab from '~/components/clinical/patient360/education/Patient360EducationTab.vue'
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
+import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
+import maleFrontAvatar from '~/assets/images/clinical/avatar/male-front.jpg'
+import maleBackAvatar from '~/assets/images/clinical/avatar/male-back.jpg'
+import femaleFrontAvatar from '~/assets/images/clinical/avatar/female-front.png'
+import femaleBackAvatar from '~/assets/images/clinical/avatar/female-back.png'
 
 const FlowSection = {
   name: 'FlowSection',
@@ -1677,7 +1962,7 @@ const ALL_CLINICAL_TABS = [
 ]
 
 // Tabs shown directly in the tab bar; everything else in visibleChartTabs collapses into the More menu.
-const PRIMARY_TAB_ORDER = ['Summary', 'Chart Review', 'Orders', 'MAR', 'Flowsheets', 'Notes', 'Care Plan']
+const PRIMARY_TAB_ORDER = ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Chart Review', 'Orders', 'MAR', 'Flowsheets', 'Notes', 'Care Plan']
 
 const RIGHT_PANEL_DEFAULT_COLLAPSED_TABS = ['Notes', 'Flowsheets', 'MAR', 'Orders']
 
@@ -1691,15 +1976,15 @@ const TAB_ACCESS = {
   MIDWIFE: ALL_CLINICAL_TABS.filter(tab => !['Sedation/Procedure Documentation'].includes(tab)),
   MAJOR_SERVICE: ALL_CLINICAL_TABS,
   NURSING_SUPERVISOR: ALL_CLINICAL_TABS,
-  CNA: ['Summary', 'Navigators', 'Flowsheets', 'Work List', 'Care Plan', 'Education', 'Handoff'],
-  LAB: ['Summary', 'Chart Review', 'Navigators', 'Orders', 'Lab Results', 'Work List'],
-  IMAGING: ['Summary', 'Chart Review', 'Navigators', 'Orders', 'Work List', 'Documents'],
-  PHARMACY: ['Summary', 'Chart Review', 'Orders', 'MAR', 'Medications', 'Work List', 'Education'],
-  FRONT_DESK: ['Summary', 'Registration', 'Documents', 'Care Teams'],
-  RECORDS: ['Summary', 'Chart Review', 'Documents', 'Registration', 'Care Teams'],
-  BILLING: ['Summary', 'Registration', 'Documents'],
-  SOCIAL_WORKER: ['Summary', 'Navigators', 'Notes', 'Care Plan', 'Education'],
-  PHYSIOTHERAPIST: ['Summary', 'Navigators', 'Flowsheets', 'Care Plan', 'Work List', 'Notes']
+  CNA: ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Navigators', 'Flowsheets', 'Work List', 'Care Plan', 'Education', 'Handoff'],
+  LAB: ['Summary', 'EMR Command Center', 'Chart Review', 'Navigators', 'Orders', 'Lab Results', 'Work List'],
+  IMAGING: ['Summary', 'EMR Command Center', 'Chart Review', 'Navigators', 'Orders', 'Work List', 'Documents'],
+  PHARMACY: ['Summary', 'EMR Command Center', 'Chart Review', 'Orders', 'MAR', 'Medications', 'Work List', 'Education'],
+  FRONT_DESK: ['Summary', 'EMR Command Center', 'Registration', 'Documents', 'Care Teams'],
+  RECORDS: ['Summary', 'EMR Command Center', 'Chart Review', 'Documents', 'Registration', 'Care Teams'],
+  BILLING: ['Summary', 'EMR Command Center', 'Registration', 'Documents'],
+  SOCIAL_WORKER: ['Summary', 'EMR Command Center', 'Navigators', 'Notes', 'Care Plan', 'Education'],
+  PHYSIOTHERAPIST: ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Navigators', 'Flowsheets', 'Care Plan', 'Work List', 'Notes']
 }
 
 const NAV_ACCESS = {
@@ -1742,7 +2027,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, BodyAssessmentDialog },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -1760,7 +2045,21 @@ export default {
       selectedNavigator: 'shift',
       selectedNavigatorSection: 'overview',
       activeSdoh: 'food',
-      activeAvatarZone: 'vitals',
+      activeAvatarZone: 'cardiac',
+      avatarView: 'front',
+      selectedAvatarTool: '',
+      avatarPlacementSequence: 0,
+      avatarPlacements: [],
+      avatarPlacementTools: [
+        { key: 'wound', label: 'Wound', icon: 'mdi-bandage', color: '#be123c', defaultStatus: 'Active' },
+        { key: 'trach', label: 'Trach', icon: 'mdi-air-filter', color: '#7c3aed', defaultStatus: 'In place' },
+        { key: 'iv', label: 'IV line', icon: 'mdi-needle', color: '#0369a1', defaultStatus: 'Patent' },
+        { key: 'foley', label: 'Foley', icon: 'mdi-water-outline', color: '#0f766e', defaultStatus: 'Draining' },
+        { key: 'drain', label: 'Drain', icon: 'mdi-pipe', color: '#f97316', defaultStatus: 'Active' },
+        { key: 'ostomy', label: 'Ostomy', icon: 'mdi-circle-slice-8', color: '#64748b', defaultStatus: 'Appliance intact' },
+        { key: 'pain', label: 'Pain', icon: 'mdi-alert-circle-outline', color: '#dc2626', defaultStatus: 'Needs reassessment' }
+      ],
+      showBodyAssessmentDialog: false,
       chartTabs: ALL_CLINICAL_TABS,
       navigatorTabs: [
         {
@@ -2041,7 +2340,8 @@ export default {
         marAction: false,
         note: false,
         woundCare: false,
-        carePlan: false
+        carePlan: false,
+        avatarPlacement: false
       },
       noteDialogConfig: { noteType: 'nursing_note', dialogTitle: '', existingNote: null },
       selectedNoteId: null,
@@ -2054,6 +2354,7 @@ export default {
       priorityOptions: ['Routine', 'Today', 'Urgent', 'STAT'],
       medicationRoutes: ['Oral', 'IV', 'IM', 'Topical', 'Inhalation', 'Sublingual', 'Rectal'],
       marActionOptions: ['Given', 'Held', 'Refused', 'Not scanned', 'Patient education', 'Details reviewed'],
+      avatarPlacementStatusOptions: ['Active', 'In place', 'Patent', 'Draining', 'Clean/dry/intact', 'Needs reassessment', 'Resolved', 'Removed', 'Escalate'],
       documentCategories: ['Clinical Note', 'Consent', 'Referral', 'Discharge Summary', 'Education', 'Wound Photo'],
       generalConditionOptions: ['Good general condition', 'Stable', 'Impaired', 'Serious', 'Critical'],
       consciousnessOptions: ['Alert and oriented', 'Confused', 'Drowsy', 'Stuporous', 'Comatose'],
@@ -2188,6 +2489,110 @@ export default {
     activeNavigatorSections() {
       const sections = this.activeNavigator && this.activeNavigator.sections ? this.activeNavigator.sections : []
       return sections.map(section => typeof section === 'string' ? { key: section, label: section, group: '' } : section)
+    },
+    activeNavigatorSectionMeta() {
+      const section = this.activeNavigatorSections.find(item => item.key === this.selectedNavigatorSection) || this.activeNavigatorSections[0] || {}
+      const key = section.key || ''
+      const map = {
+        'signed-held': { owner: 'Provider / Nurse', detail: 'Review held orders before release or transfer.', action: 'orders' },
+        'release-orders': { owner: 'Provider / Nurse', detail: 'Release eligible orders and acknowledge active tasks.', action: 'orders' },
+        'care-everywhere': { owner: 'Records / Provider', detail: 'Outside records and referral information for continuity.', action: 'notes' },
+        'quick-links': { owner: 'Care team', detail: 'Fast access to common 360 documentation areas.', action: 'flowsheet' },
+        'delirium-gcs': { owner: 'Nurse', detail: 'Document mental status, RASS/CAM and Glasgow coma scale.', action: 'nurse' },
+        specimen: { owner: 'Lab / Nurse', detail: 'Collect specimens, track pending labs and notify provider.', action: 'worklist' },
+        'provider-notification': { owner: 'Nurse', detail: 'Escalate abnormal results, vitals or safety concerns.', action: 'handoff' },
+        'vital-signs': { owner: 'Nurse / CNA', detail: 'Capture vitals, pain, oxygenation and response to care.', action: 'nurse' },
+        pain: { owner: 'Nurse', detail: 'Assess pain score, intervention and reassessment.', action: 'nurse' },
+        'head-to-toe': { owner: 'Nurse', detail: 'Structured body-system assessment without leaving 360.', action: 'body' },
+        'iv-assessment': { owner: 'Nurse', detail: 'Check line site, patency, dressing and infection risk.', action: 'flowsheet' },
+        'intake-output': { owner: 'Nurse / Aide-soignant', detail: 'Record intake, output, meals, fluids and elimination.', action: 'flowsheet' },
+        sepsis: { owner: 'Nurse / Provider', detail: 'Screen infection signals and escalate fever or instability.', action: 'nurse' },
+        'rounds-safety': { owner: 'Nurse / Aide-soignant', detail: 'Safety rounds, alarms, hygiene, mobility and environment.', action: 'flowsheet' },
+        'fall-risk': { owner: 'Nurse / Physio', detail: 'Update fall risk and safe mobility plan.', action: 'flowsheet' },
+        comfort: { owner: 'Nurse / Aide-soignant', detail: 'Document comfort, dignity care, hygiene and family support.', action: 'flowsheet' },
+        mobility: { owner: 'Nurse / Physio', detail: 'Baseline function, assist level and rehabilitation needs.', action: 'flowsheet' },
+        education: { owner: 'Nurse / Pharmacy / Social', detail: 'Prefilled patient/family education and teach-back.', action: 'education' },
+        'care-plans': { owner: 'Care team', detail: 'Goals, barriers and daily care plan progress.', action: 'care-plan' },
+        'expected-discharge': { owner: 'Care team', detail: 'Set expected discharge date/time and readiness blockers.', action: 'discharge' },
+        'discharge-info': { owner: 'Nurse / Records', detail: 'File discharge document, instructions and patient packet.', action: 'discharge' },
+        'medication-detail': { owner: 'Provider / Pharmacy', detail: 'Reconcile medication instructions for discharge.', action: 'medication' },
+        handoff: { owner: 'Nurse / Major', detail: 'Summarize unresolved risks and next-shift ownership.', action: 'handoff' },
+        'pre-procedure': { owner: 'Nurse / Provider', detail: 'Complete checklist before transfer or procedure.', action: 'transfer' },
+        'ticket-procedure': { owner: 'Nurse', detail: 'Prepare ticket to ride and transfer packet.', action: 'transfer' },
+        'vital-monitoring': { owner: 'Nurse', detail: 'Monitor and file vitals before and after transfer.', action: 'nurse' }
+      }
+      const fallback = map[key] || { owner: this.accessProfile.short, detail: `${section.group || this.activeNavigator.label} section for this patient cycle.`, action: this.selectedNavigator }
+      return {
+        key,
+        label: section.label || this.activeNavigator.headline || 'Navigator section',
+        group: section.group || this.activeNavigator.label,
+        ...fallback
+      }
+    },
+    navigatorQuickActions() {
+      const primary = this.activeNavigatorSectionMeta.action
+      const actions = [
+        { label: 'Document', action: primary, icon: 'mdi-pencil-plus', color: '#0f766e', primary: true },
+        { label: 'Timed care', action: 'flowsheet', icon: 'mdi-clock-edit-outline', color: '#0f766e', primary: false },
+        { label: 'Note', action: 'notes', icon: 'mdi-note-text-outline', color: '#1d4ed8', primary: false }
+      ]
+      if (this.activeNavigatorSectionMeta.key && /med|mar|pharmacy/i.test(`${this.activeNavigatorSectionMeta.key} ${this.activeNavigator.label}`)) {
+        actions.splice(1, 0, { label: 'MAR', action: 'medication', icon: 'mdi-pill', color: '#0f766e', primary: false })
+      }
+      if (/discharge|transfer|admission/i.test(this.selectedNavigator)) {
+        actions.push({ label: 'File doc', action: 'document', icon: 'mdi-file-plus', color: '#7c3aed', primary: false })
+      }
+      return actions.slice(0, 4)
+    },
+    navigatorSectionProgressRows() {
+      const sectionKey = this.activeNavigatorSectionMeta.key || ''
+      const hasVitals = Boolean(this.latestVitalsSummary)
+      const hasNotes = Boolean(this.latestNursingNote || this.signableNotes.length)
+      const hasOrders = Boolean(this.patientLabOrders.length || this.patientImagingOrders.length || this.patientMedications.length)
+      const hasDischargeDoc = this.patientDocuments.some(doc => /discharge|sortie|avs|after visit/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      const rows = [
+        {
+          label: 'Owner',
+          value: this.activeNavigatorSectionMeta.owner,
+          detail: this.accessProfile.scope,
+          status: 'active'
+        },
+        {
+          label: 'Documentation',
+          value: hasNotes ? 'Started' : 'Due',
+          detail: hasNotes ? 'Recent clinical documentation exists.' : 'No recent note filed for this patient.',
+          status: hasNotes ? 'complete' : 'warning'
+        },
+        {
+          label: 'Vitals',
+          value: hasVitals ? 'Filed' : 'Due',
+          detail: this.latestVitalsSummary || 'Record vitals/pain if clinically needed.',
+          status: hasVitals ? 'complete' : 'due'
+        },
+        {
+          label: 'Orders',
+          value: hasOrders ? `${this.patientLabOrders.length + this.patientImagingOrders.length + this.patientMedications.length} active` : 'None active',
+          detail: hasOrders ? 'Review orders and acknowledge tasks.' : 'No active order signal in this chart.',
+          status: hasOrders ? 'active' : 'complete'
+        }
+      ]
+      if (/discharge|after-visit|family|home|dme|belongings/i.test(sectionKey)) {
+        rows[1] = {
+          label: 'Discharge packet',
+          value: hasDischargeDoc ? 'Started' : 'Not started',
+          detail: hasDischargeDoc ? 'Discharge document available.' : 'File instructions, follow-up and family handoff.',
+          status: hasDischargeDoc ? 'complete' : 'warning'
+        }
+      }
+      if (/specimen|diagnostic|xray|lab/i.test(sectionKey)) {
+        rows[3] = {
+          label: 'Diagnostics',
+          value: this.patientLabOrders.length || this.patientImagingOrders.length ? 'Active' : 'No active request',
+          detail: `${this.patientLabOrders.length} lab / ${this.patientImagingOrders.length} imaging item(s).`,
+          status: this.patientLabOrders.length || this.patientImagingOrders.length ? 'active' : 'complete'
+        }
+      }
+      return rows
     },
     workspaceEyebrow() {
       if (this.selectedChartTab && this.selectedChartTab !== 'Navigators') return this.selectedChartTab
@@ -2349,6 +2754,111 @@ export default {
     patientDocuments() {
       const all = this.$store.getters['clinical/getDocuments'] || []
       return all.filter(item => item.patientId === this.activePatientId)
+    },
+    summaryHeadline() {
+      const location = this.activePatient.bed || this.activePatient.service || 'Location not assigned'
+      const risk = this.activePatient.riskLevel ? `${this.activePatient.riskLevel} risk` : 'risk not scored'
+      return `${location} · ${this.activePatient.patientClass || 'Patient'} · ${risk}`
+    },
+    summaryNarrative() {
+      const parts = [
+        this.latestVitalsSummary ? `Latest vitals: ${this.latestVitalsSummary}` : 'Vitals are due.',
+        this.patientTasks.length ? `${this.patientTasks.length} open task(s).` : 'No open care task filed.',
+        this.patientMedications.length ? `${this.patientMedications.length} medication item(s).` : 'Medication reconciliation may be due.',
+        this.dischargeReadinessLabel
+      ]
+      return parts.join(' ')
+    },
+    dischargeReadinessLabel() {
+      const hasDischargeDoc = this.patientDocuments.some(doc => /discharge|sortie|avs|after visit/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      if (hasDischargeDoc && !this.patientTasks.length) return 'Discharge packet started and no open task blocker.'
+      if (hasDischargeDoc) return 'Discharge packet started; close remaining blockers.'
+      return 'Prepare discharge education, pharmacy, transport and follow-up early.'
+    },
+    recentTimedCareEntries() {
+      const getter = this.$store.getters['flowsheets/recentTimedCareEntries']
+      return getter ? getter(this.activePatientId, this.currentEncounterId).slice(0, 3) : []
+    },
+    summaryStatusCards() {
+      const vitals = this.latestVitals || {}
+      const temp = Number(vitals.temp)
+      const spo2 = Number(vitals.spo2)
+      const pain = Number(vitals.pain)
+      const abnormalVitals = (Number.isFinite(temp) && temp >= 38) || (Number.isFinite(spo2) && spo2 < 92) || (Number.isFinite(pain) && pain >= 7)
+      const hasDischargeDoc = this.patientDocuments.some(doc => /discharge|sortie|avs|after visit/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      return [
+        {
+          label: 'Clinical status',
+          value: abnormalVitals ? 'Needs review' : (this.latestVitalsSummary ? 'Stable trend' : 'Vitals due'),
+          detail: this.latestVitalsSummary || 'Capture vitals, pain and GCS.',
+          status: abnormalVitals ? 'due' : (this.latestVitalsSummary ? 'complete' : 'warning'),
+          icon: 'mdi-heart-pulse'
+        },
+        {
+          label: 'Care workload',
+          value: this.patientTasks.length ? `${this.patientTasks.length} task(s)` : 'Routine care',
+          detail: this.patientTasks.length ? 'Review worklist and document completion.' : 'Continue scheduled rounds.',
+          status: this.patientTasks.length ? 'active' : 'complete',
+          icon: 'mdi-format-list-checks'
+        },
+        {
+          label: 'Orders / meds',
+          value: `${this.patientLabOrders.length + this.patientImagingOrders.length + this.patientMedications.length} active`,
+          detail: this.patientMedications.length ? 'Medication profile available for MAR review.' : 'Check med reconciliation and orders.',
+          status: this.patientMedications.length ? 'active' : 'warning',
+          icon: 'mdi-clipboard-pulse-outline'
+        },
+        {
+          label: 'Discharge readiness',
+          value: hasDischargeDoc ? 'Started' : 'Prepare',
+          detail: this.dischargeReadinessLabel,
+          status: hasDischargeDoc && !this.patientTasks.length ? 'complete' : 'warning',
+          icon: 'mdi-exit-run'
+        },
+        {
+          label: 'Social / family',
+          value: this.canViewSocialNeeds ? this.summarySocialStatus : 'Protected',
+          detail: this.canViewSocialNeeds ? 'Transport, family, finances and home support visible.' : 'Visible by role authorization only.',
+          status: this.canViewSocialNeeds ? this.summarySocialStatusLevel : 'protected',
+          icon: 'mdi-account-group-outline'
+        },
+        {
+          label: 'Last care entry',
+          value: this.recentTimedCareEntries.length ? this.formatShortDate(this.recentTimedCareEntries[0].documentedAt) : 'Not filed',
+          detail: this.recentTimedCareEntries[0]?.summary || 'Use Timed care to document bedside work.',
+          status: this.recentTimedCareEntries.length ? 'complete' : 'warning',
+          icon: 'mdi-clock-edit-outline'
+        }
+      ]
+    },
+    summarySocialStatus() {
+      const riskCount = this.sdohDomains.filter(item => item.status === 'risk').length
+      if (riskCount > 1) return `${riskCount} risks`
+      if (riskCount === 1) return '1 risk'
+      return 'No active risk'
+    },
+    summarySocialStatusLevel() {
+      return this.sdohDomains.some(item => item.status === 'risk') ? 'due' : 'complete'
+    },
+    summaryPriorityItems() {
+      const priorities = []
+      if (!this.latestVitalsSummary) priorities.push({ label: 'Record vitals, pain and GCS', detail: 'First complete nursing set is still due.', action: 'nurse', level: 'high' })
+      if (this.patientTasks.length) priorities.push({ label: 'Close open worklist items', detail: `${this.patientTasks.length} task(s) pending before handoff.`, action: 'worklist', level: 'high' })
+      if (this.patientMedications.length) priorities.push({ label: 'Review MAR and medication safety', detail: `${this.patientMedications.length} active medication item(s).`, action: 'medication', level: 'medium' })
+      if (this.hasWoundAreaWarning || this.patientWounds.length) priorities.push({ label: 'Skin and wound follow-up', detail: this.hasWoundAreaWarning ? 'Wound area warning needs reassessment.' : `${this.patientWounds.length} wound record(s) available.`, action: 'flowsheet', level: this.hasWoundAreaWarning ? 'high' : 'medium' })
+      if (this.canViewSocialNeeds && this.sdohDomains.some(item => item.status === 'risk')) priorities.push({ label: 'Social / transport barrier review', detail: 'Resolve family, transport or financial barrier early.', action: 'social', level: 'medium' })
+      if (!priorities.length) priorities.push({ label: 'Continue scheduled care', detail: 'No urgent blocker detected; document the next timed round.', action: 'flowsheet', level: 'low' })
+      return priorities.slice(0, 5)
+    },
+    summaryContinuityItems() {
+      const rows = []
+      if (this.latestVitalsSummary) rows.push({ label: 'Latest vitals', time: this.formatShortDate(this.latestVitals.recordedAt), detail: this.latestVitalsSummary })
+      if (this.recentTimedCareEntries.length) rows.push({ label: 'Timed care', time: this.formatShortDate(this.recentTimedCareEntries[0].documentedAt), detail: this.recentTimedCareEntries[0].summary })
+      if (this.latestNursingNote) rows.push({ label: 'Nursing note', time: this.formatShortDate(this.latestNursingNote.recordedAt || this.latestNursingNote.createdAt), detail: this.latestNursingNote.response || this.latestNursingNote.observation || this.latestNursingNote.summary || 'Nursing note available' })
+      if (this.signableNotes.length) rows.push({ label: 'Clinical note', time: this.formatShortDate(this.signableNotes[0].createdAt), detail: `${this.noteTypeLabel(this.signableNotes[0].noteType)} · ${this.signableNotes[0].status}` })
+      if (this.patientDocuments.length) rows.push({ label: 'Document', time: this.formatShortDate(this.patientDocuments[0].createdAt), detail: this.patientDocuments[0].title || this.patientDocuments[0].category || 'Document filed' })
+      if (!rows.length) rows.push({ label: 'No filed activity yet', time: 'Now', detail: 'Start with Nurse entry or Timed care documentation.' })
+      return rows.slice(0, 5)
     },
     summaryRows() {
       return [
@@ -2591,6 +3101,33 @@ export default {
         { label: 'Queued clinical work', values: { State: `${queuedWork} local item(s)`, Fallback: 'Sync audit trail', Action: 'Review before shift handoff' } },
         { label: 'Shared workstation safety', values: { State: this.accessProfile.audit, Fallback: 'Role-based masking', Action: 'Minimum necessary data by role' } },
         { label: 'Paper fallback', values: { State: 'Supported', Fallback: 'Print summary / discharge packet', Action: 'Use print only when needed' } }
+      ]
+    },
+    patientCycleRows() {
+      const hasVitals = Boolean(this.latestVitalsSummary)
+      const hasProviderNote = Boolean(this.latestVisit)
+      const hasDiagnostics = Boolean(this.patientLabOrders.length || this.patientImagingOrders.length)
+      const hasMedicationProfile = Boolean(this.patientMedications.length)
+      const hasDischargeDoc = this.patientDocuments.some(doc => /discharge|sortie|avs|after visit/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      return [
+        { label: '1. Admission / registration', values: { State: this.activePatient.mrn ? 'Open chart' : 'Due', Lead: 'Reception', Next: 'Identity, contact, consent, payer and service' } },
+        { label: '2. Triage / first nurse contact', values: { State: hasVitals ? 'Started' : 'Due', Lead: 'Nurse / Midwife', Next: hasVitals ? this.latestVitalsSummary : 'Vitals, pain, GCS, allergy and fall risk' } },
+        { label: '3. Diagnosis and plan', values: { State: hasProviderNote ? 'Documented' : 'Pending', Lead: 'Doctor / NP', Next: 'Problem list, orders, escalation and care goals' } },
+        { label: '4. Daily nursing care', values: { State: this.patientTasks.length ? `${this.patientTasks.length} task(s)` : 'Routine board', Lead: 'Nurse / CNA', Next: 'Hygiene, mobility, wound, vitals, education and handoff' } },
+        { label: '5. Lab / imaging loop', values: { State: hasDiagnostics ? 'Active' : 'As needed', Lead: 'Lab / Imaging', Next: 'Collect, perform, validate, acknowledge critical results' } },
+        { label: '6. Pharmacy / medication loop', values: { State: hasMedicationProfile ? 'Active' : 'Med rec due', Lead: 'Pharmacy / Nurse', Next: 'Stock, substitutions, MAR, patient education' } },
+        { label: '7. Cost, family and social support', values: { State: this.canViewSocialNeeds ? 'Visible' : 'Role protected', Lead: 'Billing / Social', Next: 'Deposit, insurance, indigent support, transport and caregiver' } },
+        { label: '8. Discharge and follow-up', values: { State: hasDischargeDoc ? 'Packet started' : 'Prepare early', Lead: 'Care team', Next: 'Medication, wound supplies, appointment, transport, paper summary' } }
+      ]
+    },
+    departmentHandoffRows() {
+      return [
+        { label: 'Reception to nurse', values: { From: 'Reception', To: 'Nurse', Action: 'Identity, bed/service, payer status, emergency contact and consent' } },
+        { label: 'Nurse to doctor', values: { From: 'Nurse', To: 'Doctor / NP', Action: 'Triage level, vitals trend, pain, GCS, allergies and urgent concerns' } },
+        { label: 'Doctor to lab/imaging', values: { From: 'Provider', To: 'Lab / Imaging', Action: 'Clear indication, priority, specimen/procedure instructions and transport need' } },
+        { label: 'Doctor/pharmacy to nurse', values: { From: 'Provider / Pharmacy', To: 'Nurse', Action: 'Medication plan, substitutions, holds, allergies and administration warnings' } },
+        { label: 'Nurse to CNA/support', values: { From: 'Nurse', To: 'Aide-soignant / Support', Action: 'Hygiene, meals, mobility, fall risk, isolation and transport limits' } },
+        { label: 'Care team to discharge desk', values: { From: 'Care team', To: 'Reception / Social / Billing', Action: 'Follow-up, bill status, transport, family teaching and printed packet' } }
       ]
     },
     roleActionRows() {
@@ -3359,94 +3896,215 @@ export default {
         { label: 'Nursing problems', values: { 'Last Filed': Array.isArray(latest.assessment.nursingProblems) ? latest.assessment.nursingProblems.join(', ') : '-' } }
       ]
     },
+    avatarAnatomy() {
+      const gender = String(this.activePatient.gender || this.activePatient.sex || '').toLowerCase()
+      if (/female|femme|woman|girl|f\b/.test(gender)) return 'female'
+      if (/male|homme|man|boy|m\b/.test(gender)) return 'male'
+      return 'male'
+    },
+    avatarAnatomyLabel() {
+      return this.avatarAnatomy === 'female' ? 'female' : 'male'
+    },
+    avatarImageSrc() {
+      const images = {
+        female: {
+          front: femaleFrontAvatar,
+          back: femaleBackAvatar
+        },
+        male: {
+          front: maleFrontAvatar,
+          back: maleBackAvatar
+        }
+      }
+      return images[this.avatarAnatomy] && images[this.avatarAnatomy][this.avatarView]
+    },
+    selectedAvatarToolRecord() {
+      return this.avatarPlacementTools.find(tool => tool.key === this.selectedAvatarTool) || null
+    },
+    visibleAvatarPlacements() {
+      return this.avatarPlacements.filter(item => item.view === this.avatarView)
+    },
+    avatarPlacementRows() {
+      if (!this.avatarPlacements.length) {
+        return [
+          { label: 'No placed item', values: { Type: '-', Region: 'Select or drag a sticker onto the avatar', Status: 'Pending' } }
+        ]
+      }
+      return this.avatarPlacements.map(item => ({
+        label: item.label,
+        values: {
+          Type: item.label,
+          Region: `${item.region} (${item.view})`,
+          Status: item.status || 'Active'
+        }
+      }))
+    },
+    avatarPlacementDialogTitle() {
+      const form = this.forms.avatarPlacement || {}
+      return form.id ? `${form.label} - ${form.region || 'Selected location'}` : 'New mapped element'
+    },
+    avatarPlacementSiteCareLabel() {
+      const type = this.forms.avatarPlacement && this.forms.avatarPlacement.type
+      const labels = {
+        wound: 'Wound bed / care',
+        trach: 'Trach care / airway',
+        iv: 'Line type / gauge',
+        foley: 'Urine output / catheter care',
+        drain: 'Drain output / bulb status',
+        ostomy: 'Stoma / appliance',
+        pain: 'Intervention'
+      }
+      return labels[type] || 'Site care'
+    },
+    avatarPlacementNotesLabel() {
+      const type = this.forms.avatarPlacement && this.forms.avatarPlacement.type
+      const labels = {
+        wound: 'Wound assessment notes',
+        trach: 'Tracheostomy assessment notes',
+        iv: 'IV site assessment notes',
+        foley: 'Foley catheter assessment notes',
+        drain: 'Drain assessment notes',
+        ostomy: 'Ostomy assessment notes',
+        pain: 'Pain assessment notes'
+      }
+      return labels[type] || 'Assessment notes'
+    },
     avatarZones() {
       const vitals = this.latestVitals || {}
       const pain = Number(vitals.pain)
       const spo2 = Number(vitals.spo2)
-      const hasWound = Boolean(this.activePatient.woundStatus || /wound|skin/i.test(`${this.activePatient.problem || ''} ${this.activePatient.alert || ''}`))
+      const activeWoundCount = this.patientWounds.length
+      const hasWound = Boolean(activeWoundCount || this.activePatient.woundStatus || /wound|skin/i.test(`${this.activePatient.problem || ''} ${this.activePatient.alert || ''}`))
       const abnormalVitals = Number.isFinite(spo2) && spo2 < 92
       return [
         {
           key: 'neuro',
+          view: 'front',
           label: 'Neuro / cognition',
           short: 'Neuro',
           icon: 'mdi-brain',
           color: '#2563eb',
           status: this.latestVitals && this.latestVitals.glasgow && Number(this.latestVitals.glasgow) < 15 ? 'risk' : 'stable',
           statusLabel: this.latestVitals && this.latestVitals.glasgow ? `GCS ${this.latestVitals.glasgow}` : 'Neuro due',
-          detail: this.latestVitals && this.latestVitals.glasgow ? 'Latest Glasgow Coma Scale is available.' : 'No current neuro score filed.'
+          detail: this.latestVitals && this.latestVitals.glasgow ? 'Latest Glasgow Coma Scale is available.' : 'No current neuro score filed.',
+          primaryAction: 'body',
+          primaryActionLabel: 'Neuro assessment'
         },
         {
           key: 'resp',
+          view: 'front',
           label: 'Respiratory',
           short: 'Resp',
           icon: 'mdi-lungs',
           color: abnormalVitals ? '#be123c' : '#0f766e',
           status: abnormalVitals ? 'risk' : 'stable',
           statusLabel: vitals.spo2 ? `SpO2 ${vitals.spo2}%` : 'SpO2 due',
-          detail: vitals.spo2 ? 'Respiratory status is tied to latest filed SpO2.' : 'Record respiratory status with next vital signs.'
+          detail: vitals.spo2 ? 'Respiratory status is tied to latest filed SpO2.' : 'Record respiratory status with next vital signs.',
+          primaryAction: 'nurse',
+          primaryActionLabel: 'Respiratory note'
         },
+        ...(this.avatarAnatomy === 'female'
+          ? [{
+              key: 'breast',
+              view: 'front',
+              label: 'Breast / chest',
+              short: 'Breast',
+              icon: 'mdi-human-female',
+              color: '#7c3aed',
+              status: 'stable',
+              statusLabel: 'Breast review',
+              detail: 'Assess breast/chest skin, pain, swelling, wound, lactation or postpartum findings when clinically relevant.',
+              primaryAction: 'body',
+              primaryActionLabel: 'Breast assessment'
+            }]
+          : []),
         {
           key: 'cardiac',
+          view: 'front',
           label: 'Cardiac / vitals',
           short: 'Vitals',
           icon: 'mdi-heart-pulse',
           color: '#0f766e',
           status: this.patientVitals.length ? 'active' : 'risk',
           statusLabel: this.latestVitalsSummary || 'Vitals due',
-          detail: this.latestVitalsSummary || 'No current vital signs filed for this patient.'
+          detail: this.latestVitalsSummary || 'No current vital signs filed for this patient.',
+          primaryAction: 'nurse',
+          primaryActionLabel: 'File vitals'
         },
         {
           key: 'iv',
+          view: 'front',
           label: 'IV / lines',
           short: 'IV',
           icon: 'mdi-needle',
           color: '#7c3aed',
           status: this.patientMedications.some(med => /iv|infusion/i.test(`${med.route || ''} ${med.frequency || ''} ${med.instructions || ''}`)) ? 'active' : 'stable',
           statusLabel: 'Line review',
-          detail: 'Review patency, site condition, dressing date and infusion compatibility.'
+          detail: 'Review patency, site condition, dressing date and infusion compatibility.',
+          primaryAction: 'body',
+          primaryActionLabel: 'Line assessment'
         },
         {
           key: 'skin',
+          view: 'back',
           label: 'Skin / wound',
           short: 'Skin',
           icon: 'mdi-bandage',
           color: hasWound ? '#be123c' : '#0f766e',
           status: hasWound ? 'risk' : 'stable',
-          statusLabel: hasWound ? 'Wound care due' : 'Skin stable',
-          detail: hasWound ? (this.activePatient.woundStatus || 'Active wound concern requires photo, dimensions and dressing status.') : 'No active wound signal in current chart.'
+          statusLabel: hasWound ? `${activeWoundCount || 1} wound/skin` : 'Skin stable',
+          detail: hasWound ? (this.activePatient.woundStatus || 'Active wound concern requires photo, dimensions and dressing status.') : 'No active wound signal in current chart.',
+          primaryAction: 'wound',
+          primaryActionLabel: 'Wound documentation'
         },
         {
           key: 'pain',
+          view: 'front',
           label: 'Pain',
           short: 'Pain',
           icon: 'mdi-alert-circle-outline',
           color: Number.isFinite(pain) && pain >= 7 ? '#be123c' : '#f97316',
           status: Number.isFinite(pain) && pain >= 7 ? 'risk' : (Number.isFinite(pain) ? 'active' : 'stable'),
           statusLabel: Number.isFinite(pain) ? `${pain}/10` : 'Pain due',
-          detail: Number.isFinite(pain) ? 'Pain score is filed and can drive reassessment timing.' : 'Pain score should be captured with the next nursing assessment.'
+          detail: Number.isFinite(pain) ? 'Pain score is filed and can drive reassessment timing.' : 'Pain score should be captured with the next nursing assessment.',
+          primaryAction: 'nurse',
+          primaryActionLabel: 'Pain reassessment'
         },
         {
           key: 'mobility',
+          view: 'back',
           label: 'Mobility / fall risk',
           short: 'Move',
           icon: 'mdi-walk',
           color: '#f97316',
           status: 'active',
           statusLabel: 'Fall precautions',
-          detail: 'Mobility assistance and fall precautions remain part of shift rounds.'
+          detail: 'Mobility assistance and fall precautions remain part of shift rounds.',
+          primaryAction: 'flowsheet',
+          primaryActionLabel: 'Mobility round'
         },
         {
           key: 'meds',
+          view: 'front',
           label: 'Medication workload',
           short: 'Meds',
           icon: 'mdi-pill',
           color: '#0f766e',
           status: this.patientMedications.length ? 'active' : 'stable',
           statusLabel: this.patientMedications.length ? `${this.patientMedications.length} medication(s)` : 'No meds filed',
-          detail: this.patientMedications.length ? 'Active medication profile is available for MAR and reconciliation.' : 'No active medication order filed in this chart.'
+          detail: this.patientMedications.length ? 'Active medication profile is available for MAR and reconciliation.' : 'No active medication order filed in this chart.',
+          primaryAction: 'medication',
+          primaryActionLabel: 'Medication action'
         }
       ]
+    },
+    visibleAvatarZones() {
+      return this.avatarZones.filter(zone => zone.view === this.avatarView || ['pain', 'meds'].includes(zone.key))
+    },
+    avatarNarrative() {
+      const riskCount = this.avatarZones.filter(zone => zone.status === 'risk').length
+      const activeCount = this.avatarZones.filter(zone => zone.status === 'active').length
+      return `${riskCount} risk zone(s), ${activeCount} active care zone(s), ${this.patientWounds.length} wound record(s), ${this.patientMedications.length} medication item(s).`
     },
     activeAvatarZoneRecord() {
       return this.avatarZones.find(zone => zone.key === this.activeAvatarZone) || this.avatarZones[0]
@@ -3457,6 +4115,7 @@ export default {
         neuro: this.latestVitals && this.latestVitals.glasgow ? `GCS ${this.latestVitals.glasgow}` : 'No GCS filed',
         resp: this.latestVitals && this.latestVitals.spo2 ? `SpO2 ${this.latestVitals.spo2}%` : 'No SpO2 filed',
         cardiac: this.latestVitalsSummary || 'No current vitals',
+        breast: this.avatarAnatomy === 'female' ? 'Female anatomy enabled' : 'Not applicable',
         iv: this.patientMedications.length ? 'Medication/infusion profile available' : 'No infusion order filed',
         skin: this.activePatient.woundStatus || 'Admission wound documentation',
         pain: this.latestVitals && this.latestVitals.pain !== undefined ? `${this.latestVitals.pain}/10` : 'Pain not filed',
@@ -3467,6 +4126,7 @@ export default {
         neuro: 'Document neuro/GCS assessment',
         resp: 'Record respiratory status and oxygen need',
         cardiac: 'File vitals and reassess trend',
+        breast: 'Document focused breast/chest assessment',
         iv: 'Document line site, patency and dressing',
         skin: 'File wound photo, measurements and dressing',
         pain: 'Document intervention and reassessment',
@@ -3502,6 +4162,22 @@ export default {
         { label: 'Mobility target', values: { Location: 'Lower extremity / safety', Status: 'Fall precautions active', 'Next Step': 'Confirm assist level every round' } },
         { label: 'Medication target', values: { Location: 'MAR', Status: this.patientMedications.length ? `${this.patientMedications.length} medication(s)` : 'No meds filed', 'Next Step': 'Review due/held/administered items' } }
       ]
+    },
+    avatarPriorityRows() {
+      const rows = this.avatarZones
+        .filter(zone => zone.status === 'risk')
+        .map(zone => ({
+          label: zone.label,
+          values: {
+            Reason: zone.statusLabel,
+            Owner: zone.key === 'skin' ? 'WOUND NURSE / NURSE' : zone.key === 'meds' ? 'NURSE / PHARMACY' : 'NURSE',
+            'Next Action': zone.detail
+          }
+        }))
+      if (!rows.length) {
+        rows.push({ label: 'Scheduled body review', values: { Reason: 'No high-risk zone selected', Owner: 'NURSE / CNA', 'Next Action': 'Continue timed care rounds and reassess changes.' } })
+      }
+      return rows
     },
     flowsheetTimeColumns() {
       return ['0800', '1000', '1200', '1400', '1600', '1800']
@@ -3836,6 +4512,7 @@ export default {
       if (this.patientScoped) this.registerOpenChart(newId)
       this.selectedNoteId = null
       this.amendingNoteId = null
+      this.loadAvatarPlacements()
     }
   },
   mounted() {
@@ -3850,6 +4527,7 @@ export default {
       this.loadOpenPatientTabs()
       this.registerOpenChart(this.activePatientId)
     }
+    this.loadAvatarPlacements()
     if (process.client) {
       this.updateViewportBreakpoints()
       window.addEventListener('resize', this.updateViewportBreakpoints)
@@ -3859,6 +4537,286 @@ export default {
     if (process.client) window.removeEventListener('resize', this.updateViewportBreakpoints)
   },
   methods: {
+    avatarStorageKey() {
+      return `camero_patient_avatar_placements_${this.activePatientId || 'demo'}`
+    },
+    loadAvatarPlacements() {
+      const storeMarkers = (this.$store.getters['nursing/getBodyMapMarkers'] || [])
+        .filter(item => item.patientId === this.activePatientId && item.source === 'avatar' && !['resolved', 'removed'].includes(String(item.status || '').toLowerCase()))
+      if (storeMarkers.length) {
+        this.avatarPlacements = storeMarkers.map(this.normalizeAvatarPlacement)
+        this.avatarPlacementSequence = this.avatarPlacements.length
+        if (process.client) this.persistAvatarPlacements()
+        return
+      }
+      if (!process.client) return
+      try {
+        const raw = window.localStorage.getItem(this.avatarStorageKey())
+        const records = raw ? JSON.parse(raw) : []
+        this.avatarPlacements = Array.isArray(records) ? records : []
+        this.avatarPlacementSequence = this.avatarPlacements.length
+      } catch (e) {
+        this.avatarPlacements = []
+      }
+    },
+    persistAvatarPlacements() {
+      if (!process.client) return
+      window.localStorage.setItem(this.avatarStorageKey(), JSON.stringify(this.avatarPlacements))
+    },
+    normalizeAvatarPlacement(item) {
+      const tool = this.avatarPlacementTools.find(tool => tool.key === item.type) || {}
+      return {
+        ...item,
+        label: item.label || tool.label || 'Mapped item',
+        icon: item.icon || tool.icon || 'mdi-map-marker-radius',
+        color: item.color || tool.color || '#0f766e',
+        x: Number(item.x) || 50,
+        y: Number(item.y) || 50,
+        view: item.view || 'front',
+        status: item.status || tool.defaultStatus || 'Active'
+      }
+    },
+    selectAvatarTool(key) {
+      this.selectedAvatarTool = this.selectedAvatarTool === key ? '' : key
+    },
+    startAvatarToolDrag(event, key) {
+      this.selectedAvatarTool = key
+      if (event && event.dataTransfer) {
+        event.dataTransfer.setData('text/plain', key)
+        event.dataTransfer.effectAllowed = 'copy'
+      }
+    },
+    handleAvatarDrop(event) {
+      const key = event && event.dataTransfer ? event.dataTransfer.getData('text/plain') : this.selectedAvatarTool
+      this.placeAvatarItemFromEvent(event, key)
+    },
+    handleAvatarCanvasClick(event) {
+      if (!this.selectedAvatarTool) return
+      const blocked = event.target && event.target.closest && event.target.closest('.body-zone, .avatar-sticker')
+      if (blocked) return
+      this.placeAvatarItemFromEvent(event, this.selectedAvatarTool)
+    },
+    placeAvatarItemFromEvent(event, key) {
+      const tool = this.avatarPlacementTools.find(item => item.key === key)
+      const figure = this.$refs.avatarBodyFigure
+      if (!tool || !figure || !event) return
+      const rect = figure.getBoundingClientRect()
+      const x = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100))
+      const y = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100))
+      const placement = this.buildAvatarPlacement(tool, x, y)
+      this.avatarPlacements = [...this.avatarPlacements, placement]
+      this.persistAvatarPlacements()
+      this.openAvatarPlacement(placement)
+    },
+    buildAvatarPlacement(tool, x, y) {
+      const roundedX = Math.round(x)
+      const roundedY = Math.round(y)
+      const now = new Date().toISOString()
+      this.avatarPlacementSequence += 1
+      return {
+        id: `avatar-${Date.now()}-${this.avatarPlacementSequence}`,
+        type: tool.key,
+        label: tool.label,
+        icon: tool.icon,
+        color: tool.color,
+        status: tool.defaultStatus || 'Active',
+        region: this.detectAvatarRegion(roundedX, roundedY),
+        view: this.avatarView,
+        anatomy: this.avatarAnatomy,
+        x: roundedX,
+        y: roundedY,
+        source: 'avatar',
+        relatedClinicalId: '',
+        relatedClinicalType: tool.key === 'wound' ? 'wound' : 'device',
+        siteCare: this.defaultAvatarSiteCare(tool.key),
+        dressing: '',
+        notes: '',
+        createdAt: now,
+        updatedAt: now
+      }
+    },
+    detectAvatarRegion(x, y) {
+      const side = x < 42 ? 'left' : (x > 58 ? 'right' : 'midline')
+      if (y <= 18) return this.avatarView === 'back' ? 'posterior head / occiput' : 'head / face'
+      if (y <= 30) return 'neck'
+      if (this.avatarView === 'front' && this.avatarAnatomy === 'female' && y <= 45 && x >= 32 && x <= 68) {
+        return side === 'left' ? 'left breast / chest' : (side === 'right' ? 'right breast / chest' : 'sternal chest')
+      }
+      if (y <= 47) return this.avatarView === 'back' ? `${side} upper back / scapula` : `${side} chest`
+      if (y <= 63) return this.avatarView === 'back' ? 'lower back / flank' : 'abdomen'
+      if (y <= 72) return this.avatarView === 'back' ? 'sacrum / gluteal area' : 'pelvis / groin'
+      if (x <= 25 && y <= 68) return 'left arm / hand'
+      if (x >= 75 && y <= 68) return 'right arm / hand'
+      if (x < 50) return this.avatarView === 'back' ? 'left posterior leg / heel' : 'left leg / foot'
+      return this.avatarView === 'back' ? 'right posterior leg / heel' : 'right leg / foot'
+    },
+    defaultAvatarSiteCare(type) {
+      const defaults = {
+        wound: 'Measure, photo, drainage, wound bed and dressing status.',
+        trach: 'Airway patent, ties secure, stoma clean, suction need assessed.',
+        iv: 'Assess patency, redness, swelling, pain, dressing date and infusion compatibility.',
+        foley: 'Assess securement, urine color/output, dependent drainage and infection risk.',
+        drain: 'Assess output amount/color, suction, insertion site and securement.',
+        ostomy: 'Assess stoma color, peristomal skin, output and appliance seal.',
+        pain: 'Document pain score, intervention and reassessment time.'
+      }
+      return defaults[type] || 'Assess and document site.'
+    },
+    avatarPlacementStyle(item) {
+      return {
+        left: `${item.x}%`,
+        top: `${item.y}%`,
+        borderColor: item.color || '#0f766e',
+        color: item.color || '#0f766e'
+      }
+    },
+    avatarPlacementStatusClass(item) {
+      const status = String(item.status || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      return status ? `status-${status}` : 'status-active'
+    },
+    openAvatarPlacement(item) {
+      this.forms.avatarPlacement = { ...defaultDialogForms().avatarPlacement, ...item }
+      this.$set(this.dialogs, 'avatarPlacement', true)
+    },
+    closeAvatarPlacementDialog() {
+      this.$set(this.dialogs, 'avatarPlacement', false)
+    },
+    async removeAvatarPlacement(id) {
+      const existing = (this.$store.getters['nursing/getBodyMapMarkers'] || []).find(item => item.id === id)
+      if (existing) {
+        await this.$store.dispatch('nursing/updateBodyMapMarker', {
+          ...existing,
+          status: 'Removed',
+          removedAt: new Date().toISOString()
+        })
+      }
+      this.avatarPlacements = this.avatarPlacements.filter(item => item.id !== id)
+      this.persistAvatarPlacements()
+      this.closeAvatarPlacementDialog()
+      this.toastSuccess('Avatar location removed.')
+    },
+    async saveAvatarPlacement() {
+      const form = { ...this.forms.avatarPlacement, updatedAt: new Date().toISOString() }
+      const tool = this.avatarPlacementTools.find(item => item.key === form.type)
+      if (tool) {
+        form.label = tool.label
+        form.icon = tool.icon
+        form.color = tool.color
+      }
+      const shouldRemoveFromAvatar = ['resolved', 'removed'].includes(String(form.status || '').toLowerCase())
+      this.savingDialog = true
+      try {
+        const previousPlacementId = form.id
+        let markerRecord = null
+        const markerPayload = {
+          ...form,
+          source: 'avatar',
+          patientId: this.activePatientId,
+          markerType: form.type,
+          anatomicalLocation: form.region
+        }
+        if (form.id && (this.$store.getters['nursing/getBodyMapMarkers'] || []).some(item => item.id === form.id)) {
+          markerRecord = await this.$store.dispatch('nursing/updateBodyMapMarker', markerPayload)
+        } else {
+          markerRecord = await this.$store.dispatch('nursing/createBodyMapMarker', markerPayload)
+          if (markerRecord && markerRecord.id) form.id = markerRecord.id
+        }
+        if (form.type === 'wound') {
+          const wound = await this.upsertWoundFromAvatarPlacement(form)
+          if (wound && wound.id) {
+            form.relatedClinicalId = wound.id
+            form.relatedClinicalType = 'wound'
+            await this.$store.dispatch('nursing/updateBodyMapMarker', {
+              ...form,
+              source: 'avatar',
+              patientId: this.activePatientId,
+              markerType: form.type,
+              anatomicalLocation: form.region
+            })
+          }
+        }
+        if (shouldRemoveFromAvatar) {
+          this.avatarPlacements = this.avatarPlacements.filter(item => item.id !== form.id && item.id !== previousPlacementId)
+        } else {
+          const exists = this.avatarPlacements.some(item => item.id === form.id || item.id === previousPlacementId)
+          this.avatarPlacements = exists
+            ? this.avatarPlacements.map(item => (item.id === form.id || item.id === previousPlacementId) ? form : item)
+            : [...this.avatarPlacements, form]
+        }
+        this.persistAvatarPlacements()
+        await this.$store.dispatch('clinical/createTask', {
+          patientId: this.activePatientId,
+          relatedType: `avatar-${form.type}`,
+          relatedId: form.id,
+          title: `${form.label} mapped: ${form.region}`,
+          assignedToRole: form.type === 'trach' ? 'NURSE' : 'NURSE',
+          priority: /Escalate|Needs/.test(form.status || '') ? 'Today' : 'Routine',
+          actionReason: `${form.label} on ${form.region} (${form.view}). ${form.siteCare || ''} ${form.dressing || ''} ${form.notes || ''}`.trim()
+        })
+        await this.$store.dispatch('clinical/addNursingNote', {
+          patientId: this.activePatientId,
+          recordedBy: this.actorName(),
+          recordedAt: form.updatedAt,
+          actions: [`Avatar ${form.label} mapping`],
+          observation: `${form.label} located at ${form.region} (${form.view}). Status: ${form.status}. ${form.notes || ''}`,
+          response: form.siteCare || 'Continue site monitoring.',
+          orientation: form.dressing || ''
+        })
+        this.closeAvatarPlacementDialog()
+        this.toastSuccess(shouldRemoveFromAvatar ? `${form.label} removed from avatar.` : `${form.label} location saved.`)
+      } catch (e) {
+        this.toastError('Unable to file avatar location note.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
+    async upsertWoundFromAvatarPlacement(form) {
+      const status = String(form.status || '').toLowerCase()
+      if (form.relatedClinicalId) {
+        const existing = this.patientWounds.find(wound => wound.id === form.relatedClinicalId)
+        if (existing) {
+          return this.$store.dispatch('nursing/updateWound', {
+            ...existing,
+            status: status === 'resolved' ? 'healed' : (status === 'removed' ? 'closed' : existing.status || 'active'),
+            anatomicalLocation: form.region || existing.anatomicalLocation,
+            avatarMarkerId: form.id,
+            updatedBy: this.actorName()
+          })
+        }
+      }
+      if (status === 'resolved' || status === 'removed') return null
+      return this.$store.dispatch('nursing/createWound', {
+        patientId: this.activePatientId,
+        woundType: form.siteCare && !/^Measure,/.test(form.siteCare) ? form.siteCare : 'Wound from avatar',
+        anatomicalLocation: form.region,
+        acquiredLocation: 'unknown',
+        status: 'active',
+        avatarMarkerId: form.id,
+        source: 'avatar'
+      })
+    },
+    navigatorSectionStatus(section) {
+      const key = String(section && section.key ? section.key : section || '').toLowerCase()
+      const hasVitals = Boolean(this.latestVitalsSummary)
+      const hasNotes = Boolean(this.latestNursingNote || this.signableNotes.length)
+      const hasOrders = Boolean(this.patientLabOrders.length || this.patientImagingOrders.length || this.patientMedications.length)
+      const hasDischargeDoc = this.patientDocuments.some(doc => /discharge|sortie|avs|after visit/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      if (/vital|pain|gcs|delirium|sepsis/.test(key)) return hasVitals ? { status: 'complete', label: 'filed' } : { status: 'due', label: 'due' }
+      if (/order|release|signed|med|mar|reconciliation/.test(key)) return hasOrders ? { status: 'active', label: 'active' } : { status: 'complete', label: 'clear' }
+      if (/discharge|after-visit|family|home|dme|belonging|lda|instruction/.test(key)) return hasDischargeDoc ? { status: 'active', label: 'started' } : { status: 'warning', label: 'prep' }
+      if (/specimen|diagnostic|xray|lab/.test(key)) return (this.patientLabOrders.length || this.patientImagingOrders.length) ? { status: 'active', label: 'active' } : { status: 'complete', label: 'clear' }
+      if (/handoff|note|documentation|notification/.test(key)) return hasNotes ? { status: 'complete', label: 'filed' } : { status: 'warning', label: 'open' }
+      if (/fall|safety|comfort|hygiene|mobility|intake|head|iv|skin|wound/.test(key)) return { status: 'active', label: 'round' }
+      return { status: 'neutral', label: 'open' }
+    },
+    openAvatarAction(action) {
+      const target = String(action || '').toLowerCase()
+      if (target === 'wound') {
+        this.dialogs.woundCare = true
+        return
+      }
+      this.openCommandAction(target || 'body')
+    },
     applyRoleDefaultTab() {
       const adminLike = ADMIN_LIKE_ROLES.includes(this.currentRole)
       if (adminLike && this.selectedChartTab === 'Summary' && this.visibleChartTabs.includes('Chart Review')) {
@@ -4021,6 +4979,9 @@ export default {
     },
     selectNavigator(key) {
       this.selectedChartTab = 'Navigators'
+      this.setNavigatorContext(key)
+    },
+    setNavigatorContext(key) {
       this.selectedNavigator = key
       const nav = this.navigatorTabs.find(item => item.key === key)
       const first = nav && nav.sections && nav.sections[0]
@@ -4040,8 +5001,37 @@ export default {
         this.openChartDialog('nurse')
         return
       }
+      if (target === 'body') {
+        this.showBodyAssessmentDialog = true
+        return
+      }
+      if (target === 'flowsheet') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Flowsheets') ? 'Flowsheets' : 'Nurse Command Center'
+        return
+      }
       if (target === 'medical') {
         this.openChartDialog('medical')
+        return
+      }
+      if (target === 'orders') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Orders') ? 'Orders' : 'Navigators'
+        return
+      }
+      if (target === 'document') {
+        this.openChartDialog('document')
+        return
+      }
+      if (target === 'education') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Education') ? 'Education' : 'Care Plan'
+        return
+      }
+      if (target === 'care-plan') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Care Plan') ? 'Care Plan' : 'Notes'
+        return
+      }
+      if (target === 'transfer') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Navigators') ? 'Navigators' : 'Summary'
+        if (this.visibleChartTabs.includes('Navigators')) this.selectNavigator('transfer')
         return
       }
       if (target === 'lab') {
@@ -4055,12 +5045,12 @@ export default {
       }
       if (target === 'registration') {
         this.selectedChartTab = this.visibleChartTabs.includes('Registration') ? 'Registration' : 'Summary'
-        this.selectNavigator('admission')
+        this.setNavigatorContext('admission')
         return
       }
       if (target === 'worklist') {
         this.selectedChartTab = this.visibleChartTabs.includes('Work List') ? 'Work List' : 'Navigators'
-        if (this.visibleChartTabs.includes('Navigators')) this.selectNavigator('worklist')
+        if (this.visibleNavigatorTabs.some(item => item.key === 'worklist')) this.setNavigatorContext('worklist')
         return
       }
       if (target === 'maternity') {
@@ -4084,6 +5074,11 @@ export default {
       }
       if (target === 'notes') {
         this.selectedChartTab = this.visibleChartTabs.includes('Notes') ? 'Notes' : 'Summary'
+        return
+      }
+      if (target === 'handoff') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Handoff') ? 'Handoff' : 'Nurse Command Center'
+        if (this.visibleNavigatorTabs.some(item => item.key === 'worklist')) this.setNavigatorContext('worklist')
         return
       }
       this.selectedChartTab = 'EMR Command Center'
@@ -4368,7 +5363,20 @@ export default {
       if (note) this.selectedNoteId = note.id
       this.toastSuccess('Note saved.')
     },
-    handleWoundSaved() {
+    async handleWoundSaved(payload) {
+      const status = String(payload && payload.woundStatus ? payload.woundStatus : '').toLowerCase()
+      const woundId = payload && payload.woundId
+      if (woundId && ['healed', 'closed'].includes(status)) {
+        const markers = (this.$store.getters['nursing/getBodyMapMarkers'] || [])
+          .filter(item => item.relatedClinicalId === woundId)
+        await Promise.all(markers.map(marker => this.$store.dispatch('nursing/updateBodyMapMarker', {
+          ...marker,
+          status: 'Resolved',
+          resolvedAt: new Date().toISOString()
+        })))
+        this.avatarPlacements = this.avatarPlacements.filter(item => item.relatedClinicalId !== woundId)
+        this.persistAvatarPlacements()
+      }
       this.toastSuccess('Wound assessment saved.')
     },
     handleCarePlanSaved() {
@@ -4694,6 +5702,45 @@ export default {
       if (type === 'MÉDICAL' || type === 'MEDICAL') return 'Medical'
       if (type === 'INFIRMIER' || type === 'NURSING') return 'Nursing'
       return type || 'Encounter'
+    },
+    async handleBodyAssessmentSave(payload) {
+      const selectedAreas = Array.isArray(payload.selectedAreas) ? payload.selectedAreas : []
+      if (!selectedAreas.length) return
+      const timestamp = payload.timestamp || new Date().toISOString()
+      const severity = payload.severity || 'Routine'
+      const notes = payload.notes || ''
+      const nextAction = payload.nextAction || 'Continue nursing follow-up.'
+      const priority = ['Critical', 'Urgent'].includes(severity) ? 'High' : (severity === 'Watch' ? 'Today' : 'Routine')
+      const details = [
+        `Areas: ${selectedAreas.join(', ')}`,
+        `Severity: ${severity}`,
+        notes ? `Observation: ${notes}` : '',
+        nextAction ? `Next: ${nextAction}` : '',
+        `Completed: ${timestamp}`
+      ].filter(Boolean).join(' | ')
+      try {
+        await this.$store.dispatch('clinical/createTask', {
+          patientId: this.activePatientId,
+          relatedType: 'assessment',
+          title: `Body assessment - ${selectedAreas.join(', ')}`,
+          assignedToRole: 'NURSE',
+          priority,
+          actionReason: details
+        })
+        await this.$store.dispatch('clinical/addNursingNote', {
+          patientId: this.activePatientId,
+          recordedBy: this.actorName(),
+          recordedAt: timestamp,
+          actions: ['Body assessment'],
+          observation: notes || `Body assessment completed for ${selectedAreas.join(', ')}.`,
+          response: nextAction,
+          orientation: severity
+        })
+        this.selectedChartTab = 'Nurse Command Center'
+        this.toastSuccess('Body assessment saved successfully.')
+      } catch (e) {
+        this.toastError('Unable to save body assessment.')
+      }
     }
   }
 }
@@ -4767,6 +5814,24 @@ function defaultDialogForms() {
       title: '',
       category: 'Clinical Note',
       content: ''
+    },
+    avatarPlacement: {
+      id: '',
+      type: 'wound',
+      label: 'Wound',
+      icon: 'mdi-bandage',
+      color: '#be123c',
+      status: 'Active',
+      region: '',
+      view: 'front',
+      anatomy: 'female',
+      x: 50,
+      y: 50,
+      siteCare: '',
+      dressing: '',
+      notes: '',
+      createdAt: '',
+      updatedAt: ''
     }
   }
 }
@@ -5064,6 +6129,26 @@ function latestByDate(items, field) {
   padding: 3px 4px 3px 7px;
   text-decoration: none;
 }
+.rail-group a span {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.rail-group a i {
+  border-radius: 999px;
+  color: #475569;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  padding: 2px 4px;
+  text-transform: uppercase;
+}
+.rail-group a.complete i { background: #dcfce7; color: #14532d; }
+.rail-group a.active i { background: #e0f2fe; color: #075985; }
+.rail-group a.warning i { background: #ffedd5; color: #9a3412; }
+.rail-group a.due i { background: #fee2e2; color: #991b1b; }
 .rail-group a.active {
   background: #eef6ff;
   border-left-color: #1d4ed8;
@@ -5081,6 +6166,74 @@ function latestByDate(items, field) {
   padding: 8px;
   overflow: auto;
   min-width: 0;
+}
+.navigator-focus-panel {
+  background: #fff;
+  border: 1px solid #b7c9c6;
+  border-top: 0;
+  padding: 10px;
+}
+.navigator-focus-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.navigator-focus-head span {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.navigator-focus-head strong {
+  display: block;
+  color: #0f172a;
+  font-size: 16px;
+}
+.navigator-focus-head p {
+  color: #475569;
+  font-size: 12px;
+  margin: 3px 0 0;
+}
+.navigator-focus-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.navigator-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.navigator-focus-grid article {
+  border: 1px solid #d7e0df;
+  border-left: 4px solid #64748b;
+  border-radius: 8px;
+  min-height: 72px;
+  padding: 8px;
+}
+.navigator-focus-grid article.complete { border-left-color: #16a34a; }
+.navigator-focus-grid article.active { border-left-color: #0369a1; }
+.navigator-focus-grid article.warning { border-left-color: #f97316; }
+.navigator-focus-grid article.due { border-left-color: #be123c; }
+.navigator-focus-grid span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.navigator-focus-grid strong {
+  display: block;
+  color: #134e4a;
+  font-size: 13px;
+}
+.navigator-focus-grid small {
+  color: #475569;
+  display: block;
+  font-size: 11px;
+  margin-top: 3px;
 }
 .workspace-title {
   min-height: 52px;
@@ -5113,6 +6266,164 @@ function latestByDate(items, field) {
   background: #fff;
   border: 1px solid #b7c9c6;
   margin-top: 8px;
+}
+.patient-summary-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.summary-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #b7d8d2;
+  border-left: 5px solid #0f766e;
+  background: #f8fbfb;
+}
+.summary-hero div:first-child {
+  min-width: 0;
+}
+.summary-hero span,
+.summary-panel header span {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.summary-hero strong {
+  display: block;
+  color: #0f172a;
+  font-size: 17px;
+  line-height: 1.25;
+}
+.summary-hero p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 12px;
+}
+.summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.summary-status-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 8px;
+}
+.summary-status-card {
+  display: flex;
+  gap: 8px;
+  min-height: 104px;
+  padding: 10px;
+  border: 1px solid #d7e0df;
+  border-left: 4px solid #64748b;
+  border-radius: 8px;
+  background: #fff;
+}
+.summary-status-card.complete { border-left-color: #16a34a; }
+.summary-status-card.active { border-left-color: #0369a1; }
+.summary-status-card.warning { border-left-color: #f97316; }
+.summary-status-card.due { border-left-color: #be123c; }
+.summary-status-card.protected { border-left-color: #7c3aed; }
+.summary-status-card span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.summary-status-card strong {
+  display: block;
+  margin-top: 2px;
+  color: #0f172a;
+  font-size: 14px;
+}
+.summary-status-card p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.summary-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.summary-panel {
+  border: 1px solid #b7c9c6;
+  background: #fff;
+}
+.summary-panel header {
+  padding: 10px 12px;
+  border-bottom: 1px solid #d7e0df;
+  background: #f8fafc;
+}
+.summary-panel header strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+}
+.summary-list {
+  display: grid;
+  gap: 1px;
+  background: #e2e8f0;
+}
+.summary-list button {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 0;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+  text-align: left;
+}
+.summary-list button:hover {
+  background: #f0fdfa;
+}
+.summary-list i {
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: #64748b;
+  flex: 0 0 auto;
+}
+.summary-list i.high { background: #be123c; }
+.summary-list i.medium { background: #f97316; }
+.summary-list i.low { background: #16a34a; }
+.summary-list strong,
+.summary-timeline strong {
+  display: block;
+  color: #134e4a;
+  font-size: 12px;
+}
+.summary-list span,
+.summary-timeline span {
+  color: #475569;
+  font-size: 11px;
+}
+.summary-timeline {
+  display: grid;
+}
+.summary-timeline article {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.summary-timeline article:last-child {
+  border-bottom: 0;
+}
+.summary-timeline small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
 }
 .section-title {
   display: inline-flex;
@@ -5326,6 +6637,83 @@ function latestByDate(items, field) {
   display: grid;
   gap: 8px;
 }
+.avatar-command {
+  align-items: center;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 9px 10px;
+}
+.avatar-command div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.avatar-command span {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.avatar-command strong {
+  color: #134e4a;
+  font-size: 14px;
+  font-weight: 900;
+}
+.avatar-command p {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0;
+}
+.avatar-zone-strip {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+.avatar-zone-card {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+  grid-template-columns: auto 1fr;
+  min-height: 54px;
+  padding: 7px 8px;
+  text-align: left;
+}
+.avatar-zone-card strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+.avatar-zone-card span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  grid-column: 1 / -1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.avatar-zone-card.risk {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+.avatar-zone-card.active {
+  background: #ecfdf5;
+  border-color: #99f6e4;
+}
+.avatar-zone-card.stable {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+.avatar-zone-card.selected {
+  box-shadow: inset 0 0 0 2px #0f766e;
+}
 .avatar-grid {
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
@@ -5335,6 +6723,34 @@ function latestByDate(items, field) {
 .avatar-detail-panel {
   border: 1px solid #b7c9c6;
   background: #fff;
+}
+.avatar-placement-palette {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  padding: 8px;
+  border-bottom: 1px solid #d7e0df;
+  background: #f8fafc;
+}
+.avatar-placement-palette button {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  cursor: grab;
+  display: inline-flex;
+  gap: 5px;
+  justify-content: center;
+  min-height: 32px;
+  padding: 5px 7px;
+  font-size: 11px;
+  font-weight: 900;
+}
+.avatar-placement-palette button.active {
+  background: #ecfdf5;
+  border-color: #0f766e;
+  box-shadow: inset 0 0 0 1px #0f766e;
+  color: #134e4a;
 }
 .avatar-legend {
   display: flex;
@@ -5361,75 +6777,277 @@ function latestByDate(items, field) {
 .avatar-legend .risk { background: #be123c; }
 .avatar-legend .active { background: #0f766e; }
 .avatar-legend .stable { background: #64748b; }
+.avatar-view-toggle {
+  background: #fff;
+  border-bottom: 1px solid #d7e0df;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 7px 9px;
+}
+.avatar-view-toggle button {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+  min-height: 28px;
+}
+.avatar-view-toggle button.active {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
 .body-canvas {
   min-height: 430px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef5f4 100%);
+  background:
+    linear-gradient(90deg, transparent 49.6%, rgba(15, 118, 110, 0.08) 49.6% 50.4%, transparent 50.4%),
+    linear-gradient(180deg, #f8fafc 0%, #eef5f4 100%);
   overflow: auto;
   padding: 16px;
 }
 .body-figure {
   position: relative;
-  width: 230px;
-  height: 380px;
+  width: 260px;
+  height: 390px;
+}
+.body-figure.placing {
+  cursor: crosshair;
+}
+.body-avatar-image {
+  bottom: 0;
+  height: 100%;
+  left: 50%;
+  object-fit: contain;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  z-index: 1;
+}
+.body-figure::after {
+  color: #94a3b8;
+  content: "FRONT";
+  font-size: 10px;
+  font-weight: 900;
+  left: 50%;
+  letter-spacing: 0;
+  position: absolute;
+  text-transform: uppercase;
+  top: 260px;
+  transform: translateX(-50%);
+}
+.body-figure.with-image::after {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid #e2e8f0;
+  padding: 2px 5px;
+  z-index: 2;
+}
+.body-figure.back::after {
+  content: "BACK";
 }
 .body-head,
 .body-neck,
+.body-ear,
+.body-face,
+.body-shoulder,
 .body-torso,
+.body-breast,
+.body-pelvis,
+.body-spine,
+.body-glute,
 .body-arm,
-.body-leg {
+.body-hand,
+.body-leg,
+.body-foot {
   position: absolute;
-  background: #e2e8f0;
+  background: #edf2f7;
   border: 1px solid #94a3b8;
+  box-shadow: inset 0 8px 18px rgba(255, 255, 255, 0.72), inset 0 -10px 20px rgba(100, 116, 139, 0.12);
+}
+.body-figure.with-image .body-head,
+.body-figure.with-image .body-neck,
+.body-figure.with-image .body-ear,
+.body-figure.with-image .body-face,
+.body-figure.with-image .body-shoulder,
+.body-figure.with-image .body-torso,
+.body-figure.with-image .body-breast,
+.body-figure.with-image .body-pelvis,
+.body-figure.with-image .body-spine,
+.body-figure.with-image .body-glute,
+.body-figure.with-image .body-arm,
+.body-figure.with-image .body-hand,
+.body-figure.with-image .body-leg,
+.body-figure.with-image .body-foot {
+  display: none;
 }
 .body-head {
-  left: 87px;
-  top: 8px;
-  width: 56px;
-  height: 64px;
+  left: 101px;
+  top: 2px;
+  width: 58px;
+  height: 68px;
   border-radius: 50% 50% 44% 44%;
 }
-.body-neck {
-  left: 101px;
-  top: 68px;
-  width: 28px;
+.body-ear {
+  top: 28px;
+  width: 10px;
   height: 24px;
   border-radius: 8px;
 }
-.body-torso {
-  left: 67px;
-  top: 88px;
-  width: 96px;
-  height: 150px;
-  border-radius: 42px 42px 32px 32px;
+.body-ear.left { left: 95px; }
+.body-ear.right { right: 95px; }
+.body-face {
+  left: 114px;
+  top: 24px;
+  width: 32px;
+  height: 28px;
+  border: 0;
+  border-top: 1px solid rgba(100, 116, 139, 0.22);
+  border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
 }
+.body-neck {
+  left: 114px;
+  top: 66px;
+  width: 32px;
+  height: 24px;
+  border-radius: 8px;
+}
+.body-shoulder {
+  left: 56px;
+  top: 84px;
+  width: 148px;
+  height: 42px;
+  border-radius: 52px 52px 16px 16px;
+}
+.body-torso {
+  left: 78px;
+  top: 96px;
+  width: 104px;
+  height: 146px;
+  border-radius: 38px 38px 30px 30px;
+}
+.body-figure.male .body-shoulder {
+  left: 49px;
+  width: 162px;
+}
+.body-figure.male .body-torso {
+  left: 74px;
+  width: 112px;
+  border-radius: 34px 34px 22px 22px;
+}
+.body-figure.female .body-shoulder {
+  left: 63px;
+  width: 134px;
+}
+.body-figure.female .body-torso {
+  left: 82px;
+  width: 96px;
+  border-radius: 44px 44px 36px 36px;
+}
+.body-breast {
+  top: 130px;
+  width: 38px;
+  height: 32px;
+  border-radius: 50% 50% 46% 46%;
+  background: rgba(226, 232, 240, 0.92);
+  border-color: rgba(148, 163, 184, 0.7);
+}
+.body-breast.left { left: 84px; }
+.body-breast.right { right: 84px; }
+.body-pelvis {
+  left: 86px;
+  top: 223px;
+  width: 88px;
+  height: 46px;
+  border-radius: 18px 18px 44px 44px;
+}
+.body-figure.back .body-torso {
+  border-radius: 34px 34px 28px 28px;
+  box-shadow: inset 0 -42px 0 rgba(148, 163, 184, 0.16);
+}
+.body-figure.back .body-head {
+  background: #dbe4ee;
+}
+.body-spine {
+  left: 128px;
+  top: 104px;
+  width: 4px;
+  height: 124px;
+  border: 0;
+  background: rgba(100, 116, 139, 0.28);
+  box-shadow: none;
+}
+.body-glute {
+  top: 228px;
+  width: 44px;
+  height: 46px;
+  border-radius: 28px 28px 38px 38px;
+}
+.body-glute.left { left: 84px; }
+.body-glute.right { right: 84px; }
 .body-arm {
-  top: 105px;
-  width: 34px;
-  height: 150px;
+  top: 108px;
+  width: 32px;
+  height: 148px;
   border-radius: 22px;
 }
 .body-arm.left {
-  left: 27px;
+  left: 40px;
   transform: rotate(12deg);
 }
 .body-arm.right {
-  right: 27px;
+  right: 40px;
   transform: rotate(-12deg);
 }
-.body-leg {
-  top: 232px;
-  width: 40px;
-  height: 138px;
-  border-radius: 20px;
+.body-hand {
+  top: 250px;
+  width: 36px;
+  height: 34px;
+  border-radius: 18px 18px 16px 16px;
 }
-.body-leg.left { left: 72px; }
-.body-leg.right { right: 72px; }
+.body-hand.left {
+  left: 28px;
+  transform: rotate(8deg);
+}
+.body-hand.right {
+  right: 28px;
+  transform: rotate(-8deg);
+}
+.body-leg {
+  top: 258px;
+  width: 38px;
+  height: 112px;
+  border-radius: 22px 22px 18px 18px;
+}
+.body-leg.left { left: 82px; }
+.body-leg.right { right: 82px; }
+.body-figure.female .body-leg.left { left: 86px; }
+.body-figure.female .body-leg.right { right: 86px; }
+.body-foot {
+  top: 366px;
+  width: 42px;
+  height: 18px;
+  border-radius: 16px 16px 10px 10px;
+}
+.body-foot.left {
+  left: 76px;
+  transform: rotate(-8deg);
+}
+.body-foot.right {
+  right: 76px;
+  transform: rotate(8deg);
+}
 .body-zone {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   min-width: 54px;
   min-height: 34px;
   border: 1px solid #cbd5e1;
@@ -5458,15 +7076,54 @@ function latestByDate(items, field) {
 }
 .body-zone.selected {
   outline: 3px solid #99f6e4;
+  z-index: 3;
 }
-.body-zone.neuro { left: 83px; top: 2px; }
-.body-zone.resp { left: 116px; top: 102px; }
-.body-zone.cardiac { left: 60px; top: 116px; }
-.body-zone.iv { left: 4px; top: 164px; }
-.body-zone.skin { left: 89px; top: 178px; }
-.body-zone.pain { right: 4px; top: 164px; }
-.body-zone.mobility { left: 37px; top: 292px; }
-.body-zone.meds { right: 37px; top: 292px; }
+.body-zone.neuro { left: 103px; top: 0; }
+.body-zone.resp { left: 146px; top: 105px; }
+.body-zone.breast { left: 103px; top: 148px; }
+.body-zone.cardiac { left: 54px; top: 116px; }
+.body-zone.iv { left: 0; top: 166px; }
+.body-zone.skin { left: 103px; top: 170px; }
+.body-zone.pain { right: 0; top: 166px; }
+.body-zone.mobility { left: 34px; top: 302px; }
+.body-zone.meds { right: 34px; top: 302px; }
+.avatar-sticker {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  border: 2px solid #0f766e;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  margin-left: -15px;
+  margin-top: -15px;
+  padding: 0;
+  position: absolute;
+  width: 30px;
+  z-index: 4;
+}
+.avatar-sticker.wound {
+  background: #fff1f2;
+}
+.avatar-sticker.trach {
+  background: #f5f3ff;
+}
+.avatar-sticker.iv {
+  background: #eff6ff;
+}
+.avatar-sticker.foley,
+.avatar-sticker.drain {
+  background: #f0fdfa;
+}
+.avatar-sticker.pain {
+  background: #fef2f2;
+}
+.avatar-sticker.status-needs-reassessment,
+.avatar-sticker.status-escalate {
+  box-shadow: 0 0 0 3px rgba(190, 18, 60, 0.18), 0 2px 8px rgba(15, 23, 42, 0.2);
+}
 .avatar-detail-panel {
   display: grid;
   align-content: start;
@@ -5503,6 +7160,24 @@ function latestByDate(items, field) {
   font-size: 13px;
   font-weight: 700;
 }
+.avatar-placement-summary {
+  display: grid;
+  gap: 3px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 8px;
+}
+.avatar-placement-summary span {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.avatar-placement-summary strong {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+}
 .avatar-actions {
   display: flex;
   flex-wrap: wrap;
@@ -5520,6 +7195,34 @@ function latestByDate(items, field) {
   font-size: 12px;
   font-weight: 900;
   cursor: pointer;
+}
+.avatar-placement-hint {
+  align-items: center;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #134e4a;
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  padding: 8px 10px;
+}
+@media (max-width: 760px) {
+  .avatar-command {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .avatar-placement-palette {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .avatar-view-toggle {
+    grid-template-columns: 1fr 1fr;
+  }
+  .body-figure {
+    transform: scale(0.92);
+    transform-origin: center top;
+  }
 }
 .flowsheet-command-center {
   display: grid;
@@ -6957,7 +8660,29 @@ function latestByDate(items, field) {
   .access-strip div {
     flex-wrap: wrap;
   }
-  .navigator-layout, .sdoh-content, .discharge-summary, .ai-care-panel, .avatar-grid, .orders-layout, .emar-layout, .command-two-column, .nurse-focus-grid {
+  .navigator-layout, .sdoh-content, .discharge-summary, .ai-care-panel, .avatar-grid, .orders-layout, .emar-layout, .command-two-column, .nurse-focus-grid, .summary-columns {
+    grid-template-columns: 1fr;
+  }
+  .summary-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .summary-actions {
+    justify-content: flex-start;
+  }
+  .summary-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .navigator-focus-head {
+    flex-direction: column;
+  }
+  .navigator-focus-actions {
+    justify-content: flex-start;
+  }
+  .navigator-focus-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .summary-timeline article {
     grid-template-columns: 1fr;
   }
   .command-card-grid {
@@ -6988,6 +8713,14 @@ function latestByDate(items, field) {
   }
   .dialog-grid.two,
   .dialog-grid.three {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .summary-status-grid {
+    grid-template-columns: 1fr;
+  }
+  .navigator-focus-grid {
     grid-template-columns: 1fr;
   }
 }

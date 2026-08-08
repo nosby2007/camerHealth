@@ -9,7 +9,26 @@
       @device-data="showDeviceDataDialog = true"
       @chart-correction="showCorrectionDialog = true"
       @flowsheet-history="showHistoryDialog = true"
+      @timed-documentation="showTimedCareDialog = true"
     />
+
+    <div class="timed-care-summary">
+      <div>
+        <span>Care documentation</span>
+        <strong>Timestamped care, evaluation, care plan and education</strong>
+      </div>
+      <v-btn x-small depressed color="#0f766e" dark @click="showTimedCareDialog = true">
+        <v-icon x-small left>mdi-clock-edit-outline</v-icon>New timed entry
+      </v-btn>
+    </div>
+
+    <div v-if="recentTimedEntries.length" class="timed-entry-list">
+      <article v-for="entry in recentTimedEntries" :key="entry.id">
+        <strong>{{ entry.label }}</strong>
+        <span>{{ formatDateTime(entry.documentedAt) }}</span>
+        <small>{{ entry.summary }}</small>
+      </article>
+    </div>
 
     <div class="flowsheet-container">
       <FlowsheetTabs
@@ -83,6 +102,12 @@
       :patient-id="patientId"
       :encounter-id="encounterId"
     />
+
+    <TimedCareDocumentationDialog
+      :show.sync="showTimedCareDialog"
+      :templates="templates"
+      @save="fileTimedCare"
+    />
   </div>
 </template>
 
@@ -96,6 +121,7 @@ import AddRowsDialog from './AddRowsDialog.vue'
 import DeviceDataDialog from './DeviceDataDialog.vue'
 import ChartCorrectionDialog from './ChartCorrectionDialog.vue'
 import FlowsheetHistoryDialog from './FlowsheetHistoryDialog.vue'
+import TimedCareDocumentationDialog from './TimedCareDocumentationDialog.vue'
 
 export default {
   name: 'Patient360FlowsheetsTab',
@@ -108,7 +134,8 @@ export default {
     AddRowsDialog,
     DeviceDataDialog,
     ChartCorrectionDialog,
-    FlowsheetHistoryDialog
+    FlowsheetHistoryDialog,
+    TimedCareDocumentationDialog
   },
   props: {
     patientId: { type: String, required: true },
@@ -122,6 +149,7 @@ export default {
       showDeviceDataDialog: false,
       showCorrectionDialog: false,
       showHistoryDialog: false,
+      showTimedCareDialog: false,
       filteredBySystems: null,
       isRightPanelCollapsed: false
     }
@@ -155,6 +183,9 @@ export default {
     lastFiledValue() {
       if (!this.selectedRowId) return null
       return this.$store.getters['flowsheets/lastFiledByRow'](this.patientId, this.encounterId, this.selectedRowId)
+    },
+    recentTimedEntries() {
+      return this.$store.getters['flowsheets/recentTimedCareEntries'](this.patientId, this.encounterId).slice(0, 4)
     }
   },
   mounted() {
@@ -213,6 +244,24 @@ export default {
       // Placeholder for device data import
       console.log('Importing device data:', data)
     },
+    async fileTimedCare(payload) {
+      await this.$store.dispatch('flowsheets/documentTimedCare', {
+        patientId: this.patientId,
+        encounterId: this.encounterId,
+        admissionId: this.admissionId,
+        ...payload
+      })
+      this.$toast?.success('Timed care entry filed')
+    },
+    formatDateTime(value) {
+      if (!value) return ''
+      return new Date(value).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
     initializeApi() {
       if (!this.$store.$flowsheetApi && !window.$flowsheetApi) {
         try {
@@ -242,6 +291,64 @@ export default {
   flex-direction: column;
   flex: 1;
   overflow: hidden;
+}
+
+.timed-care-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #d7e0df;
+  background: #f8fafc;
+}
+
+.timed-care-summary div {
+  display: flex;
+  flex-direction: column;
+}
+
+.timed-care-summary span {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f766e;
+  text-transform: uppercase;
+}
+
+.timed-care-summary strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.timed-entry-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #d7e0df;
+  background: #fff;
+}
+
+.timed-entry-list article {
+  display: flex;
+  min-height: 72px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid #d7e0df;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.timed-entry-list strong {
+  color: #134e4a;
+  font-size: 12px;
+}
+
+.timed-entry-list span,
+.timed-entry-list small {
+  color: #475569;
+  font-size: 11px;
 }
 
 .flowsheet-body {
@@ -296,5 +403,20 @@ export default {
 .flowsheet-grid-container {
   overflow: auto;
   background: #fff;
+}
+
+@media (max-width: 900px) {
+  .timed-care-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .timed-entry-list {
+    grid-template-columns: 1fr;
+  }
+
+  .flowsheet-body {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

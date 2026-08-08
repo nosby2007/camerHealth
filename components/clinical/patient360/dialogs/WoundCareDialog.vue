@@ -53,6 +53,9 @@
             <v-text-field v-model.number="assessment.widthCm" type="number" label="Width (cm)" dense outlined />
             <v-text-field v-model.number="assessment.depthCm" type="number" label="Depth (cm)" dense outlined />
           </div>
+          <div class="dialog-grid three mt-3">
+            <v-select v-model="assessment.woundStatus" :items="woundStatusOptions" label="Wound status" dense outlined />
+          </div>
           <div class="calculated-metrics">
             <span>Surface area <strong>{{ surfaceArea }} cm²</strong></span>
             <span>Volume <strong>{{ volume !== null ? volume + ' cm³' : '-' }}</strong></span>
@@ -82,7 +85,7 @@ const { calculateWoundSurfaceArea, calculateWoundVolume } = require('~/util/nurs
 import WoundCard from '~/components/nursing/WoundCard.vue'
 
 function defaultAssessment() {
-  return { lengthCm: null, widthCm: null, depthCm: null, drainageAmount: 'none', dressingType: '', treatmentPlan: '', painScore: 0 }
+  return { lengthCm: null, widthCm: null, depthCm: null, drainageAmount: 'none', dressingType: '', treatmentPlan: '', painScore: 0, woundStatus: 'active' }
 }
 
 export default {
@@ -102,6 +105,7 @@ export default {
       saving: false,
       lastWarning: false,
       acquiredLocationOptions: ['present_on_admission', 'facility_acquired', 'community_acquired', 'unknown'],
+      woundStatusOptions: ['active', 'improving', 'worsening', 'healed', 'closed'],
       requiredRule: value => Boolean(value) || 'Required'
     }
   },
@@ -135,7 +139,10 @@ export default {
     selectWound(wound) {
       this.mode = 'existing'
       this.selectedWoundId = wound.id
-      this.assessment = defaultAssessment()
+      this.assessment = {
+        ...defaultAssessment(),
+        woundStatus: wound.status || 'active'
+      }
     },
     reset() {
       this.mode = 'pick'
@@ -150,9 +157,14 @@ export default {
         let woundId = this.selectedWoundId
         let woundLabel = this.selectedWound.woundType
         if (this.mode === 'new') {
-          const wound = await this.$store.dispatch('nursing/createWound', { ...this.newWound, patientId: this.patientId })
+          const wound = await this.$store.dispatch('nursing/createWound', { ...this.newWound, patientId: this.patientId, status: this.assessment.woundStatus || 'active' })
           woundId = wound.id
           woundLabel = wound.woundType
+        } else if (this.assessment.woundStatus && this.selectedWoundId) {
+          await this.$store.dispatch('nursing/updateWound', {
+            ...this.selectedWound,
+            status: this.assessment.woundStatus
+          })
         }
         const record = await this.$store.dispatch('nursing/createWoundAssessment', {
           ...this.assessment,
@@ -171,7 +183,7 @@ export default {
           body: summary.trim(),
           authorRole: this.authorRole
         })
-        this.$emit('saved', record)
+        this.$emit('saved', { ...record, woundId, woundStatus: this.assessment.woundStatus })
         if (!this.lastWarning) this.$emit('close')
       } finally {
         this.saving = false

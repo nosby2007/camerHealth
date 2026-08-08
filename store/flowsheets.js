@@ -33,6 +33,9 @@ const FLOWSHEET_TEMPLATES = [
   { id: 'mobility', label: 'Mobility', category: 'assessment', bodySystem: 'MUSCULOSKELETAL' },
   { id: 'safety', label: 'Rounds/Safety/Alarms', category: 'safety', bodySystem: 'OTHER' },
   { id: 'comfort', label: 'Comfort & Hygiene', category: 'assessment', bodySystem: 'OTHER' },
+  { id: 'timed-care', label: 'Timed Care Documentation', category: 'care', bodySystem: 'GENERAL' },
+  { id: 'cna-rounds', label: 'Aide-Soignant Rounds', category: 'care', bodySystem: 'OTHER' },
+  { id: 'maternity-care', label: 'Maternity / Newborn Care', category: 'specialty', bodySystem: 'GENERAL' },
   { id: 'ventilation', label: 'Mechanical Ventilation', category: 'specialty', bodySystem: 'CHEST' },
   { id: 'sepsis', label: 'NSG Sepsis Screen', category: 'assessment', bodySystem: 'OTHER' },
   { id: 'mobility-quality', label: 'NSG Mobility Quality', category: 'assessment', bodySystem: 'MUSCULOSKELETAL' },
@@ -54,6 +57,20 @@ const FLOWSHEET_SECTIONS = {
     { id: 'neuro-1', label: 'Neurological', bodySystem: 'HEAD', collapsedByDefault: false, smartCollapseEligible: true },
     { id: 'resp-1', label: 'Respiratory', bodySystem: 'CHEST', collapsedByDefault: false, smartCollapseEligible: true },
     { id: 'cardio-1', label: 'Cardiovascular', bodySystem: 'CHEST', collapsedByDefault: false, smartCollapseEligible: true }
+  ],
+  'timed-care': [
+    { id: 'care-1', label: 'Care Done', bodySystem: 'GENERAL', collapsedByDefault: false, smartCollapseEligible: false },
+    { id: 'eval-1', label: 'Evaluation', bodySystem: 'GENERAL', collapsedByDefault: false, smartCollapseEligible: false },
+    { id: 'plan-1', label: 'Care Plan / Education', bodySystem: 'OTHER', collapsedByDefault: false, smartCollapseEligible: true }
+  ],
+  'cna-rounds': [
+    { id: 'cna-1', label: 'Basic Care Round', bodySystem: 'OTHER', collapsedByDefault: false, smartCollapseEligible: false },
+    { id: 'cna-2', label: 'Escalation', bodySystem: 'OTHER', collapsedByDefault: false, smartCollapseEligible: false }
+  ],
+  'maternity-care': [
+    { id: 'mat-1', label: 'Mother', bodySystem: 'GENERAL', collapsedByDefault: false, smartCollapseEligible: false },
+    { id: 'newborn-1', label: 'Newborn', bodySystem: 'GENERAL', collapsedByDefault: false, smartCollapseEligible: false },
+    { id: 'family-1', label: 'Family Education', bodySystem: 'OTHER', collapsedByDefault: false, smartCollapseEligible: true }
   ]
 }
 
@@ -76,6 +93,31 @@ const FLOWSHEET_ROWS = {
     { id: 'skin-intact', label: 'Skin Intact', sectionId: 'skin-1', rowType: 'select', unit: null, required: true, canGraph: false, calculation: null },
     { id: 'wound-count', label: 'Number of Wounds', sectionId: 'wound-1', rowType: 'numeric', unit: null, required: false, canGraph: false, calculation: null },
     { id: 'dressing-change', label: 'Dressing Changed', sectionId: 'wound-1', rowType: 'select', unit: null, required: false, canGraph: false, calculation: null }
+  ],
+  'timed-care': [
+    { id: 'care-performed', label: 'Care performed', sectionId: 'care-1', rowType: 'text', unit: null, required: true, canGraph: false, calculation: null },
+    { id: 'care-frequency', label: 'Schedule / frequency', sectionId: 'care-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'patient-response', label: 'Patient response', sectionId: 'eval-1', rowType: 'text', unit: null, required: true, canGraph: false, calculation: null },
+    { id: 'abnormal-findings', label: 'Abnormal findings', sectionId: 'eval-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'escalation', label: 'Escalation / notified person', sectionId: 'eval-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'care-plan-focus', label: 'Care plan focus', sectionId: 'plan-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'education-given', label: 'Education given', sectionId: 'plan-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'next-due', label: 'Next due / handoff', sectionId: 'plan-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null }
+  ],
+  'cna-rounds': [
+    { id: 'hygiene', label: 'Hygiene completed', sectionId: 'cna-1', rowType: 'select', unit: null, required: true, canGraph: false, calculation: null },
+    { id: 'positioning', label: 'Positioning / turning', sectionId: 'cna-1', rowType: 'text', unit: null, required: true, canGraph: false, calculation: null },
+    { id: 'feeding', label: 'Feeding / hydration support', sectionId: 'cna-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'elimination', label: 'Elimination / linen', sectionId: 'cna-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'reported-to-nurse', label: 'Reported to nurse', sectionId: 'cna-2', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null }
+  ],
+  'maternity-care': [
+    { id: 'maternal-status', label: 'Maternal status', sectionId: 'mat-1', rowType: 'text', unit: null, required: true, canGraph: false, calculation: null },
+    { id: 'bleeding-uterus', label: 'Bleeding / uterus', sectionId: 'mat-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'newborn-status', label: 'Newborn status', sectionId: 'newborn-1', rowType: 'text', unit: null, required: true, canGraph: false, calculation: null },
+    { id: 'feeding-support', label: 'Breastfeeding / feeding support', sectionId: 'newborn-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'family-teaching', label: 'Family teaching', sectionId: 'family-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null },
+    { id: 'danger-signs', label: 'Danger signs reviewed', sectionId: 'family-1', rowType: 'text', unit: null, required: false, canGraph: false, calculation: null }
   ],
   'assessment': [
     // Neurological Section
@@ -332,6 +374,70 @@ export const actions = {
     return { correctedCell, correction }
   },
 
+  documentTimedCare({ commit, dispatch, rootState }, { patientId, encounterId, admissionId, templateId, documentedAt, entries, summary, carePlanFocus, educationGiven, nextDue }) {
+    const filedAt = documentedAt || new Date().toISOString()
+    const column = withBase(rootState, {
+      patientId,
+      encounterId,
+      admissionId,
+      documentedAt: filedAt,
+      label: new Date(filedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      status: 'filed',
+      filedAt,
+      filedBy: rootState.auth?.fullName || rootState.auth?.staffId,
+      createdBy: rootState.auth?.fullName || rootState.auth?.staffId,
+      responsibleUserId: rootState.auth?.staffId,
+      source: 'timed-care-dialog',
+      templateId
+    }, 'FLC')
+    commit('ADD_COLUMN', column)
+    commit('SET_SELECTED_TEMPLATE', templateId || 'timed-care')
+    commit('SET_SELECTED_COLUMN', column.id)
+
+    Object.entries(entries || {}).forEach(([rowId, value]) => {
+      if (value === undefined || value === null || String(value).trim() === '') return
+      const cell = withBase(rootState, {
+        rowId,
+        columnId: column.id,
+        patientId,
+        encounterId,
+        value,
+        displayValue: String(value),
+        status: 'filed',
+        documentedAt: filedAt,
+        documentedBy: rootState.auth?.fullName || rootState.auth?.staffId,
+        source: 'timed-care-dialog'
+      }, 'FLC')
+      commit('ADD_CELL', cell)
+    })
+
+    dispatch('audit', {
+      action: 'TIMED_CARE_DOCUMENTED',
+      targetId: column.id,
+      patientId,
+      details: { templateId, carePlanFocus, educationGiven, nextDue }
+    })
+
+    dispatch('clinical/addNursingNote', {
+      patientId,
+      encounterId,
+      title: 'Timed care documentation',
+      noteType: 'flowsheet_care',
+      summary: summary || entries?.['care-performed'] || 'Timed care entry filed',
+      body: [
+        summary || entries?.['care-performed'],
+        entries?.['patient-response'] ? `Response: ${entries['patient-response']}` : '',
+        carePlanFocus ? `Care plan: ${carePlanFocus}` : '',
+        educationGiven ? `Education: ${educationGiven}` : '',
+        nextDue ? `Next due / handoff: ${nextDue}` : ''
+      ].filter(Boolean).join('\n'),
+      recordedBy: rootState.auth?.fullName || rootState.auth?.staffId,
+      recordedAt: filedAt
+    }, { root: true })
+
+    return column
+  },
+
   audit({ commit, rootState }, event) {
     commit('ADD_AUDIT', {
       id: makeId('AUD'),
@@ -390,5 +496,19 @@ export const getters = {
   hasChildren: (state) => (rowId) => {
     const allRows = Object.values(state.flowsheetRows).flat()
     return allRows.some(r => r.parentId === rowId)
+  },
+
+  recentTimedCareEntries: (state) => (patientId, encounterId) => {
+    return state.columns
+      .filter(column => column.patientId === patientId && column.encounterId === encounterId && column.source === 'timed-care-dialog')
+      .sort((a, b) => new Date(b.documentedAt) - new Date(a.documentedAt))
+      .map(column => {
+        const cells = state.cells.filter(cell => cell.columnId === column.id)
+        const summaryCell = cells.find(cell => ['care-performed', 'hygiene', 'maternal-status'].includes(cell.rowId))
+        return {
+          ...column,
+          summary: summaryCell?.displayValue || summaryCell?.value || 'Care entry filed'
+        }
+      })
   }
 }

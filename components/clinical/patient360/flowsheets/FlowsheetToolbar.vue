@@ -13,6 +13,9 @@
       <v-btn small :color="isSaving ? 'info' : 'success'" text :disabled="isSaving" @click="fileCurrentColumn" title="File/Save Current Column">
         <v-icon x-small left>{{ isSaving ? 'mdi-loading' : 'mdi-content-save' }}</v-icon>{{ isSaving ? 'Saving...' : 'File Column' }}
       </v-btn>
+      <v-btn small depressed color="#0f766e" dark @click="$emit('timed-documentation')" title="Timed care documentation">
+        <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed Entry
+      </v-btn>
       <div v-if="saveStatus" :class="['save-status', saveError ? 'error' : 'success']">
         <v-icon x-small>{{ saveError ? 'mdi-alert-circle' : 'mdi-check-circle' }}</v-icon>
         <span>{{ saveStatusText }}</span>
@@ -112,8 +115,8 @@ export default {
     }
   },
   methods: {
-    insertColumn() {
-      const column = this.$store.dispatch('flowsheets/createColumn', {
+    async insertColumn() {
+      const column = await this.$store.dispatch('flowsheets/createColumn', {
         patientId: this.patientId,
         encounterId: this.encounterId,
         admissionId: this.admissionId
