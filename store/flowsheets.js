@@ -438,6 +438,50 @@ export const actions = {
     return column
   },
 
+  createFlowsheetEntry({ commit, dispatch, rootState }, { patientId, encounterId, templateId, sectionId, entries, recordedAt }) {
+    const filedAt = recordedAt || new Date().toISOString()
+    const column = withBase(rootState, {
+      patientId,
+      encounterId,
+      documentedAt: filedAt,
+      label: new Date(filedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      status: 'filed',
+      filedAt,
+      filedBy: rootState.auth?.fullName || rootState.auth?.staffId,
+      createdBy: rootState.auth?.fullName || rootState.auth?.staffId,
+      responsibleUserId: rootState.auth?.staffId,
+      source: 'assessment-form',
+      templateId
+    }, 'FLC')
+    commit('ADD_COLUMN', column)
+
+    Object.entries(entries || {}).forEach(([rowId, value]) => {
+      if (value === undefined || value === null || String(value).trim() === '') return
+      const cell = withBase(rootState, {
+        rowId,
+        columnId: column.id,
+        patientId,
+        encounterId,
+        value,
+        displayValue: String(value),
+        status: 'filed',
+        documentedAt: filedAt,
+        documentedBy: rootState.auth?.fullName || rootState.auth?.staffId,
+        source: 'assessment-form'
+      }, 'FLC')
+      commit('ADD_CELL', cell)
+    })
+
+    dispatch('audit', {
+      action: 'FLOWSHEET_ENTRY_CREATED',
+      targetId: column.id,
+      patientId,
+      details: { templateId, sectionId }
+    })
+
+    return column
+  },
+
   audit({ commit, rootState }, event) {
     commit('ADD_AUDIT', {
       id: makeId('AUD'),
