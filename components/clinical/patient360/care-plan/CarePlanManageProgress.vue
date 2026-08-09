@@ -96,6 +96,10 @@
         <v-card-text>
           <v-text-field v-model="newPlan.name" label="Care Plan Name" outlined dense />
           <v-select v-model="newPlan.type" label="Type" :items="carePlanTypes" outlined dense />
+          <v-textarea v-model="newPlan.problem" label="Problem / diagnosis" rows="2" outlined dense />
+          <v-textarea v-model="newPlan.goal" label="Goal" rows="2" outlined dense />
+          <v-textarea v-model="newPlan.intervention" label="Intervention" rows="2" outlined dense />
+          <v-textarea v-model="newPlan.expectedOutcome" label="Expected outcome" rows="2" outlined dense />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -128,7 +132,7 @@ export default {
       treeCollapsed: false,
       progressStatuses: ['progressing', 'not_progressing', 'adequate_for_discharge', 'completed', 'unexpected_discharge_disposition'],
       carePlanTypes: ['general', 'fall_risk', 'skin_integrity', 'pain', 'infection', 'nutrition', 'mobility', 'discharge'],
-      newPlan: { name: '', type: 'general' }
+      newPlan: { name: '', type: 'general', problem: '', goal: '', intervention: '', expectedOutcome: '' }
     }
   },
   computed: {
@@ -178,15 +182,49 @@ export default {
         this.$toast?.success('Care plan marked as reviewed')
       }
     },
-    addCarePlan() {
-      this.$store.dispatch('carePlan/addCarePlan', {
+    async addCarePlan() {
+      const planRecord = await this.$store.dispatch('carePlan/addCarePlan', {
         patientId: this.patientId,
         encounterId: this.encounterId,
         admissionId: this.admissionId,
-        ...this.newPlan
+        name: this.newPlan.name,
+        type: this.newPlan.type
       })
+      if (this.newPlan.problem) {
+        await this.$store.dispatch('carePlan/addProblem', {
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          admissionId: this.admissionId,
+          carePlanId: planRecord.id,
+          label: this.newPlan.problem
+        })
+      }
+      if (this.newPlan.goal) {
+        const problemId = this.$store.state.carePlan?.carePlanProblems?.find(item => item.patientId === this.patientId && item.carePlanId === planRecord.id && item.label === this.newPlan.problem)?.id || null
+        await this.$store.dispatch('carePlan/addGoal', {
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          admissionId: this.admissionId,
+          carePlanId: planRecord.id,
+          problemId,
+          label: this.newPlan.goal,
+          description: this.newPlan.intervention,
+          expectedEndDate: null
+        })
+      }
+      if (this.newPlan.expectedOutcome) {
+        const goalId = this.$store.state.carePlan?.carePlanGoals?.find(item => item.patientId === this.patientId && item.carePlanId === planRecord.id && item.label === this.newPlan.goal)?.id || null
+        await this.$store.dispatch('carePlan/addOutcome', {
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          admissionId: this.admissionId,
+          carePlanId: planRecord.id,
+          goalId,
+          label: this.newPlan.expectedOutcome
+        })
+      }
       this.showAddDialog = false
-      this.newPlan = { name: '', type: 'general' }
+      this.newPlan = { name: '', type: 'general', problem: '', goal: '', intervention: '', expectedOutcome: '' }
       this.$toast?.success('Care plan added')
     },
     statusLabel(status) {

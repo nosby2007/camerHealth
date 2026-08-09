@@ -156,7 +156,8 @@ export default {
   name: 'TimedCareDocumentationDialog',
   props: {
     show: { type: Boolean, default: false },
-    templates: { type: Array, default: () => [] }
+    templates: { type: Array, default: () => [] },
+    preset: { type: Object, default: () => ({}) }
   },
   data() {
     return {
@@ -196,7 +197,7 @@ export default {
   },
   watch: {
     show(value) {
-      if (value) this.applyTemplate(this.form.templateKey || 'routine')
+      if (value) this.applyPreset()
     }
   },
   methods: {
@@ -223,6 +224,18 @@ export default {
         templateKey: template.key,
         templateId: template.templateId,
         ...template.values
+      }
+    },
+    applyPreset() {
+      this.form = {
+        ...this.defaultForm(),
+        ...this.form,
+        ...this.preset
+      }
+      this.applyTemplate(this.form.templateKey || 'routine')
+      this.form = {
+        ...this.form,
+        ...this.preset
       }
     },
     save() {

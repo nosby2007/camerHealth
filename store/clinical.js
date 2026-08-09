@@ -213,9 +213,13 @@ export const mutations = {
 export const actions = {
   registerPatient({ commit, rootState }, patient) {
     const id = 'PAT-' + Math.random().toString(36).substr(2, 9).toUpperCase()
+    const mrn = patient.mrn || `MRN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+    const barcode = patient.barcode || `BR-${id.replace(/^PAT-/, '')}-${Date.now().toString().slice(-6)}`
     commit('ADD_PATIENT', {
       ...patient,
       id,
+      mrn,
+      barcode,
       institution: rootState.auth.institution,
       region: patient.region || rootState.auth.region,
       createdAt: new Date().toISOString()
@@ -243,7 +247,9 @@ export const actions = {
       region,
       address: 'Bonaberi, Douala',
       bloodType: 'O+',
+      mrn: 'MRN-360-0001',
       externalId: 'MRN-360-0001',
+      barcode: 'BR-WF360-0001',
       patientStatus: 'Admitted',
       patientClass: 'Inpatient',
       clinicSite: institution,

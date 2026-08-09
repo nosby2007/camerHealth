@@ -28,6 +28,15 @@
           </div>
         </div>
 
+        <div class="form-section">
+          <v-switch v-model="form.teachingCompleted" inset dense color="#0f766e" label="Teaching completed" />
+          <v-switch v-model="form.familyEducation" inset dense color="#0f766e" label="Family education provided" />
+        </div>
+
+        <div class="form-section">
+          <v-text-field v-model="form.nextReviewAt" label="Next review date/time" type="datetime-local" dense outlined />
+        </div>
+
         <v-textarea v-model="form.comment" label="Comments" rows="3" dense outlined />
       </v-card-text>
       <v-card-actions>
@@ -56,7 +65,10 @@ export default {
         readiness: '',
         methods: [],
         responses: [],
-        comment: ''
+        comment: '',
+        teachingCompleted: true,
+        familyEducation: false,
+        nextReviewAt: ''
       },
       learnerOptions: ['Patient', 'Family', 'Significant Other', 'Caregiver', 'Other'],
       readinessOptions: ['Eager', 'Acceptance', 'Nonacceptance', 'Refuses'],
@@ -67,7 +79,7 @@ export default {
   watch: {
     show(val) {
       if (!val) {
-        this.form = { learners: [], readiness: '', methods: [], responses: [], comment: '' }
+        this.form = { learners: [], readiness: '', methods: [], responses: [], comment: '', teachingCompleted: true, familyEducation: false, nextReviewAt: '' }
       }
     }
   },

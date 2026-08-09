@@ -207,14 +207,21 @@ export default {
       this.selectedPointId = point.id
       this.showDocumentDialog = true
     },
-    fileEducation(data) {
-      this.$store.dispatch('education/documentEducationPoint', {
+    async fileEducation(data) {
+      const doc = await this.$store.dispatch('education/documentEducationPoint', {
         pointId: this.selectedPointId,
         titleId: this.selectedTitleId,
         patientId: this.patientId,
         encounterId: this.encounterId,
         ...data
       })
+      if (data.resolveAfterFile) {
+        await this.$store.dispatch('education/fileAndResolveEducationDocumentation', {
+          documentationId: doc.id,
+          pointId: this.selectedPointId,
+          patientId: this.patientId
+        })
+      }
       this.showDocumentDialog = false
       this.$toast?.success('Education documented')
     },

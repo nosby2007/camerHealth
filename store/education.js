@@ -207,6 +207,9 @@ export const actions = {
       methods,
       responses,
       comment,
+      teachingCompleted: true,
+      familyEducation: learners?.includes('Family') || learners?.includes('Family/Caregiver') || learners?.includes('Caregiver') || false,
+      nextReviewAt: null,
       taughtBy: rootState.auth?.fullName || rootState.auth?.staffId,
       taughtByRole: rootState.auth?.role,
       taughtAt: new Date().toISOString(),
@@ -408,9 +411,34 @@ export const getters = {
         titleId: title.id,
         title: title.title,
         totalPoints: points.length,
-        completedCount: completedPoints.length
+        completedCount: completedPoints.length,
+        completionRate: points.length ? Math.round((completedPoints.length / points.length) * 100) : 0
       }
     })
+  },
+
+  educationSummaryProjection: (state, getters, rootState, rootGetters) => (patientId) => {
+    const titles = getters.educationTitlesForPatient(patientId)
+    const points = scoped(state.educationPoints, rootState, rootGetters).filter(p => p.patientId === patientId)
+    const docs = scoped(state.learnerDocumentations, rootState, rootGetters).filter(d => d.patientId === patientId)
+    const latest = docs.sort((a, b) => new Date(b.taughtAt) - new Date(a.taughtAt))[0] || null
+    const familyDocs = docs.filter(d => d.familyEducation)
+    return {
+      titleCount: titles.length,
+      pointCount: points.length,
+      documentedCount: docs.length,
+      familyEducationCount: familyDocs.length,
+      completedCount: points.filter(point => {
+        const latestDoc = getters.latestDocumentationByPoint(point.id)
+        return latestDoc && (latestDoc.status === 'resolved' || point.status === 'completed')
+      }).length,
+      latestEducation: latest ? {
+        id: latest.id,
+        learners: latest.learners || [],
+        taughtAt: latest.taughtAt,
+        comment: latest.comment || ''
+      } : null
+    }
   },
 
   educationEventsForChartReview: (state, getters, rootState, rootGetters) => (patientId) => {

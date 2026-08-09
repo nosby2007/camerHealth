@@ -16,6 +16,9 @@
         <v-btn v-if="patientScoped" x-small text color="#0f766e" class="font-weight-black" to="/clinical/patients">
           <v-icon x-small left>mdi-account-search</v-icon>Patient list
         </v-btn>
+        <v-btn x-small text color="#0f766e" class="font-weight-black" @click="dialogs.scan = true">
+          <v-icon x-small left>mdi-barcode-scan</v-icon>Scan bracelet
+        </v-btn>
         <label class="role-switcher">
           <span>Role</span>
           <select v-model="previewRole">
@@ -136,10 +139,19 @@
                 <p>{{ workspaceEyebrow }}</p>
                 <h2>{{ workspaceHeadline }}</h2>
               </div>
-          <div class="title-actions">
-            <v-chip x-small label color="#e0f2fe" text-color="#075985" class="font-weight-black">
-              Current admission
-            </v-chip>
+      <div class="title-actions">
+        <v-btn
+          x-small
+          text
+          color="#0f766e"
+          class="font-weight-black"
+          @click="dialogs.tabManager = true"
+        >
+          <v-icon x-small left>mdi-tune-variant</v-icon>Manage tabs
+        </v-btn>
+        <v-chip x-small label color="#e0f2fe" text-color="#075985" class="font-weight-black">
+          Current admission
+        </v-chip>
             <v-btn
               v-if="activePatientId"
               x-small
@@ -230,11 +242,11 @@
                 </article>
               </div>
 
-              <div class="summary-columns">
-                <section class="summary-panel">
-                  <header>
-                    <span>Today priorities</span>
-                    <strong>What must move before handoff</strong>
+            <div class="summary-columns">
+              <section class="summary-panel">
+                <header>
+                  <span>Today priorities</span>
+                  <strong>What must move before handoff</strong>
                   </header>
                   <div class="summary-list">
                     <button
@@ -265,6 +277,50 @@
                         <span>{{ item.detail }}</span>
                       </div>
                     </article>
+                  </div>
+                </section>
+              </div>
+
+              <div class="summary-columns">
+                <section class="summary-panel">
+                  <header>
+                    <span>Care plan</span>
+                    <strong>Goals, interventions and outcomes</strong>
+                  </header>
+                  <div class="summary-list compact">
+                    <button
+                      v-for="item in carePlanSummaryCards"
+                      :key="item.label"
+                      type="button"
+                      @click="openCommandAction('care-plan')"
+                    >
+                      <i :class="item.level"></i>
+                      <div>
+                        <strong>{{ item.label }}</strong>
+                        <span>{{ item.detail }}</span>
+                      </div>
+                    </button>
+                  </div>
+                </section>
+
+                <section class="summary-panel">
+                  <header>
+                    <span>Education</span>
+                    <strong>Teaching completed and family education</strong>
+                  </header>
+                  <div class="summary-list compact">
+                    <button
+                      v-for="item in educationSummaryCards"
+                      :key="item.label"
+                      type="button"
+                      @click="openCommandAction('education')"
+                    >
+                      <i :class="item.level"></i>
+                      <div>
+                        <strong>{{ item.label }}</strong>
+                        <span>{{ item.detail }}</span>
+                      </div>
+                    </button>
                   </div>
                 </section>
               </div>
@@ -1355,8 +1411,8 @@
                   <strong>Discharge Navigator</strong>
                   <span>Expected discharge, readiness, milestones, instructions and after visit summary</span>
                 </div>
-                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('document')">
-                  <v-icon x-small left>mdi-file-document-check</v-icon>File discharge document
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('discharge')">
+                  <v-icon x-small left>mdi-logout-variant</v-icon>File discharge bundle
                 </v-btn>
               </div>
               <div class="discharge-summary">
@@ -1872,12 +1928,85 @@
       @close="closeChartDialog('carePlan')"
       @saved="handleCarePlanSaved"
     />
+    <DischargePlanDialog
+      :open="dialogs.discharge"
+      :patient-id="activePatientId"
+      :patient-name="activePatient.name"
+      @close="closeChartDialog('discharge')"
+      @saved="handleDischargeSaved"
+    />
+    <PatientBarcodeScannerDialog
+      :open="dialogs.scan"
+      :patient-id="activePatientId"
+      :role="currentRole"
+      @close="closeChartDialog('scan')"
+      @patient="openScannedPatient"
+      @saved="handleWoundPhotoSaved"
+      @toast="toastSuccess"
+    />
     <BodyAssessmentDialog
       :value="showBodyAssessmentDialog"
       :gender="avatarAnatomy"
       @input="showBodyAssessmentDialog = $event"
       @save="handleBodyAssessmentSave"
     />
+    <TimedCareDocumentationDialog
+      :show.sync="dialogs.timedCare"
+      :templates="timedCareTemplates"
+      :preset="timedCareDialogPreset || {}"
+      @save="handleTimedCareSave"
+    />
+    <v-dialog v-model="dialogs.tabManager" max-width="920" persistent scrollable>
+      <v-card class="tab-manager-dialog">
+        <v-card-title class="tab-manager-title">
+          <div>
+            <span>Patient 360</span>
+            <strong>Tab manager</strong>
+          </div>
+          <v-spacer></v-spacer>
+          <v-btn icon small @click="dialogs.tabManager = false">
+            <v-icon small>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text>
+          <div class="tab-manager-summary">
+            <p>Reorder, hide, and restore chart tabs per user preference.</p>
+            <small>Role access still applies. Hidden tabs stay hidden until restored.</small>
+          </div>
+          <div class="tab-manager-grid">
+            <article v-for="tab in tabManagerItems" :key="tab.key" :class="['tab-manager-item', { hidden: tab.hidden }]">
+              <div class="tab-manager-label">
+                <strong>{{ tab.label }}</strong>
+                <small>{{ tab.group }}</small>
+              </div>
+              <div class="tab-manager-actions">
+                <v-btn icon small :disabled="tab.index === 0" @click="moveChartTab(tab.key, -1)">
+                  <v-icon small>mdi-arrow-up</v-icon>
+                </v-btn>
+                <v-btn icon small :disabled="tab.index === tabManagerItems.length - 1" @click="moveChartTab(tab.key, 1)">
+                  <v-icon small>mdi-arrow-down</v-icon>
+                </v-btn>
+                <v-switch
+                  v-model="tab.visible"
+                  inset
+                  dense
+                  hide-details
+                  color="#0f766e"
+                  @change="setChartTabVisibility(tab.key, $event)"
+                />
+              </div>
+            </article>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn text color="#0f766e" @click="resetChartTabPreferences">
+            <v-icon x-small left>mdi-restore</v-icon>Reset default
+          </v-btn>
+          <v-spacer></v-spacer>
+          <v-btn text @click="dialogs.tabManager = false">Done</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -1890,9 +2019,12 @@ import NoteDialog from '~/components/clinical/patient360/dialogs/NoteDialog.vue'
 import WoundCareDialog from '~/components/clinical/patient360/dialogs/WoundCareDialog.vue'
 import WoundCard from '~/components/nursing/WoundCard.vue'
 import CarePlanDialog from '~/components/clinical/patient360/dialogs/CarePlanDialog.vue'
+import DischargePlanDialog from '~/components/clinical/patient360/discharge/DischargePlanDialog.vue'
+import PatientBarcodeScannerDialog from '~/components/clinical/patient360/PatientBarcodeScannerDialog.vue'
 import Patient360CarePlanTab from '~/components/clinical/patient360/care-plan/Patient360CarePlanTab.vue'
 import Patient360EducationTab from '~/components/clinical/patient360/education/Patient360EducationTab.vue'
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
+import TimedCareDocumentationDialog from '~/components/clinical/patient360/flowsheets/TimedCareDocumentationDialog.vue'
 import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
 import maleFrontAvatar from '~/assets/images/clinical/avatar/male-front.jpg'
 import maleBackAvatar from '~/assets/images/clinical/avatar/male-back.jpg'
@@ -1965,6 +2097,7 @@ const ALL_CLINICAL_TABS = [
 const PRIMARY_TAB_ORDER = ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Chart Review', 'Orders', 'MAR', 'Flowsheets', 'Notes', 'Care Plan']
 
 const RIGHT_PANEL_DEFAULT_COLLAPSED_TABS = ['Notes', 'Flowsheets', 'MAR', 'Orders']
+const CHART_TAB_LAYOUT_KEY = 'camero_health_patient360Tabs'
 
 const ADMIN_LIKE_ROLES = ['ADMIN', 'RECORDS', 'BILLING', 'FRONT_DESK']
 
@@ -2027,7 +2160,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, BodyAssessmentDialog },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2060,6 +2193,11 @@ export default {
         { key: 'pain', label: 'Pain', icon: 'mdi-alert-circle-outline', color: '#dc2626', defaultStatus: 'Needs reassessment' }
       ],
       showBodyAssessmentDialog: false,
+      timedCareDialogPreset: null,
+      chartTabPreferences: {
+        order: [],
+        hidden: []
+      },
       chartTabs: ALL_CLINICAL_TABS,
       navigatorTabs: [
         {
@@ -2337,11 +2475,15 @@ export default {
         imaging: false,
         medication: false,
         document: false,
+        discharge: false,
+        scan: false,
         marAction: false,
         note: false,
         woundCare: false,
         carePlan: false,
-        avatarPlacement: false
+        avatarPlacement: false,
+        timedCare: false,
+        tabManager: false
       },
       noteDialogConfig: { noteType: 'nursing_note', dialogTitle: '', existingNote: null },
       selectedNoteId: null,
@@ -2477,7 +2619,35 @@ export default {
     },
     visibleChartTabs() {
       const allowed = TAB_ACCESS[this.currentRole] || TAB_ACCESS.NURSE
-      return this.chartTabs.filter(tab => allowed.includes(tab))
+      const base = this.chartTabs.filter(tab => allowed.includes(tab))
+      const preferred = Array.isArray(this.chartTabPreferences.order) ? this.chartTabPreferences.order.filter(tab => base.includes(tab)) : []
+      const hidden = new Set(Array.isArray(this.chartTabPreferences.hidden) ? this.chartTabPreferences.hidden : [])
+      const ordered = [
+        ...preferred,
+        ...base.filter(tab => !preferred.includes(tab))
+      ]
+      return ordered.filter(tab => !hidden.has(tab))
+    },
+    tabManagerItems() {
+      return this.visibleChartTabs.map((tab, index) => ({
+        key: tab,
+        label: tab,
+        group: PRIMARY_TAB_ORDER.includes(tab) ? 'Primary' : 'Overflow',
+        index,
+        visible: true,
+        hidden: false
+      })).concat(
+        this.chartTabs
+          .filter(tab => !this.visibleChartTabs.includes(tab) && (TAB_ACCESS[this.currentRole] || TAB_ACCESS.NURSE).includes(tab))
+          .map(tab => ({
+            key: tab,
+            label: tab,
+            group: PRIMARY_TAB_ORDER.includes(tab) ? 'Primary' : 'Overflow',
+            index: this.visibleChartTabs.length,
+            visible: false,
+            hidden: true
+          }))
+      )
     },
     visibleNavigatorTabs() {
       const allowed = NAV_ACCESS[this.currentRole] || NAV_ACCESS.NURSE
@@ -2755,6 +2925,9 @@ export default {
       const all = this.$store.getters['clinical/getDocuments'] || []
       return all.filter(item => item.patientId === this.activePatientId)
     },
+    timedCareTemplates() {
+      return this.$store.getters['flowsheets/templates'] || []
+    },
     summaryHeadline() {
       const location = this.activePatient.bed || this.activePatient.service || 'Location not assigned'
       const risk = this.activePatient.riskLevel ? `${this.activePatient.riskLevel} risk` : 'risk not scored'
@@ -2786,6 +2959,8 @@ export default {
       const pain = Number(vitals.pain)
       const abnormalVitals = (Number.isFinite(temp) && temp >= 38) || (Number.isFinite(spo2) && spo2 < 92) || (Number.isFinite(pain) && pain >= 7)
       const hasDischargeDoc = this.patientDocuments.some(doc => /discharge|sortie|avs|after visit/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      const carePlanSummary = this.$store.getters['carePlan/carePlanSummaryProjection']?.(this.activePatientId) || {}
+      const educationSummary = this.$store.getters['education/educationSummaryProjection']?.(this.activePatientId) || {}
       return [
         {
           label: 'Clinical status',
@@ -2828,6 +3003,20 @@ export default {
           detail: this.recentTimedCareEntries[0]?.summary || 'Use Timed care to document bedside work.',
           status: this.recentTimedCareEntries.length ? 'complete' : 'warning',
           icon: 'mdi-clock-edit-outline'
+        },
+        {
+          label: 'Care plan',
+          value: carePlanSummary.goalCount ? `${carePlanSummary.completedGoals || 0}/${carePlanSummary.goalCount}` : 'No plan yet',
+          detail: carePlanSummary.recentProgress ? `Last update: ${carePlanSummary.recentProgress.label}` : 'Create goals, interventions and outcomes.',
+          status: carePlanSummary.goalCount ? 'complete' : 'warning',
+          icon: 'mdi-clipboard-text-outline'
+        },
+        {
+          label: 'Education',
+          value: educationSummary.documentedCount ? `${educationSummary.completedCount || 0}/${educationSummary.pointCount || 0}` : 'No teaching filed',
+          detail: educationSummary.latestEducation ? `Latest teaching by ${educationSummary.latestEducation.learners.join(', ') || 'team'}` : 'Document teaching completed and family education.',
+          status: educationSummary.documentedCount ? 'complete' : 'warning',
+          icon: 'mdi-school-outline'
         }
       ]
     },
@@ -2850,6 +3039,24 @@ export default {
       if (!priorities.length) priorities.push({ label: 'Continue scheduled care', detail: 'No urgent blocker detected; document the next timed round.', action: 'flowsheet', level: 'low' })
       return priorities.slice(0, 5)
     },
+    carePlanSummaryCards() {
+      const summary = this.$store.getters['carePlan/carePlanSummaryProjection']?.(this.activePatientId) || {}
+      return [
+        { label: 'Plans', detail: `${summary.planCount || 0} active plan(s)`, level: 'low' },
+        { label: 'Goals', detail: `${summary.goalCount || 0} goal(s), ${summary.pendingGoals || 0} pending`, level: summary.pendingGoals ? 'medium' : 'low' },
+        { label: 'Progress', detail: `${summary.progressCount || 0} documented event(s)`, level: summary.progressCount ? 'low' : 'high' },
+        { label: 'Outcome', detail: `${summary.outcomeCount || 0} outcome(s) tracked`, level: 'low' }
+      ]
+    },
+    educationSummaryCards() {
+      const summary = this.$store.getters['education/educationSummaryProjection']?.(this.activePatientId) || {}
+      return [
+        { label: 'Titles', detail: `${summary.titleCount || 0} topic area(s)`, level: 'low' },
+        { label: 'Points', detail: `${summary.pointCount || 0} teaching point(s)`, level: summary.pointCount ? 'low' : 'high' },
+        { label: 'Completed', detail: `${summary.completedCount || 0} documented completed`, level: summary.completedCount ? 'low' : 'medium' },
+        { label: 'Family education', detail: `${summary.familyEducationCount || 0} family session(s)`, level: summary.familyEducationCount ? 'low' : 'medium' }
+      ]
+    },
     summaryContinuityItems() {
       const rows = []
       if (this.latestVitalsSummary) rows.push({ label: 'Latest vitals', time: this.formatShortDate(this.latestVitals.recordedAt), detail: this.latestVitalsSummary })
@@ -2864,6 +3071,7 @@ export default {
       return [
         { label: 'Name', values: { Current: this.activePatient.name } },
         { label: 'MRN', values: { Current: this.activePatient.mrn } },
+        { label: 'Barcode', values: { Current: this.activePatient.barcode || this.activePatient.externalId || 'Generated on registration' } },
         { label: 'Current location', values: { Current: this.activePatient.bed } },
         { label: 'Class', values: { Current: this.activePatient.patientClass } },
         { label: 'Allergies', values: { Current: this.activePatient.allergies } },
@@ -4520,9 +4728,9 @@ export default {
     if (this.$store.hasModule && this.$store.hasModule('nursing')) {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
     }
+    this.loadLayoutPreferences()
     this.normalizeVisibleSelection()
     this.applyRoleDefaultTab()
-    this.loadLayoutPreferences()
     if (this.patientScoped) {
       this.loadOpenPatientTabs()
       this.registerOpenChart(this.activePatientId)
@@ -4836,6 +5044,7 @@ export default {
       } catch (e) {
         // ignore malformed/legacy layout preferences
       }
+      this.loadChartTabPreferences()
     },
     persistLayoutPreferences() {
       if (!process.client) return
@@ -4843,6 +5052,47 @@ export default {
         leftPanelCollapsed: this.leftPanelCollapsed,
         rightPanelOverride: this.rightPanelOverride
       }))
+    },
+    loadChartTabPreferences() {
+      if (!process.client) return
+      try {
+        const raw = window.localStorage.getItem(CHART_TAB_LAYOUT_KEY)
+        if (!raw) return
+        const saved = JSON.parse(raw)
+        if (Array.isArray(saved.order)) this.chartTabPreferences.order = saved.order.filter(tab => ALL_CLINICAL_TABS.includes(tab))
+        if (Array.isArray(saved.hidden)) this.chartTabPreferences.hidden = saved.hidden.filter(tab => ALL_CLINICAL_TABS.includes(tab))
+      } catch (e) {
+        // ignore malformed tab preferences
+      }
+    },
+    persistChartTabPreferences() {
+      if (!process.client) return
+      window.localStorage.setItem(CHART_TAB_LAYOUT_KEY, JSON.stringify(this.chartTabPreferences))
+    },
+    setChartTabVisibility(tab, visible) {
+      const hidden = new Set(this.chartTabPreferences.hidden)
+      if (visible) hidden.delete(tab)
+      else hidden.add(tab)
+      this.chartTabPreferences.hidden = Array.from(hidden)
+      this.persistChartTabPreferences()
+      this.normalizeVisibleSelection()
+    },
+    moveChartTab(tab, direction) {
+      const visible = this.visibleChartTabs.slice()
+      const index = visible.indexOf(tab)
+      if (index < 0) return
+      const target = index + direction
+      if (target < 0 || target >= visible.length) return
+      const reordered = visible.slice()
+      const [item] = reordered.splice(index, 1)
+      reordered.splice(target, 0, item)
+      this.chartTabPreferences.order = reordered
+      this.persistChartTabPreferences()
+    },
+    resetChartTabPreferences() {
+      this.chartTabPreferences = { order: [], hidden: [] }
+      this.persistChartTabPreferences()
+      this.normalizeVisibleSelection()
     },
     toggleLeftPanel() {
       this.leftPanelCollapsed = !this.leftPanelCollapsed
@@ -5006,7 +5256,7 @@ export default {
         return
       }
       if (target === 'flowsheet') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Flowsheets') ? 'Flowsheets' : 'Nurse Command Center'
+        this.openTimedCareDialogFromNavigator()
         return
       }
       if (target === 'medical') {
@@ -5015,6 +5265,56 @@ export default {
       }
       if (target === 'orders') {
         this.selectedChartTab = this.visibleChartTabs.includes('Orders') ? 'Orders' : 'Navigators'
+        return
+      }
+      if (target === 'admission') {
+        this.openNavigatorDocumentPreset({
+          title: 'Admission assessment',
+          category: 'Clinical Note',
+          content: [
+            'Admission reason:',
+            'Chief complaint:',
+            'Initial findings:',
+            'Allergies reviewed:',
+            'Medication reconciliation:',
+            'Admission problems:',
+            'Plan on arrival:'
+          ].join('\n')
+        })
+        return
+      }
+      if (target === 'transfer') {
+        this.openNavigatorDocumentPreset({
+          title: 'Transfer packet',
+          category: 'Clinical Note',
+          content: [
+            'Transfer reason:',
+            'Destination:',
+            'Pre-transfer checklist:',
+            'Lines / drains / devices:',
+            'Escort / transport mode:',
+            'Vitals before transfer:',
+            'Return handoff plan:'
+          ].join('\n')
+        })
+        return
+      }
+      if (target === 'discharge') {
+        this.openNavigatorDocumentPreset({
+          title: 'Discharge summary',
+          category: 'Discharge Summary',
+          content: [
+            'Complaint on arrival:',
+            'Clinical findings:',
+            'Diagnosis:',
+            'Lab tests requested/results:',
+            'Drugs prescribed:',
+            'Hospital course / evolution:',
+            'Outcome:',
+            'Length of stay:',
+            'Follow-up / return precautions:'
+          ].join('\n')
+        })
         return
       }
       if (target === 'document') {
@@ -5077,11 +5377,182 @@ export default {
         return
       }
       if (target === 'handoff') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Handoff') ? 'Handoff' : 'Nurse Command Center'
-        if (this.visibleNavigatorTabs.some(item => item.key === 'worklist')) this.setNavigatorContext('worklist')
+        this.noteDialogConfig = {
+          noteType: 'progress_note',
+          dialogTitle: 'Shift handoff / caregiver summary',
+          existingNote: null
+        }
+        this.dialogs.note = true
         return
       }
       this.selectedChartTab = 'EMR Command Center'
+    },
+    openNavigatorDocumentPreset(preset) {
+      this.forms.document = {
+        ...defaultDialogForms().document,
+        ...preset
+      }
+      this.openChartDialog('document')
+    },
+    timedCarePresetForContext() {
+      const sectionKey = this.activeNavigatorSectionMeta && this.activeNavigatorSectionMeta.key ? String(this.activeNavigatorSectionMeta.key).toLowerCase() : ''
+      const map = {
+        'vital-signs': {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Vitals and bedside assessment completed',
+          frequency: 'Per scheduled round',
+          patientResponse: 'Patient tolerated assessment.',
+          abnormalFindings: 'None reported',
+          carePlanFocus: 'Vital signs, pain and general stability',
+          educationGiven: 'Explain vitals schedule and report warning signs.',
+          nextDue: 'Reassess per unit schedule and handoff changes.'
+        },
+        pain: {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Pain reassessment completed',
+          frequency: 'Per pain round / after intervention',
+          patientResponse: 'Pain response documented.',
+          abnormalFindings: 'Escalate if persistent severe pain or new symptoms.',
+          carePlanFocus: 'Pain control and comfort',
+          educationGiven: 'Explain pain plan and when to call staff.',
+          nextDue: 'Reassess after intervention and document response.'
+        },
+        'head-to-toe': {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Head-to-toe assessment completed',
+          frequency: 'Per shift',
+          patientResponse: 'Assessment tolerated.',
+          abnormalFindings: 'Document any abnormal body system finding.',
+          carePlanFocus: 'Whole-body assessment and risks',
+          educationGiven: 'Explain care plan and safety instructions.',
+          nextDue: 'Continue shift rounds and escalate changes.'
+        },
+        'iv-assessment': {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'IV site checked and documented',
+          frequency: 'Per IV round',
+          patientResponse: 'IV site tolerated.',
+          abnormalFindings: 'Redness, pain, swelling or infiltration.',
+          carePlanFocus: 'Line patency and infection prevention',
+          educationGiven: 'Explain line care and report pain/swelling.',
+          nextDue: 'Reassess line at next round.'
+        },
+        'intake-output': {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Intake and output documented',
+          frequency: 'Per shift',
+          patientResponse: 'Intake/output discussed with patient or caregiver.',
+          abnormalFindings: 'Low output, vomiting, diarrhea or poor intake.',
+          carePlanFocus: 'Hydration and elimination monitoring',
+          educationGiven: 'Teach hydration and output reporting.',
+          nextDue: 'Continue I/O monitoring.'
+        },
+        sepsis: {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Sepsis screen performed',
+          frequency: 'Per trigger / per shift',
+          patientResponse: 'Screen reviewed.',
+          abnormalFindings: 'Fever, tachycardia, hypotension or worsening condition.',
+          carePlanFocus: 'Early detection and escalation',
+          educationGiven: 'Explain need to report fever, shivering or worsening symptoms.',
+          nextDue: 'Escalate abnormal screen immediately.'
+        },
+        'rounds-safety': {
+          templateKey: 'cna',
+          templateId: 'timed-care',
+          carePerformed: 'Safety and comfort round completed',
+          frequency: 'Every round',
+          patientResponse: 'Comfort and safety needs addressed.',
+          abnormalFindings: 'Falls, alarm issues, confusion or environmental hazards.',
+          carePlanFocus: 'Safety, dignity and prevention',
+          educationGiven: 'Explain call-bell use and fall precautions.',
+          nextDue: 'Continue safety rounds.'
+        },
+        comfort: {
+          templateKey: 'cna',
+          templateId: 'timed-care',
+          carePerformed: 'Comfort and hygiene care completed',
+          frequency: 'Per round',
+          patientResponse: 'Comfort improved after care.',
+          abnormalFindings: 'Pain, pressure injury risk or refusal.',
+          carePlanFocus: 'Comfort, hygiene and pressure protection',
+          educationGiven: 'Teach family support and hygiene expectations.',
+          nextDue: 'Repeat comfort round.'
+        },
+        mobility: {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Mobility and assistance level documented',
+          frequency: 'Per shift / mobilization event',
+          patientResponse: 'Mobility tolerated.',
+          abnormalFindings: 'Weakness, dizziness or unsafe transfer.',
+          carePlanFocus: 'Mobility and fall prevention',
+          educationGiven: 'Explain safe mobilization and ask for assistance.',
+          nextDue: 'Reassess with next mobilization.'
+        },
+        'care-plans': {
+          templateKey: 'discharge',
+          templateId: 'timed-care',
+          carePerformed: 'Care plan progress reviewed',
+          frequency: 'Per care planning round',
+          patientResponse: 'Goals discussed with patient and team.',
+          abnormalFindings: 'Unmet goals or unresolved barriers.',
+          carePlanFocus: 'Care plan progress and barriers',
+          educationGiven: 'Review goals and teach-back.',
+          nextDue: 'Update care plan at next review.'
+        },
+        'expected-discharge': {
+          templateKey: 'discharge',
+          templateId: 'timed-care',
+          carePerformed: 'Discharge readiness reviewed',
+          frequency: 'Daily until discharge',
+          patientResponse: 'Patient/family updated on plan.',
+          abnormalFindings: 'Transport, pharmacy, payment or home barrier.',
+          carePlanFocus: 'Discharge readiness and continuity',
+          educationGiven: 'Review meds, follow-up, danger signs and paperwork.',
+          nextDue: 'Confirm discharge barriers and resolve.'
+        },
+        'discharge-info': {
+          templateKey: 'discharge',
+          templateId: 'timed-care',
+          carePerformed: 'Discharge instructions filed',
+          frequency: 'Before discharge',
+          patientResponse: 'Patient/family received instructions.',
+          abnormalFindings: 'Missing documents or pending signatures.',
+          carePlanFocus: 'Discharge packet completion',
+          educationGiven: 'Teach medications, wound care, follow-up and return precautions.',
+          nextDue: 'Verify all discharge documents are complete.'
+        }
+      }
+      return map[sectionKey] || map['vital-signs']
+    },
+    openTimedCareDialogFromNavigator() {
+      this.timedCareDialogPreset = this.timedCarePresetForContext()
+      this.dialogs.timedCare = true
+      this.selectedChartTab = this.visibleChartTabs.includes('Flowsheets') ? 'Flowsheets' : 'Nurse Command Center'
+    },
+    async handleTimedCareSave(payload) {
+      try {
+        await this.$store.dispatch('flowsheets/documentTimedCare', {
+          patientId: this.activePatientId,
+          encounterId: this.currentEncounterId,
+          admissionId: this.currentAdmissionId,
+          ...payload
+        })
+        this.selectedChartTab = this.visibleChartTabs.includes('Flowsheets') ? 'Flowsheets' : this.selectedChartTab
+        this.toastSuccess('Timed care entry filed.')
+      } catch (e) {
+        this.toastError('Unable to file timed care entry.')
+      } finally {
+        this.dialogs.timedCare = false
+        this.timedCareDialogPreset = null
+      }
     },
     orderStatusClass(status) {
       const value = String(status || '').toLowerCase()
@@ -5274,6 +5745,9 @@ export default {
       if (kind === 'document') {
         this.forms.document = defaultDialogForms().document
       }
+      if (kind === 'discharge') {
+        this.forms.discharge = defaultDialogForms().discharge
+      }
       if (kind === 'medical') {
         this.forms.medical = defaultDialogForms().medical
         this.forms.medical.chiefComplaint = this.latestVisit ? this.latestVisit.chiefComplaint || '' : ''
@@ -5381,6 +5855,17 @@ export default {
     },
     handleCarePlanSaved() {
       this.toastSuccess('Care plan added.')
+    },
+    handleDischargeSaved() {
+      this.toastSuccess('Discharge bundle saved.')
+    },
+    openScannedPatient(patient) {
+      if (!patient || !patient.id) return
+      this.closeChartDialog('scan')
+      this.$router.push(`/clinical/patients/${patient.id}`)
+    },
+    handleWoundPhotoSaved() {
+      this.toastSuccess('Wound photo saved.')
     },
     async signCarePlanFromCard(id) {
       await this.$store.dispatch('nursing/signCarePlan', id)
@@ -5630,6 +6115,77 @@ export default {
         this.savingDialog = false
       }
     },
+    async saveDischargeBundle() {
+      const patientId = this.activePatientId
+      this.savingDialog = true
+      try {
+        const recordedAt = new Date().toISOString()
+        const note = await this.$store.dispatch('discharge/addDischargeNote', {
+          patientId,
+          encounterId: this.currentEncounterId,
+          admissionId: this.currentAdmissionId,
+          noteType: 'discharge_note',
+          title: this.forms.discharge.noteTitle || 'Discharge note',
+          body: [this.forms.discharge.note, this.forms.discharge.handoff].filter(Boolean).join('\n\n'),
+          readiness: this.forms.discharge.readiness,
+          recordedAt
+        })
+        if (this.forms.discharge.medsAtDischarge.trim()) {
+          await this.$store.dispatch('discharge/addDischargeMedication', {
+            patientId,
+            encounterId: this.currentEncounterId,
+            admissionId: this.currentAdmissionId,
+            name: this.forms.discharge.noteTitle || 'Discharge medications',
+            details: this.forms.discharge.medsAtDischarge,
+            recordedAt
+          })
+        }
+        if (this.forms.discharge.returnPrecautions.trim()) {
+          await this.$store.dispatch('discharge/addReturnPrecaution', {
+            patientId,
+            encounterId: this.currentEncounterId,
+            admissionId: this.currentAdmissionId,
+            title: 'Return precautions',
+            details: this.forms.discharge.returnPrecautions,
+            recordedAt
+          })
+        }
+        if (this.forms.discharge.followUpAppointment.trim() || this.forms.discharge.appointments.trim()) {
+          await this.$store.dispatch('discharge/addDischargeAppointment', {
+            patientId,
+            encounterId: this.currentEncounterId,
+            admissionId: this.currentAdmissionId,
+            title: this.forms.discharge.followUpAppointment || 'Follow-up appointment',
+            notes: this.forms.discharge.appointments,
+            recordedAt
+          })
+        }
+        await this.$store.dispatch('clinical/createDocument', {
+          patientId,
+          title: this.forms.discharge.noteTitle || 'Discharge summary',
+          category: 'Discharge Summary',
+          content: [this.forms.discharge.note, this.forms.discharge.handoff, this.forms.discharge.medsAtDischarge, this.forms.discharge.returnPrecautions].filter(Boolean).join('\n\n'),
+          status: 'Filed'
+        })
+        await this.$store.dispatch('clinical/createTask', {
+          patientId,
+          title: 'Discharge follow-up complete',
+          assignedToRole: 'NURSE',
+          priority: 'Today',
+          relatedType: 'discharge',
+          relatedId: note.id,
+          actionReason: 'Discharge bundle filed from Patient 360'
+        })
+        this.selectedChartTab = 'Navigators'
+        this.selectedNavigator = 'discharge'
+        this.closeChartDialog('discharge')
+        this.toastSuccess('Discharge bundle filed.')
+      } catch (e) {
+        this.toastError('Unable to file discharge bundle.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
     selectChartTab(tab) {
       this.selectedChartTab = tab
       const navMap = {
@@ -5708,12 +6264,27 @@ export default {
       if (!selectedAreas.length) return
       const timestamp = payload.timestamp || new Date().toISOString()
       const severity = payload.severity || 'Routine'
+      const assessmentType = payload.assessmentType || 'general'
+      const elementStatus = payload.elementStatus || ''
       const notes = payload.notes || ''
       const nextAction = payload.nextAction || 'Continue nursing follow-up.'
       const priority = ['Critical', 'Urgent'].includes(severity) ? 'High' : (severity === 'Watch' ? 'Today' : 'Routine')
+      const focusLabelMap = {
+        general: 'General body assessment',
+        wound: 'Wound assessment',
+        iv: 'IV line assessment',
+        trach: 'Tracheostomy assessment',
+        foley: 'Foley catheter assessment',
+        drain: 'Drain assessment',
+        ostomy: 'Ostomy assessment',
+        pain: 'Pain assessment'
+      }
+      const focusLabel = focusLabelMap[assessmentType] || 'Body assessment'
       const details = [
+        `Focus: ${focusLabel}`,
         `Areas: ${selectedAreas.join(', ')}`,
         `Severity: ${severity}`,
+        elementStatus ? `Element status: ${elementStatus}` : '',
         notes ? `Observation: ${notes}` : '',
         nextAction ? `Next: ${nextAction}` : '',
         `Completed: ${timestamp}`
@@ -5721,8 +6292,8 @@ export default {
       try {
         await this.$store.dispatch('clinical/createTask', {
           patientId: this.activePatientId,
-          relatedType: 'assessment',
-          title: `Body assessment - ${selectedAreas.join(', ')}`,
+          relatedType: assessmentType === 'general' ? 'assessment' : `assessment-${assessmentType}`,
+          title: `${focusLabel} - ${selectedAreas.join(', ')}`,
           assignedToRole: 'NURSE',
           priority,
           actionReason: details
@@ -5731,10 +6302,10 @@ export default {
           patientId: this.activePatientId,
           recordedBy: this.actorName(),
           recordedAt: timestamp,
-          actions: ['Body assessment'],
-          observation: notes || `Body assessment completed for ${selectedAreas.join(', ')}.`,
+          actions: [focusLabel],
+          observation: notes || `${focusLabel} completed for ${selectedAreas.join(', ')}.`,
           response: nextAction,
-          orientation: severity
+          orientation: [severity, elementStatus].filter(Boolean).join(' / ')
         })
         this.selectedChartTab = 'Nurse Command Center'
         this.toastSuccess('Body assessment saved successfully.')
@@ -5814,6 +6385,16 @@ function defaultDialogForms() {
       title: '',
       category: 'Clinical Note',
       content: ''
+    },
+    discharge: {
+      noteTitle: '',
+      readiness: 'Not yet ready',
+      note: '',
+      handoff: '',
+      medsAtDischarge: '',
+      returnPrecautions: '',
+      followUpAppointment: '',
+      appointments: ''
     },
     avatarPlacement: {
       id: '',
