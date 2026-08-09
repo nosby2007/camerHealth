@@ -218,10 +218,28 @@ export const actions = {
     return record
   },
 
+  updateCarePlan({ state, commit, dispatch, rootState }, carePlan) {
+    const existing = state.carePlans.find(item => item.id === carePlan.id)
+    if (!existing) return null
+    const record = { ...existing, ...carePlan }
+    commit('UPDATE_CARE_PLAN', record)
+    dispatch('audit', { action: 'CARE_PLAN_UPDATED', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+
   addProblem({ commit, dispatch, rootState }, problem) {
     const record = withBase(rootState, { status: 'active', ...problem }, 'PBL')
     commit('ADD_PROBLEM', record)
     dispatch('audit', { action: 'PROBLEM_ADDED', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+
+  updateProblem({ state, commit, dispatch, rootState }, problem) {
+    const existing = state.carePlanProblems.find(item => item.id === problem.id)
+    if (!existing) return null
+    const record = { ...existing, ...problem }
+    commit('UPDATE_PROBLEM', record)
+    dispatch('audit', { action: 'PROBLEM_UPDATED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
@@ -232,10 +250,28 @@ export const actions = {
     return record
   },
 
+  updateGoal({ state, commit, dispatch, rootState }, goal) {
+    const existing = state.carePlanGoals.find(item => item.id === goal.id)
+    if (!existing) return null
+    const record = { ...existing, ...goal }
+    commit('UPDATE_GOAL', record)
+    dispatch('audit', { action: 'GOAL_UPDATED', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+
   addOutcome({ commit, dispatch, rootState }, outcome) {
     const record = withBase(rootState, { status: 'active', ...outcome }, 'OTC')
     commit('ADD_OUTCOME', record)
     dispatch('audit', { action: 'OUTCOME_ADDED', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+
+  updateOutcome({ state, commit, dispatch, rootState }, outcome) {
+    const existing = state.carePlanOutcomes.find(item => item.id === outcome.id)
+    if (!existing) return null
+    const record = { ...existing, ...outcome }
+    commit('UPDATE_OUTCOME', record)
+    dispatch('audit', { action: 'OUTCOME_UPDATED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
@@ -518,6 +554,31 @@ export const getters = {
       .sort((a, b) => new Date(b.reviewedAt) - new Date(a.reviewedAt))[0]
 
     return { ...summary, overdueCount, recentReview }
+  },
+
+  carePlanSummaryProjection: (state, getters, rootState, rootGetters) => (patientId) => {
+    const plans = getters.carePlansForPatient(patientId)
+    const problems = scoped(state.carePlanProblems, rootState, rootGetters).filter(item => item.patientId === patientId)
+    const goals = scoped(state.carePlanGoals, rootState, rootGetters).filter(item => item.patientId === patientId)
+    const outcomes = scoped(state.carePlanOutcomes, rootState, rootGetters).filter(item => item.patientId === patientId)
+    const progress = scoped(state.progressEntries, rootState, rootGetters).filter(item => item.patientId === patientId)
+    const recent = progress.sort((a, b) => new Date(b.documentedAt) - new Date(a.documentedAt))[0] || null
+    return {
+      patientId,
+      planCount: plans.length,
+      problemCount: problems.length,
+      goalCount: goals.length,
+      outcomeCount: outcomes.length,
+      progressCount: progress.length,
+      completedGoals: goals.filter(goal => ['completed', 'adequate_for_discharge'].includes(goal.lastProgressStatus)).length,
+      pendingGoals: goals.filter(goal => !goal.lastProgressStatus || goal.lastProgressStatus === 'not_progressing').length,
+      recentProgress: recent ? {
+        id: recent.id,
+        label: recent.comment || recent.progressStatus,
+        documentedAt: recent.documentedAt,
+        documentedBy: recent.documentedBy
+      } : null
+    }
   },
 
   mostRecentCarePlanNote: (state, getters, rootState, rootGetters) => (patientId) => {

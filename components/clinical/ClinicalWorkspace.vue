@@ -239,11 +239,11 @@
                 </article>
               </div>
 
-              <div class="summary-columns">
-                <section class="summary-panel">
-                  <header>
-                    <span>Today priorities</span>
-                    <strong>What must move before handoff</strong>
+            <div class="summary-columns">
+              <section class="summary-panel">
+                <header>
+                  <span>Today priorities</span>
+                  <strong>What must move before handoff</strong>
                   </header>
                   <div class="summary-list">
                     <button
@@ -274,6 +274,50 @@
                         <span>{{ item.detail }}</span>
                       </div>
                     </article>
+                  </div>
+                </section>
+              </div>
+
+              <div class="summary-columns">
+                <section class="summary-panel">
+                  <header>
+                    <span>Care plan</span>
+                    <strong>Goals, interventions and outcomes</strong>
+                  </header>
+                  <div class="summary-list compact">
+                    <button
+                      v-for="item in carePlanSummaryCards"
+                      :key="item.label"
+                      type="button"
+                      @click="openCommandAction('care-plan')"
+                    >
+                      <i :class="item.level"></i>
+                      <div>
+                        <strong>{{ item.label }}</strong>
+                        <span>{{ item.detail }}</span>
+                      </div>
+                    </button>
+                  </div>
+                </section>
+
+                <section class="summary-panel">
+                  <header>
+                    <span>Education</span>
+                    <strong>Teaching completed and family education</strong>
+                  </header>
+                  <div class="summary-list compact">
+                    <button
+                      v-for="item in educationSummaryCards"
+                      :key="item.label"
+                      type="button"
+                      @click="openCommandAction('education')"
+                    >
+                      <i :class="item.level"></i>
+                      <div>
+                        <strong>{{ item.label }}</strong>
+                        <span>{{ item.detail }}</span>
+                      </div>
+                    </button>
                   </div>
                 </section>
               </div>
@@ -2892,6 +2936,8 @@ export default {
       const pain = Number(vitals.pain)
       const abnormalVitals = (Number.isFinite(temp) && temp >= 38) || (Number.isFinite(spo2) && spo2 < 92) || (Number.isFinite(pain) && pain >= 7)
       const hasDischargeDoc = this.patientDocuments.some(doc => /discharge|sortie|avs|after visit/i.test(`${doc.title || ''} ${doc.category || ''}`))
+      const carePlanSummary = this.$store.getters['carePlan/carePlanSummaryProjection']?.(this.activePatientId) || {}
+      const educationSummary = this.$store.getters['education/educationSummaryProjection']?.(this.activePatientId) || {}
       return [
         {
           label: 'Clinical status',
@@ -2934,6 +2980,20 @@ export default {
           detail: this.recentTimedCareEntries[0]?.summary || 'Use Timed care to document bedside work.',
           status: this.recentTimedCareEntries.length ? 'complete' : 'warning',
           icon: 'mdi-clock-edit-outline'
+        },
+        {
+          label: 'Care plan',
+          value: carePlanSummary.goalCount ? `${carePlanSummary.completedGoals || 0}/${carePlanSummary.goalCount}` : 'No plan yet',
+          detail: carePlanSummary.recentProgress ? `Last update: ${carePlanSummary.recentProgress.label}` : 'Create goals, interventions and outcomes.',
+          status: carePlanSummary.goalCount ? 'complete' : 'warning',
+          icon: 'mdi-clipboard-text-outline'
+        },
+        {
+          label: 'Education',
+          value: educationSummary.documentedCount ? `${educationSummary.completedCount || 0}/${educationSummary.pointCount || 0}` : 'No teaching filed',
+          detail: educationSummary.latestEducation ? `Latest teaching by ${educationSummary.latestEducation.learners.join(', ') || 'team'}` : 'Document teaching completed and family education.',
+          status: educationSummary.documentedCount ? 'complete' : 'warning',
+          icon: 'mdi-school-outline'
         }
       ]
     },
@@ -2955,6 +3015,24 @@ export default {
       if (this.canViewSocialNeeds && this.sdohDomains.some(item => item.status === 'risk')) priorities.push({ label: 'Social / transport barrier review', detail: 'Resolve family, transport or financial barrier early.', action: 'social', level: 'medium' })
       if (!priorities.length) priorities.push({ label: 'Continue scheduled care', detail: 'No urgent blocker detected; document the next timed round.', action: 'flowsheet', level: 'low' })
       return priorities.slice(0, 5)
+    },
+    carePlanSummaryCards() {
+      const summary = this.$store.getters['carePlan/carePlanSummaryProjection']?.(this.activePatientId) || {}
+      return [
+        { label: 'Plans', detail: `${summary.planCount || 0} active plan(s)`, level: 'low' },
+        { label: 'Goals', detail: `${summary.goalCount || 0} goal(s), ${summary.pendingGoals || 0} pending`, level: summary.pendingGoals ? 'medium' : 'low' },
+        { label: 'Progress', detail: `${summary.progressCount || 0} documented event(s)`, level: summary.progressCount ? 'low' : 'high' },
+        { label: 'Outcome', detail: `${summary.outcomeCount || 0} outcome(s) tracked`, level: 'low' }
+      ]
+    },
+    educationSummaryCards() {
+      const summary = this.$store.getters['education/educationSummaryProjection']?.(this.activePatientId) || {}
+      return [
+        { label: 'Titles', detail: `${summary.titleCount || 0} topic area(s)`, level: 'low' },
+        { label: 'Points', detail: `${summary.pointCount || 0} teaching point(s)`, level: summary.pointCount ? 'low' : 'high' },
+        { label: 'Completed', detail: `${summary.completedCount || 0} documented completed`, level: summary.completedCount ? 'low' : 'medium' },
+        { label: 'Family education', detail: `${summary.familyEducationCount || 0} family session(s)`, level: summary.familyEducationCount ? 'low' : 'medium' }
+      ]
     },
     summaryContinuityItems() {
       const rows = []
