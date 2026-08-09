@@ -1,10 +1,10 @@
 <template>
-  <v-dialog :value="open" max-width="900" persistent scrollable @input="$emit('close')">
+  <v-dialog :value="open" max-width="1000" persistent scrollable @input="$emit('close')">
     <v-card class="wound-dialog">
       <v-card-title class="dialog-title">
         <div>
           <span>Wound documentation</span>
-          <strong>Wound Care Note</strong>
+          <strong>Wound Care Note with Photos</strong>
         </div>
         <v-btn icon small @click="$emit('close')"><v-icon small>mdi-close</v-icon></v-btn>
       </v-card-title>
@@ -47,6 +47,7 @@
             <span>{{ selectedWound.anatomicalLocation }}</span>
           </div>
 
+          <!-- Assessment Section -->
           <p class="section-label">Assessment</p>
           <div class="dialog-grid three">
             <v-text-field v-model.number="assessment.lengthCm" type="number" label="Length (cm)" dense outlined />
@@ -66,6 +67,84 @@
             <v-text-field v-model.number="assessment.painScore" type="number" min="0" max="10" label="Pain /10" dense outlined />
           </div>
           <v-textarea v-model="assessment.treatmentPlan" label="Treatment plan" rows="3" dense outlined />
+
+          <!-- Photo Section - NEW -->
+          <p class="section-label mt-4">Wound Photos (Assessment ID: {{ assessmentId }})</p>
+          <div class="photo-section">
+            <!-- Photo Capture -->
+            <div class="photo-input-area">
+              <v-btn
+                color="primary"
+                dark
+                small
+                @click="triggerFileInput"
+                class="mb-2"
+              >
+                <v-icon small left>mdi-camera</v-icon>
+                Add Photo from Mobile/Camera
+              </v-btn>
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style="display: none"
+                @change="onPhotoSelected"
+              />
+
+              <v-btn
+                color="info"
+                text
+                small
+                @click="triggerGalleryInput"
+                class="mb-2"
+              >
+                <v-icon small left>mdi-image-multiple</v-icon>
+                Select from Gallery
+              </v-btn>
+              <input
+                ref="galleryInput"
+                type="file"
+                accept="image/*"
+                style="display: none"
+                @change="onPhotoSelected"
+              />
+            </div>
+
+            <!-- Photo Preview -->
+            <div v-if="photoPreview" class="photo-preview">
+              <img :src="photoPreview" alt="Photo preview" class="preview-image" />
+              <div class="preview-actions">
+                <v-btn small color="success" dark @click="savePhoto">
+                  <v-icon small>mdi-check</v-icon>Save Photo
+                </v-btn>
+                <v-btn small text @click="clearPhotoPreview">
+                  <v-icon small>mdi-close</v-icon>Cancel
+                </v-btn>
+              </div>
+            </div>
+
+            <!-- Photos Gallery -->
+            <div v-if="assessment.photos && assessment.photos.length" class="photos-gallery">
+              <h4 class="gallery-title">Attached Photos ({{ assessment.photos.length }})</h4>
+              <div class="photos-grid">
+                <div v-for="(photo, idx) in assessment.photos" :key="idx" class="photo-item">
+                  <img :src="photo.data" :alt="`Photo ${idx + 1}`" class="gallery-image" />
+                  <div class="photo-info">
+                    <small>{{ formatDate(photo.timestamp) }}</small>
+                    <v-btn small icon @click="removePhoto(idx)">
+                      <v-icon x-small>mdi-close</v-icon>
+                    </v-btn>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="no-photos">
+              <v-icon color="#94a3b8">mdi-image-outline</v-icon>
+              <span>No photos attached yet</span>
+            </div>
+          </div>
         </section>
       </v-card-text>
       <v-card-actions v-if="selectedWoundId || mode === 'new'" class="dialog-actions">
@@ -83,9 +162,20 @@
 <script>
 const { calculateWoundSurfaceArea, calculateWoundVolume } = require('~/util/nursing-workflow.cjs')
 import WoundCard from '~/components/nursing/WoundCard.vue'
+import { v4 as uuidv4 } from 'uuid'
 
 function defaultAssessment() {
-  return { lengthCm: null, widthCm: null, depthCm: null, drainageAmount: 'none', dressingType: '', treatmentPlan: '', painScore: 0, woundStatus: 'active' }
+  return {
+    lengthCm: null,
+    widthCm: null,
+    depthCm: null,
+    drainageAmount: 'none',
+    dressingType: '',
+    treatmentPlan: '',
+    painScore: 0,
+    woundStatus: 'active',
+    photos: []
+  }
 }
 
 export default {
@@ -100,8 +190,11 @@ export default {
     return {
       mode: 'pick',
       selectedWoundId: '',
+      assessmentId: uuidv4(),
       newWound: { woundType: '', anatomicalLocation: '', acquiredLocation: 'unknown' },
       assessment: defaultAssessment(),
+      photoPreview: null,
+      photoFile: null,
       saving: false,
       lastWarning: false,
       acquiredLocationOptions: ['present_on_admission', 'facility_acquired', 'community_acquired', 'unknown'],
@@ -125,7 +218,10 @@ export default {
   },
   watch: {
     open(value) {
-      if (value) this.reset()
+      if (value) {
+        this.reset()
+        this.assessmentId = uuidv4()
+      }
     },
     patientId() {
       this.reset()
@@ -149,42 +245,87 @@ export default {
       this.selectedWoundId = ''
       this.newWound = { woundType: '', anatomicalLocation: '', acquiredLocation: 'unknown' }
       this.assessment = defaultAssessment()
-      this.lastWarning = false
+      this.photoPreview = null
+      this.photoFile = null
+    },
+    triggerFileInput() {
+      this.$refs.fileInput.click()
+    },
+    triggerGalleryInput() {
+      this.$refs.galleryInput.click()
+    },
+    onPhotoSelected(event) {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      this.photoFile = file
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        this.photoPreview = e.target.result
+      }
+      reader.readAsDataURL(file)
+    },
+    savePhoto() {
+      if (!this.photoPreview) return
+
+      this.assessment.photos = this.assessment.photos || []
+      this.assessment.photos.push({
+        data: this.photoPreview,
+        timestamp: new Date().toISOString(),
+        assessmentId: this.assessmentId,
+        woundId: this.selectedWoundId
+      })
+
+      this.clearPhotoPreview()
+      this.$notify({ type: 'success', message: 'Photo saved to assessment' })
+    },
+    clearPhotoPreview() {
+      this.photoPreview = null
+      this.photoFile = null
+      if (this.$refs.fileInput) this.$refs.fileInput.value = ''
+      if (this.$refs.galleryInput) this.$refs.galleryInput.value = ''
+    },
+    removePhoto(idx) {
+      this.assessment.photos.splice(idx, 1)
+    },
+    formatDate(isoString) {
+      return new Date(isoString).toLocaleString()
     },
     async save() {
       this.saving = true
       try {
-        let woundId = this.selectedWoundId
-        let woundLabel = this.selectedWound.woundType
         if (this.mode === 'new') {
-          const wound = await this.$store.dispatch('nursing/createWound', { ...this.newWound, patientId: this.patientId, status: this.assessment.woundStatus || 'active' })
-          woundId = wound.id
-          woundLabel = wound.woundType
-        } else if (this.assessment.woundStatus && this.selectedWoundId) {
-          await this.$store.dispatch('nursing/updateWound', {
-            ...this.selectedWound,
-            status: this.assessment.woundStatus
+          const wound = await this.$store.dispatch('nursing/createWound', {
+            patientId: this.patientId,
+            ...this.newWound
           })
+          this.selectedWoundId = wound.id
         }
+
         const record = await this.$store.dispatch('nursing/createWoundAssessment', {
-          ...this.assessment,
-          woundId,
-          patientId: this.patientId
-        })
-        this.lastWarning = Boolean(record && record.warningAreaIncreased)
-        const summary = `Wound: ${woundLabel || 'Unspecified'}. Surface area ${record.surfaceArea} cm², ` +
-          `${record.volume !== null ? 'volume ' + record.volume + ' cm³, ' : ''}` +
-          `drainage ${this.assessment.drainageAmount}, dressing ${this.assessment.dressingType || 'not specified'}. ` +
-          `${this.assessment.treatmentPlan || ''}`
-        await this.$store.dispatch('nursing/createClinicalNote', {
           patientId: this.patientId,
-          noteType: 'wound_note',
-          title: `Wound care note - ${woundLabel || 'wound'}`,
-          body: summary.trim(),
-          authorRole: this.authorRole
+          woundId: this.selectedWoundId,
+          assessmentId: this.assessmentId,
+          ...this.assessment
         })
-        this.$emit('saved', { ...record, woundId, woundStatus: this.assessment.woundStatus })
-        if (!this.lastWarning) this.$emit('close')
+
+        if (this.assessment.photos?.length) {
+          for (const photo of this.assessment.photos) {
+            await this.$store.dispatch('nursing/addWoundPhoto', {
+              patientId: this.patientId,
+              woundId: this.selectedWoundId,
+              assessmentId: this.assessmentId,
+              photoData: photo.data,
+              timestamp: photo.timestamp
+            })
+          }
+        }
+
+        this.$emit('saved', record)
+        this.$notify({ type: 'success', message: 'Wound assessment saved with photos' })
+        this.reset()
+      } catch (e) {
+        this.$notify({ type: 'error', message: 'Error saving assessment' })
       } finally {
         this.saving = false
       }
@@ -194,97 +335,212 @@ export default {
 </script>
 
 <style scoped>
-.wound-dialog {
-  background: #fff;
-}
 .dialog-title {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  background: #0f766e;
-  color: #fff;
-  padding: 14px 18px;
+  align-items: center;
+  padding: 16px !important;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
 }
+
+.dialog-title div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .dialog-title span {
-  display: block;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  opacity: 0.85;
+  font-size: 12px;
+  color: #64748b;
 }
+
 .dialog-title strong {
-  display: block;
-  font-size: 16px;
+  color: #0f172a;
+  font-size: 15px;
 }
+
 .section-label {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: #134e4a;
-  margin: 12px 0 6px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  margin: 16px 0 8px;
 }
-.wound-grid {
+
+.dialog-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 10px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
 }
+
+.dialog-grid.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.calculated-metrics {
+  display: flex;
+  gap: 24px;
+  padding: 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.calculated-metrics span {
+  color: #0c4a6e;
+}
+
+.back-link {
+  background: none;
+  border: none;
+  color: #0f766e;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+
+.back-link:hover {
+  color: #0369a1;
+}
+
+/* Photo Section Styles */
+.photo-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+.photo-input-area {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.photo-preview {
+  margin: 16px 0;
+  padding: 12px;
+  background: white;
+  border: 2px solid #bae6fd;
+  border-radius: 6px;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.photos-gallery {
+  margin-top: 16px;
+}
+
+.gallery-title {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+  margin: 0 0 12px;
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.photo-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: white;
+  position: relative;
+}
+
+.gallery-image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px;
+  background: #f8fafc;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.no-photos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.wound-picker,
+.new-wound-fields,
+.existing-wound-summary {
+  margin-bottom: 16px;
+}
+
+.wound-grid,
+.empty-wounds {
+  margin: 16px 0;
+}
+
 .empty-wounds {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 30px 0;
+  padding: 24px;
   color: #94a3b8;
 }
-.back-link {
-  border: 0;
-  background: transparent;
-  color: #0f766e;
-  font-weight: 800;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 0 8px;
+
+.mt-3 {
+  margin-top: 12px !important;
 }
-.existing-wound-summary {
-  background: #f0fdfa;
-  border: 1px solid #99f6e4;
-  padding: 8px 12px;
-  margin-bottom: 8px;
+
+.mb-2 {
+  margin-bottom: 8px !important;
 }
-.existing-wound-summary strong {
-  display: block;
-  color: #134e4a;
+
+.mt-4 {
+  margin-top: 16px !important;
 }
-.dialog-grid {
-  display: grid;
-  gap: 12px;
-}
-.dialog-grid.three {
-  grid-template-columns: repeat(3, 1fr);
-}
-.calculated-metrics {
-  display: flex;
-  gap: 20px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  padding: 8px 12px;
-  margin: 8px 0;
-}
-.calculated-metrics strong {
-  margin-left: 6px;
-  color: #0f172a;
-}
+
 .dialog-actions {
-  padding: 10px 18px;
+  padding: 16px !important;
+  border-top: 1px solid #e2e8f0;
 }
+
 .warning-flag {
   display: flex;
   align-items: center;
-  gap: 4px;
-  color: #be123c;
-  font-weight: 800;
+  gap: 6px;
   font-size: 12px;
+  color: #be123c;
+  font-weight: 700;
 }
 </style>

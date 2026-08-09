@@ -17,12 +17,88 @@
           <BodyAssessmentAvatar :gender="gender" @area-selected="handleAreaSelected" />
           <aside class="body-assessment-form">
             <label>
-              Severity
+              Assessment focus
+              <select v-model="assessmentType">
+                <option value="general">General body assessment</option>
+                <option value="wound">Wound assessment</option>
+                <option value="iv">IV line assessment</option>
+                <option value="trach">Tracheostomy assessment</option>
+                <option value="foley">Foley catheter assessment</option>
+                <option value="drain">Drain assessment</option>
+                <option value="ostomy">Ostomy assessment</option>
+                <option value="pain">Pain assessment</option>
+              </select>
+            </label>
+            <label>
+              Priority
               <select v-model="severity">
                 <option>Routine</option>
                 <option>Watch</option>
                 <option>Urgent</option>
                 <option>Critical</option>
+              </select>
+            </label>
+            <label v-if="assessmentType === 'wound'">
+              Wound status
+              <select v-model="elementStatus">
+                <option>Open</option>
+                <option>Improving</option>
+                <option>Worsening</option>
+                <option>Resolved</option>
+              </select>
+            </label>
+            <label v-else-if="assessmentType === 'iv'">
+              IV status
+              <select v-model="elementStatus">
+                <option>Patent</option>
+                <option>Infiltrated</option>
+                <option>Phlebitis</option>
+                <option>Discontinued</option>
+              </select>
+            </label>
+            <label v-else-if="assessmentType === 'trach'">
+              Trach status
+              <select v-model="elementStatus">
+                <option>Secure</option>
+                <option>Needs suction</option>
+                <option>Redness</option>
+                <option>Escalate</option>
+              </select>
+            </label>
+            <label v-else-if="assessmentType === 'foley'">
+              Foley status
+              <select v-model="elementStatus">
+                <option>Draining</option>
+                <option>Low output</option>
+                <option>Obstructed</option>
+                <option>Removed</option>
+              </select>
+            </label>
+            <label v-else-if="assessmentType === 'drain'">
+              Drain status
+              <select v-model="elementStatus">
+                <option>Active</option>
+                <option>Low output</option>
+                <option>Clamped</option>
+                <option>Removed</option>
+              </select>
+            </label>
+            <label v-else-if="assessmentType === 'ostomy'">
+              Ostomy status
+              <select v-model="elementStatus">
+                <option>Intact</option>
+                <option>Leak</option>
+                <option>Irritated skin</option>
+                <option>Resolved</option>
+              </select>
+            </label>
+            <label v-else-if="assessmentType === 'pain'">
+              Pain score
+              <select v-model="elementStatus">
+                <option>0</option>
+                <option>1-3</option>
+                <option>4-6</option>
+                <option>7-10</option>
               </select>
             </label>
             <label>
@@ -75,7 +151,9 @@ export default {
       selectedAreas: [],
       notes: '',
       severity: 'Routine',
-      nextAction: ''
+      nextAction: '',
+      assessmentType: 'general',
+      elementStatus: ''
     }
   },
   computed: {
@@ -99,6 +177,8 @@ export default {
       this.$emit('save', {
         selectedAreas: this.selectedAreas,
         severity: this.severity,
+        assessmentType: this.assessmentType,
+        elementStatus: this.elementStatus,
         notes: this.notes,
         nextAction: this.nextAction,
         timestamp: new Date().toISOString()
@@ -107,6 +187,8 @@ export default {
       this.notes = ''
       this.severity = 'Routine'
       this.nextAction = ''
+      this.assessmentType = 'general'
+      this.elementStatus = ''
       this.closeDialog()
     }
   }
@@ -156,6 +238,7 @@ export default {
   font-size: 12px;
   font-weight: 900;
 }
+.body-assessment-form label select,
 .body-assessment-form select,
 .body-assessment-form textarea {
   width: 100%;
