@@ -16,6 +16,9 @@
         <v-btn v-if="patientScoped" x-small text color="#0f766e" class="font-weight-black" to="/clinical/patients">
           <v-icon x-small left>mdi-account-search</v-icon>Patient list
         </v-btn>
+        <v-btn x-small text color="#0f766e" class="font-weight-black" @click="dialogs.scan = true">
+          <v-icon x-small left>mdi-barcode-scan</v-icon>Scan bracelet
+        </v-btn>
         <label class="role-switcher">
           <span>Role</span>
           <select v-model="previewRole">
@@ -1932,6 +1935,15 @@
       @close="closeChartDialog('discharge')"
       @saved="handleDischargeSaved"
     />
+    <PatientBarcodeScannerDialog
+      :open="dialogs.scan"
+      :patient-id="activePatientId"
+      :role="currentRole"
+      @close="closeChartDialog('scan')"
+      @patient="openScannedPatient"
+      @saved="handleWoundPhotoSaved"
+      @toast="toastSuccess"
+    />
     <BodyAssessmentDialog
       :value="showBodyAssessmentDialog"
       :gender="avatarAnatomy"
@@ -2008,6 +2020,7 @@ import WoundCareDialog from '~/components/clinical/patient360/dialogs/WoundCareD
 import WoundCard from '~/components/nursing/WoundCard.vue'
 import CarePlanDialog from '~/components/clinical/patient360/dialogs/CarePlanDialog.vue'
 import DischargePlanDialog from '~/components/clinical/patient360/discharge/DischargePlanDialog.vue'
+import PatientBarcodeScannerDialog from '~/components/clinical/patient360/PatientBarcodeScannerDialog.vue'
 import Patient360CarePlanTab from '~/components/clinical/patient360/care-plan/Patient360CarePlanTab.vue'
 import Patient360EducationTab from '~/components/clinical/patient360/education/Patient360EducationTab.vue'
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
@@ -2147,7 +2160,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, DischargePlanDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2463,6 +2476,7 @@ export default {
         medication: false,
         document: false,
         discharge: false,
+        scan: false,
         marAction: false,
         note: false,
         woundCare: false,
@@ -3057,6 +3071,7 @@ export default {
       return [
         { label: 'Name', values: { Current: this.activePatient.name } },
         { label: 'MRN', values: { Current: this.activePatient.mrn } },
+        { label: 'Barcode', values: { Current: this.activePatient.barcode || this.activePatient.externalId || 'Generated on registration' } },
         { label: 'Current location', values: { Current: this.activePatient.bed } },
         { label: 'Class', values: { Current: this.activePatient.patientClass } },
         { label: 'Allergies', values: { Current: this.activePatient.allergies } },
@@ -5843,6 +5858,14 @@ export default {
     },
     handleDischargeSaved() {
       this.toastSuccess('Discharge bundle saved.')
+    },
+    openScannedPatient(patient) {
+      if (!patient || !patient.id) return
+      this.closeChartDialog('scan')
+      this.$router.push(`/clinical/patients/${patient.id}`)
+    },
+    handleWoundPhotoSaved() {
+      this.toastSuccess('Wound photo saved.')
     },
     async signCarePlanFromCard(id) {
       await this.$store.dispatch('nursing/signCarePlan', id)
