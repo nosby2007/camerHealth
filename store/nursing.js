@@ -195,6 +195,45 @@ export const actions = {
     dispatch('audit', { action: 'NOTE_AMENDED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
     return record
   },
+  createOrder({ commit, dispatch, rootState }, order) {
+    const record = withBase(rootState, { status: 'draft', ...order }, 'ORD')
+    commit('ADD_RECORD', { collection: 'orders', record })
+    dispatch('audit', { action: 'ORDER_CREATED', targetTable: 'orders', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+  signOrder({ state, commit, dispatch, rootState }, id) {
+    const order = state.orders.find(item => item.id === id)
+    if (!order) return null
+    const record = { ...order, status: 'signed', signedAt: new Date().toISOString(), signedBy: rootState.auth.fullName || rootState.auth.staffId }
+    commit('UPDATE_RECORD', { collection: 'orders', record })
+    dispatch('audit', { action: 'ORDER_SIGNED', targetTable: 'orders', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+  updateMedicationAdministration({ commit, dispatch, rootState }, { patientId, encounterId, medicationId, marData }) {
+    const record = withBase(rootState, {
+      patientId,
+      encounterId,
+      medicationId,
+      ...marData,
+      status: marData.status || 'given'
+    }, 'MAR')
+    commit('ADD_RECORD', { collection: 'documents', record })
+    dispatch('audit', { action: 'MEDICATION_ADMINISTERED', targetTable: 'medication_administrations', targetId: record.id, patientId })
+    return record
+  },
+  completeMedicationReconciliation({ commit, dispatch, rootState }, { patientId, encounterId, reconciliationData, completedAt }) {
+    const record = withBase(rootState, {
+      patientId,
+      encounterId,
+      type: 'medication_reconciliation',
+      ...reconciliationData,
+      completedAt,
+      status: 'completed'
+    }, 'MRC')
+    commit('ADD_RECORD', { collection: 'documents', record })
+    dispatch('audit', { action: 'MEDICATION_RECONCILIATION_COMPLETED', targetTable: 'medication_reconciliations', targetId: record.id, patientId })
+    return record
+  },
   createCarePlan({ commit, dispatch, rootState }, carePlan) {
     const record = withBase(rootState, { status: 'draft', ...carePlan }, 'CPL')
     commit('ADD_RECORD', { collection: 'carePlans', record })
