@@ -1878,6 +1878,12 @@
       @input="showBodyAssessmentDialog = $event"
       @save="handleBodyAssessmentSave"
     />
+    <TimedCareDocumentationDialog
+      :show.sync="dialogs.timedCare"
+      :templates="timedCareTemplates"
+      :preset="timedCareDialogPreset || {}"
+      @save="handleTimedCareSave"
+    />
   </div>
 </template>
 
@@ -1893,6 +1899,7 @@ import CarePlanDialog from '~/components/clinical/patient360/dialogs/CarePlanDia
 import Patient360CarePlanTab from '~/components/clinical/patient360/care-plan/Patient360CarePlanTab.vue'
 import Patient360EducationTab from '~/components/clinical/patient360/education/Patient360EducationTab.vue'
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
+import TimedCareDocumentationDialog from '~/components/clinical/patient360/flowsheets/TimedCareDocumentationDialog.vue'
 import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
 import maleFrontAvatar from '~/assets/images/clinical/avatar/male-front.jpg'
 import maleBackAvatar from '~/assets/images/clinical/avatar/male-back.jpg'
@@ -2027,7 +2034,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, BodyAssessmentDialog },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2060,6 +2067,7 @@ export default {
         { key: 'pain', label: 'Pain', icon: 'mdi-alert-circle-outline', color: '#dc2626', defaultStatus: 'Needs reassessment' }
       ],
       showBodyAssessmentDialog: false,
+      timedCareDialogPreset: null,
       chartTabs: ALL_CLINICAL_TABS,
       navigatorTabs: [
         {
@@ -2341,7 +2349,8 @@ export default {
         note: false,
         woundCare: false,
         carePlan: false,
-        avatarPlacement: false
+        avatarPlacement: false,
+        timedCare: false
       },
       noteDialogConfig: { noteType: 'nursing_note', dialogTitle: '', existingNote: null },
       selectedNoteId: null,
@@ -2754,6 +2763,9 @@ export default {
     patientDocuments() {
       const all = this.$store.getters['clinical/getDocuments'] || []
       return all.filter(item => item.patientId === this.activePatientId)
+    },
+    timedCareTemplates() {
+      return this.$store.getters['flowsheets/templates'] || []
     },
     summaryHeadline() {
       const location = this.activePatient.bed || this.activePatient.service || 'Location not assigned'
@@ -5006,7 +5018,7 @@ export default {
         return
       }
       if (target === 'flowsheet') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Flowsheets') ? 'Flowsheets' : 'Nurse Command Center'
+        this.openTimedCareDialogFromNavigator()
         return
       }
       if (target === 'medical') {
@@ -5015,6 +5027,56 @@ export default {
       }
       if (target === 'orders') {
         this.selectedChartTab = this.visibleChartTabs.includes('Orders') ? 'Orders' : 'Navigators'
+        return
+      }
+      if (target === 'admission') {
+        this.openNavigatorDocumentPreset({
+          title: 'Admission assessment',
+          category: 'Clinical Note',
+          content: [
+            'Admission reason:',
+            'Chief complaint:',
+            'Initial findings:',
+            'Allergies reviewed:',
+            'Medication reconciliation:',
+            'Admission problems:',
+            'Plan on arrival:'
+          ].join('\n')
+        })
+        return
+      }
+      if (target === 'transfer') {
+        this.openNavigatorDocumentPreset({
+          title: 'Transfer packet',
+          category: 'Clinical Note',
+          content: [
+            'Transfer reason:',
+            'Destination:',
+            'Pre-transfer checklist:',
+            'Lines / drains / devices:',
+            'Escort / transport mode:',
+            'Vitals before transfer:',
+            'Return handoff plan:'
+          ].join('\n')
+        })
+        return
+      }
+      if (target === 'discharge') {
+        this.openNavigatorDocumentPreset({
+          title: 'Discharge summary',
+          category: 'Discharge Summary',
+          content: [
+            'Complaint on arrival:',
+            'Clinical findings:',
+            'Diagnosis:',
+            'Lab tests requested/results:',
+            'Drugs prescribed:',
+            'Hospital course / evolution:',
+            'Outcome:',
+            'Length of stay:',
+            'Follow-up / return precautions:'
+          ].join('\n')
+        })
         return
       }
       if (target === 'document') {
@@ -5077,11 +5139,182 @@ export default {
         return
       }
       if (target === 'handoff') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Handoff') ? 'Handoff' : 'Nurse Command Center'
-        if (this.visibleNavigatorTabs.some(item => item.key === 'worklist')) this.setNavigatorContext('worklist')
+        this.noteDialogConfig = {
+          noteType: 'progress_note',
+          dialogTitle: 'Shift handoff / caregiver summary',
+          existingNote: null
+        }
+        this.dialogs.note = true
         return
       }
       this.selectedChartTab = 'EMR Command Center'
+    },
+    openNavigatorDocumentPreset(preset) {
+      this.forms.document = {
+        ...defaultDialogForms().document,
+        ...preset
+      }
+      this.openChartDialog('document')
+    },
+    timedCarePresetForContext() {
+      const sectionKey = this.activeNavigatorSectionMeta && this.activeNavigatorSectionMeta.key ? String(this.activeNavigatorSectionMeta.key).toLowerCase() : ''
+      const map = {
+        'vital-signs': {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Vitals and bedside assessment completed',
+          frequency: 'Per scheduled round',
+          patientResponse: 'Patient tolerated assessment.',
+          abnormalFindings: 'None reported',
+          carePlanFocus: 'Vital signs, pain and general stability',
+          educationGiven: 'Explain vitals schedule and report warning signs.',
+          nextDue: 'Reassess per unit schedule and handoff changes.'
+        },
+        pain: {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Pain reassessment completed',
+          frequency: 'Per pain round / after intervention',
+          patientResponse: 'Pain response documented.',
+          abnormalFindings: 'Escalate if persistent severe pain or new symptoms.',
+          carePlanFocus: 'Pain control and comfort',
+          educationGiven: 'Explain pain plan and when to call staff.',
+          nextDue: 'Reassess after intervention and document response.'
+        },
+        'head-to-toe': {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Head-to-toe assessment completed',
+          frequency: 'Per shift',
+          patientResponse: 'Assessment tolerated.',
+          abnormalFindings: 'Document any abnormal body system finding.',
+          carePlanFocus: 'Whole-body assessment and risks',
+          educationGiven: 'Explain care plan and safety instructions.',
+          nextDue: 'Continue shift rounds and escalate changes.'
+        },
+        'iv-assessment': {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'IV site checked and documented',
+          frequency: 'Per IV round',
+          patientResponse: 'IV site tolerated.',
+          abnormalFindings: 'Redness, pain, swelling or infiltration.',
+          carePlanFocus: 'Line patency and infection prevention',
+          educationGiven: 'Explain line care and report pain/swelling.',
+          nextDue: 'Reassess line at next round.'
+        },
+        'intake-output': {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Intake and output documented',
+          frequency: 'Per shift',
+          patientResponse: 'Intake/output discussed with patient or caregiver.',
+          abnormalFindings: 'Low output, vomiting, diarrhea or poor intake.',
+          carePlanFocus: 'Hydration and elimination monitoring',
+          educationGiven: 'Teach hydration and output reporting.',
+          nextDue: 'Continue I/O monitoring.'
+        },
+        sepsis: {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Sepsis screen performed',
+          frequency: 'Per trigger / per shift',
+          patientResponse: 'Screen reviewed.',
+          abnormalFindings: 'Fever, tachycardia, hypotension or worsening condition.',
+          carePlanFocus: 'Early detection and escalation',
+          educationGiven: 'Explain need to report fever, shivering or worsening symptoms.',
+          nextDue: 'Escalate abnormal screen immediately.'
+        },
+        'rounds-safety': {
+          templateKey: 'cna',
+          templateId: 'timed-care',
+          carePerformed: 'Safety and comfort round completed',
+          frequency: 'Every round',
+          patientResponse: 'Comfort and safety needs addressed.',
+          abnormalFindings: 'Falls, alarm issues, confusion or environmental hazards.',
+          carePlanFocus: 'Safety, dignity and prevention',
+          educationGiven: 'Explain call-bell use and fall precautions.',
+          nextDue: 'Continue safety rounds.'
+        },
+        comfort: {
+          templateKey: 'cna',
+          templateId: 'timed-care',
+          carePerformed: 'Comfort and hygiene care completed',
+          frequency: 'Per round',
+          patientResponse: 'Comfort improved after care.',
+          abnormalFindings: 'Pain, pressure injury risk or refusal.',
+          carePlanFocus: 'Comfort, hygiene and pressure protection',
+          educationGiven: 'Teach family support and hygiene expectations.',
+          nextDue: 'Repeat comfort round.'
+        },
+        mobility: {
+          templateKey: 'routine',
+          templateId: 'timed-care',
+          carePerformed: 'Mobility and assistance level documented',
+          frequency: 'Per shift / mobilization event',
+          patientResponse: 'Mobility tolerated.',
+          abnormalFindings: 'Weakness, dizziness or unsafe transfer.',
+          carePlanFocus: 'Mobility and fall prevention',
+          educationGiven: 'Explain safe mobilization and ask for assistance.',
+          nextDue: 'Reassess with next mobilization.'
+        },
+        'care-plans': {
+          templateKey: 'discharge',
+          templateId: 'timed-care',
+          carePerformed: 'Care plan progress reviewed',
+          frequency: 'Per care planning round',
+          patientResponse: 'Goals discussed with patient and team.',
+          abnormalFindings: 'Unmet goals or unresolved barriers.',
+          carePlanFocus: 'Care plan progress and barriers',
+          educationGiven: 'Review goals and teach-back.',
+          nextDue: 'Update care plan at next review.'
+        },
+        'expected-discharge': {
+          templateKey: 'discharge',
+          templateId: 'timed-care',
+          carePerformed: 'Discharge readiness reviewed',
+          frequency: 'Daily until discharge',
+          patientResponse: 'Patient/family updated on plan.',
+          abnormalFindings: 'Transport, pharmacy, payment or home barrier.',
+          carePlanFocus: 'Discharge readiness and continuity',
+          educationGiven: 'Review meds, follow-up, danger signs and paperwork.',
+          nextDue: 'Confirm discharge barriers and resolve.'
+        },
+        'discharge-info': {
+          templateKey: 'discharge',
+          templateId: 'timed-care',
+          carePerformed: 'Discharge instructions filed',
+          frequency: 'Before discharge',
+          patientResponse: 'Patient/family received instructions.',
+          abnormalFindings: 'Missing documents or pending signatures.',
+          carePlanFocus: 'Discharge packet completion',
+          educationGiven: 'Teach medications, wound care, follow-up and return precautions.',
+          nextDue: 'Verify all discharge documents are complete.'
+        }
+      }
+      return map[sectionKey] || map['vital-signs']
+    },
+    openTimedCareDialogFromNavigator() {
+      this.timedCareDialogPreset = this.timedCarePresetForContext()
+      this.dialogs.timedCare = true
+      this.selectedChartTab = this.visibleChartTabs.includes('Flowsheets') ? 'Flowsheets' : 'Nurse Command Center'
+    },
+    async handleTimedCareSave(payload) {
+      try {
+        await this.$store.dispatch('flowsheets/documentTimedCare', {
+          patientId: this.activePatientId,
+          encounterId: this.currentEncounterId,
+          admissionId: this.currentAdmissionId,
+          ...payload
+        })
+        this.selectedChartTab = this.visibleChartTabs.includes('Flowsheets') ? 'Flowsheets' : this.selectedChartTab
+        this.toastSuccess('Timed care entry filed.')
+      } catch (e) {
+        this.toastError('Unable to file timed care entry.')
+      } finally {
+        this.dialogs.timedCare = false
+        this.timedCareDialogPreset = null
+      }
     },
     orderStatusClass(status) {
       const value = String(status || '').toLowerCase()
@@ -5708,12 +5941,27 @@ export default {
       if (!selectedAreas.length) return
       const timestamp = payload.timestamp || new Date().toISOString()
       const severity = payload.severity || 'Routine'
+      const assessmentType = payload.assessmentType || 'general'
+      const elementStatus = payload.elementStatus || ''
       const notes = payload.notes || ''
       const nextAction = payload.nextAction || 'Continue nursing follow-up.'
       const priority = ['Critical', 'Urgent'].includes(severity) ? 'High' : (severity === 'Watch' ? 'Today' : 'Routine')
+      const focusLabelMap = {
+        general: 'General body assessment',
+        wound: 'Wound assessment',
+        iv: 'IV line assessment',
+        trach: 'Tracheostomy assessment',
+        foley: 'Foley catheter assessment',
+        drain: 'Drain assessment',
+        ostomy: 'Ostomy assessment',
+        pain: 'Pain assessment'
+      }
+      const focusLabel = focusLabelMap[assessmentType] || 'Body assessment'
       const details = [
+        `Focus: ${focusLabel}`,
         `Areas: ${selectedAreas.join(', ')}`,
         `Severity: ${severity}`,
+        elementStatus ? `Element status: ${elementStatus}` : '',
         notes ? `Observation: ${notes}` : '',
         nextAction ? `Next: ${nextAction}` : '',
         `Completed: ${timestamp}`
@@ -5721,8 +5969,8 @@ export default {
       try {
         await this.$store.dispatch('clinical/createTask', {
           patientId: this.activePatientId,
-          relatedType: 'assessment',
-          title: `Body assessment - ${selectedAreas.join(', ')}`,
+          relatedType: assessmentType === 'general' ? 'assessment' : `assessment-${assessmentType}`,
+          title: `${focusLabel} - ${selectedAreas.join(', ')}`,
           assignedToRole: 'NURSE',
           priority,
           actionReason: details
@@ -5731,10 +5979,10 @@ export default {
           patientId: this.activePatientId,
           recordedBy: this.actorName(),
           recordedAt: timestamp,
-          actions: ['Body assessment'],
-          observation: notes || `Body assessment completed for ${selectedAreas.join(', ')}.`,
+          actions: [focusLabel],
+          observation: notes || `${focusLabel} completed for ${selectedAreas.join(', ')}.`,
           response: nextAction,
-          orientation: severity
+          orientation: [severity, elementStatus].filter(Boolean).join(' / ')
         })
         this.selectedChartTab = 'Nurse Command Center'
         this.toastSuccess('Body assessment saved successfully.')
