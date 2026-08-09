@@ -136,10 +136,19 @@
                 <p>{{ workspaceEyebrow }}</p>
                 <h2>{{ workspaceHeadline }}</h2>
               </div>
-          <div class="title-actions">
-            <v-chip x-small label color="#e0f2fe" text-color="#075985" class="font-weight-black">
-              Current admission
-            </v-chip>
+      <div class="title-actions">
+        <v-btn
+          x-small
+          text
+          color="#0f766e"
+          class="font-weight-black"
+          @click="dialogs.tabManager = true"
+        >
+          <v-icon x-small left>mdi-tune-variant</v-icon>Manage tabs
+        </v-btn>
+        <v-chip x-small label color="#e0f2fe" text-color="#075985" class="font-weight-black">
+          Current admission
+        </v-chip>
             <v-btn
               v-if="activePatientId"
               x-small
@@ -1884,6 +1893,57 @@
       :preset="timedCareDialogPreset || {}"
       @save="handleTimedCareSave"
     />
+    <v-dialog v-model="dialogs.tabManager" max-width="920" persistent scrollable>
+      <v-card class="tab-manager-dialog">
+        <v-card-title class="tab-manager-title">
+          <div>
+            <span>Patient 360</span>
+            <strong>Tab manager</strong>
+          </div>
+          <v-spacer></v-spacer>
+          <v-btn icon small @click="dialogs.tabManager = false">
+            <v-icon small>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text>
+          <div class="tab-manager-summary">
+            <p>Reorder, hide, and restore chart tabs per user preference.</p>
+            <small>Role access still applies. Hidden tabs stay hidden until restored.</small>
+          </div>
+          <div class="tab-manager-grid">
+            <article v-for="tab in tabManagerItems" :key="tab.key" :class="['tab-manager-item', { hidden: tab.hidden }]">
+              <div class="tab-manager-label">
+                <strong>{{ tab.label }}</strong>
+                <small>{{ tab.group }}</small>
+              </div>
+              <div class="tab-manager-actions">
+                <v-btn icon small :disabled="tab.index === 0" @click="moveChartTab(tab.key, -1)">
+                  <v-icon small>mdi-arrow-up</v-icon>
+                </v-btn>
+                <v-btn icon small :disabled="tab.index === tabManagerItems.length - 1" @click="moveChartTab(tab.key, 1)">
+                  <v-icon small>mdi-arrow-down</v-icon>
+                </v-btn>
+                <v-switch
+                  v-model="tab.visible"
+                  inset
+                  dense
+                  hide-details
+                  color="#0f766e"
+                  @change="setChartTabVisibility(tab.key, $event)"
+                />
+              </div>
+            </article>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn text color="#0f766e" @click="resetChartTabPreferences">
+            <v-icon x-small left>mdi-restore</v-icon>Reset default
+          </v-btn>
+          <v-spacer></v-spacer>
+          <v-btn text @click="dialogs.tabManager = false">Done</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -1972,6 +2032,7 @@ const ALL_CLINICAL_TABS = [
 const PRIMARY_TAB_ORDER = ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Chart Review', 'Orders', 'MAR', 'Flowsheets', 'Notes', 'Care Plan']
 
 const RIGHT_PANEL_DEFAULT_COLLAPSED_TABS = ['Notes', 'Flowsheets', 'MAR', 'Orders']
+const CHART_TAB_LAYOUT_KEY = 'camero_health_patient360Tabs'
 
 const ADMIN_LIKE_ROLES = ['ADMIN', 'RECORDS', 'BILLING', 'FRONT_DESK']
 
@@ -2068,6 +2129,10 @@ export default {
       ],
       showBodyAssessmentDialog: false,
       timedCareDialogPreset: null,
+      chartTabPreferences: {
+        order: [],
+        hidden: []
+      },
       chartTabs: ALL_CLINICAL_TABS,
       navigatorTabs: [
         {
@@ -2350,7 +2415,8 @@ export default {
         woundCare: false,
         carePlan: false,
         avatarPlacement: false,
-        timedCare: false
+        timedCare: false,
+        tabManager: false
       },
       noteDialogConfig: { noteType: 'nursing_note', dialogTitle: '', existingNote: null },
       selectedNoteId: null,
@@ -2486,7 +2552,35 @@ export default {
     },
     visibleChartTabs() {
       const allowed = TAB_ACCESS[this.currentRole] || TAB_ACCESS.NURSE
-      return this.chartTabs.filter(tab => allowed.includes(tab))
+      const base = this.chartTabs.filter(tab => allowed.includes(tab))
+      const preferred = Array.isArray(this.chartTabPreferences.order) ? this.chartTabPreferences.order.filter(tab => base.includes(tab)) : []
+      const hidden = new Set(Array.isArray(this.chartTabPreferences.hidden) ? this.chartTabPreferences.hidden : [])
+      const ordered = [
+        ...preferred,
+        ...base.filter(tab => !preferred.includes(tab))
+      ]
+      return ordered.filter(tab => !hidden.has(tab))
+    },
+    tabManagerItems() {
+      return this.visibleChartTabs.map((tab, index) => ({
+        key: tab,
+        label: tab,
+        group: PRIMARY_TAB_ORDER.includes(tab) ? 'Primary' : 'Overflow',
+        index,
+        visible: true,
+        hidden: false
+      })).concat(
+        this.chartTabs
+          .filter(tab => !this.visibleChartTabs.includes(tab) && (TAB_ACCESS[this.currentRole] || TAB_ACCESS.NURSE).includes(tab))
+          .map(tab => ({
+            key: tab,
+            label: tab,
+            group: PRIMARY_TAB_ORDER.includes(tab) ? 'Primary' : 'Overflow',
+            index: this.visibleChartTabs.length,
+            visible: false,
+            hidden: true
+          }))
+      )
     },
     visibleNavigatorTabs() {
       const allowed = NAV_ACCESS[this.currentRole] || NAV_ACCESS.NURSE
@@ -4532,9 +4626,9 @@ export default {
     if (this.$store.hasModule && this.$store.hasModule('nursing')) {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
     }
+    this.loadLayoutPreferences()
     this.normalizeVisibleSelection()
     this.applyRoleDefaultTab()
-    this.loadLayoutPreferences()
     if (this.patientScoped) {
       this.loadOpenPatientTabs()
       this.registerOpenChart(this.activePatientId)
@@ -4848,6 +4942,7 @@ export default {
       } catch (e) {
         // ignore malformed/legacy layout preferences
       }
+      this.loadChartTabPreferences()
     },
     persistLayoutPreferences() {
       if (!process.client) return
@@ -4855,6 +4950,47 @@ export default {
         leftPanelCollapsed: this.leftPanelCollapsed,
         rightPanelOverride: this.rightPanelOverride
       }))
+    },
+    loadChartTabPreferences() {
+      if (!process.client) return
+      try {
+        const raw = window.localStorage.getItem(CHART_TAB_LAYOUT_KEY)
+        if (!raw) return
+        const saved = JSON.parse(raw)
+        if (Array.isArray(saved.order)) this.chartTabPreferences.order = saved.order.filter(tab => ALL_CLINICAL_TABS.includes(tab))
+        if (Array.isArray(saved.hidden)) this.chartTabPreferences.hidden = saved.hidden.filter(tab => ALL_CLINICAL_TABS.includes(tab))
+      } catch (e) {
+        // ignore malformed tab preferences
+      }
+    },
+    persistChartTabPreferences() {
+      if (!process.client) return
+      window.localStorage.setItem(CHART_TAB_LAYOUT_KEY, JSON.stringify(this.chartTabPreferences))
+    },
+    setChartTabVisibility(tab, visible) {
+      const hidden = new Set(this.chartTabPreferences.hidden)
+      if (visible) hidden.delete(tab)
+      else hidden.add(tab)
+      this.chartTabPreferences.hidden = Array.from(hidden)
+      this.persistChartTabPreferences()
+      this.normalizeVisibleSelection()
+    },
+    moveChartTab(tab, direction) {
+      const visible = this.visibleChartTabs.slice()
+      const index = visible.indexOf(tab)
+      if (index < 0) return
+      const target = index + direction
+      if (target < 0 || target >= visible.length) return
+      const reordered = visible.slice()
+      const [item] = reordered.splice(index, 1)
+      reordered.splice(target, 0, item)
+      this.chartTabPreferences.order = reordered
+      this.persistChartTabPreferences()
+    },
+    resetChartTabPreferences() {
+      this.chartTabPreferences = { order: [], hidden: [] }
+      this.persistChartTabPreferences()
+      this.normalizeVisibleSelection()
     },
     toggleLeftPanel() {
       this.leftPanelCollapsed = !this.leftPanelCollapsed
