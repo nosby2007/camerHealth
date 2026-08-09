@@ -85,6 +85,17 @@
       @close="closePatientChart"
     />
 
+    <NavigatorStrip
+      v-if="activePatient"
+      :patient-id="activePatient.id"
+      :patient-name="activePatient.name"
+      :patient-meta="`${activePatient.age}y • ${activePatient.admissionStatus || 'Active'}`"
+      :current-state="currentWorkflowState"
+      @admission-complete="handleWorkflowComplete('admission')"
+      @transfer-complete="handleWorkflowComplete('transfer')"
+      @discharge-complete="handleWorkflowComplete('discharge')"
+    />
+
     <div class="chart-frame" :class="{ 'left-collapsed': effectiveLeftPanelCollapsed, 'right-collapsed': effectiveRightPanelCollapsed }">
       <LeftPatientPanel
         :patient="activePatient"
@@ -2026,6 +2037,7 @@ import Patient360EducationTab from '~/components/clinical/patient360/education/P
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
 import TimedCareDocumentationDialog from '~/components/clinical/patient360/flowsheets/TimedCareDocumentationDialog.vue'
 import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
+import NavigatorStrip from '~/components/clinical/patient360/NavigatorStrip.vue'
 import maleFrontAvatar from '~/assets/images/clinical/avatar/male-front.jpg'
 import maleBackAvatar from '~/assets/images/clinical/avatar/male-back.jpg'
 import femaleFrontAvatar from '~/assets/images/clinical/avatar/female-front.png'
@@ -2160,7 +2172,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog, NavigatorStrip },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2468,6 +2480,7 @@ export default {
       remoteAiCarePlan: null,
       aiCareLoading: false,
       aiCareError: '',
+      currentWorkflowState: 'active-care',
       dialogs: {
         nurse: false,
         medical: false,
@@ -6311,6 +6324,19 @@ export default {
         this.toastSuccess('Body assessment saved successfully.')
       } catch (e) {
         this.toastError('Unable to save body assessment.')
+      }
+    },
+    handleWorkflowComplete(workflowType) {
+      const workflowMessages = {
+        admission: 'Admission checklist completed successfully.',
+        transfer: 'Transfer workflow completed successfully.',
+        discharge: 'Discharge summary completed successfully.'
+      }
+      this.toastSuccess(workflowMessages[workflowType] || 'Workflow completed.')
+      if (workflowType === 'admission') {
+        this.currentWorkflowState = 'active-care'
+      } else if (workflowType === 'discharge') {
+        this.currentWorkflowState = 'discharge'
       }
     }
   }
