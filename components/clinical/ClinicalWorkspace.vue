@@ -1408,8 +1408,8 @@
                   <strong>Discharge Navigator</strong>
                   <span>Expected discharge, readiness, milestones, instructions and after visit summary</span>
                 </div>
-                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('document')">
-                  <v-icon x-small left>mdi-file-document-check</v-icon>File discharge document
+                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('discharge')">
+                  <v-icon x-small left>mdi-logout-variant</v-icon>File discharge bundle
                 </v-btn>
               </div>
               <div class="discharge-summary">
@@ -1925,6 +1925,13 @@
       @close="closeChartDialog('carePlan')"
       @saved="handleCarePlanSaved"
     />
+    <DischargePlanDialog
+      :open="dialogs.discharge"
+      :patient-id="activePatientId"
+      :patient-name="activePatient.name"
+      @close="closeChartDialog('discharge')"
+      @saved="handleDischargeSaved"
+    />
     <BodyAssessmentDialog
       :value="showBodyAssessmentDialog"
       :gender="avatarAnatomy"
@@ -2000,6 +2007,7 @@ import NoteDialog from '~/components/clinical/patient360/dialogs/NoteDialog.vue'
 import WoundCareDialog from '~/components/clinical/patient360/dialogs/WoundCareDialog.vue'
 import WoundCard from '~/components/nursing/WoundCard.vue'
 import CarePlanDialog from '~/components/clinical/patient360/dialogs/CarePlanDialog.vue'
+import DischargePlanDialog from '~/components/clinical/patient360/discharge/DischargePlanDialog.vue'
 import Patient360CarePlanTab from '~/components/clinical/patient360/care-plan/Patient360CarePlanTab.vue'
 import Patient360EducationTab from '~/components/clinical/patient360/education/Patient360EducationTab.vue'
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
@@ -2139,7 +2147,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, DischargePlanDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2454,6 +2462,7 @@ export default {
         imaging: false,
         medication: false,
         document: false,
+        discharge: false,
         marAction: false,
         note: false,
         woundCare: false,
@@ -5721,6 +5730,9 @@ export default {
       if (kind === 'document') {
         this.forms.document = defaultDialogForms().document
       }
+      if (kind === 'discharge') {
+        this.forms.discharge = defaultDialogForms().discharge
+      }
       if (kind === 'medical') {
         this.forms.medical = defaultDialogForms().medical
         this.forms.medical.chiefComplaint = this.latestVisit ? this.latestVisit.chiefComplaint || '' : ''
@@ -5828,6 +5840,9 @@ export default {
     },
     handleCarePlanSaved() {
       this.toastSuccess('Care plan added.')
+    },
+    handleDischargeSaved() {
+      this.toastSuccess('Discharge bundle saved.')
     },
     async signCarePlanFromCard(id) {
       await this.$store.dispatch('nursing/signCarePlan', id)
@@ -6077,6 +6092,77 @@ export default {
         this.savingDialog = false
       }
     },
+    async saveDischargeBundle() {
+      const patientId = this.activePatientId
+      this.savingDialog = true
+      try {
+        const recordedAt = new Date().toISOString()
+        const note = await this.$store.dispatch('discharge/addDischargeNote', {
+          patientId,
+          encounterId: this.currentEncounterId,
+          admissionId: this.currentAdmissionId,
+          noteType: 'discharge_note',
+          title: this.forms.discharge.noteTitle || 'Discharge note',
+          body: [this.forms.discharge.note, this.forms.discharge.handoff].filter(Boolean).join('\n\n'),
+          readiness: this.forms.discharge.readiness,
+          recordedAt
+        })
+        if (this.forms.discharge.medsAtDischarge.trim()) {
+          await this.$store.dispatch('discharge/addDischargeMedication', {
+            patientId,
+            encounterId: this.currentEncounterId,
+            admissionId: this.currentAdmissionId,
+            name: this.forms.discharge.noteTitle || 'Discharge medications',
+            details: this.forms.discharge.medsAtDischarge,
+            recordedAt
+          })
+        }
+        if (this.forms.discharge.returnPrecautions.trim()) {
+          await this.$store.dispatch('discharge/addReturnPrecaution', {
+            patientId,
+            encounterId: this.currentEncounterId,
+            admissionId: this.currentAdmissionId,
+            title: 'Return precautions',
+            details: this.forms.discharge.returnPrecautions,
+            recordedAt
+          })
+        }
+        if (this.forms.discharge.followUpAppointment.trim() || this.forms.discharge.appointments.trim()) {
+          await this.$store.dispatch('discharge/addDischargeAppointment', {
+            patientId,
+            encounterId: this.currentEncounterId,
+            admissionId: this.currentAdmissionId,
+            title: this.forms.discharge.followUpAppointment || 'Follow-up appointment',
+            notes: this.forms.discharge.appointments,
+            recordedAt
+          })
+        }
+        await this.$store.dispatch('clinical/createDocument', {
+          patientId,
+          title: this.forms.discharge.noteTitle || 'Discharge summary',
+          category: 'Discharge Summary',
+          content: [this.forms.discharge.note, this.forms.discharge.handoff, this.forms.discharge.medsAtDischarge, this.forms.discharge.returnPrecautions].filter(Boolean).join('\n\n'),
+          status: 'Filed'
+        })
+        await this.$store.dispatch('clinical/createTask', {
+          patientId,
+          title: 'Discharge follow-up complete',
+          assignedToRole: 'NURSE',
+          priority: 'Today',
+          relatedType: 'discharge',
+          relatedId: note.id,
+          actionReason: 'Discharge bundle filed from Patient 360'
+        })
+        this.selectedChartTab = 'Navigators'
+        this.selectedNavigator = 'discharge'
+        this.closeChartDialog('discharge')
+        this.toastSuccess('Discharge bundle filed.')
+      } catch (e) {
+        this.toastError('Unable to file discharge bundle.')
+      } finally {
+        this.savingDialog = false
+      }
+    },
     selectChartTab(tab) {
       this.selectedChartTab = tab
       const navMap = {
@@ -6276,6 +6362,16 @@ function defaultDialogForms() {
       title: '',
       category: 'Clinical Note',
       content: ''
+    },
+    discharge: {
+      noteTitle: '',
+      readiness: 'Not yet ready',
+      note: '',
+      handoff: '',
+      medsAtDischarge: '',
+      returnPrecautions: '',
+      followUpAppointment: '',
+      appointments: ''
     },
     avatarPlacement: {
       id: '',
