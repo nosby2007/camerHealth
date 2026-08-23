@@ -86,17 +86,25 @@
     />
 
     <NavigatorStrip
+      ref="navigatorStrip"
       v-if="activePatient"
       :patient-id="activePatient.id"
       :patient-name="activePatient.name"
       :patient-meta="`${activePatient.age}y • ${activePatient.admissionStatus || 'Active'}`"
-      :current-state="currentWorkflowState"
+      :current-state="isPatientDischarged ? 'discharge' : currentWorkflowState"
+      :read-only="isPatientDischarged"
       @admission-complete="handleWorkflowComplete('admission')"
       @transfer-complete="handleWorkflowComplete('transfer')"
-      @discharge-complete="handleWorkflowComplete('discharge')"
+      @discharge-complete="handleWorkflowComplete('discharge', $event)"
     />
 
-    <div class="chart-frame" :class="{ 'left-collapsed': effectiveLeftPanelCollapsed, 'right-collapsed': effectiveRightPanelCollapsed }">
+    <v-alert v-if="isPatientDischarged" tile dense color="#475569" dark class="discharged-readonly-alert ma-0">
+      <v-icon left small color="white">mdi-lock-outline</v-icon>
+      <strong>Discharged chart - read only.</strong>
+      Discharged {{ formatShortDate(activePatient.dischargedAt) }}. Clinical documentation, orders, assessments and care actions are disabled.
+    </v-alert>
+
+    <div class="chart-frame" :class="{ 'left-collapsed': effectiveLeftPanelCollapsed, 'right-collapsed': effectiveRightPanelCollapsed, 'chart-readonly': isPatientDischarged }">
       <LeftPatientPanel
         :patient="activePatient"
         :access-profile="accessProfile"
@@ -164,7 +172,7 @@
           Current admission
         </v-chip>
             <v-btn
-              v-if="activePatientId"
+              v-if="activePatientId && !isPatientDischarged"
               x-small
               depressed
               color="#003366"
@@ -175,7 +183,7 @@
               <v-icon x-small left>mdi-stethoscope</v-icon>Nurse work
             </v-btn>
             <v-btn
-              v-if="activePatientId && canLaunchMedical"
+              v-if="activePatientId && canLaunchMedical && !isPatientDischarged"
               x-small
               depressed
               color="#1d4ed8"
@@ -185,7 +193,7 @@
             >
               <v-icon x-small left>mdi-medical-bag</v-icon>Medical
             </v-btn>
-            <v-btn x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('nurse')">
+            <v-btn v-if="!isPatientDischarged" x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('nurse')">
               <v-icon x-small left>mdi-plus</v-icon>New Reading
                 </v-btn>
               </div>
@@ -422,11 +430,15 @@
                   title="Patient Snapshot"
                   :columns="['Current']"
                   :rows="summaryRows"
+                  action="nurse"
+                  @action="openCommandAction"
                 />
                 <FlowSection
                   title="Latest Clinical Signals"
                   :columns="['Last Filed']"
                   :rows="visibleVitalRows"
+                  action="flowsheet"
+                  @action="openCommandAction"
                 />
               </div>
 
@@ -435,18 +447,24 @@
                 title="Active Orders Summary"
                 :columns="['Detail']"
                 :rows="summaryActiveOrderRows"
+                action="orders"
+                @action="openCommandAction"
               />
               <FlowSection
                 v-if="summaryLatestNoteRows.length"
                 title="Latest Notes"
                 :columns="['Type', 'Recorded', 'Summary']"
                 :rows="summaryLatestNoteRows"
+                action="notes"
+                @action="openCommandAction"
               />
               <FlowSection
                 v-if="summaryPendingTaskRows.length"
                 title="Pending Tasks / Required Documentation"
                 :columns="['Status']"
                 :rows="summaryPendingTaskRows"
+                action="worklist"
+                @action="openCommandAction"
               />
             </section>
 
@@ -605,7 +623,7 @@
                   <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('flowsheet')">
                     <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed care
                   </v-btn>
-                  <v-btn x-small text color="#7c3aed" @click="dialogs.woundCare = true">
+                  <v-btn v-if="!isPatientDischarged" x-small text color="#7c3aed" @click="dialogs.woundCare = true">
                     <v-icon x-small left>mdi-bandage</v-icon>Wound care
                   </v-btn>
                 </div>
@@ -627,7 +645,7 @@
 
               <div class="avatar-grid">
                 <section class="patient-body-panel" aria-label="Patient body avatar">
-                  <div class="avatar-placement-palette" aria-label="Avatar placement tools">
+                  <div v-if="!isPatientDischarged" class="avatar-placement-palette" aria-label="Avatar placement tools">
                     <button
                       v-for="tool in avatarPlacementTools"
                       :key="tool.key"
@@ -722,14 +740,14 @@
                   <div class="avatar-placement-summary">
                     <span>{{ avatarPlacements.length }} placed item(s)</span>
                     <strong v-if="selectedAvatarToolRecord">Click anatomy to place: {{ selectedAvatarToolRecord.label }}</strong>
-                    <strong v-else>Select or drag a sticker to document exact location.</strong>
+                    <strong v-else>{{ isPatientDischarged ? 'Placed items are available for review.' : 'Select or drag a sticker to document exact location.' }}</strong>
                   </div>
-                  <div class="avatar-actions">
+                  <div v-if="!isPatientDischarged" class="avatar-actions">
                     <button @click="openAvatarAction(activeAvatarZoneRecord.primaryAction)">
                       <v-icon x-small>mdi-note-plus</v-icon>
                       {{ activeAvatarZoneRecord.primaryActionLabel }}
                     </button>
-                    <button v-if="activeAvatarZoneRecord.key === 'skin'" @click="dialogs.woundCare = true">
+                    <button v-if="!isPatientDischarged && activeAvatarZoneRecord.key === 'skin'" @click="dialogs.woundCare = true">
                       <v-icon x-small>mdi-bandage</v-icon>
                       Wound reassessment
                     </button>
@@ -1090,7 +1108,7 @@
 
             <section v-else-if="selectedChartTab === 'Wound Management'" class="flowsheet wound-management">
               <div class="action-strip">
-                <v-btn x-small depressed color="#0f766e" dark @click="dialogs.woundCare = true">
+                <v-btn v-if="!isPatientDischarged" x-small depressed color="#0f766e" dark @click="dialogs.woundCare = true">
                   <v-icon x-small left>mdi-bandage</v-icon>Document Wound
                 </v-btn>
               </div>
@@ -1207,6 +1225,7 @@
               :encounter-id="currentEncounterId"
               :admission-id="currentAdmissionId"
               :role="currentRole"
+              :read-only="isPatientDischarged"
             />
 
             <Patient360EducationTab
@@ -1215,6 +1234,7 @@
               :encounter-id="currentEncounterId"
               :admission-id="currentAdmissionId"
               :role="currentRole"
+              :read-only="isPatientDischarged"
             />
 
             <Patient360FlowsheetsTab
@@ -1223,6 +1243,7 @@
               :encounter-id="currentEncounterId"
               :admission-id="currentAdmissionId"
               :role="currentRole"
+              :read-only="isPatientDischarged"
             />
 
             <section v-else-if="selectedChartTab === 'Work List'" class="flowsheet">
@@ -1701,6 +1722,7 @@
         :imaging-orders="patientImagingOrders"
         :tasks="patientTasks"
         :care-team-rows="visibleCareTeamRows"
+        :read-only="isPatientDischarged"
         :collapsed="effectiveRightPanelCollapsed"
         @toggle="toggleRightPanel"
         @new-order="openChartDialog('medication')"
@@ -2048,6 +2070,20 @@
       :preset="timedCareDialogPreset || {}"
       @save="handleTimedCareSave"
     />
+    <Patient360ContextForms
+      ref="contextForms"
+      :patient-id="activePatientId"
+      :patient="activePatient"
+      :role="currentRole"
+      :encounter-id="currentEncounterId"
+      :admission-id="currentAdmissionId"
+      :lab-orders="patientLabOrders"
+      :imaging-orders="patientImagingOrders"
+      :read-only="isPatientDischarged"
+      @order="openOrderComposer"
+      @saved="handleContextFormSaved"
+      @error="toastError"
+    />
     <v-dialog v-model="dialogs.tabManager" max-width="920" persistent scrollable>
       <v-card class="tab-manager-dialog">
         <v-card-title class="tab-manager-title">
@@ -2118,6 +2154,7 @@ import Patient360EducationTab from '~/components/clinical/patient360/education/P
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
 import TimedCareDocumentationDialog from '~/components/clinical/patient360/flowsheets/TimedCareDocumentationDialog.vue'
 import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
+import Patient360ContextForms from '~/components/clinical/patient360/dialogs/Patient360ContextForms.vue'
 import NavigatorStrip from '~/components/clinical/patient360/NavigatorStrip.vue'
 import maleFrontAvatar from '~/assets/images/clinical/avatar/male-front.jpg'
 import maleBackAvatar from '~/assets/images/clinical/avatar/male-back.jpg'
@@ -2130,7 +2167,8 @@ const FlowSection = {
     title: { type: String, required: true },
     columns: { type: Array, default: () => [] },
     rows: { type: Array, default: () => [] },
-    required: { type: Boolean, default: false }
+    required: { type: Boolean, default: false },
+    action: { type: String, default: '' }
   },
   template: `
     <article class="flow-section">
@@ -2140,7 +2178,9 @@ const FlowSection = {
           <strong>{{ title }}</strong>
           <span v-if="required" class="required-dot">Required Documentation</span>
         </div>
-        <a href="#" @click.prevent>Flowsheets</a>
+        <button v-if="action" type="button" class="flow-action" @click="$emit('action', action)">
+          <v-icon x-small>mdi-pencil-outline</v-icon>Open form
+        </button>
       </header>
       <div class="flow-grid" :style="{ gridTemplateColumns: gridTemplate }">
         <div class="flow-cell label-cell"></div>
@@ -2253,7 +2293,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog, NavigatorStrip },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2689,6 +2729,8 @@ export default {
       return this.visibleChartTabs.filter(tab => !PRIMARY_TAB_ORDER.includes(tab))
     },
     fallRiskEntry() {
+      const patient = this.findPatientRecord(this.activePatientId)
+      if (patient && patient.fallRisk) return { label: 'Fall risk', value: patient.fallRisk }
       return this.medicalHistory.find(item => item.label === 'Fall risk') || null
     },
     skinIntegrityEntry() {
@@ -2924,6 +2966,10 @@ export default {
     canViewSocialNeeds() {
       return Boolean(this.accessProfile.social)
     },
+    isPatientDischarged() {
+      const getter = this.$store.getters['clinical/isPatientDischarged']
+      return Boolean(this.activePatientId && getter && getter(this.activePatientId))
+    },
     visibleSidebarIndex() {
       const blocked = []
       if (!this.canViewOrders) blocked.push('Orders', 'Blood Admin')
@@ -2985,7 +3031,7 @@ export default {
     },
     patientTasks() {
       const all = this.$store.getters['clinical/getTasks'] || []
-      return all.filter(item => item.patientId === this.activePatientId)
+      return all.filter(item => item.patientId === this.activePatientId && !['done', 'cancel', 'completed', 'cancelled'].includes(String(item.status || '').toLowerCase()))
     },
     patientWounds() {
       const all = this.$store.getters['nursing/getWounds'] || []
@@ -3175,9 +3221,9 @@ export default {
       const woundCount = this.patientWounds.filter(item => !['resolved', 'healed', 'closed'].includes(String(item.status || '').toLowerCase())).length
       const fallRisk = this.fallRiskEntry ? this.fallRiskEntry.value : 'Not documented'
       return [
-        { label: 'Allergies', detail: this.activePatient.allergies || 'No known allergies', level: /no known/i.test(this.activePatient.allergies || '') ? 'normal' : 'critical', icon: 'mdi-alert-circle-outline', action: 'medication' },
-        { label: 'Precautions', detail: this.activePatient.precautions || 'Standard', level: /standard/i.test(this.activePatient.precautions || '') ? 'normal' : 'warning', icon: 'mdi-shield-alert-outline', action: 'nurse' },
-        { label: 'Fall risk', detail: fallRisk, level: /not documented/i.test(fallRisk) ? 'warning' : 'normal', icon: 'mdi-walk', action: 'flowsheet' },
+        { label: 'Allergies', detail: this.activePatient.allergies || 'No known allergies', level: /no known/i.test(this.activePatient.allergies || '') ? 'normal' : 'critical', icon: 'mdi-alert-circle-outline', action: 'safety-allergies' },
+        { label: 'Precautions', detail: this.activePatient.precautions || 'Standard', level: /standard/i.test(this.activePatient.precautions || '') ? 'normal' : 'warning', icon: 'mdi-shield-alert-outline', action: 'safety-precautions' },
+        { label: 'Fall risk', detail: fallRisk, level: /not documented/i.test(fallRisk) ? 'warning' : 'normal', icon: 'mdi-walk', action: 'safety-fall' },
         { label: 'Skin / devices', detail: woundCount ? `${woundCount} active wound(s) on avatar` : 'No active wound documented', level: woundCount ? 'warning' : 'normal', icon: 'mdi-human', action: 'body' }
       ]
     },
@@ -3194,12 +3240,17 @@ export default {
       ]
     },
     summarySocialStatus() {
-      const riskCount = this.sdohDomains.filter(item => item.status === 'risk').length
+      const assessments = this.$store.getters['clinical/patientSocialAssessments']?.(this.activePatientId) || []
+      const riskCount = assessments.length
+        ? assessments.filter(item => ['At risk', 'Urgent', 'Needs review'].includes(item.status)).length
+        : this.sdohDomains.filter(item => item.status === 'risk').length
       if (riskCount > 1) return `${riskCount} risks`
       if (riskCount === 1) return '1 risk'
       return 'No active risk'
     },
     summarySocialStatusLevel() {
+      const assessments = this.$store.getters['clinical/patientSocialAssessments']?.(this.activePatientId) || []
+      if (assessments.length) return assessments.some(item => ['At risk', 'Urgent', 'Needs review'].includes(item.status)) ? 'due' : 'complete'
       return this.sdohDomains.some(item => item.status === 'risk') ? 'due' : 'complete'
     },
     summaryPriorityItems() {
@@ -4804,11 +4855,13 @@ export default {
     visibleCareTeamRows() {
       const patient = this.findPatientRecord(this.activePatientId)
       const attending = patient && (patient.attending || patient.provider || patient.referredBy)
-      if (!attending) return this.careTeamRows
-      return [
-        { label: attending, values: { Role: 'Attending / Referent', Shift: 'Current', Contact: patient.phone || '-' } },
-        ...this.careTeamRows.slice(1)
-      ]
+      const filedMembers = this.$store.getters['clinical/patientCareTeam']?.(this.activePatientId) || []
+      const rows = filedMembers.map(member => ({
+        label: member.name,
+        values: { Role: member.role || member.responsibility || '-', Shift: member.status || 'Active', Contact: member.contact || member.service || '-' }
+      }))
+      if (attending && !rows.some(row => row.label === attending)) rows.unshift({ label: attending, values: { Role: 'Attending / Referent', Shift: 'Current', Contact: patient.phone || '-' } })
+      return rows.length ? rows : this.careTeamRows
     },
     activePatient() {
       const patient = this.findPatientRecord(this.activePatientId)
@@ -4958,9 +5011,11 @@ export default {
       }
     },
     selectAvatarTool(key) {
+      if (!this.ensurePatientWritable()) return
       this.selectedAvatarTool = this.selectedAvatarTool === key ? '' : key
     },
     startAvatarToolDrag(event, key) {
+      if (!this.ensurePatientWritable()) return
       this.selectedAvatarTool = key
       if (event && event.dataTransfer) {
         event.dataTransfer.setData('text/plain', key)
@@ -4968,16 +5023,19 @@ export default {
       }
     },
     handleAvatarDrop(event) {
+      if (!this.ensurePatientWritable()) return
       const key = event && event.dataTransfer ? event.dataTransfer.getData('text/plain') : this.selectedAvatarTool
       this.placeAvatarItemFromEvent(event, key)
     },
     handleAvatarCanvasClick(event) {
+      if (this.isPatientDischarged) return
       if (!this.selectedAvatarTool) return
       const blocked = event.target && event.target.closest && event.target.closest('.body-zone, .avatar-sticker')
       if (blocked) return
       this.placeAvatarItemFromEvent(event, this.selectedAvatarTool)
     },
     placeAvatarItemFromEvent(event, key) {
+      if (!this.ensurePatientWritable()) return
       const tool = this.avatarPlacementTools.find(item => item.key === key)
       const figure = this.$refs.avatarBodyFigure
       if (!tool || !figure || !event) return
@@ -5056,6 +5114,7 @@ export default {
       return status ? `status-${status}` : 'status-active'
     },
     openAvatarPlacement(item) {
+      if (!this.ensurePatientWritable()) return
       this.forms.avatarPlacement = { ...defaultDialogForms().avatarPlacement, ...item }
       this.$set(this.dialogs, 'avatarPlacement', true)
     },
@@ -5063,6 +5122,7 @@ export default {
       this.$set(this.dialogs, 'avatarPlacement', false)
     },
     async removeAvatarPlacement(id) {
+      if (!this.ensurePatientWritable()) return
       const existing = (this.$store.getters['nursing/getBodyMapMarkers'] || []).find(item => item.id === id)
       if (existing) {
         await this.$store.dispatch('nursing/updateBodyMapMarker', {
@@ -5077,6 +5137,7 @@ export default {
       this.toastSuccess('Avatar location removed.')
     },
     async saveAvatarPlacement() {
+      if (!this.ensurePatientWritable()) return
       const form = { ...this.forms.avatarPlacement, updatedAt: new Date().toISOString() }
       const tool = this.avatarPlacementTools.find(item => item.key === form.type)
       if (tool) {
@@ -5420,6 +5481,22 @@ export default {
     },
     openCommandAction(action) {
       const target = String(action || '').toLowerCase()
+      if (this.isPatientDischarged) {
+        this.toastError('This patient has been discharged. The Patient 360 chart is read only.')
+        return
+      }
+      if (target === 'safety-allergies') {
+        this.openContextForm('safety', { type: 'allergies' })
+        return
+      }
+      if (target === 'safety-precautions') {
+        this.openContextForm('safety', { type: 'precautions' })
+        return
+      }
+      if (target === 'safety-fall') {
+        this.openContextForm('safety', { type: 'fall' })
+        return
+      }
       if (target === 'nurse') {
         this.openChartDialog('nurse')
         return
@@ -5437,19 +5514,23 @@ export default {
         return
       }
       if (target === 'orders') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Orders') ? 'Orders' : 'Navigators'
+        this.openContextForm('order')
         return
       }
       if (target === 'lab-results') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Lab Results') ? 'Lab Results' : (this.visibleChartTabs.includes('Orders') ? 'Orders' : 'Summary')
+        if (this.patientLabOrders.length && ['ADMIN', 'LAB'].includes(this.currentRole)) this.openContextForm('labResult')
+        else if (this.patientLabOrders.length) this.selectedChartTab = this.visibleChartTabs.includes('Lab Results') ? 'Lab Results' : 'Orders'
+        else this.openOrderComposer('lab')
         return
       }
       if (target === 'imaging-results') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Chart Review') ? 'Chart Review' : (this.visibleChartTabs.includes('Orders') ? 'Orders' : 'Summary')
+        if (this.patientImagingOrders.length && ['ADMIN', 'IMAGING'].includes(this.currentRole)) this.openContextForm('imagingResult')
+        else if (this.patientImagingOrders.length) this.selectedChartTab = this.visibleChartTabs.includes('Chart Review') ? 'Chart Review' : 'Orders'
+        else this.openOrderComposer('imaging')
         return
       }
       if (target === 'care-team') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Care Teams') ? 'Care Teams' : 'Summary'
+        this.openContextForm('careTeam')
         return
       }
       if (target === 'discharge-plan') {
@@ -5457,53 +5538,15 @@ export default {
         return
       }
       if (target === 'admission') {
-        this.openNavigatorDocumentPreset({
-          title: 'Admission assessment',
-          category: 'Clinical Note',
-          content: [
-            'Admission reason:',
-            'Chief complaint:',
-            'Initial findings:',
-            'Allergies reviewed:',
-            'Medication reconciliation:',
-            'Admission problems:',
-            'Plan on arrival:'
-          ].join('\n')
-        })
+        if (this.$refs.navigatorStrip) this.$refs.navigatorStrip.openAdmissionChecklist()
         return
       }
       if (target === 'transfer') {
-        this.openNavigatorDocumentPreset({
-          title: 'Transfer packet',
-          category: 'Clinical Note',
-          content: [
-            'Transfer reason:',
-            'Destination:',
-            'Pre-transfer checklist:',
-            'Lines / drains / devices:',
-            'Escort / transport mode:',
-            'Vitals before transfer:',
-            'Return handoff plan:'
-          ].join('\n')
-        })
+        if (this.$refs.navigatorStrip) this.$refs.navigatorStrip.openTransferChecklist()
         return
       }
       if (target === 'discharge') {
-        this.openNavigatorDocumentPreset({
-          title: 'Discharge summary',
-          category: 'Discharge Summary',
-          content: [
-            'Complaint on arrival:',
-            'Clinical findings:',
-            'Diagnosis:',
-            'Lab tests requested/results:',
-            'Drugs prescribed:',
-            'Hospital course / evolution:',
-            'Outcome:',
-            'Length of stay:',
-            'Follow-up / return precautions:'
-          ].join('\n')
-        })
+        this.dialogs.discharge = true
         return
       }
       if (target === 'document') {
@@ -5511,16 +5554,11 @@ export default {
         return
       }
       if (target === 'education') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Education') ? 'Education' : 'Care Plan'
+        this.openContextForm('education')
         return
       }
       if (target === 'care-plan') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Care Plan') ? 'Care Plan' : 'Notes'
-        return
-      }
-      if (target === 'transfer') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Navigators') ? 'Navigators' : 'Summary'
-        if (this.visibleChartTabs.includes('Navigators')) this.selectNavigator('transfer')
+        this.dialogs.carePlan = true
         return
       }
       if (target === 'lab') {
@@ -5528,18 +5566,16 @@ export default {
         return
       }
       if (target === 'medication') {
-        if (this.patientMedications.length && this.visibleChartTabs.includes('MAR')) this.selectedChartTab = 'MAR'
+        if (this.patientMedications.length) this.openMarQuickScan()
         else this.openChartDialog('medication')
         return
       }
       if (target === 'registration') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Registration') ? 'Registration' : 'Summary'
-        this.setNavigatorContext('admission')
+        if (this.$refs.navigatorStrip) this.$refs.navigatorStrip.openAdmissionChecklist()
         return
       }
       if (target === 'worklist') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Work List') ? 'Work List' : 'Navigators'
-        if (this.visibleNavigatorTabs.some(item => item.key === 'worklist')) this.setNavigatorContext('worklist')
+        this.openContextForm('task')
         return
       }
       if (target === 'maternity') {
@@ -5552,17 +5588,12 @@ export default {
         return
       }
       if (target === 'social') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Navigators') ? 'Navigators' : 'Summary'
-        if (this.visibleChartTabs.includes('Navigators')) this.selectNavigator('sdoh')
-        return
-      }
-      if (target === 'discharge') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Navigators') ? 'Navigators' : 'Care Plan'
-        if (this.visibleChartTabs.includes('Navigators')) this.selectNavigator('discharge')
+        this.openContextForm('social')
         return
       }
       if (target === 'notes') {
-        this.selectedChartTab = this.visibleChartTabs.includes('Notes') ? 'Notes' : 'Summary'
+        this.noteDialogConfig = { noteType: 'progress_note', dialogTitle: 'Clinical progress note', existingNote: null }
+        this.dialogs.note = true
         return
       }
       if (target === 'handoff') {
@@ -5575,6 +5606,13 @@ export default {
         return
       }
       this.selectedChartTab = 'EMR Command Center'
+    },
+    openContextForm(kind, options = {}) {
+      if (!this.ensurePatientWritable() || !this.$refs.contextForms) return false
+      return this.$refs.contextForms.open(kind, options)
+    },
+    handleContextFormSaved(message) {
+      this.toastSuccess(message)
     },
     openNavigatorDocumentPreset(preset) {
       this.forms.document = {
@@ -5916,6 +5954,7 @@ export default {
     },
     openChartDialog(kind) {
       if (!this.activePatientId) return
+      if (kind !== 'scan' && !this.ensurePatientWritable()) return
       if (['lab', 'imaging', 'medication'].includes(kind)) {
         const next = defaultDialogForms().order
         if (kind === 'lab') {
@@ -5991,6 +6030,7 @@ export default {
       }
     },
     editSelectedNote() {
+      if (!this.ensurePatientWritable()) return
       if (!this.selectedNote) return
       this.noteDialogConfig = {
         noteType: this.selectedNote.noteType,
@@ -6000,16 +6040,19 @@ export default {
       this.dialogs.note = true
     },
     async signSelectedNote() {
+      if (!this.ensurePatientWritable()) return
       if (!this.selectedNoteId) return
       await this.$store.dispatch('nursing/signClinicalNote', this.selectedNoteId)
       this.toastSuccess('Note signed.')
     },
     amendSelectedNote() {
+      if (!this.ensurePatientWritable()) return
       if (!this.selectedNoteId) return
       this.amendingNoteId = this.selectedNoteId
       this.amendmentDraft = ''
     },
     async submitAmendment() {
+      if (!this.ensurePatientWritable()) return
       if (!this.amendmentDraft.trim()) return
       await this.$store.dispatch('nursing/amendClinicalNote', { id: this.amendingNoteId, amendment: this.amendmentDraft.trim() })
       this.amendingNoteId = null
@@ -6017,6 +6060,7 @@ export default {
       this.toastSuccess('Amendment recorded.')
     },
     async shareSelectedNote() {
+      if (!this.ensurePatientWritable()) return
       if (!this.selectedNoteId) return
       await this.$store.dispatch('nursing/shareClinicalNote', this.selectedNoteId)
       this.toastSuccess('Note shared with care team.')
@@ -6045,8 +6089,8 @@ export default {
     handleCarePlanSaved() {
       this.toastSuccess('Care plan added.')
     },
-    handleDischargeSaved() {
-      this.toastSuccess('Discharge bundle saved.')
+    async handleDischargeSaved(payload) {
+      await this.completePatientDischarge(payload || {})
     },
     openScannedPatient(patient) {
       if (!patient || !patient.id) return
@@ -6057,10 +6101,12 @@ export default {
       this.toastSuccess('Wound photo saved.')
     },
     async signCarePlanFromCard(id) {
+      if (!this.ensurePatientWritable()) return
       await this.$store.dispatch('nursing/signCarePlan', id)
       this.toastSuccess('Care plan signed.')
     },
     async archiveCarePlanFromCard(id) {
+      if (!this.ensurePatientWritable()) return
       await this.$store.dispatch('nursing/archiveCarePlan', id)
       this.toastSuccess('Care plan archived.')
     },
@@ -6073,6 +6119,27 @@ export default {
     },
     toastError(message) {
       if (this.$toast && this.$toast.error) this.$toast.error(message)
+    },
+    ensurePatientWritable() {
+      if (!this.activePatientId || this.isPatientDischarged) {
+        this.toastError('This patient has been discharged. The Patient 360 chart is read only.')
+        return false
+      }
+      return true
+    },
+    async completePatientDischarge(payload) {
+      if (this.isPatientDischarged) return
+      try {
+        await this.$store.dispatch('clinical/dischargePatient', {
+          patientId: this.activePatientId,
+          ...payload
+        })
+        this.currentWorkflowState = 'discharge'
+        Object.keys(this.dialogs).forEach(key => this.$set(this.dialogs, key, false))
+        this.toastSuccess('Patient discharged. The chart is now read only and listed under Inactive patients.')
+      } catch (error) {
+        this.toastError('Unable to complete the discharge workflow.')
+      }
     },
     actorName() {
       return this.$store.state.auth.fullName || (this.$store.state.auth.user && this.$store.state.auth.user.username) || 'Clinical user'
@@ -6502,7 +6569,7 @@ export default {
         this.toastError('Unable to save body assessment.')
       }
     },
-    handleWorkflowComplete(workflowType) {
+    async handleWorkflowComplete(workflowType, payload = {}) {
       const workflowMessages = {
         admission: 'Admission checklist completed successfully.',
         transfer: 'Transfer workflow completed successfully.',
@@ -6512,7 +6579,7 @@ export default {
       if (workflowType === 'admission') {
         this.currentWorkflowState = 'active-care'
       } else if (workflowType === 'discharge') {
-        this.currentWorkflowState = 'discharge'
+        await this.completePatientDischarge(payload)
       }
     }
   }
@@ -7493,10 +7560,16 @@ function latestByDate(items, field) {
   align-items: center;
   gap: 6px;
 }
-.flow-section header a {
+.flow-section header .flow-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
   color: #1d4ed8;
+  cursor: pointer;
+  font-size: 11px;
   font-weight: 800;
-  text-decoration: none;
 }
 .navigator-workspace {
   display: grid;

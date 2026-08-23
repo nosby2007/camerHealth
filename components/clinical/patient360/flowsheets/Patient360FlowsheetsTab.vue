@@ -5,19 +5,24 @@
       :encounter-id="encounterId"
       :admission-id="admissionId"
       :role="role"
-      @add-rows="showAddRowsDialog = true"
-      @device-data="showDeviceDataDialog = true"
-      @chart-correction="showCorrectionDialog = true"
+      @add-rows="openWriteDialog('showAddRowsDialog')"
+      @device-data="openWriteDialog('showDeviceDataDialog')"
+      @chart-correction="openWriteDialog('showCorrectionDialog')"
       @flowsheet-history="showHistoryDialog = true"
-      @timed-documentation="showTimedCareDialog = true"
+      @timed-documentation="openWriteDialog('showTimedCareDialog')"
     />
+
+    <div v-if="readOnly" class="read-only-notice">
+      <v-icon x-small>mdi-lock-outline</v-icon>
+      Discharged chart. Timestamped care and assessments are available in read-only mode.
+    </div>
 
     <div class="timed-care-summary">
       <div>
         <span>Care documentation</span>
         <strong>Timestamped care, evaluation, care plan and education</strong>
       </div>
-      <v-btn x-small depressed color="#0f766e" dark @click="showTimedCareDialog = true">
+      <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="showTimedCareDialog = true">
         <v-icon x-small left>mdi-clock-edit-outline</v-icon>New timed entry
       </v-btn>
     </div>
@@ -44,7 +49,7 @@
           @filter-sections="filterBySections"
         />
 
-        <div class="flowsheet-grid-container">
+        <div :class="['flowsheet-grid-container', { 'read-only-grid': readOnly }]">
           <FlowsheetGrid
             :patient-id="patientId"
             :encounter-id="encounterId"
@@ -141,7 +146,8 @@ export default {
     patientId: { type: String, required: true },
     encounterId: { type: String, required: true },
     admissionId: { type: String, required: true },
-    role: { type: String, required: true }
+    role: { type: String, required: true },
+    readOnly: { type: Boolean, default: false }
   },
   data() {
     return {
@@ -188,9 +194,18 @@ export default {
       return this.$store.getters['flowsheets/recentTimedCareEntries'](this.patientId, this.encounterId).slice(0, 4)
     }
   },
+  watch: {
+    readOnly(value) {
+      if (!value) return
+      this.showAddRowsDialog = false
+      this.showDeviceDataDialog = false
+      this.showCorrectionDialog = false
+      this.showTimedCareDialog = false
+    }
+  },
   mounted() {
     // Create initial columns when component mounts
-    this.createInitialColumns()
+    if (!this.readOnly) this.createInitialColumns()
     // Initialize API service for backend persistence
     this.initializeApi()
   },
@@ -208,6 +223,7 @@ export default {
       this.filteredBySystems = systems
     },
     updateCell(payload) {
+      if (this.readOnly) return
       this.$store.dispatch('flowsheets/updateCell', {
         ...payload,
         patientId: this.patientId,
@@ -215,6 +231,7 @@ export default {
       })
     },
     correctCell(payload) {
+      if (this.readOnly) return
       this.$store.dispatch('flowsheets/correctCell', {
         ...payload,
         patientId: this.patientId,
@@ -222,6 +239,7 @@ export default {
       })
     },
     createInitialColumns() {
+      if (this.readOnly) return
       // Create 3 initial time columns
       const times = ['08:00', '12:00', '16:00']
       times.forEach(time => {
@@ -237,14 +255,17 @@ export default {
       })
     },
     addRows(rows) {
+      if (this.readOnly) return
       // Rows are now already defined in the store templates
       this.$forceUpdate()
     },
     importDeviceData(data) {
+      if (this.readOnly) return
       // Placeholder for device data import
       console.log('Importing device data:', data)
     },
     async fileTimedCare(payload) {
+      if (this.readOnly) return
       await this.$store.dispatch('flowsheets/documentTimedCare', {
         patientId: this.patientId,
         encounterId: this.encounterId,
@@ -252,6 +273,10 @@ export default {
         ...payload
       })
       this.$toast?.success('Timed care entry filed')
+    },
+    openWriteDialog(dialogName) {
+      if (this.readOnly) return
+      this[dialogName] = true
     },
     formatDateTime(value) {
       if (!value) return ''
@@ -291,6 +316,28 @@ export default {
   flex-direction: column;
   flex: 1;
   overflow: hidden;
+}
+
+.read-only-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #cbd5e1;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.read-only-grid ::v-deep input,
+.read-only-grid ::v-deep textarea,
+.read-only-grid ::v-deep select,
+.read-only-grid ::v-deep button,
+.read-only-grid ::v-deep .v-input,
+.read-only-grid ::v-deep .v-btn {
+  pointer-events: none !important;
+  opacity: 0.68;
 }
 
 .timed-care-summary {

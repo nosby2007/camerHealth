@@ -9,6 +9,9 @@
         <v-btn icon small @click="$emit('close')"><v-icon small>mdi-close</v-icon></v-btn>
       </v-card-title>
       <v-card-text>
+        <v-alert v-if="formError" dense text type="error" class="mt-3 mb-2">
+          {{ formError }}
+        </v-alert>
         <v-tabs v-model="tab" grow background-color="transparent" color="#0f766e" slider-color="#0f766e">
           <v-tab>Note</v-tab>
           <v-tab>Meds</v-tab>
@@ -17,6 +20,10 @@
         </v-tabs>
         <v-tabs-items v-model="tab">
           <v-tab-item>
+            <div class="discharge-grid">
+              <v-text-field v-model="form.dischargeDateTime" type="datetime-local" label="Discharge date and time" dense outlined required />
+              <v-select v-model="form.dischargeDisposition" :items="dispositionOptions" label="Disposition" dense outlined required />
+            </div>
             <v-textarea v-model="form.note" label="Discharge note" rows="4" dense outlined />
             <v-textarea v-model="form.handoff" label="Handoff summary" rows="3" dense outlined />
             <v-select v-model="form.readiness" :items="readinessOptions" label="Readiness" dense outlined />
@@ -37,7 +44,7 @@
         <v-spacer />
         <v-btn text small @click="$emit('close')">Cancel</v-btn>
         <v-btn depressed color="#0f766e" dark small :loading="saving" @click="save">
-          <v-icon x-small left>mdi-logout-variant</v-icon>File discharge
+          <v-icon x-small left>mdi-logout-variant</v-icon>Complete discharge
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -56,18 +63,26 @@ export default {
     return {
       tab: 0,
       saving: false,
+      formError: '',
       readinessOptions: ['Ready now', 'Not yet ready', 'Needs review'],
+      dispositionOptions: ['Home', 'Home with Services', 'Rehabilitation', 'Skilled Nursing', 'Hospice', 'Transfer to Another Facility', 'Against Medical Advice', 'Deceased'],
       form: this.resetForm()
     }
   },
   watch: {
     open(value) {
-      if (value) this.form = this.resetForm()
+      if (value) {
+        this.form = this.resetForm()
+        this.formError = ''
+        this.tab = 0
+      }
     }
   },
   methods: {
     resetForm() {
       return {
+        dischargeDateTime: toLocalDateTime(new Date()),
+        dischargeDisposition: 'Home',
         note: '',
         handoff: '',
         readiness: 'Not yet ready',
@@ -78,10 +93,15 @@ export default {
       }
     },
     async save() {
+      this.formError = this.validateForm()
+      if (this.formError) {
+        this.tab = this.validationTab()
+        return
+      }
       this.saving = true
       try {
         const patientId = this.patientId
-        const recordedAt = new Date().toISOString()
+        const recordedAt = new Date(this.form.dischargeDateTime).toISOString()
         const note = await this.$store.dispatch('discharge/addDischargeNote', {
           patientId,
           encounterId: this.$route.params.encounterId || null,
@@ -118,13 +138,52 @@ export default {
             recordedAt
           })
         }
-        this.$emit('saved', note)
+        this.$emit('saved', {
+          ...note,
+          ...this.form,
+          dischargedAt: recordedAt,
+          disposition: this.form.dischargeDisposition
+        })
         this.$emit('close')
+      } catch (error) {
+        this.formError = error.message || 'Discharge could not be completed.'
       } finally {
         this.saving = false
       }
+    },
+    validateForm() {
+      if (!this.form.dischargeDateTime || !this.form.dischargeDisposition) return 'Discharge date, time and disposition are required.'
+      if (this.form.readiness !== 'Ready now') return 'The patient must be marked Ready now before discharge.'
+      if (!this.form.note.trim() || !this.form.handoff.trim()) return 'Discharge note and handoff summary are required.'
+      if (!this.form.medsAtDischarge.trim()) return 'Document discharge medications or explicitly record that none are prescribed.'
+      if (!this.form.returnPrecautions.trim()) return 'Return precautions are required.'
+      return ''
+    },
+    validationTab() {
+      if (!this.form.medsAtDischarge.trim()) return 1
+      if (!this.form.returnPrecautions.trim()) return 2
+      return 0
     }
   }
 }
+
+function toLocalDateTime(date) {
+  const offset = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
 </script>
 
+<style scoped>
+.discharge-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (max-width: 700px) {
+  .discharge-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

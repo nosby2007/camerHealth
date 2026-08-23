@@ -233,6 +233,7 @@ export const mutations = {
 
 export const actions = {
   createColumn({ commit, dispatch, rootState }, { patientId, encounterId, admissionId, documentedAt, source }) {
+    assertPatientWritable(rootState, patientId)
     const column = withBase(rootState, {
       patientId,
       encounterId,
@@ -250,6 +251,7 @@ export const actions = {
   },
 
   updateCell({ commit, dispatch, rootState }, { cellId, value, displayValue, rowId, columnId, patientId, encounterId }) {
+    assertPatientWritable(rootState, patientId)
     const cell = withBase(rootState, {
       id: cellId,
       rowId,
@@ -277,8 +279,9 @@ export const actions = {
     return cell
   },
 
-  async persistCell({ commit, dispatch }, { cell, patientId, encounterId }) {
+  async persistCell({ commit, dispatch, rootState }, { cell, patientId, encounterId }) {
     try {
+      assertPatientWritable(rootState, patientId)
       commit('SET_SAVING', true)
       const api = this.$flowsheetApi || window.$flowsheetApi
       if (!api) {
@@ -312,6 +315,7 @@ export const actions = {
 
   async fileColumn({ state, commit, dispatch, rootState }, { columnId, patientId, encounterId }) {
     try {
+      assertPatientWritable(rootState, patientId)
       commit('SET_SAVING', true)
       const api = this.$flowsheetApi || window.$flowsheetApi
       if (!api) {
@@ -342,6 +346,7 @@ export const actions = {
   },
 
   correctCell({ state, commit, dispatch, rootState }, { originalCellId, rowId, columnId, patientId, encounterId, newValue, reason }) {
+    assertPatientWritable(rootState, patientId)
     const correctedCell = withBase(rootState, {
       rowId,
       columnId,
@@ -375,6 +380,7 @@ export const actions = {
   },
 
   documentTimedCare({ commit, dispatch, rootState }, { patientId, encounterId, admissionId, templateId, documentedAt, entries, summary, carePlanFocus, educationGiven, nextDue }) {
+    assertPatientWritable(rootState, patientId)
     const filedAt = documentedAt || new Date().toISOString()
     const column = withBase(rootState, {
       patientId,
@@ -439,6 +445,7 @@ export const actions = {
   },
 
   createFlowsheetEntry({ commit, dispatch, rootState }, { patientId, encounterId, templateId, sectionId, entries, recordedAt }) {
+    assertPatientWritable(rootState, patientId)
     const filedAt = recordedAt || new Date().toISOString()
     const column = withBase(rootState, {
       patientId,
@@ -494,6 +501,16 @@ export const actions = {
       timestamp: new Date().toISOString(),
       details: event.details || ''
     })
+  }
+}
+
+function assertPatientWritable(rootState, patientId) {
+  if (!patientId) return
+  const patient = rootState.clinical?.patients?.find(item => item.id === patientId)
+  if (!patient) return
+  const status = String(patient.patientStatus || patient.admissionStatus || '').toLowerCase()
+  if (status === 'discharged' || String(patient.recordStatus || '').toLowerCase() === 'inactive' || patient.active === false) {
+    throw new Error('PATIENT_DISCHARGED_READ_ONLY')
   }
 }
 

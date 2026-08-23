@@ -237,8 +237,6 @@
 </template>
 
 <script>
-import { mapActions } from 'vuex'
-
 export default {
   name: 'TransferChecklistForm',
   props: {
@@ -293,25 +291,13 @@ export default {
     }
   },
   methods: {
-    ...mapActions('nursing', ['createNursingTask']),
-    async submitForm() {
+    submitForm() {
       if (!this.form.transferLocation) {
         alert('Please select a transfer destination')
         return
       }
 
-      try {
-        await this.createNursingTask({
-          patientId: this.patientId,
-          type: 'TRANSFER_CHECKLIST',
-          data: this.form,
-          status: 'completed',
-          completedAt: new Date().toISOString()
-        })
-        this.$emit('save', this.form)
-      } catch (error) {
-        console.error('Error saving transfer checklist:', error)
-      }
+      this.$emit('save', { ...this.form, completedAt: new Date().toISOString() })
     }
   }
 }

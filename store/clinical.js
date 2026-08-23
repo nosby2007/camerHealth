@@ -13,6 +13,8 @@ export const state = () => ({
   nursingNotes: [],
   medicalNotes: [],
   tasks: [],
+  careTeamMembers: [],
+  socialAssessments: [],
   documents: [],
   insuranceClaims: [],
   referrals: [],
@@ -28,6 +30,13 @@ export const mutations = {
   ADD_PATIENT(state, patient) {
     state.patients.push(patient)
     saveToLocalStorage('patients', state.patients)
+  },
+  UPDATE_PATIENT(state, patient) {
+    const idx = state.patients.findIndex(item => item.id === patient.id)
+    if (idx !== -1) {
+      state.patients.splice(idx, 1, patient)
+      saveToLocalStorage('patients', state.patients)
+    }
   },
   UPDATE_PATIENT_ADMISSION_FLAG(state, payload) {
     const p = state.patients.find(pt => pt.id === payload.patientId)
@@ -116,6 +125,8 @@ export const mutations = {
     state.nursingNotes = loadFromLocalStorage('nursingNotes') || []
     state.medicalNotes = loadFromLocalStorage('medicalNotes') || []
     state.tasks = loadFromLocalStorage('tasks') || []
+    state.careTeamMembers = loadFromLocalStorage('careTeamMembers') || []
+    state.socialAssessments = loadFromLocalStorage('socialAssessments') || []
     state.documents = loadFromLocalStorage('documents') || []
     state.insuranceClaims = loadFromLocalStorage('insuranceClaims') || []
     state.referrals = loadFromLocalStorage('referrals') || []
@@ -152,6 +163,14 @@ export const mutations = {
   ADD_TASK(state, task) {
     state.tasks.push(task)
     saveToLocalStorage('tasks', state.tasks)
+  },
+  ADD_CARE_TEAM_MEMBER(state, member) {
+    state.careTeamMembers.push(member)
+    saveToLocalStorage('careTeamMembers', state.careTeamMembers)
+  },
+  ADD_SOCIAL_ASSESSMENT(state, assessment) {
+    state.socialAssessments.push(assessment)
+    saveToLocalStorage('socialAssessments', state.socialAssessments)
   },
   UPDATE_TASK(state, task) {
     const idx = state.tasks.findIndex(t => t.id === task.id)
@@ -224,6 +243,86 @@ export const actions = {
       region: patient.region || rootState.auth.region,
       createdAt: new Date().toISOString()
     })
+  },
+  updatePatient({ state, commit, rootState }, { patientId, updates }) {
+    const existing = state.patients.find(item => item.id === patientId)
+    if (!existing) return null
+    const record = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+      updatedBy: rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
+    }
+    commit('UPDATE_PATIENT', record)
+    return record
+  },
+  dischargePatient({ state, commit, rootState }, payload) {
+    const patientId = payload.patientId
+    const existing = state.patients.find(item => item.id === patientId)
+    if (!existing) throw new Error('Patient record not found')
+    if (String(existing.patientStatus || '').toLowerCase() === 'discharged') return existing
+
+    const requestedDischargeAt = payload.dischargedAt || payload.dischargeDateTime
+    const parsedDischargeAt = requestedDischargeAt ? new Date(requestedDischargeAt) : new Date()
+    const dischargedAt = isNaN(parsedDischargeAt.getTime()) ? new Date().toISOString() : parsedDischargeAt.toISOString()
+    const actor = rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
+    const dischargeRecord = {
+      ...existing,
+      patientStatus: 'Discharged',
+      admissionStatus: 'Discharged',
+      recordStatus: 'Inactive',
+      active: false,
+      dischargedAt,
+      dischargeDisposition: payload.disposition || payload.dischargeDisposition || 'Home',
+      dischargeReason: payload.reason || payload.primaryDiagnosis || payload.note || 'Discharge workflow completed',
+      dischargedBy: actor,
+      updatedAt: dischargedAt,
+      updatedBy: actor
+    }
+    commit('UPDATE_PATIENT', dischargeRecord)
+
+    state.inpatients
+      .filter(item => item.patientId === patientId && String(item.status || '').toLowerCase() !== 'discharged')
+      .forEach(item => commit('UPDATE_INPATIENT', {
+        ...item,
+        status: 'Discharged',
+        dischargedAt,
+        dischargeDisposition: dischargeRecord.dischargeDisposition,
+        dischargedBy: actor
+      }))
+
+    state.tasks
+      .filter(item => item.patientId === patientId && ['pending', 'hold'].includes(String(item.status || '').toLowerCase()))
+      .forEach(item => commit('UPDATE_TASK', {
+        ...item,
+        status: 'cancel',
+        updatedAt: dischargedAt,
+        updatedBy: actor,
+        actionReason: 'Closed by completed discharge workflow',
+        history: [
+          ...(item.history || []),
+          {
+            id: 'THS-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+            action: 'STATUS_UPDATED',
+            status: 'cancel',
+            actor,
+            at: dischargedAt,
+            reason: 'Closed by completed discharge workflow'
+          }
+        ]
+      }))
+
+    state.medications
+      .filter(item => item.patientId === patientId && String(item.status || '').toLowerCase() === 'active')
+      .forEach(item => commit('UPDATE_MEDICATION', {
+        ...item,
+        status: 'Discontinued',
+        discontinuedAt: dischargedAt,
+        discontinuedBy: actor,
+        discontinuationReason: 'Patient discharged'
+      }))
+
+    return dischargeRecord
   },
   provisionPatientWorkflowDemo({ state, commit, rootState }) {
     const institution = rootState.auth.institution || 'CameroHealth Demo Hospital'
@@ -374,7 +473,8 @@ export const actions = {
 
     return patientId
   },
-  async logVisit({ commit, rootState, dispatch }, visit) {
+  async logVisit({ state, commit, rootState, dispatch }, visit) {
+    assertPatientWritable(state, visit.patientId)
     commit('ADD_VISIT', {
       ...visit,
       id: Date.now(),
@@ -422,7 +522,8 @@ export const actions = {
     commit('SET_LAST_SYNC', new Date().toISOString())
     return new Promise(resolve => setTimeout(resolve, 1500))
   },
-  admitPatient({ commit, rootState }, record) {
+  admitPatient({ state, commit, rootState }, record) {
+    assertPatientWritable(state, record.patientId)
     commit('ADD_INPATIENT', {
       ...record,
       id: 'INP-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
@@ -446,7 +547,8 @@ export const actions = {
   updateAppointment({ commit }, appt) {
     commit('UPDATE_APPOINTMENT', appt)
   },
-  prescribeMedication({ commit, rootState }, med) {
+  prescribeMedication({ state, commit, rootState }, med) {
+    assertPatientWritable(state, med.patientId)
     const medicationRecord = {
       ...med,
       id: 'MED-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
@@ -460,7 +562,8 @@ export const actions = {
   updateMedication({ commit }, med) {
     commit('UPDATE_MEDICATION', med)
   },
-  orderLab({ commit, rootState }, order) {
+  orderLab({ state, commit, rootState }, order) {
+    assertPatientWritable(state, order.patientId)
     const labOrderRecord = {
       ...order,
       id: 'LAB-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
@@ -474,7 +577,8 @@ export const actions = {
   updateLabOrder({ commit }, order) {
     commit('UPDATE_LAB_ORDER', order)
   },
-  orderImaging({ commit, rootState }, order) {
+  orderImaging({ state, commit, rootState }, order) {
+    assertPatientWritable(state, order.patientId)
     const imagingOrderRecord = {
       ...order,
       id: 'IMG-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
@@ -500,14 +604,16 @@ export const actions = {
   updateInvoice({ commit }, invoice) {
     commit('UPDATE_INVOICE', invoice)
   },
-  recordVitalSigns({ commit, rootState }, vitals) {
+  recordVitalSigns({ state, commit, rootState }, vitals) {
+    assertPatientWritable(state, vitals.patientId)
     commit('ADD_VITAL_SIGNS', {
       ...vitals,
       id: 'VIT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       institution: rootState.auth.institution
     })
   },
-  addNursingNote({ commit, rootState }, note) {
+  addNursingNote({ state, commit, rootState }, note) {
+    assertPatientWritable(state, note.patientId)
     const now = new Date().toISOString()
     const actor = note.recordedBy || rootState.auth.fullName || 'Unknown user'
     commit('ADD_NURSING_NOTE', {
@@ -530,7 +636,8 @@ export const actions = {
       ]
     })
   },
-  addMedicalNote({ commit, rootState }, note) {
+  addMedicalNote({ state, commit, rootState }, note) {
+    assertPatientWritable(state, note.patientId)
     const now = new Date().toISOString()
     const actor = note.recordedBy || rootState.auth.fullName || 'Unknown user'
     commit('ADD_MEDICAL_NOTE', {
@@ -556,6 +663,7 @@ export const actions = {
   updateNursingNote({ state, commit, rootState }, payload) {
     const existing = state.nursingNotes.find(n => n.id === payload.id)
     if (!existing) return
+    assertPatientWritable(state, existing.patientId)
     const now = new Date().toISOString()
     const actor = payload.updatedBy || rootState.auth.fullName || 'Unknown user'
     const updates = payload.updates || {}
@@ -581,6 +689,7 @@ export const actions = {
   updateMedicalNote({ state, commit, rootState }, payload) {
     const existing = state.medicalNotes.find(n => n.id === payload.id)
     if (!existing) return
+    assertPatientWritable(state, existing.patientId)
     const now = new Date().toISOString()
     const actor = payload.updatedBy || rootState.auth.fullName || 'Unknown user'
     const updates = payload.updates || {}
@@ -603,7 +712,8 @@ export const actions = {
     }
     commit('UPDATE_MEDICAL_NOTE', next)
   },
-  createTask({ commit, rootState }, task) {
+  createTask({ state, commit, rootState }, task) {
+    assertPatientWritable(state, task.patientId)
     const now = new Date().toISOString()
     const actor = rootState.auth.fullName || 'Unknown user'
     const record = {
@@ -628,6 +738,30 @@ export const actions = {
       ]
     }
     commit('ADD_TASK', record)
+    return record
+  },
+  addCareTeamMember({ state, commit, rootState }, member) {
+    assertPatientWritable(state, member.patientId)
+    const record = {
+      ...member,
+      id: 'CTM-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      addedAt: new Date().toISOString(),
+      addedBy: rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
+    }
+    commit('ADD_CARE_TEAM_MEMBER', record)
+    return record
+  },
+  addSocialAssessment({ state, commit, rootState }, assessment) {
+    assertPatientWritable(state, assessment.patientId)
+    const record = {
+      ...assessment,
+      id: 'SDH-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+      institution: rootState.auth.institution,
+      assessedAt: new Date().toISOString(),
+      assessedBy: rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
+    }
+    commit('ADD_SOCIAL_ASSESSMENT', record)
     return record
   },
   updateTaskStatus({ state, commit, rootState }, payload) {
@@ -814,6 +948,8 @@ export const getters = {
     if (getters.isClinical) return state.tasks.filter(t => t.institution === rootState.auth.institution)
     return state.tasks
   },
+  patientCareTeam: state => patientId => state.careTeamMembers.filter(item => item.patientId === patientId),
+  patientSocialAssessments: state => patientId => state.socialAssessments.filter(item => item.patientId === patientId),
   getDocuments: (state, getters, rootState) => {
     if (getters.isClinical) return state.documents.filter(item => item.institution === rootState.auth.institution)
     return state.documents
@@ -859,7 +995,8 @@ export const getters = {
       const patientLabs = labOrders.filter(item => item.patientId === patient.id)
       const patientImaging = imagingOrders.filter(item => item.patientId === patient.id)
       const patientTasks = tasks.filter(item => item.patientId === patient.id)
-      const activeInpatient = inpatients.find(item => item.patientId === patient.id && item.status !== 'Discharged')
+      const isDischarged = String(patient.patientStatus || patient.admissionStatus || '').toLowerCase() === 'discharged' || String(patient.recordStatus || '').toLowerCase() === 'inactive'
+      const activeInpatient = inpatients.find(item => item.patientId === patient.id && String(item.status || '').toLowerCase() !== 'discharged')
       const latestVisit = latestByDate(patientVisits, 'createdAt')
       const latestVitals = latestByDate(vitalSigns.filter(item => item.patientId === patient.id), 'recordedAt')
       const nextAppointment = upcomingAppointment(patientAppointments)
@@ -878,7 +1015,9 @@ export const getters = {
         ...patient,
         displayName: patient.name || `${patient.firstName || ''} ${patient.lastName || ''}`.trim(),
         mrn: patient.externalId || patient.id,
-        currentDepartment: resolveCurrentDepartment({ patient, activeInpatient, openOrders, latestVisit, nextAppointment }),
+        currentDepartment: isDischarged ? 'Inactive / Discharged' : resolveCurrentDepartment({ patient, activeInpatient, openOrders, latestVisit, nextAppointment }),
+        lifecycleStatus: isDischarged ? 'inactive' : ((!latestVisit && !activeInpatient) || patient.pendingAdmission || ['waiting', 'waitlisted', 'registered', 'pending'].includes(String(patient.patientStatus || '').toLowerCase()) ? 'waiting' : 'active'),
+        isDischarged,
         riskLevel: risk.level,
         riskReasons: risk.reasons,
         latestVisit,
@@ -895,6 +1034,11 @@ export const getters = {
       }
     })
   },
+  isPatientDischarged: state => patientId => {
+    const patient = state.patients.find(item => item.id === patientId)
+    if (!patient) return false
+    return String(patient.patientStatus || patient.admissionStatus || '').toLowerCase() === 'discharged' || String(patient.recordStatus || '').toLowerCase() === 'inactive'
+  },
   departmentQueues: (state, getters) => {
     const directory = getters.patientDirectory || []
     const labs = getters.getLabOrders || []
@@ -909,7 +1053,7 @@ export const getters = {
         title: 'Registration / Intake',
         icon: 'mdi-clipboard-account',
         color: '#003366',
-        patients: directory.filter(patient => !patient.latestVisit && !patient.activeInpatient),
+        patients: directory.filter(patient => patient.lifecycleStatus !== 'inactive' && !patient.latestVisit && !patient.activeInpatient),
         nextAction: 'Complete intake and confirm demographics'
       },
       {
@@ -917,7 +1061,7 @@ export const getters = {
         title: 'Nursing / Triage',
         icon: 'mdi-stethoscope',
         color: '#00A99D',
-        patients: directory.filter(patient => patient.riskLevel !== 'low' || !patient.latestVitals),
+        patients: directory.filter(patient => patient.lifecycleStatus !== 'inactive' && (patient.riskLevel !== 'low' || !patient.latestVitals)),
         nextAction: 'Capture vitals, allergies, acuity and nursing note'
       },
       {
@@ -925,7 +1069,7 @@ export const getters = {
         title: 'Provider Review',
         icon: 'mdi-medical-bag',
         color: '#0B3D2E',
-        patients: directory.filter(patient => patient.latestVitals && (!patient.latestVisit || patient.openTasks.length > 0)),
+        patients: directory.filter(patient => patient.lifecycleStatus !== 'inactive' && patient.latestVitals && (!patient.latestVisit || patient.openTasks.length > 0)),
         nextAction: 'Review chart, diagnose, place orders and plan care'
       },
       {
@@ -933,7 +1077,7 @@ export const getters = {
         title: 'Diagnostics',
         icon: 'mdi-flask-outline',
         color: '#D97706',
-        patients: directory.filter(patient => patient.openOrders.length > 0),
+        patients: directory.filter(patient => patient.lifecycleStatus !== 'inactive' && patient.openOrders.length > 0),
         nextAction: 'Complete pending lab and imaging orders'
       },
       {
@@ -953,7 +1097,7 @@ export const getters = {
       title: 'Scheduled Today',
       icon: 'mdi-calendar-clock',
       color: '#4B5563',
-      patients: directory.filter(patient => patient.nextAppointment && isToday(patient.nextAppointment.date)),
+      patients: directory.filter(patient => patient.lifecycleStatus !== 'inactive' && patient.nextAppointment && isToday(patient.nextAppointment.date)),
       total: appointments.filter(item => item.status === 'Scheduled' && isToday(item.date)).length,
       highRisk: 0,
       nextAction: 'Confirm arrivals and route to intake'
@@ -962,7 +1106,7 @@ export const getters = {
       title: 'Care Team Tasks',
       icon: 'mdi-format-list-checks',
       color: '#6D28D9',
-      patients: directory.filter(patient => patient.openTasks.length > 0),
+      patients: directory.filter(patient => patient.lifecycleStatus !== 'inactive' && patient.openTasks.length > 0),
       total: tasks.filter(item => item.status === 'pending' || item.status === 'hold').length,
       highRisk: 0,
       nextAction: 'Close, hold or cancel assigned care tasks'
@@ -990,8 +1134,8 @@ export const getters = {
     const portalMessages = getters.getPortalMessages || []
 
     return {
-      activePatients: directory.filter(patient => patient.currentDepartment !== 'Registry').length,
-      highRiskPatients: directory.filter(patient => patient.riskLevel === 'high').length,
+      activePatients: directory.filter(patient => patient.lifecycleStatus === 'active').length,
+      highRiskPatients: directory.filter(patient => patient.lifecycleStatus !== 'inactive' && patient.riskLevel === 'high').length,
       pendingDiagnostics: labOrders.filter(item => item.status !== 'Completed').length + imagingOrders.filter(item => item.status !== 'Completed').length,
       openTasks: tasks.filter(item => item.status === 'pending' || item.status === 'hold').length,
       admittedPatients: inpatients.filter(item => item.status !== 'Discharged').length,
@@ -1063,6 +1207,17 @@ function getChangedFields(previous, updates) {
     const next = JSON.stringify(updates[key])
     return prev !== next
   })
+}
+
+function assertPatientWritable(state, patientId) {
+  if (!patientId) return
+  const patient = state.patients.find(item => item.id === patientId)
+  if (!patient) return
+  const status = String(patient.patientStatus || patient.admissionStatus || '').toLowerCase()
+  const inactive = String(patient.recordStatus || '').toLowerCase() === 'inactive' || patient.active === false
+  if (status === 'discharged' || inactive) {
+    throw new Error('PATIENT_DISCHARGED_READ_ONLY')
+  }
 }
 
 function latestByDate(records, field) {
