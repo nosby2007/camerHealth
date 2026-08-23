@@ -243,14 +243,95 @@
               </div>
 
               <div class="summary-status-grid">
-                <article v-for="item in summaryStatusCards" :key="item.label" :class="['summary-status-card', item.status]">
+                <button
+                  v-for="item in summaryStatusCards"
+                  :key="item.label"
+                  type="button"
+                  :class="['summary-status-card', item.status]"
+                  @click="openCommandAction(item.action)"
+                >
                   <v-icon small>{{ item.icon }}</v-icon>
                   <div>
                     <span>{{ item.label }}</span>
                     <strong>{{ item.value }}</strong>
                     <p>{{ item.detail }}</p>
                   </div>
-                </article>
+                </button>
+              </div>
+
+              <section class="summary-cycle-panel">
+                <header>
+                  <div>
+                    <span>Patient cycle</span>
+                    <strong>Admission to continuity of care</strong>
+                  </div>
+                  <div class="summary-completeness">
+                    <strong>{{ summaryCompleteness }}%</strong>
+                    <span>chart readiness</span>
+                  </div>
+                </header>
+                <div class="summary-cycle-track">
+                  <button
+                    v-for="(stage, index) in summaryCareCycle"
+                    :key="stage.key"
+                    type="button"
+                    :class="['summary-cycle-step', stage.status]"
+                    @click="openCommandAction(stage.action)"
+                  >
+                    <span>{{ index + 1 }}</span>
+                    <div>
+                      <strong>{{ stage.label }}</strong>
+                      <small>{{ stage.detail }}</small>
+                    </div>
+                    <v-icon x-small>mdi-chevron-right</v-icon>
+                  </button>
+                </div>
+              </section>
+
+              <div class="summary-columns summary-clinical-grid">
+                <section class="summary-panel">
+                  <header>
+                    <span>Safety watch</span>
+                    <strong>Critical facts before every intervention</strong>
+                  </header>
+                  <div class="summary-safety-list">
+                    <button
+                      v-for="item in summarySafetyItems"
+                      :key="item.label"
+                      type="button"
+                      :class="item.level"
+                      @click="openCommandAction(item.action)"
+                    >
+                      <v-icon small>{{ item.icon }}</v-icon>
+                      <div>
+                        <strong>{{ item.label }}</strong>
+                        <span>{{ item.detail }}</span>
+                      </div>
+                    </button>
+                  </div>
+                </section>
+
+                <section class="summary-panel">
+                  <header>
+                    <span>Department ownership</span>
+                    <strong>Who acts next across the hospital</strong>
+                  </header>
+                  <div class="summary-department-list">
+                    <button
+                      v-for="item in summaryDepartmentItems"
+                      :key="item.label"
+                      type="button"
+                      @click="openCommandAction(item.action)"
+                    >
+                      <v-icon small :color="item.color">{{ item.icon }}</v-icon>
+                      <div>
+                        <strong>{{ item.label }}</strong>
+                        <span>{{ item.detail }}</span>
+                      </div>
+                      <em :class="item.status">{{ item.badge }}</em>
+                    </button>
+                  </div>
+                </section>
               </div>
 
             <div class="summary-columns">
@@ -2980,57 +3061,136 @@ export default {
           value: abnormalVitals ? 'Needs review' : (this.latestVitalsSummary ? 'Stable trend' : 'Vitals due'),
           detail: this.latestVitalsSummary || 'Capture vitals, pain and GCS.',
           status: abnormalVitals ? 'due' : (this.latestVitalsSummary ? 'complete' : 'warning'),
-          icon: 'mdi-heart-pulse'
+          icon: 'mdi-heart-pulse',
+          action: 'nurse'
         },
         {
           label: 'Care workload',
           value: this.patientTasks.length ? `${this.patientTasks.length} task(s)` : 'Routine care',
           detail: this.patientTasks.length ? 'Review worklist and document completion.' : 'Continue scheduled rounds.',
           status: this.patientTasks.length ? 'active' : 'complete',
-          icon: 'mdi-format-list-checks'
+          icon: 'mdi-format-list-checks',
+          action: 'worklist'
         },
         {
           label: 'Orders / meds',
           value: `${this.patientLabOrders.length + this.patientImagingOrders.length + this.patientMedications.length} active`,
           detail: this.patientMedications.length ? 'Medication profile available for MAR review.' : 'Check med reconciliation and orders.',
           status: this.patientMedications.length ? 'active' : 'warning',
-          icon: 'mdi-clipboard-pulse-outline'
+          icon: 'mdi-clipboard-pulse-outline',
+          action: 'orders'
         },
         {
           label: 'Discharge readiness',
           value: hasDischargeDoc ? 'Started' : 'Prepare',
           detail: this.dischargeReadinessLabel,
           status: hasDischargeDoc && !this.patientTasks.length ? 'complete' : 'warning',
-          icon: 'mdi-exit-run'
+          icon: 'mdi-exit-run',
+          action: 'discharge-plan'
         },
         {
           label: 'Social / family',
           value: this.canViewSocialNeeds ? this.summarySocialStatus : 'Protected',
           detail: this.canViewSocialNeeds ? 'Transport, family, finances and home support visible.' : 'Visible by role authorization only.',
           status: this.canViewSocialNeeds ? this.summarySocialStatusLevel : 'protected',
-          icon: 'mdi-account-group-outline'
+          icon: 'mdi-account-group-outline',
+          action: this.canViewSocialNeeds ? 'social' : 'care-team'
         },
         {
           label: 'Last care entry',
           value: this.recentTimedCareEntries.length ? this.formatShortDate(this.recentTimedCareEntries[0].documentedAt) : 'Not filed',
           detail: this.recentTimedCareEntries[0]?.summary || 'Use Timed care to document bedside work.',
           status: this.recentTimedCareEntries.length ? 'complete' : 'warning',
-          icon: 'mdi-clock-edit-outline'
+          icon: 'mdi-clock-edit-outline',
+          action: 'flowsheet'
         },
         {
           label: 'Care plan',
           value: carePlanSummary.goalCount ? `${carePlanSummary.completedGoals || 0}/${carePlanSummary.goalCount}` : 'No plan yet',
           detail: carePlanSummary.recentProgress ? `Last update: ${carePlanSummary.recentProgress.label}` : 'Create goals, interventions and outcomes.',
           status: carePlanSummary.goalCount ? 'complete' : 'warning',
-          icon: 'mdi-clipboard-text-outline'
+          icon: 'mdi-clipboard-text-outline',
+          action: 'care-plan'
         },
         {
           label: 'Education',
           value: educationSummary.documentedCount ? `${educationSummary.completedCount || 0}/${educationSummary.pointCount || 0}` : 'No teaching filed',
           detail: educationSummary.latestEducation ? `Latest teaching by ${educationSummary.latestEducation.learners.join(', ') || 'team'}` : 'Document teaching completed and family education.',
           status: educationSummary.documentedCount ? 'complete' : 'warning',
-          icon: 'mdi-school-outline'
+          icon: 'mdi-school-outline',
+          action: 'education'
         }
+      ]
+    },
+    summaryCompleteness() {
+      const carePlan = this.$store.getters['carePlan/carePlanSummaryProjection']?.(this.activePatientId) || {}
+      const education = this.$store.getters['education/educationSummaryProjection']?.(this.activePatientId) || {}
+      const discharge = this.$store.getters['discharge/patientDischargeOverview']?.(this.activePatientId) || {}
+      const checks = [
+        Boolean(this.activePatient.mrn),
+        Boolean(this.latestVitalsSummary),
+        Boolean(this.latestVisit || this.latestNursingNote),
+        Boolean(this.patientMedications.length || this.patientLabOrders.length || this.patientImagingOrders.length),
+        Boolean(carePlan.goalCount),
+        Boolean(education.documentedCount),
+        Boolean(discharge.noteCount || this.patientDocuments.some(doc => /discharge|sortie|avs/i.test(`${doc.title || ''} ${doc.category || ''}`)))
+      ]
+      return Math.round((checks.filter(Boolean).length / checks.length) * 100)
+    },
+    summaryCareCycle() {
+      const carePlan = this.$store.getters['carePlan/carePlanSummaryProjection']?.(this.activePatientId) || {}
+      const discharge = this.$store.getters['discharge/patientDischargeOverview']?.(this.activePatientId) || {}
+      return [
+        {
+          key: 'admission',
+          label: 'Admission',
+          detail: this.activePatient.mrn ? `${this.activePatient.patientClass} · ${this.activePatient.bed}` : 'Identity and service assignment due',
+          status: this.activePatient.mrn ? 'complete' : 'due',
+          action: 'registration'
+        },
+        {
+          key: 'assessment',
+          label: 'Assessment',
+          detail: this.latestVitalsSummary ? 'Initial clinical set filed' : 'Vitals, pain and GCS due',
+          status: this.latestVitalsSummary ? 'complete' : 'due',
+          action: 'nurse'
+        },
+        {
+          key: 'active-care',
+          label: 'Active care',
+          detail: carePlan.goalCount ? `${carePlan.goalCount} goal(s) · ${this.patientTasks.length} task(s)` : 'Care plan needs activation',
+          status: carePlan.goalCount ? 'active' : 'warning',
+          action: 'care-plan'
+        },
+        {
+          key: 'discharge',
+          label: 'Discharge',
+          detail: discharge.noteCount ? `${discharge.openCount || 0} open continuity item(s)` : 'Prepare instructions and follow-up',
+          status: discharge.noteCount && !discharge.openCount ? 'complete' : 'warning',
+          action: 'discharge-plan'
+        }
+      ]
+    },
+    summarySafetyItems() {
+      const woundCount = this.patientWounds.filter(item => !['resolved', 'healed', 'closed'].includes(String(item.status || '').toLowerCase())).length
+      const fallRisk = this.fallRiskEntry ? this.fallRiskEntry.value : 'Not documented'
+      return [
+        { label: 'Allergies', detail: this.activePatient.allergies || 'No known allergies', level: /no known/i.test(this.activePatient.allergies || '') ? 'normal' : 'critical', icon: 'mdi-alert-circle-outline', action: 'medication' },
+        { label: 'Precautions', detail: this.activePatient.precautions || 'Standard', level: /standard/i.test(this.activePatient.precautions || '') ? 'normal' : 'warning', icon: 'mdi-shield-alert-outline', action: 'nurse' },
+        { label: 'Fall risk', detail: fallRisk, level: /not documented/i.test(fallRisk) ? 'warning' : 'normal', icon: 'mdi-walk', action: 'flowsheet' },
+        { label: 'Skin / devices', detail: woundCount ? `${woundCount} active wound(s) on avatar` : 'No active wound documented', level: woundCount ? 'warning' : 'normal', icon: 'mdi-human', action: 'body' }
+      ]
+    },
+    summaryDepartmentItems() {
+      const pendingLabs = this.patientLabOrders.filter(item => !/complete|result|validated|cancel/i.test(String(item.status || ''))).length
+      const pendingImaging = this.patientImagingOrders.filter(item => !/complete|report|validated|cancel/i.test(String(item.status || ''))).length
+      return [
+        { label: 'Nursing', detail: this.latestNursingNote ? 'Bedside note and observations available' : 'Nursing assessment and handoff due', badge: this.latestNursingNote ? 'Filed' : 'Due', status: this.latestNursingNote ? 'complete' : 'due', icon: 'mdi-stethoscope', color: '#0f766e', action: 'nurse' },
+        { label: 'Medical team', detail: this.patientMedicalNotes.length ? `${this.patientMedicalNotes.length} medical note(s)` : 'Provider diagnosis and plan pending', badge: this.patientMedicalNotes.length ? 'Active' : 'Review', status: this.patientMedicalNotes.length ? 'active' : 'warning', icon: 'mdi-doctor', color: '#003366', action: this.canLaunchMedical ? 'medical' : 'notes' },
+        { label: 'Laboratory', detail: this.patientLabOrders.length ? `${pendingLabs} pending of ${this.patientLabOrders.length}` : 'No laboratory order', badge: pendingLabs ? 'Pending' : 'Clear', status: pendingLabs ? 'warning' : 'complete', icon: 'mdi-flask', color: '#0369a1', action: 'lab-results' },
+        { label: 'Pharmacy / MAR', detail: this.patientMedications.length ? `${this.patientMedications.length} active medication(s)` : 'Medication reconciliation due', badge: this.patientMedications.length ? 'Active' : 'Due', status: this.patientMedications.length ? 'active' : 'due', icon: 'mdi-pill', color: '#7c3aed', action: 'medication' },
+        { label: 'Imaging', detail: this.patientImagingOrders.length ? `${pendingImaging} pending of ${this.patientImagingOrders.length}` : 'No imaging request', badge: pendingImaging ? 'Pending' : 'Clear', status: pendingImaging ? 'warning' : 'complete', icon: 'mdi-radiology-box', color: '#b45309', action: 'imaging-results' },
+        { label: 'Continuity / family', detail: this.dischargeReadinessLabel, badge: 'Review', status: 'warning', icon: 'mdi-account-group-outline', color: '#be123c', action: 'discharge-plan' }
       ]
     },
     summarySocialStatus() {
@@ -5280,6 +5440,22 @@ export default {
         this.selectedChartTab = this.visibleChartTabs.includes('Orders') ? 'Orders' : 'Navigators'
         return
       }
+      if (target === 'lab-results') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Lab Results') ? 'Lab Results' : (this.visibleChartTabs.includes('Orders') ? 'Orders' : 'Summary')
+        return
+      }
+      if (target === 'imaging-results') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Chart Review') ? 'Chart Review' : (this.visibleChartTabs.includes('Orders') ? 'Orders' : 'Summary')
+        return
+      }
+      if (target === 'care-team') {
+        this.selectedChartTab = this.visibleChartTabs.includes('Care Teams') ? 'Care Teams' : 'Summary'
+        return
+      }
+      if (target === 'discharge-plan') {
+        this.dialogs.discharge = true
+        return
+      }
       if (target === 'admission') {
         this.openNavigatorDocumentPreset({
           title: 'Admission assessment',
@@ -6924,13 +7100,20 @@ function latestByDate(items, field) {
 .summary-status-card {
   display: flex;
   gap: 8px;
+  width: 100%;
   min-height: 104px;
   padding: 10px;
   border: 1px solid #d7e0df;
   border-left: 4px solid #64748b;
   border-radius: 8px;
   background: #fff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
+.summary-status-card:hover,
+.summary-status-card:focus-visible { background: #f0fdfa; outline: 2px solid transparent; }
 .summary-status-card.complete { border-left-color: #16a34a; }
 .summary-status-card.active { border-left-color: #0369a1; }
 .summary-status-card.warning { border-left-color: #f97316; }
@@ -6954,6 +7137,108 @@ function latestByDate(items, field) {
   font-size: 11px;
   line-height: 1.3;
 }
+.summary-cycle-panel {
+  border: 1px solid #b7c9c6;
+  background: #fff;
+}
+.summary-cycle-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #d7e0df;
+  background: #f8fafc;
+}
+.summary-cycle-panel > header span {
+  display: block;
+  color: #0f766e;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.summary-cycle-panel > header strong { color: #0f172a; font-size: 14px; }
+.summary-completeness { text-align: right; }
+.summary-completeness strong { display: block; color: #0f766e !important; font-size: 18px !important; }
+.summary-cycle-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.summary-cycle-step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 8px;
+  min-height: 68px;
+  padding: 10px;
+  border: 0;
+  border-right: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+  text-align: left;
+}
+.summary-cycle-step:last-child { border-right: 0; }
+.summary-cycle-step:hover { background: #f0fdfa; }
+.summary-cycle-step > span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 900;
+}
+.summary-cycle-step.complete > span { background: #dcfce7; color: #166534; }
+.summary-cycle-step.active > span { background: #dbeafe; color: #075985; }
+.summary-cycle-step.warning > span { background: #ffedd5; color: #9a3412; }
+.summary-cycle-step.due > span { background: #fee2e2; color: #991b1b; }
+.summary-cycle-step strong { display: block; font-size: 12px; }
+.summary-cycle-step small { display: block; margin-top: 2px; color: #64748b; font-size: 10px; line-height: 1.25; }
+.summary-safety-list,
+.summary-department-list { display: grid; }
+.summary-safety-list button,
+.summary-department-list button {
+  display: grid;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+  text-align: left;
+}
+.summary-safety-list button { grid-template-columns: 22px minmax(0, 1fr); border-left: 4px solid #16a34a; }
+.summary-safety-list button.warning { border-left-color: #f97316; }
+.summary-safety-list button.critical { border-left-color: #be123c; }
+.summary-department-list button { grid-template-columns: 22px minmax(0, 1fr) auto; }
+.summary-safety-list button:last-child,
+.summary-department-list button:last-child { border-bottom: 0; }
+.summary-safety-list button:hover,
+.summary-department-list button:hover { background: #f8fafc; }
+.summary-safety-list strong,
+.summary-department-list strong { display: block; color: #134e4a; font-size: 12px; }
+.summary-safety-list span,
+.summary-department-list span { display: block; color: #64748b; font-size: 10px; }
+.summary-department-list em {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.summary-department-list em.complete { background: #dcfce7; color: #166534; }
+.summary-department-list em.active { background: #dbeafe; color: #075985; }
+.summary-department-list em.warning { background: #ffedd5; color: #9a3412; }
+.summary-department-list em.due { background: #fee2e2; color: #991b1b; }
 .summary-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -9280,6 +9565,11 @@ function latestByDate(items, field) {
   .summary-status-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .summary-cycle-track {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .summary-cycle-step:nth-child(2) { border-right: 0; }
+  .summary-cycle-step:nth-child(-n+2) { border-bottom: 1px solid #e2e8f0; }
   .navigator-focus-head {
     flex-direction: column;
   }
@@ -9327,6 +9617,15 @@ function latestByDate(items, field) {
   .summary-status-grid {
     grid-template-columns: 1fr;
   }
+  .summary-cycle-track {
+    grid-template-columns: 1fr;
+  }
+  .summary-cycle-step,
+  .summary-cycle-step:nth-child(2) {
+    border-right: 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .summary-cycle-step:last-child { border-bottom: 0; }
   .navigator-focus-grid {
     grid-template-columns: 1fr;
   }

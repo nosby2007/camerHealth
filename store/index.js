@@ -1,45 +1,24 @@
-import Vue from 'vue'
-import Vuex from 'vuex'
-
-Vue.use(Vuex)
-
-// Modules
-import patient from './modules/patient'
-import flowsheets from './modules/flowsheets'
-import orders from './modules/orders'
-import nursing from './modules/nursing'
-import carePlan from './modules/carePlan'
-import education from './modules/education'
-import discharge from './modules/discharge'
-
-export default new Vuex.Store({
-  modules: {
-    patient,
-    flowsheets,
-    orders,
-    nursing,
-    carePlan,
-    education,
-    discharge
-  },
-  state: {
-    appLoading: false,
-    appError: null
-  },
-  mutations: {
-    SET_LOADING(state, loading) {
-      state.appLoading = loading
-    },
-    SET_ERROR(state, error) {
-      state.appError = error
-    }
-  },
-  actions: {
-    setLoading({ commit }, loading) {
-      commit('SET_LOADING', loading)
-    },
-    setError({ commit }, error) {
-      commit('SET_ERROR', error)
-    }
-  }
+// Nuxt assembles every file in /store into the application store. Keeping the
+// root in module format preserves auth, clinical, nursing and all other modules.
+export const state = () => ({
+  appLoading: false,
+  appError: null
 })
+
+export const mutations = {
+  SET_LOADING(state, loading) {
+    state.appLoading = loading
+  },
+  SET_ERROR(state, error) {
+    state.appError = error
+  }
+}
+
+export const actions = {
+  setLoading({ commit }, loading) {
+    commit('SET_LOADING', loading)
+  },
+  setError({ commit }, error) {
+    commit('SET_ERROR', error)
+  }
+}
