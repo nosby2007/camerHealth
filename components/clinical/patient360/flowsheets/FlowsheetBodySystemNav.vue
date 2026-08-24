@@ -83,6 +83,7 @@ export default {
     },
     toggleCollapse() {
       this.isCollapsed = !this.isCollapsed
+      this.$emit('collapse-change', this.isCollapsed)
     }
   }
 }
@@ -90,17 +91,18 @@ export default {
 
 <style scoped>
 .body-system-nav {
-  background: #f9f9f9;
-  border-right: 1px solid #e0e0e0;
-  overflow: visible;
+  background: #f7faf9;
+  border-right: 1px solid #cbd5e1;
+  min-width: 0;
+  overflow: hidden;
   padding: 0;
   font-size: 12px;
   transition: all 0.3s ease;
-  width: 200px;
+  width: auto;
 }
 
 .body-system-nav.collapsed {
-  width: 40px;
+  width: auto;
   padding: 0;
 }
 
@@ -116,7 +118,7 @@ export default {
   font-weight: 600;
   color: #134e4a;
   padding: 8px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #cbd5e1;
   margin-bottom: 8px;
   gap: 4px;
 }
@@ -176,7 +178,7 @@ export default {
   align-items: center;
   padding: 6px 8px;
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: 2px;
   transition: background 0.2s ease;
   user-select: none;
 }

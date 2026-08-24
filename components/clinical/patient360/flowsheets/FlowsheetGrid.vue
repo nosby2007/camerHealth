@@ -1,6 +1,6 @@
 <template>
-  <div class="flowsheet-grid">
-    <div class="grid-header sticky">
+  <div class="flowsheet-grid" :style="{ minWidth: gridMinWidth }">
+    <div :class="['grid-header', 'sticky', { 'without-last-filed': !showLastFiled }]">
       <div class="row-label-col">Row</div>
       <div v-if="showLastFiled" class="last-filed-col">Last Filed</div>
       <div class="time-columns">
@@ -85,6 +85,10 @@ export default {
     },
     collapsedRows() {
       return this.$store.state.flowsheets.collapsedRows
+    },
+    gridMinWidth() {
+      const fixedColumns = this.showLastFiled ? 330 : 210
+      return `${fixedColumns + (this.columns.length * 120)}px`
     }
   },
   methods: {
@@ -139,20 +143,27 @@ export default {
 
 <style scoped>
 .flowsheet-grid {
+  --row-label-width: 210px;
+  --last-filed-width: 120px;
+  --time-column-width: 120px;
   font-size: 12px;
+  width: 100%;
+  background: #fff;
 }
 
 .grid-header {
   display: grid;
-  grid-template-columns: minmax(150px, auto) minmax(120px, auto) 1fr;
-  gap: 1px;
-  padding: 8px;
-  background: #e8eaea;
-  border-bottom: 2px solid #999;
+  grid-template-columns: var(--row-label-width) var(--last-filed-width) minmax(0, 1fr);
+  background: #dce8e6;
+  border-bottom: 2px solid #0f766e;
   top: 0;
   z-index: 10;
   width: 100%;
   box-sizing: border-box;
+}
+
+.grid-header.without-last-filed {
+  grid-template-columns: var(--row-label-width) minmax(0, 1fr);
 }
 
 .grid-header.sticky {
@@ -162,24 +173,30 @@ export default {
 
 .row-label-col,
 .last-filed-col {
-  padding: 8px;
-  background: #f0f0f0;
-  font-weight: 600;
+  align-items: center;
+  display: flex;
+  min-height: 52px;
+  padding: 8px 12px;
+  background: #edf4f3;
+  font-weight: 800;
   text-align: left;
-  border-right: 1px solid #ccc;
+  border-right: 1px solid #b8c8c6;
+  box-sizing: border-box;
 }
 
 .time-columns {
   display: flex;
-  gap: 1px;
-  background: #e8eaea;
+  background: #dce8e6;
+  min-width: 0;
 }
 
 .time-column {
-  flex: 0 0 120px;
-  padding: 8px;
-  background: #f0f0f0;
-  border-right: 1px solid #ccc;
+  box-sizing: border-box;
+  flex: 0 0 var(--time-column-width);
+  min-height: 52px;
+  padding: 8px 10px;
+  background: #edf4f3;
+  border-right: 1px solid #b8c8c6;
 }
 
 .column-time {
@@ -202,11 +219,12 @@ export default {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #ddd;
+  background: #e7efee;
+  border-bottom: 1px solid #cbd5e1;
+  border-top: 1px solid #cbd5e1;
   cursor: pointer;
   font-weight: 600;
-  color: #333;
+  color: #134e4a;
   user-select: none;
 }
 

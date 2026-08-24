@@ -1,5 +1,5 @@
 <template>
-  <div :class="['flowsheet-row', { selected: isSelected, 'is-child': indentLevel > 0 }]" :style="{ paddingLeft: `${indentLevel * 24}px` }">
+  <div :class="['flowsheet-row', { selected: isSelected, 'is-child': indentLevel > 0, 'without-last-filed': !showLastFiled }]" :style="{ '--row-indent': `${indentLevel * 18}px` }">
     <div class="row-label" :title="row.label" @click="$emit('select')">
       <div class="label-content">
         <button
@@ -73,15 +73,20 @@ export default {
 
 <style scoped>
 .flowsheet-row {
+  --row-label-width: 210px;
+  --last-filed-width: 120px;
   display: grid;
-  grid-template-columns: minmax(150px, auto) minmax(120px, auto) 1fr;
-  gap: 1px;
-  background: #e8eaea;
-  padding: 1px;
+  grid-template-columns: var(--row-label-width) var(--last-filed-width) minmax(0, 1fr);
+  background: #fff;
+  border-bottom: 1px solid #d7e0df;
   cursor: pointer;
   transition: background 0.2s ease;
   width: 100%;
   box-sizing: border-box;
+}
+
+.flowsheet-row.without-last-filed {
+  grid-template-columns: var(--row-label-width) minmax(0, 1fr);
 }
 
 .flowsheet-row.is-child {
@@ -101,12 +106,15 @@ export default {
 }
 
 .row-label {
-  padding: 8px;
+  min-height: 44px;
+  padding: 7px 10px;
   background: #fff;
   font-size: 12px;
   font-weight: 500;
   color: #333;
-  overflow: visible;
+  border-right: 1px solid #d7e0df;
+  box-sizing: border-box;
+  overflow: hidden;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -124,6 +132,7 @@ export default {
   gap: 6px;
   width: 100%;
   min-width: 0;
+  padding-left: var(--row-indent, 0);
 }
 
 .expand-toggle {
@@ -162,11 +171,16 @@ export default {
 }
 
 .last-filed {
-  padding: 8px;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  padding: 7px 8px;
   background: #fff;
   font-size: 12px;
   text-align: center;
-  border-right: 1px solid #ccc;
+  border-right: 1px solid #d7e0df;
+  box-sizing: border-box;
   color: #666;
 }
 
@@ -176,7 +190,7 @@ export default {
 
 .time-columns {
   display: flex;
-  gap: 1px;
-  background: #e8eaea;
+  min-width: 0;
+  background: #fff;
 }
 </style>

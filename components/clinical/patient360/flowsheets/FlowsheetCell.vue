@@ -79,13 +79,14 @@ export default {
 <style scoped>
 .flowsheet-cell {
   flex: 0 0 120px;
+  box-sizing: border-box;
   padding: 0;
   background: #fff;
-  border-right: 1px solid #ccc;
+  border-right: 1px solid #d7e0df;
   display: flex;
   align-items: stretch;
   justify-content: center;
-  min-height: 40px;
+  min-height: 44px;
   font-size: 12px;
 }
 
