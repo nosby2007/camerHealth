@@ -952,6 +952,131 @@ export const actions = {
   },
   async updatePatient({ dispatch }, payload) {
     return await dispatch('updatePatientApi', payload)
+  },
+  async logVisit({ commit }, visitData) {
+    try {
+      const { data } = await clinicalApi.createVisit(visitData)
+      commit('ADD_VISIT', data.visit || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async orderLab({ commit }, orderData) {
+    try {
+      const { data } = await clinicalApi.createLabOrder(orderData)
+      commit('ADD_LAB_ORDER', data.labOrder || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async updateLabOrder({ commit }, { id, ...data }) {
+    try {
+      const { data: updated } = await clinicalApi.updateLabOrder(id, data)
+      commit('UPDATE_LAB_ORDER', updated.labOrder || updated)
+      return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async orderImaging({ commit }, orderData) {
+    try {
+      const { data } = await clinicalApi.createImagingOrder(orderData)
+      commit('ADD_IMAGING_ORDER', data.imagingOrder || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async updateImagingOrder({ commit }, { id, ...data }) {
+    try {
+      const { data: updated } = await clinicalApi.updateImagingOrder(id, data)
+      commit('UPDATE_IMAGING_ORDER', updated.imagingOrder || updated)
+      return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async uploadImagingFile({ commit }, { id, data }) {
+    try {
+      const { data: updated } = await clinicalApi.uploadImagingFile(id, data)
+      commit('UPDATE_IMAGING_ORDER', updated.imagingOrder || updated)
+      return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async prescribeMedication({ commit }, medData) {
+    try {
+      const { data } = await clinicalApi.createMedication(medData)
+      commit('ADD_MEDICATION', data.medication || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async updateMedication({ commit }, { id, ...data }) {
+    try {
+      const { data: updated } = await clinicalApi.updateMedication(id, data)
+      commit('UPDATE_MEDICATION', updated.medication || updated)
+      return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async scheduleAppointment({ commit }, apptData) {
+    try {
+      const { data } = await appointmentApi.create(apptData)
+      commit('ADD_APPOINTMENT', data.appointment || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async updateAppointment({ commit }, { id, ...data }) {
+    try {
+      const { data: updated } = await appointmentApi.update(id, data)
+      commit('UPDATE_APPOINTMENT', updated.appointment || updated)
+      return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async admitPatient({ commit }, admitData) {
+    try {
+      const { data } = await inpatientApi.admit(admitData)
+      commit('ADD_INPATIENT', data.inpatient || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async updateInpatient({ commit }, { id, ...data }) {
+    try {
+      const { data: updated } = await inpatientApi.update(id, data)
+      commit('UPDATE_INPATIENT', updated.inpatient || updated)
+      return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async provisionPatientWorkflowDemo({ dispatch, state }) {
+    await dispatch('fetchPatients')
+    const first = state.patients[0]
+    return first ? first.id : null
   }
 }
 
@@ -966,87 +1091,85 @@ export const getters = {
 
   // FILTERED DATA
   getPatients: (state, getters, rootState) => {
-    // Ministry users sees ONLY anonymized stats conceptually (handled in view)
-    // For simplicity here, we filter by institution for clinical staff
     if (getters.isClinical) {
-      return state.patients.filter(p => p.institution === rootState.auth.institution)
+      return state.patients.filter(p => !p.institution || p.institution === rootState.auth.institution || p.facilityId === rootState.auth.facilityId)
     }
     return state.patients
   },
 
   getVisits: (state, getters, rootState) => {
     if (getters.isClinical) {
-      return state.visits.filter(v => v.institution === rootState.auth.institution)
+      return state.visits.filter(v => !v.institution || v.institution === rootState.auth.institution || v.facilityId === rootState.auth.facilityId)
     }
     return state.visits
   },
 
   getFieldReports: state => state.fieldReports,
   getInpatients: (state, getters, rootState) => {
-    if (getters.isClinical) return state.inpatients.filter(i => i.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.inpatients.filter(i => !i.institution || i.institution === rootState.auth.institution || i.facilityId === rootState.auth.facilityId)
     return state.inpatients
   },
   getAppointments: (state, getters, rootState) => {
-    if (getters.isClinical) return state.appointments.filter(a => a.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.appointments.filter(a => !a.institution || a.institution === rootState.auth.institution || a.facilityId === rootState.auth.facilityId)
     return state.appointments
   },
   getMedications: (state, getters, rootState) => {
-    if (getters.isClinical) return state.medications.filter(m => m.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.medications.filter(m => !m.institution || m.institution === rootState.auth.institution || m.facilityId === rootState.auth.facilityId)
     return state.medications
   },
   getLabOrders: (state, getters, rootState) => {
-    if (getters.isClinical) return state.labOrders.filter(l => l.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.labOrders.filter(l => !l.institution || l.institution === rootState.auth.institution || l.facilityId === rootState.auth.facilityId)
     return state.labOrders
   },
   getImagingOrders: (state, getters, rootState) => {
-    if (getters.isClinical) return state.imagingOrders.filter(i => i.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.imagingOrders.filter(i => !i.institution || i.institution === rootState.auth.institution || i.facilityId === rootState.auth.facilityId)
     return state.imagingOrders
   },
   getInvoices: (state, getters, rootState) => {
-    if (getters.isClinical) return state.invoices.filter(i => i.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.invoices.filter(i => !i.institution || i.institution === rootState.auth.institution || i.facilityId === rootState.auth.facilityId)
     return state.invoices
   },
   getVitalSigns: (state, getters, rootState) => {
-    if (getters.isClinical) return state.vitalSigns.filter(v => v.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.vitalSigns.filter(v => !v.institution || v.institution === rootState.auth.institution || v.facilityId === rootState.auth.facilityId)
     return state.vitalSigns
   },
   getNursingNotes: (state, getters, rootState) => {
-    if (getters.isClinical) return state.nursingNotes.filter(n => n.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.nursingNotes.filter(n => !n.institution || n.institution === rootState.auth.institution || n.facilityId === rootState.auth.facilityId)
     return state.nursingNotes
   },
   getMedicalNotes: (state, getters, rootState) => {
-    if (getters.isClinical) return state.medicalNotes.filter(n => n.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.medicalNotes.filter(n => !n.institution || n.institution === rootState.auth.institution || n.facilityId === rootState.auth.facilityId)
     return state.medicalNotes
   },
   getTasks: (state, getters, rootState) => {
-    if (getters.isClinical) return state.tasks.filter(t => t.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.tasks.filter(t => !t.institution || t.institution === rootState.auth.institution || t.facilityId === rootState.auth.facilityId)
     return state.tasks
   },
   patientCareTeam: state => patientId => state.careTeamMembers.filter(item => item.patientId === patientId),
   patientSocialAssessments: state => patientId => state.socialAssessments.filter(item => item.patientId === patientId),
   getDocuments: (state, getters, rootState) => {
-    if (getters.isClinical) return state.documents.filter(item => item.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.documents.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
     return state.documents
   },
   getInsuranceClaims: (state, getters, rootState) => {
-    if (getters.isClinical) return state.insuranceClaims.filter(item => item.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.insuranceClaims.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
     return state.insuranceClaims
   },
   getReferrals: (state, getters, rootState) => {
-    if (getters.isClinical) return state.referrals.filter(item => item.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.referrals.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
     return state.referrals
   },
   getMedicalTemplates: (state, getters, rootState) => {
     const templates = state.medicalTemplates && state.medicalTemplates.length ? state.medicalTemplates : defaultMedicalTemplates()
-    if (getters.isClinical) return templates.filter(item => !item.institution || item.institution === rootState.auth.institution)
+    if (getters.isClinical) return templates.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
     return templates
   },
   getPortalMessages: (state, getters, rootState) => {
-    if (getters.isClinical) return state.portalMessages.filter(item => item.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.portalMessages.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
     return state.portalMessages
   },
   getVoiceDrafts: (state, getters, rootState) => {
-    if (getters.isClinical) return state.voiceDrafts.filter(item => item.institution === rootState.auth.institution)
+    if (getters.isClinical) return state.voiceDrafts.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
     return state.voiceDrafts
   },
   patientDirectory: (state, getters) => {
@@ -1347,207 +1470,6 @@ function defaultMedicalTemplates() {
       createdAt: new Date().toISOString()
     }
   ]
-}
-
-  async logVisit({ commit }, visitData) {
-    try {
-      const { data } = await clinicalApi.createVisit(visitData)
-      commit('ADD_VISIT', data.visit || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  // ─── Lab Orders ──────────────────────────────────────────────────────────────
-  async fetchLabOrders({ commit }) {
-    try {
-      const { data } = await clinicalApi.getLabOrders()
-      commit('SET_LAB_ORDERS', data.labOrders || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async orderLab({ commit }, orderData) {
-    try {
-      const { data } = await clinicalApi.createLabOrder(orderData)
-      commit('ADD_LAB_ORDER', data.labOrder || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async updateLabOrder({ commit }, { id, ...data }) {
-    try {
-      const { data: updated } = await clinicalApi.updateLabOrder(id, data)
-      commit('UPDATE_LAB_ORDER', updated.labOrder || updated)
-      return updated
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  // ─── Imaging Orders ──────────────────────────────────────────────────────────
-  async fetchImagingOrders({ commit }) {
-    try {
-      const { data } = await clinicalApi.getImagingOrders()
-      commit('SET_IMAGING_ORDERS', data.imagingOrders || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async orderImaging({ commit }, orderData) {
-    try {
-      const { data } = await clinicalApi.createImagingOrder(orderData)
-      commit('ADD_IMAGING_ORDER', data.imagingOrder || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async updateImagingOrder({ commit }, { id, ...data }) {
-    try {
-      const { data: updated } = await clinicalApi.updateImagingOrder(id, data)
-      commit('UPDATE_IMAGING_ORDER', updated.imagingOrder || updated)
-      return updated
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async uploadImagingFile({ commit }, { id, data }) {
-    try {
-      const { data: updated } = await clinicalApi.uploadImagingFile(id, data)
-      commit('UPDATE_IMAGING_ORDER', updated.imagingOrder || updated)
-      return updated
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  // ─── Medications ─────────────────────────────────────────────────────────────
-  async fetchMedications({ commit }) {
-    try {
-      const { data } = await clinicalApi.getMedications()
-      commit('SET_MEDICATIONS', data.medications || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async prescribeMedication({ commit }, medData) {
-    try {
-      const { data } = await clinicalApi.createMedication(medData)
-      commit('ADD_MEDICATION', data.medication || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async updateMedication({ commit }, { id, ...data }) {
-    try {
-      const { data: updated } = await clinicalApi.updateMedication(id, data)
-      commit('UPDATE_MEDICATION', updated.medication || updated)
-      return updated
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  // ─── Appointments ────────────────────────────────────────────────────────────
-  async fetchAppointments({ commit }, params = {}) {
-    try {
-      const { data } = await appointmentApi.list(params)
-      commit('SET_APPOINTMENTS', data.appointments || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async scheduleAppointment({ commit }, apptData) {
-    try {
-      const { data } = await appointmentApi.create(apptData)
-      commit('ADD_APPOINTMENT', data.appointment || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async updateAppointment({ commit }, { id, ...data }) {
-    try {
-      const { data: updated } = await appointmentApi.update(id, data)
-      commit('UPDATE_APPOINTMENT', updated.appointment || updated)
-      return updated
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  // ─── Inpatients ──────────────────────────────────────────────────────────────
-  async fetchInpatients({ commit }, params = {}) {
-    try {
-      const { data } = await inpatientApi.list(params)
-      commit('SET_INPATIENTS', data.inpatients || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async admitPatient({ commit }, admitData) {
-    try {
-      const { data } = await inpatientApi.admit(admitData)
-      commit('ADD_INPATIENT', data.inpatient || data)
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  async updateInpatient({ commit }, { id, ...data }) {
-    try {
-      const { data: updated } = await inpatientApi.update(id, data)
-      commit('UPDATE_INPATIENT', updated.inpatient || updated)
-      return updated
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
-  // ─── Demo Workflow ────────────────────────────────────────────────────────────
-  async provisionPatientWorkflowDemo({ dispatch, state }) {
-    // Reload patients and return the first one for demo navigation
-    await dispatch('fetchPatients')
-    const first = state.patients[0]
-    return first ? first.id : null
-  }
 }
 
 

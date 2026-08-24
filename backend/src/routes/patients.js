@@ -144,14 +144,30 @@ router.get('/', authenticate, async (req, res, next) => {
     const search = req.query.search || ''
     const skip = (page - 1) * limit
 
-    const where = { facilityId: req.user.facilityId }
-    if (search) {
+    const where = {}
+    if (req.user && req.user.facilityId && req.user.role !== 'ADMIN') {
       where.OR = [
+        { facilityId: req.user.facilityId },
+        { facilityId: null }
+      ]
+    }
+
+    if (search) {
+      const searchFilter = [
         { firstName: { contains: search, mode: 'insensitive' } },
         { lastName: { contains: search, mode: 'insensitive' } },
         { mrn: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search } }
       ]
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: searchFilter }
+        ]
+        delete where.OR
+      } else {
+        where.OR = searchFilter
+      }
     }
 
     const [rawPatients, total] = await Promise.all([
@@ -179,7 +195,13 @@ router.get('/', authenticate, async (req, res, next) => {
 router.get('/:id', authenticate, async (req, res, next) => {
   try {
     const patient = await prisma.patient.findFirst({
-      where: { id: req.params.id, facilityId: req.user.facilityId },
+      where: {
+        OR: [
+          { id: req.params.id },
+          { mrn: req.params.id },
+          { externalId: req.params.id }
+        ]
+      },
       include: {
         visits: { orderBy: { createdAt: 'desc' }, take: 10 },
         labOrders: { orderBy: { createdAt: 'desc' }, take: 10 },
