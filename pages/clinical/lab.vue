@@ -446,7 +446,7 @@ export default {
     patientSelectItems() {
       return this.patients.map(p => ({
         id: p.id,
-        text: `${p.name || (p.firstName + ' ' + p.lastName)} (${p.id} · ${p.gender || ''})`
+        text: `${p.mrn || p.id} — ${p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()}`
       }))
     },
     allOrders() {
@@ -476,21 +476,21 @@ export default {
     }
   },
   mounted() {
-    this.$store.commit('clinical/LOAD_FROM_STORAGE')
-    this.$store.dispatch('billing/loadFromStorage')
+    this.$store.dispatch('clinical/fetchPatients')
+    this.$store.dispatch('clinical/fetchLabOrders')
+    this.$store.dispatch('billing/fetchAllStatements')
     if (this.$route.query && this.$route.query.patientId) {
       this.openNewOrderDialog(this.$route.query.patientId)
     }
   },
   methods: {
     isOrderPaid(order) {
-      const statement = this.$store.getters['billing/statementForPatient'](order.patientId)
-      if (!statement) return false
-      const labCharge = (statement.charges || []).find(c =>
-        c.sourceType === 'lab_order' && c.sourceId === order.id
-      )
-      if (!labCharge) return false
-      return statement.amountPaid >= labCharge.total && labCharge.total > 0
+      const stmt = this.$store.getters['billing/statementForPatient'](order.patientId)
+      if (!stmt) return false
+      if (stmt.status === 'PAID') return true
+      const charge = (stmt.charges || []).find(c => c.sourceType === 'lab_order' && c.sourceId === order.id)
+      if (!charge) return false
+      return charge.status === 'Waived'
     },
     selectOrder(order) {
       this.selectedOrder = order
@@ -516,54 +516,60 @@ export default {
 
       const labOrder = await this.$store.dispatch('clinical/orderLab', {
         patientId: this.newOrderForm.patientId,
-        testName,
+        test: testName,
         priority: this.newOrderForm.priority,
-        clinicalNotes: this.newOrderForm.clinicalNotes,
-        orderedBy
+        notes: this.newOrderForm.clinicalNotes
       })
 
-      await this.$store.dispatch('clinical/createTask', {
-        patientId: this.newOrderForm.patientId,
-        relatedType: 'lab',
-        relatedId: labOrder.id,
-        title: 'Process lab order: ' + testName,
-        assignedToRole: 'LAB',
-        actionReason: 'Lab order requested by ' + orderedBy
-      })
+      // Auto-create billing charge for this lab order
+      const labPrice = this.$store.getters['billing/activeCatalog']
+        .find(i => i.section === 'labTests' && i.name.toLowerCase().includes(testName.toLowerCase().split(' ')[0]))
+      if (labPrice) {
+        await this.$store.dispatch('billing/chargeForLabOrder', {
+          patientId: this.newOrderForm.patientId,
+          orderId: (labOrder.labOrder || labOrder).id,
+          testName,
+          unitPrice: labPrice.unitPrice
+        })
+      }
 
       this.newOrderDialog = false
-      this.$toast.success('Laboratory request created! Sent to Cash Office & Lab Workbench.')
-
-      const created = this.allOrders.find(o => o.id === labOrder.id)
+      this.$toast.success('Laboratory request created! Patient must pay at Cash Office before processing.')
+      await this.$store.dispatch('clinical/fetchLabOrders')
+      const created = this.allOrders.find(o => o.id === (labOrder.labOrder || labOrder).id)
       if (created) this.selectOrder(created)
     },
-    setStatus(status) {
-      const updated = { ...this.selectedOrder, status }
-      this.$store.dispatch('clinical/updateLabOrder', updated)
+    async setStatus(status) {
+      await this.$store.dispatch('clinical/updateLabOrder', { id: this.selectedOrder.id, status })
+      await this.$store.dispatch('clinical/fetchLabOrders')
       this.selectedOrder = { ...this.selectedOrder, status }
       this.$toast.success('Status updated to ' + status)
     },
     markAsPaid() {
-      const updated = { ...this.selectedOrder, paymentStatus: 'Paid' }
-      this.$store.dispatch('clinical/updateLabOrder', updated)
-      this.selectedOrder = { ...this.selectedOrder, paymentStatus: 'Paid' }
-      this.$toast.warning('Payment marked manually — ensure Cash Office receipt exists.')
+      this.$toast.warning('Payment must be recorded at the Cash Office.')
     },
-    submitResult() {
+    async submitResult() {
       if (!this.resultForm.result) return
       const now = new Date().toISOString()
       const performedBy = this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Lab Technician'
-      const updated = {
-        ...this.selectedOrder,
+      await this.$store.dispatch('clinical/updateLabOrder', {
+        id: this.selectedOrder.id,
         status: 'Completed',
         result: this.resultForm.result,
         interpretation: this.resultForm.interpretation,
         technicianNotes: this.resultForm.technicianNotes,
         performedBy,
         resultFiledAt: new Date(now).toLocaleDateString('fr-CM') + ' ' + new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })
+      await this.$store.dispatch('clinical/fetchLabOrders')
+      this.selectedOrder = {
+        ...this.selectedOrder, status: 'Completed',
+        result: this.resultForm.result,
+        interpretation: this.resultForm.interpretation,
+        technicianNotes: this.resultForm.technicianNotes,
+        performedBy,
+        resultFiledAt: new Date(now).toLocaleDateString('fr-CM') + ' ' + new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
-      this.$store.dispatch('clinical/updateLabOrder', updated)
-      this.selectedOrder = updated
       this.resultDialog = false
       if (this.resultForm.interpretation === 'Critical') {
         this.$toast.error('⚠ CRITICAL RESULT FILED — Requesting physician notified!')

@@ -45,6 +45,8 @@ logs/
 coverage/
 .nyc_output/
 
-# ─── Analyse bundle ──────────────────────────────────────────────────────────
-.nuxt/analyze/
-.vercel
+# ─── Temp / Dump Files ───────────────────────────────────────────────────────
+tmp_*
+old_catalog*
+extract_catalog.js
+

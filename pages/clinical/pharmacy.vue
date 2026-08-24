@@ -323,11 +323,21 @@ export default {
         .filter(m => !['Discontinued', 'Completed'].includes(m.status))
         .map(m => {
           const p = this.patients.find(pt => pt.id === m.patientId)
+          // Derive the live payment status from the Cash Office statement so a
+          // medication paid after prescribing immediately shows as PAID here
+          // (matching the pre-backend behaviour where the queue read billing state).
+          const stmt = this.$store.getters['billing/statementForPatient'](m.patientId)
+          const charge = (stmt && stmt.charges || []).find(c => c.sourceType === 'medication' && c.sourceId === m.id)
+          const paymentStatus = charge ? (charge.status === 'Paid' ? 'Paid' : 'Unpaid') : (m.paymentStatus || 'Unpaid')
           return {
             ...m,
+            medication: m.drug || m.medication || '—',
+            dosage: m.dose || m.dosage || '',
+            route: m.route || '',
             patientName: p ? (p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()) : m.patientId,
             prescribedAt: m.prescribedAt ? new Date(m.prescribedAt).toLocaleDateString('fr-CM') : '—',
-            prescribedBy: m.prescribedBy || m.orderedBy || 'Doctor'
+            prescribedBy: m.prescribedBy || m.orderedBy || 'Doctor',
+            paymentStatus
           }
         }).reverse()
     },
@@ -346,8 +356,16 @@ export default {
     }
   },
   mounted() {
-    this.$store.commit('clinical/LOAD_FROM_STORAGE')
-    this.$store.dispatch('billing/loadFromStorage')
+    // Load prescriptions, patients and billing statements from the backend API.
+    // (The old localStorage-based mutations were removed with the API migration.)
+    Promise.all([
+      this.$store.dispatch('clinical/fetchMedications'),
+      this.$store.dispatch('clinical/fetchPatients'),
+      this.$store.dispatch('billing/fetchAllStatements')
+    ]).catch(() => {
+      // Swallow — individual getters fall back to empty arrays and the UI
+      // just shows the empty state until the backend becomes reachable.
+    })
   },
   methods: {
     selectRx(rx) {
@@ -355,35 +373,46 @@ export default {
       this.stockStatus = rx.inStock === true ? 'true' : rx.inStock === false ? 'false' : null
       this.dispenseForm = { qty: rx.quantity || 1, pharmacistNotes: rx.pharmacistNotes || '' }
     },
-    updateStock(val) {
-      const updated = { ...this.selectedRx, inStock: val }
-      this.$store.dispatch('clinical/updateMedication', updated)
-      this.selectedRx = updated
-      this.$toast.info(val ? '✓ Marked as in stock' : '✗ Marked as out of stock — patient will be notified')
+    async updateStock(val) {
+      try {
+        await this.$store.dispatch('clinical/updateMedication', {
+          id: this.selectedRx.id,
+          inStock: val
+        })
+        this.selectedRx = { ...this.selectedRx, inStock: val }
+        this.$toast.info(val ? '✓ Marked as in stock' : '✗ Marked as out of stock — patient will be notified')
+      } catch (err) {
+        this.$toast.error(err.response?.data?.error || err.message || 'Failed to update stock.')
+      }
     },
-    confirmDispense() {
+    async confirmDispense() {
       if (!this.dispenseForm.qty || this.dispenseForm.qty < 1) return
       const now = new Date()
+      const dispensedAtISO = now.toISOString()
       const dispensedAt = now.toLocaleDateString('fr-CM') + ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       const dispensedBy = this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Pharmacist'
       const isPartial = this.dispenseForm.qty < (this.selectedRx.quantity || 1)
 
-      const updated = {
-        ...this.selectedRx,
+      const payload = {
+        id: this.selectedRx.id,
         dispensingStatus: isPartial ? 'Partially Dispensed' : 'Dispensed',
         qtyDispensed: this.dispenseForm.qty,
         dispensedBy,
-        dispensedAt,
+        dispensedAt: dispensedAtISO,
         pharmacistNotes: this.dispenseForm.pharmacistNotes
       }
-      this.$store.dispatch('clinical/updateMedication', updated)
-      this.selectedRx = updated
-      this.dispenseDialog = false
+      try {
+        await this.$store.dispatch('clinical/updateMedication', payload)
+        this.selectedRx = { ...this.selectedRx, ...payload, dispensedAt }
+        this.dispenseDialog = false
 
-      if (isPartial) {
-        this.$toast.warning(`Partial dispense confirmed: ${this.dispenseForm.qty} of ${this.selectedRx.quantity} unit(s).`)
-      } else {
-        this.$toast.success('Medication dispensed & recorded.')
+        if (isPartial) {
+          this.$toast.warning(`Partial dispense confirmed: ${this.dispenseForm.qty} of ${this.selectedRx.quantity} unit(s).`)
+        } else {
+          this.$toast.success('Medication dispensed & recorded.')
+        }
+      } catch (err) {
+        this.$toast.error(err.response?.data?.error || err.message || 'Failed to record dispense.')
       }
     },
     statusColor(s) {

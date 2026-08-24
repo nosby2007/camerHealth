@@ -87,6 +87,7 @@
               <v-list-item-content>
                  <v-list-item-title class="font-weight-black text-caption">{{ institution }}</v-list-item-title>
                  <v-list-item-subtitle class="text-caption">STAFF ID: {{ $store.state.auth.staffId }}</v-list-item-subtitle>
+                 <v-list-item-subtitle v-if="userRole !== 'ADMIN' && userDepartment" class="text-caption font-weight-bold teal--text text--darken-2">DEPT: {{ userDepartment }} | WARD: {{ userWard }}</v-list-item-subtitle>
               </v-list-item-content>
            </v-list-item>
            <v-list-item @click="logout" class="py-2">
@@ -174,6 +175,20 @@ export default {
     admin() { return this.$store.state.auth.user; },
     userRole() { return this.$store.state.auth.role || 'GUEST'; },
     institution() { return this.$store.state.auth.institution; },
+    userDepartment() {
+      if (this.$store.state.auth.department) return this.$store.state.auth.department
+      const staffCtx = this.$store.getters['facility/getStaffContext'] ? this.$store.getters['facility/getStaffContext'](this.$store.state.auth.staffId) : null
+      if (staffCtx && staffCtx.department) return staffCtx.department
+      if (staffCtx && staffCtx.departmentRecord) return staffCtx.departmentRecord.name
+      return ''
+    },
+    userWard() {
+      if (this.$store.state.auth.service) return this.$store.state.auth.service
+      const staffCtx = this.$store.getters['facility/getStaffContext'] ? this.$store.getters['facility/getStaffContext'](this.$store.state.auth.staffId) : null
+      if (staffCtx && (staffCtx.service || staffCtx.ward)) return staffCtx.service || staffCtx.ward
+      if (staffCtx && staffCtx.serviceRecord) return staffCtx.serviceRecord.name
+      return ''
+    },
     isClinical() { return ['ADMIN','DOCTOR','NP','NURSE','CNA','MIDWIFE','MAJOR_SERVICE','NURSING_SUPERVISOR','LAB','IMAGING','PHARMACY','BILLING','RECORDS','FRONT_DESK','SOCIAL_WORKER','PHYSIOTHERAPIST'].includes(this.userRole); },
     isMinistry() { return ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'].includes(this.userRole); },
     currentLangName() { return this.$store.state.locale === 'fr' ? 'FRANÇAIS' : 'ENGLISH'; },

@@ -26,11 +26,16 @@
               <span class="text-caption font-weight-black gov-text-primary uppercase">{{ stmt.patientName }}</span>
               <v-chip x-small dark label :color="statusColor(stmt.status)" class="font-weight-black">{{ stmt.status }}</v-chip>
             </div>
-            <div class="d-flex align-center justify-space-between">
-              <span class="text-caption grey--text">{{ stmt.patientId }}</span>
-              <span class="text-caption font-weight-black" :class="stmt.balance > 0 ? 'error--text' : 'success--text'">
-                {{ stmt.balance > 0 ? 'DUE: ' + fmt(stmt.balance) : 'CLEARED' }}
+<div class="d-flex align-center justify-space-between">
+              <span class="text-caption grey--text">{{ stmt.mrn || stmt.patientId }}</span>
+              <span class="text-caption font-weight-black" :class="stmt.balance > 0 ? 'error--text' : (stmt.totalCharges > 0 ? 'success--text' : 'grey--text')">
+                {{ stmt.balance > 0 ? 'DUE: ' + fmt(stmt.balance) : (stmt.totalCharges > 0 ? 'CLEARED' : 'NO CHARGES') }}
               </span>
+            </div>
+            <div v-if="stmt.openChargesTotal > 0" class="mt-1">
+              <v-chip x-small label color="#C0392B" dark class="font-weight-black">
+                {{ stmt.openChargesTotal > 0 ? 'PENDING CHARGES' : '' }}
+              </v-chip>
             </div>
             <div v-if="hasClearance(stmt.patientId)" class="mt-1">
               <v-chip x-small label color="#00A99D" dark class="font-weight-black">CONSULTATION CLEARED</v-chip>
@@ -68,119 +73,75 @@
 
           <!-- Charge Lines -->
           <div class="flex-grow-1 overflow-y-auto pa-6">
-            <div v-for="group in chargeGroups" :key="group.key" class="mb-6">
-              <div class="d-flex align-center mb-3">
-                <v-icon small :color="group.color" class="mr-2">{{ group.icon }}</v-icon>
-                <span class="text-caption font-weight-black uppercase ls-1" :style="`color:${group.color}`">{{ group.label }}</span>
+
+            <!-- ── UNPAID CHARGES — with checkboxes ── -->
+            <div v-if="openCharges.length > 0" class="mb-6">
+              <div class="d-flex align-center mb-2">
+                <v-icon small color="#C0392B" class="mr-2">mdi-alert-circle</v-icon>
+                <span class="text-caption font-weight-black uppercase ls-1" style="color:#C0392B">PENDING CHARGES</span>
                 <v-divider class="ml-3"></v-divider>
+                <v-btn x-small text color="#003366" class="font-weight-black text-caption ml-2" @click="selectAllOpen">
+                  {{ selectedCharges.length === openCharges.length ? 'NONE' : 'ALL' }}
+                </v-btn>
               </div>
-
-              <!-- ── SPECIAL: Medication / Drug charges — per-item selector ── -->
-              <template v-if="group.key === 'drug'">
-                <v-card flat tile class="b-1 overflow-hidden">
-                  <div class="pa-3 bg-grey lighten-4 border-bottom d-flex align-center justify-space-between">
-                    <span class="text-caption font-weight-black grey--text uppercase">
-                      Patient may choose which medications to pay for. Out-of-stock items cannot be collected here.
-                    </span>
+              <v-card flat tile class="b-1 overflow-hidden">
+                <div v-for="charge in openCharges" :key="charge.id" class="charge-item pa-3 b-bottom d-flex align-center">
+                  <v-checkbox
+                    v-model="selectedCharges"
+                    :value="charge.id"
+                    hide-details dense
+                    class="mt-0 pt-0 mr-3"
+                    style="flex-shrink:0"
+                  ></v-checkbox>
+                  <v-icon small :color="categoryColor(charge.category)" class="mr-2" style="flex-shrink:0">{{ categoryIcon(charge.category) }}</v-icon>
+                  <div style="flex:1; min-width:0">
+                    <div class="text-caption font-weight-black">{{ charge.description }}</div>
+                    <div class="text-caption grey--text" style="font-size:10px">{{ charge.departmentSource || charge.category }} · {{ fmtDate(charge.createdAt) }}</div>
                   </div>
-                  <div v-for="charge in group.charges" :key="charge.id"
-                    :class="['medication-row pa-4 b-bottom', charge.status === 'Cancelled' || charge.status === 'Waived' ? 'charge-row--muted' : '']">
-                    <div class="d-flex align-center justify-space-between">
-                      <!-- Checkbox for selection -->
-                      <div class="d-flex align-center" style="min-width:0; flex:1">
-                        <v-checkbox
-                          v-model="selectedMedCharges"
-                          :value="charge.id"
-                          :disabled="charge.status === 'Cancelled' || charge.status === 'Waived' || isMedOutOfStock(charge)"
-                          hide-details dense class="mt-0 pt-0 mr-2" style="flex-shrink:0"
-                        ></v-checkbox>
-                        <div style="min-width:0">
-                          <div class="text-caption font-weight-black">{{ charge.description }}</div>
-                          <div class="text-caption grey--text" style="font-size:10px">
-                            Pharmacy · {{ fmtDate(charge.createdAt) }} · Qty: {{ charge.quantity }}
-                          </div>
-                          <!-- Stock badge -->
-                          <div class="mt-1">
-                            <v-chip x-small :color="getMedStockColor(charge).bg" class="font-weight-black" style="font-size:9px">
-                              <v-icon x-small :color="getMedStockColor(charge).icon" left>{{ getMedStockColor(charge).mdi }}</v-icon>
-                              {{ getMedStockColor(charge).label }}
-                            </v-chip>
-                          </div>
-                        </div>
-                      </div>
-                      <!-- Pricing -->
-                      <div class="text-right ml-4" style="flex-shrink:0">
-                        <div class="text-caption grey--text">{{ fmt(charge.unitPrice) }} × {{ charge.quantity }}</div>
-                        <div class="text-caption font-weight-black" :class="charge.status === 'Waived' || charge.status === 'Cancelled' ? 'grey--text text-decoration-line-through' : 'gov-text-primary'">
-                          {{ fmt(charge.total) }}
-                        </div>
-                        <v-chip x-small label :color="chargeStatusColor(charge.status)" dark class="font-weight-black mt-1">{{ charge.status }}</v-chip>
-                      </div>
-                      <div v-if="isAdmin" class="ml-2" style="flex-shrink:0">
-                        <v-btn v-if="charge.status === 'Open'" icon x-small @click="waive(charge.id)" title="Waive">
-                          <v-icon x-small color="orange">mdi-hand-wave</v-icon>
-                        </v-btn>
-                        <v-btn v-if="charge.status === 'Waived'" icon x-small @click="reopen(charge.id)" title="Reopen">
-                          <v-icon x-small color="grey">mdi-refresh</v-icon>
-                        </v-btn>
-                      </div>
-                    </div>
+                  <div class="text-right ml-3" style="flex-shrink:0">
+                    <div class="text-caption grey--text" style="font-size:10px">{{ fmt(charge.unitPrice) }} × {{ charge.quantity }}</div>
+                    <div class="text-caption font-weight-black gov-text-primary">{{ fmt(charge.total) }}</div>
                   </div>
-                  <!-- Medication payment subtotal -->
-                  <div class="pa-4 bg-grey lighten-4 d-flex align-center justify-space-between">
-                    <div class="text-caption grey--text">
-                      {{ selectedMedCharges.length }} medication(s) selected for payment
-                    </div>
-                    <div class="text-caption font-weight-black">
-                      Subtotal: <span class="gov-text-primary">{{ fmt(selectedMedSubtotal) }}</span>
-                    </div>
+                  <div v-if="isAdmin || isBilling" class="ml-2" style="flex-shrink:0">
+                    <v-btn icon x-small @click="waive(charge.id)" title="Waive">
+                      <v-icon x-small color="orange">mdi-hand-wave</v-icon>
+                    </v-btn>
                   </div>
-                </v-card>
-                <v-alert v-if="hasOutOfStockMeds" dense text type="warning" class="mt-2 rounded-0 text-caption" color="orange">
-                  <v-icon left small color="orange">mdi-package-variant-remove</v-icon>
-                  Some medications are marked <strong>OUT OF STOCK</strong> at the hospital pharmacy. The patient will need to procure those externally and payment will not be collected for them.
-                </v-alert>
-              </template>
-
-              <!-- Other charge groups (non-medication) — original table -->
-              <v-card v-else flat tile class="b-1 overflow-hidden">
-                <table class="charge-table">
-                  <thead>
-                    <tr>
-                      <th>Description</th>
-                      <th class="text-right">Qty</th>
-                      <th class="text-right">Unit Price</th>
-                      <th class="text-right">Total</th>
-                      <th class="text-center">Status</th>
-                      <th v-if="isAdmin"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="charge in group.charges" :key="charge.id" :class="charge.status === 'Cancelled' || charge.status === 'Waived' ? 'charge-row--muted' : ''">
-                      <td>
-                        <div class="text-caption font-weight-medium">{{ charge.description }}</div>
-                        <div class="text-caption grey--text" style="font-size:10px">{{ charge.departmentSource }} · {{ fmtDate(charge.createdAt) }}</div>
-                      </td>
-                      <td class="text-right text-caption">{{ charge.quantity }}</td>
-                      <td class="text-right text-caption">{{ fmt(charge.unitPrice) }}</td>
-                      <td class="text-right text-caption font-weight-black">{{ fmt(charge.total) }}</td>
-                      <td class="text-center">
-                        <v-chip x-small label :color="chargeStatusColor(charge.status)" dark class="font-weight-black">{{ charge.status }}</v-chip>
-                      </td>
-                      <td v-if="isAdmin" class="text-right">
-                        <v-btn v-if="charge.status === 'Open'" icon x-small @click="waive(charge.id)" title="Waive">
-                          <v-icon x-small color="orange">mdi-hand-wave</v-icon>
-                        </v-btn>
-                        <v-btn v-if="charge.status === 'Waived'" icon x-small @click="reopen(charge.id)" title="Reopen">
-                          <v-icon x-small color="grey">mdi-refresh</v-icon>
-                        </v-btn>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                </div>
+                <!-- Selection subtotal -->
+                <div class="pa-3 bg-grey lighten-4 d-flex align-center justify-space-between">
+                  <span class="text-caption grey--text">{{ selectedCharges.length }} of {{ openCharges.length }} item(s) selected</span>
+                  <span class="text-caption font-weight-black gov-text-primary">Selected: {{ fmt(selectedSubtotal) }}</span>
+                </div>
               </v-card>
             </div>
 
+            <!-- ── WAIVED CHARGES ── -->
+            <div v-if="waivedCharges.length > 0" class="mb-6">
+              <div class="d-flex align-center mb-2">
+                <v-icon small color="#6B7280" class="mr-2">mdi-hand-wave</v-icon>
+                <span class="text-caption font-weight-black uppercase ls-1" style="color:#6B7280">WAIVED / CANCELLED</span>
+                <v-divider class="ml-3"></v-divider>
+              </div>
+              <v-card flat tile class="b-1 overflow-hidden">
+                <div v-for="charge in waivedCharges" :key="charge.id" class="charge-item pa-3 b-bottom d-flex align-center charge-row--muted">
+                  <v-icon small color="#9CA3AF" class="mr-2 ml-9" style="flex-shrink:0">{{ categoryIcon(charge.category) }}</v-icon>
+                  <div style="flex:1; min-width:0">
+                    <div class="text-caption font-weight-black">{{ charge.description }}</div>
+                    <div class="text-caption grey--text" style="font-size:10px">{{ charge.departmentSource || charge.category }} · {{ fmtDate(charge.createdAt) }}</div>
+                  </div>
+                  <div class="text-right ml-3" style="flex-shrink:0">
+                    <div class="text-caption grey--text text-decoration-line-through">{{ fmt(charge.total) }}</div>
+                    <v-chip x-small label color="#6B7280" dark class="font-weight-black">{{ charge.status }}</v-chip>
+                  </div>
+                  <div v-if="isAdmin || isBilling" class="ml-2" style="flex-shrink:0">
+                    <v-btn icon x-small @click="reopen(charge.id)" title="Reopen">
+                      <v-icon x-small color="grey">mdi-refresh</v-icon>
+                    </v-btn>
+                  </div>
+                </div>
+              </v-card>
+            </div>
 
             <!-- Manual charge (Admin/Cash Office only) -->
             <v-card v-if="isAdmin || isBilling" flat tile class="b-1 pa-4 mb-6">
@@ -201,40 +162,37 @@
               </v-row>
             </v-card>
 
-            <!-- Payment History -->
-            <div v-if="statement.payments.length > 0" class="mb-6">
-              <div class="d-flex align-center mb-3">
+            <!-- ── PAYMENT HISTORY ── -->
+            <div v-if="statement.payments && statement.payments.length > 0" class="mb-6">
+              <div class="d-flex align-center mb-2">
                 <v-icon small color="#00A99D" class="mr-2">mdi-cash-check</v-icon>
                 <span class="text-caption font-weight-black uppercase ls-1" style="color:#00A99D">PAYMENTS RECEIVED</span>
                 <v-divider class="ml-3"></v-divider>
               </div>
               <v-card flat tile class="b-1 overflow-hidden">
-                <table class="charge-table">
-                  <thead>
-                    <tr>
-                      <th>Receipt #</th>
-                      <th>Date</th>
-                      <th>Method</th>
-                      <th>Cashier</th>
-                      <th class="text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="pay in statement.payments" :key="pay.id">
-                      <td class="text-caption font-weight-black">
-                        <v-btn x-small icon color="#003366" @click="printReceipt(pay)" title="Print Receipt" class="mr-1">
-                          <v-icon x-small>mdi-printer</v-icon>
-                        </v-btn>
-                        {{ pay.receiptNumber }}
-                      </td>
-                      <td class="text-caption">{{ fmtDate(pay.paidAt) }}</td>
-                      <td class="text-caption">{{ pay.method }}</td>
-                      <td class="text-caption">{{ pay.cashier }}</td>
-                      <td class="text-right text-caption font-weight-black success--text">{{ fmt(pay.amount) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div v-for="pay in statement.payments" :key="pay.id" class="pa-3 b-bottom d-flex align-center">
+                  <v-icon small color="#00A99D" class="mr-3">mdi-check-circle</v-icon>
+                  <div style="flex:1; min-width:0">
+                    <div class="d-flex align-center">
+                      <span class="text-caption font-weight-black mr-2">{{ pay.receiptNumber }}</span>
+                      <v-chip x-small label color="#00A99D" dark class="font-weight-black">{{ pay.method }}</v-chip>
+                    </div>
+                    <div class="text-caption grey--text" style="font-size:10px">{{ fmtDate(pay.paidAt) }} · Cashier: {{ pay.cashier }}</div>
+                    <div v-if="pay.note" class="text-caption grey--text font-italic" style="font-size:10px">{{ pay.note }}</div>
+                  </div>
+                  <div class="text-right ml-3" style="flex-shrink:0">
+                    <div class="text-caption font-weight-black success--text">{{ fmt(pay.amount) }}</div>
+                    <v-btn x-small icon color="#003366" @click="printReceipt(pay)" title="Print Receipt">
+                      <v-icon x-small>mdi-printer</v-icon>
+                    </v-btn>
+                  </div>
+                </div>
               </v-card>
+            </div>
+
+            <div v-if="!openCharges.length && !statement.payments.length" class="text-center grey--text pa-8">
+              <v-icon size="40" color="#E2E8F0">mdi-receipt-text-outline</v-icon>
+              <div class="text-caption mt-2">No charges or payments on record</div>
             </div>
           </div>
 
@@ -305,9 +263,9 @@
                 prefix="XAF"
               ></v-text-field>
 
-              <div v-if="selectedMedSubtotal > 0 && selectedMedSubtotal !== payForm.amount" class="text-right mb-2">
-                <a href="javascript:;" class="text-caption font-weight-black success--text text-decoration-none" @click="payForm.amount = selectedMedSubtotal">
-                  👉 Autofill selected meds total: {{ fmt(selectedMedSubtotal) }}
+              <div v-if="selectedSubtotal > 0 && selectedSubtotal !== payForm.amount" class="text-right mb-2">
+                <a href="javascript:;" class="text-caption font-weight-black success--text text-decoration-none" @click="payForm.amount = Math.min(selectedSubtotal, statement.balance)">
+                  👉 Autofill selected items: {{ fmt(Math.min(selectedSubtotal, statement.balance)) }}
                 </a>
               </div>
 
@@ -604,6 +562,7 @@ export default {
       payValid: false,
       payLoading: false,
       payForm: { amount: null, method: 'Cash', reference: '' },
+      selectedCharges: [],
       selectedMedCharges: [],
       priceSearch: '',
       priceSectionTab: 0,
@@ -648,20 +607,32 @@ export default {
     allPatients() { return this.$store.getters['clinical/getPatients'] || [] },
     allMedications() { return this.$store.getters['clinical/getMedications'] || [] },
     fullQueue() {
-      return this.allPatients.map(p => this.$store.getters['billing/statementForPatient'](p.id))
+      return Object.values(this.$store.state.billing.statements)
     },
     filteredQueue() {
       const q = this.queueSearch.toLowerCase()
       if (!q) return this.fullQueue
       return this.fullQueue.filter(s => s.patientName.toLowerCase().includes(q) || s.patientId.toLowerCase().includes(q))
     },
-    // Per-medication selection: subtotal of currently checked items
-    selectedMedSubtotal() {
-      if (!this.statement) return 0
-      return this.statement.charges
-        .filter(c => c.category === 'drug' && this.selectedMedCharges.includes(c.id))
+    openCharges() {
+      if (!this.statement) return []
+      return (this.statement.charges || []).filter(c => c.status === 'Open')
+    },
+    waivedCharges() {
+      if (!this.statement) return []
+      return (this.statement.charges || []).filter(c => c.status === 'Waived' || c.status === 'Cancelled')
+    },
+    paidCharges() {
+      if (!this.statement) return []
+      return (this.statement.charges || []).filter(c => c.status === 'Paid')
+    },
+    selectedSubtotal() {
+      return this.openCharges
+        .filter(c => this.selectedCharges.includes(c.id))
         .reduce((sum, c) => sum + c.total, 0)
     },
+    // kept for payment autofill compat
+    selectedMedSubtotal() { return this.selectedSubtotal },
     // Are any of this patient's drug charges out of stock?
     hasOutOfStockMeds() {
       if (!this.selectedPatientId) return false
@@ -714,21 +685,40 @@ export default {
       }))
     }
   },
-  mounted() {
-    this.$store.commit('clinical/LOAD_FROM_STORAGE')
-    this.$store.commit('facility/RELOAD_FROM_STORAGE')
-    this.$store.dispatch('billing/loadFromStorage')
+  async mounted() {
+    await this.$store.dispatch('billing/fetchCatalog')
+    await this.$store.dispatch('billing/fetchAllStatements')
+    if (this.$store.state.billing.error) {
+      this.$toast.error('Cash Office: ' + this.$store.state.billing.error)
+    }
   },
   methods: {
-    selectPatient(patientId) {
+    async selectPatient(patientId) {
       this.selectedPatientId = patientId
       this.payForm = { amount: null, method: 'Cash', reference: '' }
-      // Reset medication selections & pre-select all in-stock, paid-eligible ones
-      this.selectedMedCharges = []
-      this.$nextTick(() => {
-        const drugCharges = (this.statement?.charges || []).filter(c => c.category === 'drug' && c.status === 'Open' && !this.isMedOutOfStock(c))
-        this.selectedMedCharges = drugCharges.map(c => c.id)
-      })
+      this.selectedCharges = []
+      await Promise.all([
+        this.$store.dispatch('billing/fetchStatement', patientId),
+        this.$store.dispatch('billing/fetchClearances', patientId)
+      ])
+      this.selectedCharges = this.openCharges.map(c => c.id)
+      this.payForm.amount = Math.min(this.selectedSubtotal, this.statement.balance)
+    },
+    selectAllOpen() {
+      if (this.selectedCharges.length === this.openCharges.length) {
+        this.selectedCharges = []
+      } else {
+        this.selectedCharges = this.openCharges.map(c => c.id)
+      }
+      this.payForm.amount = Math.min(this.selectedSubtotal, this.statement.balance)
+    },
+    categoryIcon(cat) {
+      const map = { consultation: 'mdi-doctor', laboratory: 'mdi-flask', imaging: 'mdi-radiology-box', drug: 'mdi-pill', hospitalization: 'mdi-bed', nursing_act: 'mdi-medical-bag', procedure: 'mdi-scalpel', supply: 'mdi-syringe', manual: 'mdi-pencil' }
+      return map[cat] || 'mdi-cash'
+    },
+    categoryColor(cat) {
+      const map = { consultation: '#003366', laboratory: '#D97706', imaging: '#7C3AED', drug: '#0B3D2E', hospitalization: '#0F766E', nursing_act: '#00A99D', procedure: '#C0392B', supply: '#6B7280', manual: '#6B7280' }
+      return map[cat] || '#9CA3AF'
     },
     // Look up the corresponding lab medication record for a billing charge
     getMedOrderForCharge(charge) {
@@ -756,16 +746,19 @@ export default {
     },
     async recordPayment() {
       if (!this.$refs.payForm.validate() || !this.payForm.method) return
+      const paidChargeIds = this.selectedCharges.length > 0 ? this.selectedCharges : []
       this.payLoading = true
       const payment = await this.$store.dispatch('billing/recordPayment', {
         patientId: this.selectedPatientId,
         amount: this.payForm.amount,
         method: this.payForm.method,
         reference: this.payForm.reference,
-        paidChargeIds: this.selectedMedCharges
+        paidChargeIds
       })
       this.lastReceipt = payment
       this.payForm = { amount: null, method: 'Cash', reference: '' }
+      await this.$nextTick()
+      this.selectedCharges = this.openCharges.map(c => c.id)
       this.payLoading = false
       this.$toast.success('Payment of ' + this.fmt(payment.amount) + ' recorded — ' + payment.receiptNumber)
     },
@@ -883,7 +876,7 @@ export default {
       return { PAID: '#00A99D', PARTIAL: '#D97706', UNPAID: '#C0392B', WAIVED: '#6B7280', NO_CHARGES: '#9CA3AF' }[s] || '#9CA3AF'
     },
     chargeStatusColor(s) {
-      return { Open: '#003366', Waived: '#6B7280', Cancelled: '#C0392B' }[s] || '#9CA3AF'
+      return { Open: '#003366', Paid: '#10B981', Waived: '#6B7280', Cancelled: '#C0392B' }[s] || '#9CA3AF'
     }
   }
 }
@@ -937,7 +930,10 @@ export default {
   border-bottom: 1px solid #F3F4F6;
   font-size: 12px;
 }
-.charge-row--muted td { opacity: 0.45; text-decoration: line-through; }
+.charge-item { transition: background 0.1s; }
+.charge-item:hover { background: #F8FAFC; }
+.charge-row--muted { opacity: 0.5; }
+.charge-row--muted .text-caption { text-decoration: line-through; }
 
 .method-chip { background: white !important; border: 1px solid #E2E8F0 !important; transition: all 0.15s; }
 .method-chip:hover { border-color: #003366 !important; }

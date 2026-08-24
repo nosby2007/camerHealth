@@ -1,4 +1,4 @@
-<template>
+000<template>
   <v-container fluid class="pa-0 fill-height imaging-bg">
     <v-row no-gutters class="fill-height">
 
@@ -266,6 +266,45 @@
                       {{ selectedOrder.status }}
                     </v-chip>
                   </div>
+                  <div class="pa-6">
+                    <div class="text-caption font-weight-black grey--text uppercase mb-2">Imaging Scan File</div>
+                    <div v-if="selectedOrder.imageUrl" class="mb-4">
+                      <a :href="selectedOrder.imageUrl" target="_blank" class="text-caption gov-text-primary font-weight-black">
+                        View uploaded scan
+                      </a>
+                      <div class="text-caption grey--text mt-1">{{ getImageDisplayName(selectedOrder) }}</div>
+                      <div v-if="selectedOrder.imageMimeType && selectedOrder.imageMimeType.startsWith('image/')" class="mt-3">
+                        <img :src="selectedOrder.imageUrl" alt="Uploaded scan" style="max-width:100%; border:1px solid #E5E7EB; border-radius:4px;" />
+                      </div>
+                    </div>
+                    <div v-else-if="selectedOrder.paymentStatus === 'Paid' && selectedOrder.status !== 'Requested'" class="mb-4">
+                      <v-file-input
+                        v-model="imageFile"
+                        label="Upload scan image / report file"
+                        accept="image/*,.pdf,.dcm"
+                        outlined tile dense
+                        hide-details
+                        class="rounded-0 mb-3"
+                        placeholder="Choose file from workstation"
+                      />
+                      <v-btn
+                        color="#7C3AED" dark tile depressed
+                        :disabled="!imageFile || uploadLoading"
+                        :loading="uploadLoading"
+                        @click="uploadImagingFile"
+                        class="font-weight-black text-caption"
+                      >
+                        Upload scan file
+                      </v-btn>
+                      <div v-if="imageUploadError" class="text-caption error--text mt-2">{{ imageUploadError }}</div>
+                    </div>
+                    <div v-else-if="selectedOrder.status === 'Requested'" class="text-caption grey--text">
+                      Patient payment must clear and the scan must start before uploading an image.
+                    </div>
+                    <div v-else class="text-caption grey--text">
+                      Imaging file upload is available once payment is confirmed.
+                    </div>
+                  </div>
                   <div v-if="selectedOrder.status === 'Completed'" class="pa-6">
                     <div class="result-chip purple--text font-weight-black text-caption mb-4">
                       <v-icon small color="#7C3AED" class="mr-1">mdi-check-circle</v-icon>
@@ -422,6 +461,9 @@ export default {
       reportDialog: false,
       newOrderForm: { patientId: '', modality: '', bodyPart: '', priority: 'Routine', clinicalNotes: '' },
       reportForm: { report: '', impression: '', recommendations: '' },
+      imageFile: null,
+      uploadLoading: false,
+      imageUploadError: '',
       statusFilters: [
         { value: '', label: 'ALL' },
         { value: 'Requested', label: 'PENDING' },
@@ -445,20 +487,11 @@ export default {
     patientSelectItems() {
       return this.patients.map(p => ({
         id: p.id,
-        text: `${p.name || (p.firstName + ' ' + p.lastName)} (${p.id} · ${p.gender || ''})`
+        text: `${p.mrn || p.id} — ${p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()}`
       }))
     },
     allOrders() {
-      return (this.$store.getters['clinical/getImagingOrders'] || []).map(o => {
-        const p = this.patients.find(pt => pt.id === o.patientId)
-        const paid = this.isOrderPaid(o)
-        return {
-          ...o,
-          patientName: p ? (p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()) : o.patientId,
-          requestedAt: o.requestedAt ? new Date(o.requestedAt).toLocaleDateString('fr-CM') : '—',
-          paymentStatus: paid ? 'Paid' : 'Unpaid'
-        }
-      }).reverse()
+      return (this.$store.getters['clinical/getImagingOrders'] || []).map(o => this.normalizeOrder(o)).reverse()
     },
     filteredOrders() {
       let list = this.allOrders
@@ -475,21 +508,53 @@ export default {
     }
   },
   mounted() {
-    this.$store.commit('clinical/LOAD_FROM_STORAGE')
-    this.$store.dispatch('billing/loadFromStorage')
+    this.$store.dispatch('clinical/fetchPatients')
+    this.$store.dispatch('clinical/fetchImagingOrders')
+    this.$store.dispatch('billing/fetchAllStatements')
     if (this.$route.query && this.$route.query.patientId) {
       this.openNewOrderDialog(this.$route.query.patientId)
     }
   },
   methods: {
     isOrderPaid(order) {
-      const statement = this.$store.getters['billing/statementForPatient'](order.patientId)
-      if (!statement) return false
-      const imgCharge = (statement.charges || []).find(c =>
-        c.sourceType === 'imaging_order' && c.sourceId === order.id
-      )
-      if (!imgCharge) return false
-      return statement.amountPaid >= imgCharge.total && imgCharge.total > 0
+      const stmt = this.$store.getters['billing/statementForPatient'](order.patientId)
+      if (!stmt) return false
+      if (stmt.status === 'PAID') return true
+      const charge = (stmt.charges || []).find(c => c.sourceType === 'imaging_order' && c.sourceId === order.id)
+      if (!charge) return false
+      return charge.status === 'Waived'
+    },
+    normalizeOrder(o) {
+      const p = this.patients.find(pt => pt.id === o.patientId)
+      const paid = this.isOrderPaid(o)
+      // Normalize the raw backend order into a fully-presentable shape so the
+      // template never crashes on missing fields after a reload.
+      return {
+        id: o.id || '',
+        patientId: o.patientId || '',
+        patientName: p ? (p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()) : (o.patientName || o.patientId || '—'),
+        modality: o.exam || o.modality || 'Imaging',
+        bodyPart: o.bodyPart || '',
+        exam: o.exam || o.modality || '',
+        priority: o.priority || 'Routine',
+        status: o.status || 'Requested',
+        clinicalNotes: o.notes || o.clinicalNotes || '',
+        requestedAt: o.requestedAt ? new Date(o.requestedAt).toLocaleDateString('fr-CM') : '—',
+        orderedBy: o.orderedBy || (o.requestedBy && o.requestedBy.fullName) || (o.requestedBy && o.requestedBy.name) || '',
+        paymentStatus: paid ? 'Paid' : 'Unpaid',
+        report: o.result || o.report || '',
+        impression: o.impression || '',
+        recommendations: o.notes && o.notes !== o.clinicalNotes ? o.notes : (o.recommendations || ''),
+        reportedBy: o.reportedBy || (o.completedBy && o.completedBy.fullName) || '',
+        reportFiledAt: o.completedAt ? new Date(o.completedAt).toLocaleDateString('fr-CM') + ' ' + new Date(o.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        imageUrl: o.imageUrl || '',
+        imagePath: o.imagePath || '',
+        imageName: o.imageName || '',
+        imageMimeType: o.imageMimeType || '',
+        imageUploadedAt: o.imageUploadedAt || null,
+        imageUploadedById: o.imageUploadedById || '',
+        ...o
+      }
     },
     selectOrder(order) {
       this.selectedOrder = order
@@ -498,6 +563,9 @@ export default {
         impression: order.impression || '',
         recommendations: order.recommendations || ''
       }
+      this.imageFile = null
+      this.uploadLoading = false
+      this.imageUploadError = ''
     },
     openNewOrderDialog(patientId = '') {
       this.newOrderForm = {
@@ -516,57 +584,115 @@ export default {
 
       const imgOrder = await this.$store.dispatch('clinical/orderImaging', {
         patientId: this.newOrderForm.patientId,
-        modality,
-        bodyPart: this.newOrderForm.bodyPart,
+        exam: modality + (this.newOrderForm.bodyPart ? ' — ' + this.newOrderForm.bodyPart : ''),
         priority: this.newOrderForm.priority,
-        clinicalNotes: this.newOrderForm.clinicalNotes,
-        orderedBy
+        notes: this.newOrderForm.clinicalNotes
       })
 
-      await this.$store.dispatch('clinical/createTask', {
-        patientId: this.newOrderForm.patientId,
-        relatedType: 'imaging',
-        relatedId: imgOrder.id,
-        title: 'Process imaging order: ' + modality,
-        assignedToRole: 'IMAGING',
-        actionReason: 'Imaging order requested by ' + orderedBy
-      })
+      // Auto-create billing charge for this imaging order
+      const imgPrice = this.$store.getters['billing/activeCatalog']
+        .find(i => i.section === 'imaging' && i.name.toLowerCase().includes(modality.toLowerCase().split(' ')[0]))
+      if (imgPrice) {
+        await this.$store.dispatch('billing/chargeForImagingOrder', {
+          patientId: this.newOrderForm.patientId,
+          orderId: (imgOrder.imagingOrder || imgOrder).id,
+          examName: modality,
+          unitPrice: imgPrice.unitPrice
+        })
+      }
 
       this.newOrderDialog = false
-      this.$toast.success('Imaging request created! Sent to Cash Office & Radiology Workbench.')
-
-      const created = this.allOrders.find(o => o.id === imgOrder.id)
+      this.$toast.success('Imaging request created! Patient must pay at Cash Office before scan.')
+      await this.$store.dispatch('clinical/fetchImagingOrders')
+      const created = this.allOrders.find(o => o.id === (imgOrder.imagingOrder || imgOrder).id)
       if (created) this.selectOrder(created)
     },
-    setStatus(status) {
-      const updated = { ...this.selectedOrder, status }
-      this.$store.dispatch('clinical/updateImagingOrder', updated)
-      this.selectedOrder = { ...this.selectedOrder, status }
-      this.$toast.success('Status updated to ' + status)
+    async setStatus(status) {
+      try {
+        await this.$store.dispatch('clinical/updateImagingOrder', { id: this.selectedOrder.id, status })
+        await this.$store.dispatch('clinical/fetchImagingOrders')
+        // Re-select the order from the fresh store data so it stays in sync
+        const fresh = this.$store.getters['clinical/getImagingOrders'].find(o => o.id === this.selectedOrder.id)
+        if (fresh) {
+          this.selectOrder(this.normalizeOrder(fresh))
+        } else {
+          this.selectOrder(this.normalizeOrder({ ...this.selectedOrder, status }))
+        }
+        this.$toast.success('Status updated to ' + status)
+      } catch (err) {
+        this.$toast.error(err.response?.data?.error || err.message || 'Failed to update status. Please try again.')
+      }
     },
     markAsPaid() {
-      const updated = { ...this.selectedOrder, paymentStatus: 'Paid' }
-      this.$store.dispatch('clinical/updateImagingOrder', updated)
-      this.selectedOrder = { ...this.selectedOrder, paymentStatus: 'Paid' }
-      this.$toast.warning('Payment marked manually — ensure Cash Office receipt exists.')
+      this.$toast.warning('Payment must be recorded at the Cash Office.')
     },
-    submitReport() {
+    async submitReport() {
       if (!this.reportForm.report) return
       const now = new Date().toISOString()
       const reportedBy = this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Radiologist'
-      const updated = {
-        ...this.selectedOrder,
+      await this.$store.dispatch('clinical/updateImagingOrder', {
+        id: this.selectedOrder.id,
         status: 'Completed',
+        result: this.reportForm.report + (this.reportForm.impression ? '\n\nIMPRESSION: ' + this.reportForm.impression : ''),
+        notes: this.reportForm.recommendations
+      })
+      await this.$store.dispatch('clinical/fetchImagingOrders')
+      const freshAfterReport = this.$store.getters['clinical/getImagingOrders'].find(o => o.id === this.selectedOrder.id)
+      this.selectOrder(this.normalizeOrder(freshAfterReport || {
+        ...this.selectedOrder, status: 'Completed',
+        result: this.reportForm.report,
         report: this.reportForm.report,
         impression: this.reportForm.impression,
         recommendations: this.reportForm.recommendations,
         reportedBy,
         reportFiledAt: new Date(now).toLocaleDateString('fr-CM') + ' ' + new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
-      this.$store.dispatch('clinical/updateImagingOrder', updated)
-      this.selectedOrder = updated
+      }))
       this.reportDialog = false
       this.$toast.success('Radiology report filed & transmitted to doctor chart.')
+    },
+    async uploadImagingFile() {
+      if (!this.selectedOrder || !this.imageFile) return
+      this.uploadLoading = true
+      this.imageUploadError = ''
+      try {
+        const fileBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            const dataUrl = reader.result
+            const base64 = dataUrl.split(',')[1]
+            resolve(base64)
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(this.imageFile)
+        })
+
+        await this.$store.dispatch('clinical/uploadImagingFile', {
+          id: this.selectedOrder.id,
+          data: {
+            fileBase64,
+            imageName: this.imageFile.name,
+            imageMimeType: this.imageFile.type || 'application/octet-stream',
+            imageUploadedAt: new Date().toISOString(),
+            imageUploadedById: this.$store.state.auth.staffId
+          }
+        })
+
+        await this.$store.dispatch('clinical/fetchImagingOrders')
+        const fresh = this.$store.getters['clinical/getImagingOrders'].find(o => o.id === this.selectedOrder.id)
+        if (fresh) this.selectOrder(this.normalizeOrder(fresh))
+        this.$toast.success('Imaging file uploaded and linked to the order.')
+      } catch (err) {
+        this.imageUploadError = err.response?.data?.error || err.message || 'Upload failed. Check the file and try again.'
+      } finally {
+        this.uploadLoading = false
+        this.imageFile = null
+      }
+    },
+    getImageDisplayName(order) {
+      return order.imageName || order.imagePath?.split('/')?.pop() || 'Uploaded scan'
+    },
+    printReport() {
+      window.print()
     },
     priorityColor(p) { return { Routine: '#6B7280', Urgent: '#F4A300', STAT: '#C0392B' }[p] || '#6B7280' },
     statusColor(s) { return { Requested: '#7C3AED', 'In Progress': '#D97706', Completed: '#003366' }[s] || '#6B7280' }

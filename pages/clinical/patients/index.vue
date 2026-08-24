@@ -88,9 +88,26 @@
             <v-chip v-if="hasConsultationClearance(item.id)" x-small label color="#00A99D" dark class="font-weight-black">
               <v-icon x-small left>mdi-check-decagram</v-icon>CLEARED: {{ getClearanceDepartment(item.id) }}
             </v-chip>
-            <v-chip v-if="item.pendingAdmission" x-small label color="#C0392B" dark class="font-weight-black mt-1">
-              <v-icon x-small left>mdi-bed</v-icon>ADMISSION PENDING: {{ item.pendingAdmission.toUpperCase() }}
-            </v-chip>
+
+            <!-- Admission Pending: chip + Admit Now button side by side -->
+            <div v-if="item.pendingAdmission" class="d-flex align-center admit-pending-row">
+              <v-chip x-small label color="#C0392B" dark class="font-weight-black">
+                <v-icon x-small left>mdi-bed</v-icon>
+                ADMISSION PENDING: {{ item.pendingAdmission.toUpperCase() }}
+              </v-chip>
+              <v-btn
+                x-small
+                depressed
+                color="#20B2AA"
+                dark
+                class="font-weight-black ml-1"
+                @click.stop="goToInpatientAdmission(item)"
+              >
+                <v-icon x-small left>mdi-arrow-right-circle</v-icon>
+                Admit Now
+              </v-btn>
+            </div>
+
           </div>
           <div v-if="item.serviceRouting || item.specialtyRouting" class="text-caption grey--text text-truncate" style="max-width:220px">
             {{ item.serviceRouting || 'Service pending' }}<span v-if="item.specialtyRouting"> · {{ item.specialtyRouting }}</span>
@@ -135,7 +152,7 @@ export default {
         { text: 'Low', value: 'low' }
       ],
       headers: [
-        { text: 'Name', align: 'start', value: 'name', class: 'table-header' },
+        { text: 'Name / MRN', align: 'start', value: 'name', class: 'table-header' },
         { text: 'Age', value: 'age', class: 'table-header' },
         { text: 'Sex', value: 'sex', class: 'table-header' },
         { text: 'Risk', value: 'riskLevel', class: 'table-header', align: 'center' },
@@ -149,13 +166,37 @@ export default {
   },
   computed: {
     patients() {
-      return this.$store.getters['clinical/patientDirectory'] || []
+      return this.$store.getters['clinical/patientDirectoryAll'] || this.$store.getters['clinical/patientDirectory'] || []
+    },
+    allPatients() {
+      return this.$store.getters['clinical/patientDirectoryAll'] || this.$store.getters['clinical/patientDirectory'] || []
     },
     departmentFilters() {
-      const departments = [...new Set(this.patients.map(patient => patient.currentDepartment).filter(Boolean))].sort()
+      const source = this.patients
+      const departments = [...new Set(source.map(patient => patient.currentDepartment).filter(Boolean))].sort()
       return ['All departments', ...departments]
     },
     filteredPatients() {
+      const query = (this.search || '').trim().toLowerCase()
+
+      // If doctor/nurse searches by Patient Code / MRN / ID / Name / Phone, search facility-wide
+      if (query) {
+        return this.allPatients.filter(patient => {
+          const idMatch = (patient.id || '').toLowerCase().includes(query)
+          const mrnMatch = (patient.mrn || '').toLowerCase().includes(query)
+          const extMatch = (patient.externalId || '').toLowerCase().includes(query)
+          const nameMatch = (patient.displayName || patient.name || '').toLowerCase().includes(query)
+          const phoneMatch = (patient.phone || '').toLowerCase().includes(query)
+          const deptMatch = (patient.currentDepartment || '').toLowerCase().includes(query)
+
+          const riskMatches = !this.riskFilter || patient.riskLevel === this.riskFilter
+          const departmentMatches = !this.departmentFilter || this.departmentFilter === 'All departments' || patient.currentDepartment === this.departmentFilter
+
+          return (idMatch || mrnMatch || extMatch || nameMatch || phoneMatch || deptMatch) && riskMatches && departmentMatches
+        })
+      }
+
+      // Default view: list & count ONLY doctor/nurse accessible patients (own dept or transferred)
       return this.patients.filter(patient => {
         const riskMatches = !this.riskFilter || patient.riskLevel === this.riskFilter
         const departmentMatches = !this.departmentFilter || this.departmentFilter === 'All departments' || patient.currentDepartment === this.departmentFilter
@@ -163,7 +204,18 @@ export default {
       })
     }
   },
+  async mounted() {
+    await this.loadPatients()
+  },
   methods: {
+    async loadPatients() {
+      try {
+        await this.$store.dispatch('clinical/fetchPatients')
+      } catch (err) {
+        console.error('Unable to load patient registry:', err)
+        if (this.$toast) this.$toast.error('Unable to refresh patient list.')
+      }
+    },
     hasConsultationClearance(patientId) {
       return !!this.$store.getters['billing/getPaymentClearance'](patientId, 'consultation')
     },
@@ -178,6 +230,16 @@ export default {
     },
     openPatient(patient) {
       if (patient && patient.id) this.$router.push('/clinical/patients/' + patient.id)
+    },
+    /**
+     * Called when the user clicks "Admit Now" on the red Admission Pending chip.
+     * Stores the patient in Vuex so the Inpatient page can pre-fill the admission form,
+     * then navigates directly to the Inpatient tab.
+     */
+    goToInpatientAdmission(patient) {
+      // Persist the selected patient so the inpatient page can read it on mount
+      this.$store.commit('clinical/SET_SELECTED_ADMISSION_PATIENT', patient)
+      this.$router.push('/clinical/inpatient')
     },
     riskColor(level) {
       return { high: '#C0392B', medium: '#D97706', low: '#166534' }[level] || '#6B7280'
@@ -210,6 +272,9 @@ export default {
   color: #20B2AA;
   text-decoration: none;
   font-weight: 800;
+}
+.admit-pending-row {
+  margin-top: 2px;
 }
 
 .hospital-table {

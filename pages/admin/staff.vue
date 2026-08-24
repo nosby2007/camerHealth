@@ -46,31 +46,27 @@
                   class="mb-4 rounded-0"
                 ></v-text-field>
 
-                <v-text-field
-                  v-model="form.email"
-                  label="Email Address"
-                  type="email"
-                  outlined tile dense required
-                  :rules="[required, emailRule]"
-                  class="mb-4 rounded-0"
-                ></v-text-field>
-
                 <v-divider class="mb-6 grey lighten-3"></v-divider>
                 <div class="section-label mb-4">LOGIN CREDENTIALS</div>
 
                 <v-row dense>
-                  <v-col cols="7">
-                    <v-text-field
-                      v-model="form.staffId"
-                      label="Staff ID"
-                      outlined tile dense required
-                      :rules="[required, idRule, uniqueIdRule]"
-                      hint="e.g. DOC-001"
-                      persistent-hint
-                      class="mb-4 rounded-0"
-                    ></v-text-field>
+                  <v-col cols="12">
+                    <!-- Auto-ID preview: shown as soon as a role is selected -->
+                    <v-card flat tile class="auto-id-preview pa-4 mb-4" :class="form.role ? 'active' : 'inactive'">
+                      <div class="text-caption font-weight-black mb-1" style="letter-spacing:1px">
+                        <v-icon small :color="form.role ? '#0B3D2E' : '#9CA3AF'" class="mr-1">mdi-identifier</v-icon>
+                        SYSTEM-GENERATED STAFF ID
+                      </div>
+                      <div class="d-flex align-center">
+                        <span v-if="previewStaffId" class="id-badge">{{ previewStaffId }}</span>
+                        <span v-else class="id-badge-placeholder">Select a role to preview ID</span>
+                      </div>
+                      <div v-if="previewStaffEmail" class="text-caption mt-1" style="color:#6B7280">
+                        <v-icon x-small class="mr-1">mdi-email-outline</v-icon>{{ previewStaffEmail }}
+                      </div>
+                    </v-card>
                   </v-col>
-                  <v-col cols="5">
+                  <v-col cols="12">
                     <v-select
                       v-model="form.role"
                       :items="roleOptions"
@@ -101,7 +97,7 @@
                     <v-select
                       v-model="form.department"
                       :items="departmentOptions"
-                      label="Department"
+                      label="Department (optional)"
                       outlined tile dense
                       class="mb-4 rounded-0"
                     ></v-select>
@@ -112,11 +108,12 @@
                       :items="serviceOptions"
                       item-text="name"
                       item-value="name"
-                      label="Service / Unit"
+                      label="Ward / Unit (optional)"
                       outlined tile dense
                       class="mb-4 rounded-0"
                     ></v-select>
                   </v-col>
+
                 </v-row>
 
                 <v-row dense>
@@ -124,7 +121,7 @@
                     <v-select
                       v-model="form.specialty"
                       :items="specialtyOptions"
-                      label="Specialty"
+                      label="Specialty (optional)"
                       outlined tile dense
                       class="mb-4 rounded-0"
                     ></v-select>
@@ -133,7 +130,7 @@
                     <v-select
                       v-model="form.phiScope"
                       :items="phiScopeOptions"
-                      label="PHI Scope"
+                      label="PHI Scope (optional)"
                       outlined tile dense
                       class="mb-4 rounded-0"
                     ></v-select>
@@ -168,19 +165,31 @@
                   Initial passwords are not set in the browser for secure invitation mode. The backend endpoint will issue the invite and handle account activation.
                 </v-alert>
 
-                <!-- Credential preview card — shown before submit -->
-                <v-card v-if="!useSupabaseStaffInvitation && createValid && form.staffId && form.role" flat tile class="credential-preview pa-5 mb-8">
+                <!-- Credential preview card — shown before submit (auto-generated) -->
+                <v-card v-if="!useSupabaseStaffInvitation && createValid && previewStaffId && form.role" flat tile class="credential-preview pa-5 mb-8">
                   <div class="text-caption font-weight-black mb-3 uppercase ls-1" style="color:#003366">
                     <v-icon small color="#003366" class="mr-1">mdi-card-account-details</v-icon>
-                    CREDENTIAL SUMMARY (share with staff)
+                    CREDENTIAL PREVIEW (system-generated)
                   </div>
-                  <div class="cred-row"><span>Staff ID</span><strong>{{ form.staffId.toUpperCase() }}</strong></div>
+                  <div class="cred-row"><span>Staff ID</span><strong class="mono">{{ previewStaffId }}</strong></div>
+                  <div class="cred-row"><span>Email</span><strong class="mono">{{ previewStaffEmail }}</strong></div>
                   <div class="cred-row"><span>Role</span><strong>{{ form.role }}</strong></div>
-                  <div class="cred-row"><span>Password</span><strong>{{ form.password }}</strong></div>
+                  <div class="cred-row mb-1"><span>Password</span><strong>{{ form.password }}</strong></div>
                   <div class="cred-note mt-3">
                     <v-icon x-small color="#C0392B">mdi-alert</v-icon>
                     Share these credentials securely. Password is hashed on save and cannot be recovered.
                   </div>
+                </v-card>
+
+                <!-- Post-creation result card -->
+                <v-card v-if="lastCreated" flat tile class="pa-5 mb-6" style="border:2px solid #0B3D2E; background:#F0FDF9">
+                  <div class="text-caption font-weight-black mb-3 uppercase ls-1" style="color:#0B3D2E">
+                    <v-icon small color="#0B3D2E" class="mr-1">mdi-check-circle</v-icon>
+                    ACCOUNT CREATED — SHARE SECURELY
+                  </div>
+                  <div class="cred-row"><span>Staff ID</span><strong class="mono">{{ lastCreated.staffId }}</strong></div>
+                  <div class="cred-row"><span>System Email</span><strong class="mono">{{ lastCreated.staffEmail }}</strong></div>
+                  <div class="cred-row mb-1"><span>Password</span><strong>( the one you just set )</strong></div>
                 </v-card>
 
                 <v-btn
@@ -275,6 +284,9 @@
                 </div>
               </div>
             </template>
+            <template v-slot:item.staffCode="{ item }">
+              <span class="id-badge text-caption font-weight-black mono">{{ item.staffCode || item.id }}</span>
+            </template>
             <template v-slot:item.role="{ item }">
               <v-chip x-small dark label :color="roleColor(item.role)" class="font-weight-black">{{ item.role }}</v-chip>
             </template>
@@ -283,8 +295,8 @@
               <div class="text-caption grey--text">{{ item.service || item.specialty || item.phiScope || 'No PHI scope set' }}</div>
             </template>
             <template v-slot:item.active="{ item }">
-              <v-chip x-small label :color="item.active ? '#1F7A5C' : '#C0392B'" dark class="font-weight-black">
-                {{ item.active ? 'ACTIVE' : 'INACTIVE' }}
+              <v-chip x-small label :color="(item.status === 'active' || item.active) ? '#1F7A5C' : '#C0392B'" dark class="font-weight-black">
+                {{ (item.status === 'active' || item.active) ? 'ACTIVE' : 'INACTIVE' }}
               </v-chip>
             </template>
             <template v-slot:item.createdAt="{ item }">
@@ -344,6 +356,8 @@
 </template>
 
 <script>
+import { generateStaffId, generateStaffEmail, getFacilityDomain } from '~/util/identity'
+
 export default {
   head: { title: 'Staff Management' },
   data() {
@@ -357,7 +371,8 @@ export default {
       editingId: null,
       deactivateDialog: false,
       deactivateTarget: null,
-      form: { fullName: '', email: '', staffId: '', role: null, position: '', department: '', service: '', specialty: '', phiScope: '', password: '', confirmPassword: '' },
+      form: { fullName: '', role: null, position: '', department: '', service: '', specialty: '', phiScope: '', password: '', confirmPassword: '' },
+      lastCreated: null,
       resetPwd: { password: '', confirm: '' },
       roleOptions: [
         { value: 'DOCTOR',  label: 'Doctor'  },
@@ -369,6 +384,8 @@ export default {
         { value: 'NURSING_SUPERVISOR', label: 'Surveillant general' },
         { value: 'LAB',     label: 'Laborantin' },
         { value: 'IMAGING', label: 'Imagerie' },
+        { value: 'DENTIST', label: 'Dentist' },
+        { value: 'ANESTHESIOLOGIST', label: 'Anesthesiologist' },
         { value: 'PHARMACY', label: 'Pharmacien' },
         { value: 'FRONT_DESK', label: 'Reception' },
         { value: 'RECORDS', label: 'Archives' },
@@ -376,9 +393,10 @@ export default {
         { value: 'SOCIAL_WORKER', label: 'Social' },
         { value: 'PHYSIOTHERAPIST', label: 'Kine' }
       ],
+
       headers: [
         { text: 'STAFF MEMBER', value: 'fullName', width: '260px' },
-        { text: 'ID',           value: 'id' },
+        { text: 'STAFF ID',     value: 'staffCode' },
         { text: 'ROLE',         value: 'role',      align: 'center' },
         { text: 'ASSIGNMENT',   value: 'assignment' },
         { text: 'STATUS',       value: 'active',    align: 'center' },
@@ -386,27 +404,46 @@ export default {
         { text: '',             value: 'actions',   sortable: false, align: 'right' }
       ],
       // validation rules
-      required:  v => !!v || 'Required',
-      emailRule: v => /.+@.+\..+/.test(v) || 'Enter a valid email',
-      idRule:    v => /^[A-Za-z0-9\-]+$/.test(v) || 'Letters, numbers and hyphens only',
-      pwdRule:   v => (v && v.length >= 8 && /\d/.test(v)) || 'Min 8 chars including at least 1 number'
+      required: v => !!v || 'Required',
+      pwdRule:  v => (v && v.length >= 8 && /\d/.test(v)) || 'Min 8 chars including at least 1 number'
     }
   },
   computed: {
     useSupabaseStaffInvitation() {
       return Boolean(this.$config && this.$config.ENABLE_SUPABASE_AUTH)
     },
-    allStaff() { return this.$store.getters['facility/getAllStaff'].filter(s => s.role !== 'ADMIN') },
+    allStaff() { return (this.$store.getters['facility/getAllStaff'] || []).filter(s => s && s.role !== 'ADMIN') },
     filteredStaff() {
       if (!this.roleFilter) return this.allStaff
-      return this.allStaff.filter(s => s.role === this.roleFilter)
+      return this.allStaff.filter(s => s && s.role === this.roleFilter)
     },
-    existingIds() { return this.$store.getters['facility/getAllStaff'].map(s => s.id) },
+    existingIds() { return (this.$store.getters['facility/getAllStaff'] || []).map(s => s && s.id) },
     hospitalDepartments() { return this.$store.getters['facility/getDepartments'] || [] },
     departmentOptions() { return this.hospitalDepartments.map(department => department.name) },
+
     selectedDepartment() { return this.hospitalDepartments.find(department => department.name === this.form.department) },
-    serviceOptions() { return this.selectedDepartment ? (this.selectedDepartment.services || []) : [] },
-    specialtyOptions() { return this.selectedDepartment ? (this.selectedDepartment.specialties || []) : this.$store.getters['facility/getSpecialties'] || [] },
+    serviceOptions() {
+      if (this.selectedDepartment && this.selectedDepartment.services && this.selectedDepartment.services.length) {
+        return this.selectedDepartment.services
+      }
+      // Return all wards/units from all departments when no department selected
+      const allServices = []
+      this.hospitalDepartments.forEach(dept => {
+        (dept.services || []).forEach(svc => {
+          const name = typeof svc === 'string' ? svc : svc.name
+          if (name && !allServices.some(s => s.name === name)) {
+            allServices.push({ id: svc.id || name, name })
+          }
+        })
+      })
+      return allServices
+    },
+    specialtyOptions() {
+      const deptSpecs = this.selectedDepartment ? (this.selectedDepartment.specialties || []) : []
+      const allSpecs = this.$store.getters['facility/getSpecialties'] || []
+      return [...new Set([...deptSpecs, ...allSpecs])]
+    },
+
     phiScopeOptions() {
       return [
         'facility-administration',
@@ -429,14 +466,48 @@ export default {
       ]
     },
     uniqueIdRule() {
+      // Kept for backward compat, not used in auto-ID mode but harmless
       return v => !this.existingIds.includes((v || '').trim().toUpperCase()) || 'This Staff ID already exists'
     },
     editingMember() {
       if (!this.editingId) return null
       return this.$store.getters['facility/getAllStaff'].find(s => s.id === this.editingId)
+    },
+    // ── Auto-ID preview (updates live as role changes) ────────────────────────
+    previewStaffId() {
+      if (!this.form.role) return ''
+      const facility = this.$store.state.facility.facility || {}
+      const orgPrefix = facility.orgPrefix || facility.code || 'HGOPY'
+      const existingIds = (this.$store.getters['facility/getAllStaff'] || []).map(s => s.staffCode || s.id)
+      return generateStaffId(orgPrefix, this.form.role, existingIds)
+    },
+    previewStaffEmail() {
+      if (!this.previewStaffId) return ''
+      const facility = this.$store.state.facility.facility || {}
+      const domain = facility.facilityDomain || getFacilityDomain(facility.email, facility.orgPrefix || facility.code || 'HGOPY')
+      return generateStaffEmail(this.previewStaffId, domain)
+    }
+  },
+  async mounted() {
+    await Promise.allSettled([
+      this.$store.dispatch('facility/fetchStaff'),
+      this.$store.dispatch('facility/fetchDepartments')
+    ])
+  },
+  watch: {
+    'form.service'(val) {
+      if (val && !this.form.department) {
+        const match = this.hospitalDepartments.find(d =>
+          (d.services || []).some(s => (typeof s === 'string' ? s : s.name) === val)
+        )
+        if (match) {
+          this.form.department = match.name
+        }
+      }
     }
   },
   methods: {
+
     async createAccount() {
       if (!this.$refs.createForm.validate()) return
       this.loading = true
@@ -452,7 +523,8 @@ export default {
           return
         }
 
-        await this.$store.dispatch('facility/createStaffAccount', this.form)
+        const result = await this.$store.dispatch('facility/createStaffAccount', this.form)
+        this.lastCreated = result
         this.$toast.success(`Account created for ${this.form.fullName}. Share credentials securely.`)
         this.$refs.createForm.reset()
         this.form.role = null
@@ -557,6 +629,11 @@ export default {
 .cred-row { display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px solid #E2E8F0; }
 .cred-row span { color:#6B7280; font-weight:600; }
 .cred-note { font-size:10px; color:#C0392B; font-weight:600; }
+.mono { font-family: 'Courier New', monospace; color: #0B3D2E; }
+.auto-id-preview { border: 1px dashed #9CA3AF !important; background: #F9FAFB !important; }
+.auto-id-preview.active { border-color: #00A99D !important; background: #F0FDF9 !important; }
+.id-badge { font-family:'Courier New',monospace; font-size:16px; font-weight:900; color:#003366; background:#EFF6FF; padding:2px 10px; border-radius:2px; border:1px solid #BFDBFE; }
+.id-badge-placeholder { font-size:12px; color:#9CA3AF; font-style:italic; }
 .gov-table { background: white !important; }
 .gov-table ::v-deep th { background:#F8FAFC !important; color:#1B1F23 !important; font-size:10px !important; font-weight:800; text-transform:uppercase; }
 </style>

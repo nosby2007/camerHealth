@@ -27,7 +27,7 @@
               <v-autocomplete
                 v-model="form.patientId"
                 :items="patients"
-                item-text="name"
+                item-text="displayLabel"
                 item-value="id"
                 label="Patient"
                 flat outlined tile dense required
@@ -170,7 +170,12 @@ export default {
     }
   },
   computed: {
-    patients() { return this.$store.getters['clinical/getPatients'] },
+    patients() {
+      return (this.$store.getters['clinical/getPatients'] || []).map(p => ({
+        ...p,
+        displayLabel: `${p.mrn || p.id} — ${p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()}`
+      }))
+    },
     appointments() {
       return this.$store.getters['clinical/getAppointments'].map(a => {
         const p = this.patients.find(pt => pt.id === a.patientId)

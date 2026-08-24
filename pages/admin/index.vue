@@ -103,6 +103,85 @@
       </v-col>
     </v-row>
 
+    <!-- Danger Zone: Factory Reset -->
+    <v-row class="mt-6">
+      <v-col cols="12">
+        <v-card flat tile class="b-1 overflow-hidden" style="border-color:#C0392B !important">
+          <div class="pa-4 d-flex align-center" style="background:#FFF5F5; border-bottom:1px solid #FECACA">
+            <v-icon color="#C0392B" class="mr-3">mdi-alert-octagon</v-icon>
+            <div>
+              <div class="text-caption font-weight-black uppercase ls-1" style="color:#C0392B">DANGER ZONE</div>
+              <div class="text-caption grey--text font-weight-medium">Actions here are irreversible on this device.</div>
+            </div>
+          </div>
+          <div class="pa-6 d-flex align-center justify-space-between">
+            <div>
+              <div class="text-caption font-weight-black gov-text-primary mb-1">RE-INITIALIZE FACILITY</div>
+              <div class="text-caption grey--text" style="max-width:480px">
+                Wipes all local facility data (staff, patients, audit log) from this device and returns to the
+                registration page. Use this to set up a new facility with a new organisation prefix.
+              </div>
+            </div>
+            <v-btn
+              color="#C0392B" dark tile depressed height="48" class="font-weight-black text-caption ls-1 ml-6"
+              @click="resetDialog = true"
+            >
+              <v-icon left small>mdi-restart-alert</v-icon>
+              WIPE &amp; RE-REGISTER
+            </v-btn>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Confirmation Dialog -->
+    <v-dialog v-model="resetDialog" max-width="480" persistent>
+      <v-card flat tile class="b-1">
+        <div class="pa-4" style="background:#C0392B">
+          <div class="white--text font-weight-black text-caption ls-1 uppercase d-flex align-center">
+            <v-icon left small color="white">mdi-alert</v-icon>
+            CONFIRM FACILITY WIPE
+          </div>
+        </div>
+        <div class="pa-8">
+          <p class="text-body-2 font-weight-bold gov-text-primary mb-2">
+            This will permanently erase all local data:
+          </p>
+          <ul class="text-caption mb-6" style="color:#C0392B; font-weight:700; line-height:2">
+            <li>Facility registration &amp; org prefix</li>
+            <li>All staff accounts &amp; passwords</li>
+            <li>All patient records &amp; clinical data</li>
+            <li>All audit logs on this device</li>
+          </ul>
+          <v-alert dense text type="error" class="text-caption font-weight-bold rounded-0 mb-6">
+            Type <strong>WIPE</strong> below to confirm.
+          </v-alert>
+          <v-text-field
+            v-model="wipeConfirmText"
+            label="Type WIPE to confirm"
+            outlined tile dense
+            class="mb-4 rounded-0"
+          ></v-text-field>
+          <v-row dense>
+            <v-col cols="7">
+              <v-btn
+                color="#C0392B" dark block height="48" tile depressed
+                :disabled="wipeConfirmText !== 'WIPE'"
+                :loading="wiping"
+                @click="doWipe"
+                class="font-weight-black text-caption"
+              >
+                WIPE ALL DATA &amp; RE-REGISTER
+              </v-btn>
+            </v-col>
+            <v-col cols="5">
+              <v-btn color="grey lighten-2" block height="48" tile depressed @click="cancelWipe" class="font-weight-black text-caption">CANCEL</v-btn>
+            </v-col>
+          </v-row>
+        </div>
+      </v-card>
+    </v-dialog>
+
   </v-container>
 </template>
 
@@ -111,28 +190,33 @@ export default {
   head: { title: 'Admin Dashboard' },
   computed: {
     facility() { return this.$store.getters['facility/getFacility'] || {} },
-    allStaff() { return this.$store.getters['facility/getAllStaff'] },
-    confirmedVisits() { return this.$store.getters['clinical/getVisits'].filter(v => v.status === 'Confirmed') },
-    recentAudit() { return this.$store.getters['facility/getAuditLog'].slice(0, 6) },
+    allStaff() { return this.$store.getters['facility/getAllStaff'] || [] },
+    confirmedVisits() { return (this.$store.getters['clinical/getVisits'] || []).filter(v => v && v.status === 'Confirmed') },
+    recentAudit() { return (this.$store.getters['facility/getAuditLog'] || []).slice(0, 6) },
     facilityRows() {
       const f = this.facility
       return [
-        { label: 'Facility ID', value: f.id },
-        { label: 'Region',      value: f.region },
-        { label: 'City',        value: f.city },
-        { label: 'Quarter',     value: f.quarter },
-        { label: 'Email',       value: f.email },
-        { label: 'Registered',  value: f.createdAt ? this.fmt(f.createdAt) : '—' }
+        { label: 'Facility ID',   value: f.code || f.orgPrefix || f.id || '—' },
+        { label: 'Facility Name', value: f.name || '—' },
+        { label: 'Region',        value: f.region || '—' },
+        { label: 'City',          value: f.city || '—' },
+        { label: 'Quarter',       value: f.quarter || '—' },
+        { label: 'Email',         value: f.email || '—' },
+        { label: 'Phone',         value: f.phone || '—' },
+        { label: 'Status',        value: f.status || 'active' },
+        { label: 'Registered',    value: f.createdAt ? this.fmt(f.createdAt) : '—' }
       ]
     },
     staffKpis() {
+      const staffList = this.allStaff || []
       return [
         { role: 'DOCTOR',  label: 'Doctors',   icon: 'mdi-doctor',        color: '#003366' },
         { role: 'NURSE',   label: 'Nurses',    icon: 'mdi-medical-bag',   color: '#0B3D2E' },
         { role: 'LAB',     label: 'Lab',       icon: 'mdi-flask',         color: '#1F7A5C' },
         { role: 'IMAGING', label: 'Imaging',   icon: 'mdi-radiology-box', color: '#F4A300' }
-      ].map(r => ({ ...r, count: this.allStaff.filter(s => s.role === r.role && s.active).length }))
+      ].map(r => ({ ...r, count: staffList.filter(s => s && s.role === r.role && s.status !== 'inactive').length }))
     },
+
     quickActions() {
       return [
         { label: 'MANAGE STAFF',     to: '/admin/staff',         icon: 'mdi-account-plus',   color: '#003366', outlined: false },
@@ -154,8 +238,23 @@ export default {
   },
   data() {
     return {
-      syncing: false
+      syncing: false,
+      resetDialog: false,
+      wiping: false,
+      wipeConfirmText: ''
     }
+  },
+  async mounted() {
+    const facilityId = this.$store.state.auth.facilityId
+    if (facilityId && !this.facility.id) {
+      try { await this.$store.dispatch('facility/fetchFacility', facilityId) } catch(e) {}
+    }
+    // Fetch staff, departments, and audit log from DB
+    await Promise.allSettled([
+      this.$store.dispatch('facility/fetchStaff'),
+      this.$store.dispatch('facility/fetchDepartments'),
+      this.$store.dispatch('facility/fetchAuditLog', { limit: 20 })
+    ])
   },
   methods: {
     fmt(ts) { return new Date(ts).toLocaleString() },
@@ -178,6 +277,36 @@ export default {
         this.$toast.error('Sync failed. Check connection.')
       } finally {
         setTimeout(() => { this.syncing = false }, 1000)
+      }
+    },
+    cancelWipe() {
+      this.resetDialog = false
+      this.wipeConfirmText = ''
+    },
+    async doWipe() {
+      if (this.wipeConfirmText !== 'WIPE') return
+      this.wiping = true
+      try {
+        // Wipe facility store (localStorage + Vuex)
+        await this.$store.dispatch('facility/wipeAllData')
+        // Wipe auth session
+        this.$store.commit('auth/CLEAR_SESSION')
+        // Also clear any clinical data in sessionStorage
+        if (process.client) {
+          sessionStorage.clear()
+          // Remove all camero_ keys from localStorage that aren't covered by facility store
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('camero_'))
+            .forEach(k => localStorage.removeItem(k))
+        }
+        this.$toast.success('Facility data wiped. Redirecting to registration...')
+        setTimeout(() => this.$router.push('/register'), 800)
+      } catch (err) {
+        this.$toast.error('Wipe failed. Please try again.')
+      } finally {
+        this.wiping = false
+        this.resetDialog = false
+        this.wipeConfirmText = ''
       }
     }
   }

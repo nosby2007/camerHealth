@@ -246,9 +246,7 @@ export default {
         item.minPrice = Number(this.newItem.minPrice) || 0
         item.maxPrice = Number(this.newItem.maxPrice) || 0
       }
-      // ADD_CATALOG_ITEM mutation — push directly via updateCatalogItem won't work for new items
-      // Use the store's catalog array directly via a dedicated mutation
-      this.$store.commit('billing/ADD_CATALOG_ITEM', { section, item })
+      this.$store.dispatch('billing/addCatalogItem', { section, item })
       this.addDialog = false
       this.$toast.success(`${item.name} added to ${section}`)
     },

@@ -6,11 +6,27 @@
         <div class="text-caption font-weight-black grey--text text-uppercase ls-1 mb-1">HOSPITAL EMR COMMAND CENTER</div>
         <h1 class="text-h4 font-weight-black gov-text-primary uppercase mb-1">{{ institution }}</h1>
         <div class="text-caption grey--text font-weight-bold">Live patient flow, intake readiness and department worklists</div>
+        <div v-if="userRole !== 'ADMIN'" class="mt-2 d-flex align-center flex-wrap" style="gap:8px">
+          <v-chip x-small label color="#E0F2FE" text-color="#0369A1" class="font-weight-black">
+            <v-icon left x-small color="#0369A1">mdi-domain</v-icon>ASSIGNED DEPARTMENT: {{ userDepartment.toUpperCase() }}
+          </v-chip>
+          <v-chip x-small label color="#F3E8FF" text-color="#6D28D9" class="font-weight-black">
+            <v-icon left x-small color="#6D28D9">mdi-bed-empty</v-icon>ASSIGNED WARD: {{ userWard.toUpperCase() }}
+          </v-chip>
+        </div>
       </div>
       <div class="d-flex align-center flex-wrap" style="gap:8px">
         <v-chip label color="#003366" dark class="font-weight-black">
           <v-icon left small>mdi-account-key</v-icon>{{ userRole.replace('_', ' ') }}
         </v-chip>
+        <template v-if="userRole !== 'ADMIN'">
+          <v-chip label color="#00A99D" dark class="font-weight-black">
+            <v-icon left small>mdi-hospital-building</v-icon>DEPT: {{ userDepartment }}
+          </v-chip>
+          <v-chip label color="#7C3AED" dark class="font-weight-black">
+            <v-icon left small>mdi-bed-outline</v-icon>WARD: {{ userWard }}
+          </v-chip>
+        </template>
         <v-btn tile depressed color="#00A99D" dark class="font-weight-black text-caption" to="/clinical/patients/new">
           <v-icon left small>mdi-account-plus</v-icon>New intake
         </v-btn>
@@ -190,10 +206,29 @@ export default {
   head: { title: 'Hospital EMR Command Center' },
   data() {
     return {
-      doctorFilterDepartment: 'General Medicine'
+      doctorFilterDepartment: this.$store.state.auth.department || 'General Medicine'
+    }
+  },
+  mounted() {
+    if (this.$store.state.auth.department) {
+      this.doctorFilterDepartment = this.$store.state.auth.department
     }
   },
   computed: {
+    userDepartment() {
+      if (this.$store.state.auth.department) return this.$store.state.auth.department
+      const staffCtx = this.$store.getters['facility/getStaffContext'] ? this.$store.getters['facility/getStaffContext'](this.$store.state.auth.staffId) : null
+      if (staffCtx && staffCtx.department) return staffCtx.department
+      if (staffCtx && staffCtx.departmentRecord) return staffCtx.departmentRecord.name
+      return 'General Medicine'
+    },
+    userWard() {
+      if (this.$store.state.auth.service) return this.$store.state.auth.service
+      const staffCtx = this.$store.getters['facility/getStaffContext'] ? this.$store.getters['facility/getStaffContext'](this.$store.state.auth.staffId) : null
+      if (staffCtx && (staffCtx.service || staffCtx.ward)) return staffCtx.service || staffCtx.ward
+      if (staffCtx && staffCtx.serviceRecord) return staffCtx.serviceRecord.name
+      return 'Main Ward'
+    },
     doctorDepartment() {
       return this.doctorFilterDepartment
     },

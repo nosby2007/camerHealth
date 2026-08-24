@@ -323,20 +323,26 @@ export default {
     }
   },
   methods: {
-    savePatient() {
+    async savePatient() {
       if (this.$refs.form.validate()) {
-        const approxDob = this.form.age ? `${new Date().getFullYear() - Number(this.form.age)}-01-01` : ''
+        const approxDob = this.form.age ? `${new Date().getFullYear() - Number(this.form.age)}-01-01` : '2000-01-01'
         const fullRecord = { 
             ...this.form, 
+            dateOfBirth: approxDob,
             dob: approxDob,
             name: `${this.form.firstName} ${this.form.lastName}`,
             age: this.form.age ? `${this.form.age} years` : 'Unknown',
             patientStatus: this.form.acuityLevel === 'Emergency' ? 'Emergency' : this.form.patientStatus
         }
-        this.$store.dispatch('clinical/registerPatient', fullRecord)
-        this.$refs.form.reset(); 
-        this.$toast.success('Patient record created.');
-        this.$router.push('/clinical/patients')
+        try {
+          await this.$store.dispatch('clinical/registerPatient', fullRecord)
+          await this.$store.dispatch('clinical/fetchPatients')
+          if (this.$toast) this.$toast.success('Patient record created.')
+          this.$router.push('/clinical/patients')
+        } catch (err) {
+          console.error('Failed to register patient:', err)
+          if (this.$toast) this.$toast.error('Failed to save patient: ' + (err.response?.data?.error || err.message))
+        }
       }
     }
   }

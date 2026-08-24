@@ -21,7 +21,7 @@
 
       <!-- Admission Form -->
       <v-col cols="12" lg="4">
-        <v-card flat tile class="gov-card b-1 overflow-hidden shadow-sm">
+        <v-card flat tile class="gov-card b-1 overflow-hidden shadow-sm admission-form">
           <div class="pa-4 bg-navy white--text font-weight-black text-caption ls-1 uppercase">
             {{ editingId ? 'EDIT ADMISSION' : 'NEW ADMISSION' }}
           </div>
@@ -57,8 +57,8 @@
                 <v-col cols="6">
                   <v-select
                     v-model="form.ward"
-                    :items="wards"
-                    label="Ward"
+                    :items="dynamicWards"
+                    label="Ward / Unit"
                     flat outlined tile dense required
                     :rules="[v => !!v || 'Required']"
                     class="mb-4 rounded-0"
@@ -90,13 +90,17 @@
                 class="mb-4 rounded-0"
               ></v-textarea>
 
-              <v-select
-                v-model="form.attendingDoctor"
-                :items="doctors"
+              <v-autocomplete
+                v-model="form.attendingDoctorId"
+                :items="dynamicDoctors"
+                item-text="label"
+                item-value="id"
                 label="Attending Doctor"
                 flat outlined tile dense
+                clearable
                 class="mb-4 rounded-0"
-              ></v-select>
+                attach
+              ></v-autocomplete>
 
               <v-divider class="mb-6 grey lighten-3"></v-divider>
               <div class="section-label mb-4">CLINICAL NOTES</div>
@@ -264,10 +268,26 @@
 export default {
   head: { title: 'Inpatient' },
   mounted() {
-    this.$store.commit('clinical/LOAD_FROM_STORAGE')
-    this.$store.commit('facility/RELOAD_FROM_STORAGE')
-    this.$store.dispatch('billing/loadFromStorage')
+    this.$store.dispatch('clinical/fetchPatients')
+    this.$store.dispatch('clinical/fetchInpatients')
+    this.$store.dispatch('facility/fetchStaff')
+    this.$store.dispatch('billing/fetchCatalog')
+
+    // Pre-fill form if user arrived via "Admit Now" from the patient list
+    const pending = this.$store.state.clinical.selectedAdmissionPatient
+    if (pending) {
+      this.form.patientId       = pending.id               || ''
+      this.form.ward            = pending.pendingAdmission  || ''
+      this.form.admissionReason = pending.admissionReason   || ''
+      this.form.admissionDate   = new Date().toISOString().slice(0, 10)
+      this.$store.commit('clinical/SET_SELECTED_ADMISSION_PATIENT', null)
+      this.$nextTick(() => {
+        const el = this.$el.querySelector('.admission-form')
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
   },
+
   data() {
     return {
       valid: false,
@@ -280,11 +300,10 @@ export default {
       dischargeNote: '',
       form: {
         patientId: '', admissionDate: '', ward: '', bedNumber: '',
-        admissionType: 'Medical', admissionReason: '', attendingDoctor: '',
+        admissionType: 'Medical', admissionReason: '', attendingDoctorId: '',
         diagnosis: '', treatment: ''
       },
       wards: ['General Medicine', 'Surgery', 'Maternity', 'Paediatrics', 'ICU', 'Orthopaedics', 'Cardiology', 'Neurology', 'Oncology', 'Isolation'],
-      doctors: ['Dr. Kamga', 'Dr. Nkeng', 'Dr. Biya', 'Dr. Mbarga', 'Dr. Fouda'],
       headers: [
         { text: 'PATIENT',        value: 'patientName' },
         { text: 'WARD / BED',     value: 'ward' },
@@ -296,60 +315,167 @@ export default {
     }
   },
   computed: {
-    patients() { return this.$store.getters['clinical/getPatients'] },
+    userRole() { return this.$store.state.auth.role || 'ADMIN' },
+    userDepartment() { return this.$store.state.auth.department || '' },
+    userWard() { return this.$store.state.auth.service || '' },
+    allPatients() { return this.$store.getters['clinical/patientDirectoryAll'] || this.$store.getters['clinical/getPatients'] || [] },
+    patients() { return this.$store.getters['clinical/patientDirectory'] || this.allPatients },
     patientItems() {
-      return this.patients.map(p => ({ id: p.id, label: `${p.id} — ${p.name}` }))
+      return this.allPatients.map(p => ({ id: p.id, label: `${p.mrn || p.id} — ${p.displayName || p.name}` }))
     },
-    inpatients() { return this.$store.getters['clinical/getInpatients'].map(a => {
-        const p = this.patients.find(pt => pt.id === a.patientId)
-        return { ...a, patientName: p ? p.name : 'Unknown' }
+    facilityModel() {
+      return this.$store.getters['facility/getHospitalModel'] || { departments: [] }
+    },
+    dynamicWards() {
+      const depts = this.facilityModel.departments || []
+      const wardList = []
+      depts.forEach(d => {
+        if (d.inpatientWards && d.inpatientWards.length) {
+          d.inpatientWards.forEach(w => wardList.push(`${d.name} — ${w}`))
+        } else if (d.services && d.services.length) {
+          d.services.forEach(s => wardList.push(`${d.name} — ${s.name}`))
+        } else {
+          wardList.push(d.name)
+        }
+      })
+      return wardList.length ? wardList : this.wards
+    },
+    dynamicDoctors() {
+      const staff = this.$store.getters['facility/getAllStaff'] || []
+      return staff
+        .filter(s => (s.role === 'DOCTOR' || s.role === 'NP') && s.status !== 'inactive')
+        .map(s => ({ id: s.id, label: `${s.fullName || s.name} (${s.staffCode || s.role})` }))
+    },
+    inpatients() {
+      const raw = this.$store.getters['clinical/getInpatients'] || []
+      return raw.map(a => {
+        const p = this.allPatients.find(pt => pt.id === a.patientId)
+        return {
+          ...a,
+          patientName: p ? (p.displayName || p.name) : 'Unknown',
+          patientDept: p ? p.currentDepartment : ''
+        }
       }).reverse()
     },
     filteredInpatients() {
-      if (!this.statusFilter) return this.inpatients
-      return this.inpatients.filter(i => i.status === this.statusFilter)
+      const query = (this.search || '').trim().toLowerCase()
+
+      if (query) {
+        return this.inpatients.filter(item => {
+          const codeMatch = (item.patientId || '').toLowerCase().includes(query)
+          const nameMatch = (item.patientName || '').toLowerCase().includes(query)
+          const wardMatch = (item.ward || '').toLowerCase().includes(query)
+          const bedMatch = (item.bedNumber || '').toLowerCase().includes(query)
+          const statusMatches = !this.statusFilter || item.status === this.statusFilter
+          return (codeMatch || nameMatch || wardMatch || bedMatch) && statusMatches
+        })
+      }
+
+      return this.inpatients.filter(item => {
+        const statusMatches = !this.statusFilter || item.status === this.statusFilter
+        if (!statusMatches) return false
+
+        if (!this.userRole || this.userRole === 'ADMIN' || !this.userDepartment) return true
+
+        const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const uDept = norm(this.userDepartment)
+        const uWard = norm(this.userWard)
+        const itemWard = norm(item.ward)
+        const itemDept = norm(item.patientDept)
+
+        if (uDept && (itemWard.includes(uDept) || itemDept.includes(uDept))) return true
+        if (uWard && itemWard.includes(uWard)) return true
+
+        return false
+      })
     }
   },
   methods: {
-    save() {
+    async save() {
       if (!this.$refs.form.validate()) return
       this.loading = true
-      if (this.editingId) {
-        this.$store.dispatch('clinical/updateInpatient', { ...this.form, id: this.editingId })
-        this.$toast.success('Admission record updated.')
-        this.cancelEdit()
-      } else {
-        this.$store.dispatch('clinical/admitPatient', this.form)
-        this.$toast.success('Patient admitted successfully.')
-        this.$refs.form.reset()
-        this.form.admissionType = 'Medical'
+      try {
+        const payload = {
+          patientId:         this.form.patientId,
+          ward:              this.form.ward,
+          bedNumber:         this.form.bedNumber,
+          admissionType:     this.form.admissionType,
+          admissionReason:   this.form.admissionReason,
+          diagnosis:         this.form.diagnosis,
+          treatmentPlan:     this.form.treatment,
+          attendingDoctorId: this.form.attendingDoctorId || undefined
+        }
+        if (this.editingId) {
+          await this.$store.dispatch('clinical/updateInpatient', { ...payload, id: this.editingId })
+          this.$toast.success('Admission record updated.')
+          this.cancelEdit()
+        } else {
+          const result = await this.$store.dispatch('clinical/admitPatient', payload)
+          const admitted = result.inpatient || result
+          // Auto-charge hospitalization fee
+          const hospPrice = this.$store.getters['billing/activeCatalog']
+            .find(i => i.section === 'hospitalization')
+          if (hospPrice && admitted && admitted.id) {
+            await this.$store.dispatch('billing/chargeForAdmission', {
+              patientId: payload.patientId,
+              inpatientId: admitted.id,
+              ward: payload.ward,
+              unitPrice: hospPrice.unitPrice
+            })
+          }
+          this.$toast.success('Patient admitted successfully.')
+          this.$refs.form.reset()
+          this.form.admissionType = 'Medical'
+        }
+        await this.$store.dispatch('clinical/fetchInpatients')
+      } finally {
+        this.loading = false
       }
-      this.loading = false
     },
     editInpatient(item) {
       this.editingId = item.id
       this.form = {
-        patientId: item.patientId, admissionDate: item.admissionDate,
-        ward: item.ward, bedNumber: item.bedNumber, admissionType: item.admissionType,
-        admissionReason: item.admissionReason, attendingDoctor: item.attendingDoctor,
-        diagnosis: item.diagnosis, treatment: item.treatment
+        patientId:         item.patientId,
+        admissionDate:     item.admissionDate || item.admittedAt?.slice(0, 10) || '',
+        ward:              item.ward,
+        bedNumber:         item.bedNumber,
+        admissionType:     item.admissionType,
+        admissionReason:   item.admissionReason,
+        attendingDoctorId: item.attendingDoctorId || '',
+        diagnosis:         item.diagnosis,
+        treatment:         item.treatmentPlan
       }
     },
     cancelEdit() { this.editingId = null; this.$refs.form.reset(); this.form.admissionType = 'Medical' },
-    setStatus(item, status) { this.$store.dispatch('clinical/updateInpatient', { ...item, status }) },
+    async setStatus(item, status) {
+      await this.$store.dispatch('clinical/updateInpatient', { id: item.id, status })
+      await this.$store.dispatch('clinical/fetchInpatients')
+    },
     confirmDischarge(item) {
-      const balance = this.$store.getters['billing/getPatientBalance'](item.patientId)
+      const balance = this.$store.getters['billing/getPatientBalance']
+        ? this.$store.getters['billing/getPatientBalance'](item.patientId)
+        : 0
       if (balance > 0) {
         this.$toast.error(`Cannot discharge: outstanding balance of XAF ${balance.toLocaleString()}. Patient must settle billing first.`)
         return
       }
       this.dischargeTarget = item; this.dischargeNote = ''; this.dischargeDialog = true
     },
-    doDischarge() {
+    async doDischarge() {
       this.loading = true
-      this.$store.dispatch('clinical/updateInpatient', { ...this.dischargeTarget, status: 'Discharged', dischargeNote: this.dischargeNote, dischargeDate: new Date().toISOString().slice(0, 10) })
-      this.$toast.success('Patient discharged.')
-      this.dischargeDialog = false; this.dischargeTarget = null; this.loading = false
+      try {
+        await this.$store.dispatch('clinical/updateInpatient', {
+          id: this.dischargeTarget.id,
+          status: 'Discharged',
+          dischargeSummary: this.dischargeNote
+        })
+        await this.$store.dispatch('clinical/fetchInpatients')
+        this.$toast.success('Patient discharged.')
+        this.dischargeDialog = false
+        this.dischargeTarget = null
+      } finally {
+        this.loading = false
+      }
     },
     patientDetailsRoute(patientId) {
       return `/clinical/patients/${patientId}`

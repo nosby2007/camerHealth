@@ -82,8 +82,7 @@ export default {
   },
   methods: {
     selectClinical() {
-      const setupComplete = this.$store.state.facility.setupComplete
-      this.$router.push(setupComplete ? '/login' : '/register')
+      this.$router.push('/login')
     },
     selectMinistry() {
       this.$router.push('/ministry-login')

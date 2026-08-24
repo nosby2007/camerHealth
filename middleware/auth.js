@@ -105,10 +105,7 @@ export default function ({ store, redirect, route }) {
         if (home) return redirect(home)
       }
     }
-    // /register only valid when facility not yet set up
-    if (path === '/register' && setupComplete) return redirect('/login')
-    // /login only valid when facility is set up
-    if (path === '/login' && !setupComplete) return redirect('/register')
+    // Allow /login and /register to open freely
     return
   }
 

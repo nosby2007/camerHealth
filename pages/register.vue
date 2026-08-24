@@ -17,7 +17,7 @@
       <div class="pa-10">
         <v-alert dense text type="info" color="#0B3D2E" class="mb-4 text-caption font-weight-bold rounded-0">
           This form is completed <strong>once</strong> by the clinic director. It creates the facility record
-          and the administrator account. Keep your credentials safe.
+          and the administrator account. The system will generate the admin's Staff ID and email automatically.
         </v-alert>
 
         <v-alert v-if="useSupabaseFacilityRegistration" dense text type="warning" class="mb-8 text-caption font-weight-bold rounded-0">
@@ -78,14 +78,40 @@
             type="email"
             outlined tile dense required
             :rules="[required, emailRule]"
-            class="mb-8 rounded-0"
+            class="mb-4 rounded-0"
           ></v-text-field>
+
+          <!-- Org Prefix -->
+          <v-row dense>
+            <v-col cols="12" sm="5">
+              <v-text-field
+                v-model="facility.orgPrefix"
+                label="Organisation Prefix (2 letters + 2 digits)"
+                outlined tile dense required
+                :rules="[required, orgPrefixRule]"
+                hint="e.g. RH01 for Regional Hospital 01. Must be unique per organisation."
+                persistent-hint
+                maxlength="4"
+                class="mb-8 rounded-0 font-weight-black"
+                @input="facility.orgPrefix = facility.orgPrefix.toUpperCase()"
+                :suffix="previewAdminId"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12" sm="7">
+              <v-card v-if="previewAdminId" flat tile class="prefix-preview pa-4 mb-8" style="border:1px dashed #00A99D; background:#F0FDF9">
+                <div class="text-caption font-weight-black mb-2" style="color:#0B3D2E; letter-spacing:1px">SYSTEM WILL GENERATE</div>
+                <div class="text-caption mb-1"><strong>Admin ID:</strong> <span class="mono">{{ previewAdminId }}</span></div>
+                <div class="text-caption"><strong>Admin Email:</strong> <span class="mono">{{ previewAdminEmail }}</span></div>
+              </v-card>
+            </v-col>
+          </v-row>
 
           <!-- ── Section 2: Administrator Account ── -->
           <div class="section-label mb-4">ADMINISTRATOR ACCOUNT</div>
 
+          <!-- Admin section: only name + password needed; ID & email auto-generated -->
           <v-row dense>
-            <v-col cols="12" sm="8">
+            <v-col cols="12">
               <v-text-field
                 v-model="admin.fullName"
                 label="Administrator Full Name"
@@ -94,27 +120,7 @@
                 class="mb-4 rounded-0"
               ></v-text-field>
             </v-col>
-            <v-col cols="12" sm="4">
-              <v-text-field
-                v-model="admin.staffId"
-                label="Admin Staff ID"
-                outlined tile dense required
-                :rules="[required, idRule]"
-                hint="e.g. ADM-001"
-                persistent-hint
-                class="mb-4 rounded-0"
-              ></v-text-field>
-            </v-col>
           </v-row>
-
-          <v-text-field
-            v-model="admin.email"
-            label="Administrator Email"
-            type="email"
-            outlined tile dense required
-            :rules="[required, emailRule]"
-            class="mb-4 rounded-0"
-          ></v-text-field>
 
           <v-row dense>
             <v-col cols="12" sm="6">
@@ -154,6 +160,24 @@
             REGISTER FACILITY & CREATE ADMIN ACCOUNT
             <v-icon right small>mdi-hospital-building</v-icon>
           </v-btn>
+
+          <!-- Credential result card — shown after successful registration -->
+          <v-card v-if="generatedCredentials" flat tile class="mt-8 pa-6" style="border:2px solid #0B3D2E; background:#F0FDF9">
+            <div class="text-caption font-weight-black mb-4" style="color:#0B3D2E; letter-spacing:1.5px">
+              <v-icon small color="#0B3D2E" class="mr-1">mdi-shield-check</v-icon>
+              REGISTRATION SUCCESSFUL — ADMINISTRATOR CREDENTIALS
+            </div>
+            <div class="cred-row mb-2"><span>Staff ID</span><strong class="mono">{{ generatedCredentials.adminId }}</strong></div>
+            <div class="cred-row mb-2"><span>System Email</span><strong class="mono">{{ generatedCredentials.adminEmail }}</strong></div>
+            <div class="cred-row mb-4"><span>Password</span><strong>( the one you just set )</strong></div>
+            <v-alert dense text type="error" class="text-caption font-weight-bold rounded-0 mb-4">
+              <v-icon x-small left>mdi-alert</v-icon>
+              Save these credentials NOW. The system email is your login. The password cannot be recovered.
+            </v-alert>
+            <v-btn color="#0B3D2E" dark block height="44" tile depressed class="font-weight-black text-caption ls-1" @click="goToLogin">
+              PROCEED TO LOGIN &nbsp;<v-icon right small>mdi-login</v-icon>
+            </v-btn>
+          </v-card>
         </v-form>
       </div>
 
@@ -170,6 +194,8 @@
 </template>
 
 <script>
+import { generateStaffId, generateStaffEmail, getFacilityDomain, isValidOrgPrefix } from '~/util/identity'
+
 export default {
   layout: 'login-layout',
   data() {
@@ -178,22 +204,32 @@ export default {
       loading: false,
       registrationError: '',
       showPwd: false,
-      facility: { name: '', region: 'Centre', city: '', quarter: '', email: '' },
-      admin: { fullName: '', staffId: '', email: '', password: '', confirmPassword: '' },
+      generatedCredentials: null,
+      facility: { name: '', region: 'Centre', city: '', quarter: '', email: '', orgPrefix: '' },
+      admin: { fullName: '', password: '', confirmPassword: '' },
       regions: ['Far North', 'North', 'Adamawa', 'Centre', 'South', 'East', 'West', 'Littoral', 'South-West', 'North-West'],
-      required:  v => !!v || 'This field is required',
-      emailRule: v => /.+@.+\..+/.test(v) || 'Enter a valid email',
-      idRule:    v => /^[A-Za-z0-9\-]+$/.test(v) || 'Only letters, numbers and hyphens',
-      pwdRule:   v => (v && v.length >= 8 && /\d/.test(v)) || 'Min 8 characters including at least 1 number'
+      required:      v => !!v || 'This field is required',
+      emailRule:     v => /.+@.+\..+/.test(v) || 'Enter a valid email',
+      orgPrefixRule: v => isValidOrgPrefix(v) || 'Must be exactly 2 letters followed by 2 digits (e.g. RH01)',
+      pwdRule:       v => (v && v.length >= 8 && /\d/.test(v)) || 'Min 8 characters including at least 1 number'
     }
   },
   mounted() {
-    // If already set up, redirect to login
-    if (this.$store.state.facility.setupComplete) this.$router.push('/login')
+    // Page is freely accessible for new facility registrations
   },
   computed: {
     useSupabaseFacilityRegistration() {
       return Boolean(this.$config && this.$config.ENABLE_SUPABASE_AUTH)
+    },
+    previewAdminId() {
+      const prefix = (this.facility.orgPrefix || '').toUpperCase()
+      if (!isValidOrgPrefix(prefix)) return ''
+      return generateStaffId(prefix, 'ADMIN', [])
+    },
+    previewAdminEmail() {
+      if (!this.previewAdminId) return ''
+      const domain = getFacilityDomain(this.facility.email, this.facility.orgPrefix)
+      return generateStaffEmail(this.previewAdminId, domain)
     }
   },
   methods: {
@@ -201,6 +237,7 @@ export default {
       if (!this.$refs.form.validate()) return
       this.loading = true
       this.registrationError = ''
+      this.generatedCredentials = null
       try {
         if (this.useSupabaseFacilityRegistration) {
           const result = await this.$store.dispatch('facility/registerFacilityWithSupabase', {
@@ -221,12 +258,14 @@ export default {
           return
         }
 
-        await this.$store.dispatch('facility/registerFacility', {
+        const result = await this.$store.dispatch('facility/registerFacility', {
           facility: this.facility,
           admin: this.admin
         })
-        this.$toast.success('Facility registered. Please log in with your admin credentials.')
-        this.$router.push('/login')
+
+        // Show generated credentials BEFORE redirecting so the director can note them
+        this.generatedCredentials = result
+        this.$toast.success('Facility registered! Note your credentials below before continuing.')
       } catch (err) {
         const message = err && err.message ? err.message : 'Registration failed. Please try again.'
         this.registrationError = message
@@ -234,6 +273,9 @@ export default {
       } finally {
         this.loading = false
       }
+    },
+    goToLogin() {
+      this.$router.push('/login')
     }
   }
 }
@@ -263,4 +305,7 @@ export default {
   border-left: 4px solid #00A99D;
   padding-left: 10px;
 }
+.cred-row { display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px dashed #D1FAE5; }
+.cred-row span { color:#6B7280; font-weight:600; }
+.mono { font-family: 'Courier New', monospace; color:#0B3D2E; }
 </style>

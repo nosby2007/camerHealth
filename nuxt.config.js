@@ -40,6 +40,7 @@ export default {
     // La clé Supabase publishable (anon key) est publique par conception,
     // mais les Row Level Security (RLS) doivent être activées côté Supabase.
     SUPABASE_KEY: process.env.SUPABASE_KEY,
+    SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || '',
     ENABLE_SUPABASE_AUTH: process.env.ENABLE_SUPABASE_AUTH || 'false',
     STAFF_INVITE_ENDPOINT: process.env.STAFF_INVITE_ENDPOINT || ''
   },
@@ -53,6 +54,7 @@ export default {
     API_URL: process.env.API_URL,
     SUPABASE_URL: process.env.SUPABASE_URL,
     SUPABASE_KEY: process.env.SUPABASE_KEY,
+    SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || '',
     ENABLE_SUPABASE_AUTH: parseBooleanFlag(process.env.ENABLE_SUPABASE_AUTH, false),
     STAFF_INVITE_ENDPOINT: process.env.STAFF_INVITE_ENDPOINT || ''
   },
@@ -140,7 +142,7 @@ export default {
   // ─── Configuration Axios ──────────────────────────────────────────────────
   axios: {
     // URL de base injectée automatiquement dans tous les appels $axios
-    baseURL: process.env.API_URL,
+    baseURL: (process.env.API_URL && !process.env.API_URL.includes('minsante.gov.cm')) ? process.env.API_URL : 'http://127.0.0.1:4000/api',
     // Timeout : 15 secondes (critique pour les zones à faible connectivité)
     timeout: 15000,
     // Envoie les cookies de session avec chaque requête cross-origin

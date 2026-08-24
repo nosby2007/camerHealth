@@ -218,8 +218,13 @@
               outlined tile dense class="rounded-0 mb-4" placeholder="Search patient..." :rules="[v => !!v || 'Required']" :disabled="!!editingId"></v-autocomplete>
 
             <label class="form-label">Medication / Drug Name <span class="error--text">*</span></label>
-            <v-combobox v-model="form.medication" :items="commonMedications" outlined tile dense class="rounded-0 mb-4"
+            <v-combobox v-model="form.medication" :items="drugSuggestions" item-text="name" item-value="name"
+              outlined tile dense class="rounded-0 mb-4"
               placeholder="Choose or type drug name..." :rules="[v => !!v || 'Required']"></v-combobox>
+            <div v-if="selectedDrugPrice" class="text-caption mb-4" style="color:#0B3D2E; font-weight:800">
+              <v-icon x-small color="#0B3D2E" class="mr-1">mdi-cash-text</v-icon>
+              Official price per unit: {{ fmtMoney(selectedDrugPrice) }} XAF — billed at the Cash Office at this exact rate.
+            </div>
 
             <v-row dense>
               <v-col cols="6">
@@ -291,17 +296,7 @@ export default {
         { value: 'Discontinued', label: 'STOPPED' }
       ],
       routes: ['Oral', 'Intravenous (IV)', 'Intramuscular (IM)', 'Topical', 'Inhalation', 'Sublingual', 'Rectal', 'Subcutaneous'],
-      frequencies: ['Once daily (OD)', 'Twice daily (BD)', 'Three times daily (TDS)', 'Four times daily (QID)', 'Every 8 hours (Q8H)', 'Every 6 hours (Q6H)', 'Every 12 hours (Q12H)', 'As needed (PRN)', 'Stat (single dose)', 'Weekly'],
-      commonMedications: [
-        'Amoxicillin 500mg', 'Amoxicillin/Clavulanate 625mg', 'Artemether-Lumefantrine 6×4',
-        'Azithromycin 500mg', 'Ceftriaxone 1g IV', 'Ciprofloxacin 500mg',
-        'Cotrimoxazole 480mg', 'Doxycycline 100mg', 'Metronidazole 500mg',
-        'Paracetamol 500mg', 'Ibuprofen 400mg', 'Diclofenac 50mg',
-        'Omeprazole 20mg', 'Metformin 500mg', 'Amlodipine 5mg',
-        'Lisinopril 5mg', 'Atorvastatin 20mg', 'Furosemide 40mg',
-        'ORS Sachets', 'Zinc Sulfate 20mg', 'Vitamin A 200 000 IU',
-        'Iron + Folic Acid', 'Mebendazole 500mg'
-      ]
+      frequencies: ['Once daily (OD)', 'Twice daily (BD)', 'Three times daily (TDS)', 'Four times daily (QID)', 'Every 8 hours (Q8H)', 'Every 6 hours (Q6H)', 'Every 12 hours (Q12H)', 'As needed (PRN)', 'Stat (single dose)', 'Weekly']
     }
   },
   computed: {
@@ -309,7 +304,7 @@ export default {
     patientSelectItems() {
       return this.patients.map(p => ({
         id: p.id,
-        text: `${p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()} (${p.id})`
+        text: `${p.mrn || p.id} — ${p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()}`
       }))
     },
     allRx() {
@@ -317,6 +312,8 @@ export default {
         const p = this.patients.find(pt => pt.id === m.patientId)
         return {
           ...m,
+          medication: m.drug || m.medication || '—',
+          dosage: m.dose || m.dosage || '',
           patientName: p ? (p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()) : m.patientId,
           prescribedAt: m.prescribedAt ? new Date(m.prescribedAt).toLocaleDateString('fr-CM') : '—',
           prescribedBy: m.prescribedBy || m.orderedBy || 'Doctor'
@@ -334,10 +331,37 @@ export default {
         )
       }
       return list
+    },
+    // Drug suggestions drawn from the DB Price Catalog (`drugs` section) so the
+    // prescriber always picks an official, priced formulary drug.
+    drugSuggestions() {
+      const catalog = this.$store.getters['billing/catalog'] || {}
+      const drugs = catalog.drugs || []
+      return drugs
+        .filter(d => d.active !== false)
+        .map(d => ({ name: d.name, unitPrice: d.unitPrice, dbId: d.id || d.dbId }))
+    },
+    // The exact official per-unit price of the currently selected drug.
+    selectedDrugPrice() {
+      const medName = typeof this.form.medication === 'string'
+        ? this.form.medication
+        : (this.form.medication && this.form.medication.name) || ''
+      if (!medName) return null
+      const match = this.drugSuggestions.find(d => d.name.toLowerCase() === medName.toLowerCase())
+      return match ? Number(match.unitPrice) : null
+    },
+    selectedDrugCatalogItem() {
+      const medName = typeof this.form.medication === 'string'
+        ? this.form.medication
+        : (this.form.medication && this.form.medication.name) || ''
+      if (!medName) return null
+      return this.drugSuggestions.find(d => d.name.toLowerCase() === medName.toLowerCase()) || null
     }
   },
   mounted() {
-    this.$store.commit('clinical/LOAD_FROM_STORAGE')
+    this.$store.dispatch('clinical/fetchPatients')
+    this.$store.dispatch('clinical/fetchMedications')
+    this.$store.dispatch('billing/fetchCatalog')
     if (this.$route.query.patientId) this.openNewRxDialog(this.$route.query.patientId)
   },
   methods: {
@@ -372,37 +396,79 @@ export default {
       }
       this.rxDialog = true
     },
-    async saveRx() {
+async saveRx() {
       if (!this.$refs.rxForm.validate()) return
       const prescribedBy = this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Doctor'
-      const medName = typeof this.form.medication === 'string' ? this.form.medication : this.form.medication?.text || 'Drug'
+      const medName = typeof this.form.medication === 'string'
+        ? this.form.medication
+        : (this.form.medication && (this.form.medication.name || this.form.medication.text)) || 'Drug'
 
-      if (this.editingId) {
-        await this.$store.dispatch('clinical/updateMedication', {
-          id: this.editingId,
-          ...this.form,
-          medication: medName
-        })
-        this.$toast.success('Prescription updated.')
-      } else {
-        const rec = await this.$store.dispatch('clinical/prescribeMedication', {
-          ...this.form,
-          medication: medName,
-          prescribedBy,
-          dispensingStatus: 'Pending',
-          paymentStatus: 'Unpaid',
-          inStock: null
-        })
-        this.$toast.success('Prescription issued! Sent to Cash Office & Pharmacy.')
-        const created = this.allRx.find(m => m.id === rec.id)
-        if (created) this.selectRx(created)
+      try {
+        if (this.editingId) {
+          await this.$store.dispatch('clinical/updateMedication', {
+            id: this.editingId,
+            ...this.form,
+            medication: medName
+          })
+          this.$toast.success('Prescription updated.')
+        } else {
+          const rec = await this.$store.dispatch('clinical/prescribeMedication', {
+            patientId: this.form.patientId,
+            drug: medName,
+            dose: this.form.dosage,
+            frequency: this.form.frequency,
+            route: this.form.route,
+            duration: this.form.endDate || '',
+            notes: this.form.notes || '',
+            prescribedBy,
+            dispensingStatus: 'Pending',
+            paymentStatus: 'Unpaid',
+            inStock: null
+          })
+          this.$toast.success('Prescription issued! Sent to Cash Office & Pharmacy.')
+
+          // ── Charge the patient at the Cash Office using the EXACT catalog price ──
+          // The charge only becomes 'Open' at the Cash Office — the drug price is
+          // sourced from the DB PriceCatalog, never from a typed-in amount.
+          const medRecord = rec.medication || rec
+          const medId = medRecord.id
+          const catalogItem = this.selectedDrugCatalogItem
+          if (catalogItem && catalogItem.unitPrice !== undefined) {
+            await this.$store.dispatch('billing/chargeForMedication', {
+              patientId: this.form.patientId,
+              medicationId: medId,
+              drugName: medName,
+              unitPrice: Number(catalogItem.unitPrice),
+              quantity: this.form.quantity || 1
+            })
+            this.$toast.success(
+              'Medication billed at XAF ' + Number(catalogItem.unitPrice).toLocaleString() +
+              ' × ' + (this.form.quantity || 1) + ' = XAF ' +
+              (Number(catalogItem.unitPrice) * (this.form.quantity || 1)).toLocaleString() +
+              '. Patient must pay at Cash Office.'
+            )
+          } else {
+            this.$toast.warning('Drug not found in official price catalog — patient NOT billed yet.')
+          }
+
+          const created = this.allRx.find(m => m.id === medId)
+          if (created) this.selectRx(created)
+        }
+        this.rxDialog = false
+      } catch (err) {
+        this.$toast.error(
+          err.response?.data?.error || err.response?.data?.details?.map(d => d.message).join(', ') ||
+          err.message || 'Failed to issue prescription. Please try again.'
+        )
       }
-      this.rxDialog = false
     },
     discontinue(rx) {
       this.$store.dispatch('clinical/updateMedication', { ...rx, status: 'Discontinued', dispensingStatus: 'Discontinued' })
       this.selectedRx = { ...this.selectedRx, status: 'Discontinued', dispensingStatus: 'Discontinued' }
       this.$toast.warning('Prescription discontinued.')
+    },
+    fmtMoney(v) {
+      return Number(v || 0).toLocaleString()
     },
     statusColor(s) {
       return {

@@ -26,6 +26,9 @@
         </label>
         <v-btn x-small text color="#0f766e" class="font-weight-black">Print</v-btn>
         <v-btn x-small text color="#0f766e" class="font-weight-black">Chart correction</v-btn>
+        <v-btn v-if="patientScoped && activePatientRecord" x-small tile depressed color="#D97706" dark class="font-weight-black ml-1" @click="openTransferModal">
+          <v-icon x-small left>mdi-swap-horizontal</v-icon>Transfer Patient
+        </v-btn>
         <v-avatar size="28" color="#dbeafe">
           <span class="avatar-text">{{ userInitials }}</span>
         </v-avatar>
@@ -601,6 +604,46 @@
         </section>
       </aside>
     </div>
+
+    <!-- Transfer Patient Modal -->
+    <v-dialog v-model="showTransferDialog" max-width="500" persistent>
+      <v-card tile flat class="b-1 pa-0">
+        <div class="pa-4 white--text font-weight-black text-caption uppercase d-flex align-center justify-space-between" style="background:#003366!important; color:white!important;">
+          <span>TRANSFER PATIENT CARE</span>
+          <v-btn icon x-small dark @click="showTransferDialog = false"><v-icon small color="white">mdi-close</v-icon></v-btn>
+        </div>
+        <div class="pa-6" style="background:white;">
+          <div class="mb-4">
+            <span class="text-caption font-weight-black grey--text text-uppercase">Patient</span>
+            <div class="text-body-2 font-weight-black">{{ activePatient.name }} ({{ activePatientId }})</div>
+            <div class="text-caption grey--text">Current Department: <strong>{{ activePatientRecord ? (activePatientRecord.currentDepartment || 'General Medicine') : 'General Medicine' }}</strong></div>
+          </div>
+          <v-divider class="mb-4" />
+          <v-select
+            v-model="transferForm.targetDepartment"
+            :items="availableTransferDepartments"
+            label="Target Department"
+            outlined tile dense required
+            class="mb-3"
+          ></v-select>
+          <v-textarea
+            v-model="transferForm.reason"
+            label="Reason for Transfer / Clinical Handoff"
+            rows="3"
+            outlined tile dense
+            class="mb-4"
+          ></v-textarea>
+          <v-row dense>
+            <v-col cols="6">
+              <v-btn color="#00A99D" dark block height="44" tile depressed :loading="transferLoading" @click="submitTransfer" class="font-weight-black text-caption">CONFIRM TRANSFER</v-btn>
+            </v-col>
+            <v-col cols="6">
+              <v-btn color="grey lighten-2" block height="44" tile depressed @click="showTransferDialog = false" class="font-weight-black text-caption">CANCEL</v-btn>
+            </v-col>
+          </v-row>
+        </div>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -731,6 +774,12 @@ export default {
   },
   data() {
     return {
+      showTransferDialog: false,
+      transferLoading: false,
+      transferForm: {
+        targetDepartment: 'General Medicine',
+        reason: ''
+      },
       activeChartId: this.patientId || 'demo-1',
       previewRole: this.$store.state.auth.role || 'NURSE',
       selectedChartTab: 'Navigators',
@@ -847,6 +896,15 @@ export default {
     }
   },
   computed: {
+    activePatientRecord() {
+      return this.findPatientRecord(this.activePatientId)
+    },
+    availableTransferDepartments() {
+      const model = this.$store.getters['facility/getHospitalModel']
+      const depts = (model && model.departments) || []
+      const names = depts.map(d => d.name)
+      return names.length ? names : ['General Medicine', 'Paediatrics', 'Surgery', 'Obstetrics & Gynecology', 'Cardiology', 'Oncology', 'Emergency', 'ICU']
+    },
     activePatientId() {
       return this.patientId || this.activeChartId || (this.$route.params && this.$route.params.id) || ''
     },
@@ -1114,10 +1172,39 @@ export default {
     this.normalizeVisibleSelection()
   },
   methods: {
+    openTransferModal() {
+      const rec = this.activePatientRecord
+      if (rec) {
+        this.transferForm.targetDepartment = rec.currentDepartment || 'General Medicine'
+      }
+      this.transferForm.reason = ''
+      this.showTransferDialog = true
+    },
+    async submitTransfer() {
+      if (!this.transferForm.targetDepartment) {
+        if (this.$toast) this.$toast.error('Please select a target department')
+        return
+      }
+      this.transferLoading = true
+      try {
+        await this.$store.dispatch('clinical/transferPatient', {
+          patientId: this.activePatientId,
+          targetDepartment: this.transferForm.targetDepartment,
+          reason: this.transferForm.reason
+        })
+        if (this.$toast) this.$toast.success(`Patient successfully transferred to ${this.transferForm.targetDepartment}`)
+        this.showTransferDialog = false
+      } catch (err) {
+        if (this.$toast) this.$toast.error('Failed to transfer patient: ' + err.message)
+      } finally {
+        this.transferLoading = false
+      }
+    },
     findPatientRecord(id) {
+      const all = this.$store.getters['clinical/patientDirectoryAll'] || []
       const directory = this.$store.getters['clinical/patientDirectory'] || []
       const patients = this.$store.getters['clinical/getPatients'] || []
-      return directory.find(item => item.id === id) || patients.find(item => item.id === id) || null
+      return all.find(item => item.id === id) || directory.find(item => item.id === id) || patients.find(item => item.id === id) || null
     },
     normalizeVisibleSelection() {
       if (!this.visibleChartTabs.includes(this.selectedChartTab)) {

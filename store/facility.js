@@ -1,15 +1,12 @@
 /**
- * facility.js — CameroHealth Facility & Identity Store
- * CIA Triad:
- *   Confidentiality : passwords hashed (SHA-256), never stored plain. Role-scoped data access.
- *   Integrity       : only ADMIN can mutate accounts. Every action is audit-logged with timestamp + actor.
- *   Availability    : all data persisted to localStorage for offline resilience.
+ * facility.js — CameroHealth Facility & Staff Store
+ * Now powered by Express backend API.
  */
 
-import { inviteStaff } from '~/services/admin/staff-invitation.service'
-import { registerFacilityWithAdmin } from '~/services/facility/supabase-facility-registration.service'
+import { staffApi, facilityApi, authApi, departmentApi, auditApi } from '~/services/api'
+import { generateStaffId, generateStaffEmail, getFacilityDomain } from '~/util/identity'
 
-// ─── Roles ────────────────────────────────────────────────────────────────────
+// ─── Roles (kept for frontend reference) ─────────────────────────────────────
 export const ROLES = {
   ADMIN:    'ADMIN',
   DOCTOR:   'DOCTOR',
@@ -47,500 +44,445 @@ export const ROLE_LABELS = {
   RECORDS: 'Medical Records Officer',
   FRONT_DESK: 'Admissions / Front Desk',
   SOCIAL_WORKER: 'Social Worker',
-  BIOMEDICAL: 'Biomedical Technician'
 }
 
-// ─── SHA-256 (client-side, no plain-text storage) ─────────────────────────────
-async function sha256(message) {
-  const msgBuffer = new TextEncoder().encode(message)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-}
-
-// ─── localStorage helpers ─────────────────────────────────────────────────────
-const KEY_FACILITY  = 'camero_facility'
-const KEY_STAFF     = 'camero_staff'
-const KEY_AUDIT     = 'camero_audit'
-const KEY_HOSPITAL_MODEL = 'camero_hospital_model'
-
-function persist(key, data) {
-  if (process.client) localStorage.setItem(key, JSON.stringify(data))
-}
-function load(key) {
-  if (!process.client) return null
-  try { return JSON.parse(localStorage.getItem(key)) } catch { return null }
-}
-
-function buildSupabaseFacilityRecord(result, fallbackFacility) {
-  const facility = result.facility || {}
-  return {
-    id: facility.id || facility.facility_id,
-    name: facility.name || fallbackFacility.name,
-    region: facility.region || fallbackFacility.region,
-    city: facility.city || fallbackFacility.city,
-    quarter: facility.quarter || fallbackFacility.quarter,
-    email: facility.email || fallbackFacility.email,
-    createdAt: facility.created_at || new Date().toISOString(),
-    backendSource: 'supabase'
+export const DEFAULT_DEPARTMENTS = [
+  {
+    id: 'dept-1',
+    code: 'EMERGENCY',
+    name: 'Urgences',
+    headOfDepartment: 'Dr. Mbarga Alain',
+    wards: [
+      { id: 'ward-101', name: 'Tri / Resuscitation Room', beds: 6, status: 'Active' },
+      { id: 'ward-102', name: 'Salle d\'Observation Hommes', beds: 10, status: 'Active' },
+      { id: 'ward-103', name: 'Salle d\'Observation Femmes', beds: 10, status: 'Active' }
+    ]
+  },
+  {
+    id: 'dept-2',
+    code: 'MEDICINE',
+    name: 'Médecine Interne',
+    headOfDepartment: 'Dr. Fotso Beatrice',
+    wards: [
+      { id: 'ward-201', name: 'Unité de Cardiologie', beds: 12, status: 'Active' },
+      { id: 'ward-202', name: 'Unité d\'Endocrinologie & Diabète', beds: 10, status: 'Active' },
+      { id: 'ward-203', name: 'Hospitalisation Médecine Hommes', beds: 16, status: 'Active' },
+      { id: 'ward-204', name: 'Hospitalisation Médecine Femmes', beds: 16, status: 'Active' }
+    ]
+  },
+  {
+    id: 'dept-3',
+    code: 'SURGERY',
+    name: 'Chirurgie',
+    headOfDepartment: 'Dr. Essomba Guy',
+    wards: [
+      { id: 'ward-301', name: 'Chirurgie Générale & Viscérale', beds: 15, status: 'Active' },
+      { id: 'ward-302', name: 'Traumatologie & Orthopédie', beds: 12, status: 'Active' },
+      { id: 'ward-303', name: 'Bloc Opératoire Central', beds: 4, status: 'Active' },
+      { id: 'ward-304', name: 'Salle de Réveil (PACU)', beds: 6, status: 'Active' }
+    ]
+  },
+  {
+    id: 'dept-4',
+    code: 'PEDIATRICS',
+    name: 'Pédiatrie',
+    headOfDepartment: 'Dr. Nkemba Rose',
+    wards: [
+      { id: 'ward-401', name: 'Néonatologie & Couveuses', beds: 10, status: 'Active' },
+      { id: 'ward-402', name: 'Hospitalisation Pédiatrique', beds: 20, status: 'Active' },
+      { id: 'ward-403', name: 'Unité de Nutrition Thérapeutique', beds: 8, status: 'Active' }
+    ]
+  },
+  {
+    id: 'dept-5',
+    code: 'OBGYN',
+    name: 'Gynécologie - Obstétrique',
+    headOfDepartment: 'Dr. Manga Therese',
+    wards: [
+      { id: 'ward-501', name: 'Salle d\'Accouchement (Maternité)', beds: 8, status: 'Active' },
+      { id: 'ward-502', name: 'Suites de Couches / Post-Partum', beds: 16, status: 'Active' },
+      { id: 'ward-503', name: 'Grossesses à Haut Risque (GHR)', beds: 8, status: 'Active' }
+    ]
+  },
+  {
+    id: 'dept-6',
+    code: 'ICU',
+    name: 'Réanimation & Soins Intensifs',
+    headOfDepartment: 'Dr. Talla Patrick',
+    wards: [
+      { id: 'ward-601', name: 'Réanimation Polyvalente', beds: 8, status: 'Active' },
+      { id: 'ward-602', name: 'Soins Intensifs Cardiologiques (USIC)', beds: 6, status: 'Active' }
+    ]
+  },
+  {
+    id: 'dept-7',
+    code: 'OPD',
+    name: 'Consultations Externes',
+    headOfDepartment: 'Dr. Abena Marie',
+    wards: [
+      { id: 'ward-701', name: 'Box Consultations Médecine', beds: 4, status: 'Active' },
+      { id: 'ward-702', name: 'Box Consultations Chirurgie', beds: 2, status: 'Active' },
+      { id: 'ward-703', name: 'Box Consultations Pédiatrie', beds: 3, status: 'Active' }
+    ]
+  },
+  {
+    id: 'dept-8',
+    code: 'LAB',
+    name: 'Laboratoire',
+    headOfDepartment: 'Dr. Jean Atangana',
+    wards: [
+      { id: 'ward-801', name: 'Biochimie Clinique', beds: 0, status: 'Active' },
+      { id: 'ward-802', name: 'Hématologie', beds: 0, status: 'Active' },
+      { id: 'ward-803', name: 'Bactériologie / Parasitologie', beds: 0, status: 'Active' }
+    ]
+  },
+  {
+    id: 'dept-9',
+    code: 'IMAGING',
+    name: 'Imagerie Médicale',
+    headOfDepartment: 'Dr. Paul Bekolo',
+    wards: [
+      { id: 'ward-901', name: 'Radiologie', beds: 0, status: 'Active' },
+      { id: 'ward-902', name: 'Échographie', beds: 0, status: 'Active' },
+      { id: 'ward-903', name: 'Scanner / IRM', beds: 0, status: 'Active' }
+    ]
   }
-}
+]
 
-function buildSupabaseAdminRecord(result, admin, facilityId, passwordHash) {
-  const authContext = result.authContext || {}
-  return {
-    id: (authContext.staffCode || admin.staffId || '').trim().toUpperCase(),
-    fullName: authContext.displayName || admin.fullName.trim(),
-    email: (authContext.email || admin.email || '').trim().toLowerCase(),
-    role: ROLES.ADMIN,
-    passwordHash,
-    facilityId,
-    active: true,
-    createdAt: (result.staffProfile && result.staffProfile.created_at) || new Date().toISOString(),
-    createdBy: 'SYSTEM',
-    authUserId: result.authUserId || null,
-    staffProfileId: result.staffProfile ? result.staffProfile.id : null,
-    backendSource: 'supabase'
-  }
-}
-
-// ─── State ────────────────────────────────────────────────────────────────────
 export const state = () => ({
-  facility: load(KEY_FACILITY) || null,   // single clinic record
-  staff: load(KEY_STAFF) || [],           // array of staff accounts
-  auditLog: load(KEY_AUDIT) || [],        // immutable audit trail
-  hospitalModel: load(KEY_HOSPITAL_MODEL) || defaultHospitalOperatingModel(),
-  setupComplete: !!(load(KEY_FACILITY))   // true once admin registered
+  facility: null,
+  staff: [],
+  staffRoles: [],
+  departments: [],
+  auditLog: [],
+  loading: false,
+  error: null,
+  setupComplete: false,
+  staffLoginHistory: []
 })
 
-// ─── Mutations ────────────────────────────────────────────────────────────────
 export const mutations = {
-  SET_FACILITY(state, facility) {
-    state.facility = facility
-    state.setupComplete = true
-    persist(KEY_FACILITY, facility)
+  SET_FACILITY(state, facility) { state.facility = facility },
+  SET_STAFF(state, staff) { state.staff = staff },
+  SET_DEPARTMENTS(state, departments) { state.departments = departments },
+  SET_AUDIT_LOG(state, logs) { state.auditLog = logs },
+  ADD_STAFF(state, member) { state.staff.push(member) },
+  UPDATE_STAFF(state, member) {
+    const idx = state.staff.findIndex(s => s.id === member.id)
+    if (idx !== -1) state.staff.splice(idx, 1, member)
   },
-  ADD_STAFF(state, member) {
-    state.staff.push(member)
-    persist(KEY_STAFF, state.staff)
+  REMOVE_STAFF(state, id) {
+    state.staff = state.staff.filter(s => s.id !== id)
   },
-  UPDATE_STAFF(state, updated) {
-    const idx = state.staff.findIndex(s => s.id === updated.id)
-    if (idx !== -1) {
-      state.staff.splice(idx, 1, updated)
-      persist(KEY_STAFF, state.staff)
-    }
-  },
-  DEACTIVATE_STAFF(state, staffId) {
-    const idx = state.staff.findIndex(s => s.id === staffId)
-    if (idx !== -1) {
-      state.staff[idx].active = false
-      persist(KEY_STAFF, state.staff)
-    }
-  },
-  ADD_AUDIT(state, entry) {
-    state.auditLog.unshift(entry)   // newest first
-    // cap at 500 entries to avoid localStorage bloat
-    if (state.auditLog.length > 500) state.auditLog.pop()
-    persist(KEY_AUDIT, state.auditLog)
-  },
-  SET_HOSPITAL_MODEL(state, model) {
-    state.hospitalModel = normalizeHospitalModel(model)
-    persist(KEY_HOSPITAL_MODEL, state.hospitalModel)
-  },
-  UPDATE_DEPARTMENT(state, department) {
-    const nextModel = normalizeHospitalModel(state.hospitalModel)
-    const idx = nextModel.departments.findIndex(item => item.id === department.id)
-    if (idx !== -1) {
-      nextModel.departments.splice(idx, 1, { ...nextModel.departments[idx], ...department })
-    } else {
-      nextModel.departments.push(department)
-    }
-    state.hospitalModel = nextModel
-    persist(KEY_HOSPITAL_MODEL, state.hospitalModel)
-  },
+  SET_STAFF_ROLES(state, roles) { state.staffRoles = roles },
+  SET_LOADING(state, val) { state.loading = val },
+  SET_ERROR(state, err) { state.error = err },
+  SET_SETUP_COMPLETE(state, val) { state.setupComplete = val },
+  SET_STAFF_LOGIN_HISTORY(state, history) { state.staffLoginHistory = history },
   RELOAD_FROM_STORAGE(state) {
-    state.facility    = load(KEY_FACILITY) || null
-    state.staff       = load(KEY_STAFF)    || []
-    state.auditLog    = load(KEY_AUDIT)    || []
-    state.hospitalModel = load(KEY_HOSPITAL_MODEL) || defaultHospitalOperatingModel()
-    state.setupComplete = !!(load(KEY_FACILITY))
+    // Purge legacy prototype items from browser localStorage so system relies 100% on database
+    if (process.client) {
+      localStorage.removeItem('camero_facility')
+      localStorage.removeItem('camero_staff')
+      localStorage.removeItem('camero_session')
+    }
   }
 }
 
-// ─── Actions ──────────────────────────────────────────────────────────────────
 export const actions = {
+  async fetchFacility({ commit }, id) {
+    commit('SET_LOADING', true)
+    try {
+      const { data } = await facilityApi.get(id)
+      commit('SET_FACILITY', data.facility || data)
+      commit('SET_SETUP_COMPLETE', true)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    } finally {
+      commit('SET_LOADING', false)
+    }
+  },
 
-  /**
-   * registerFacility — called ONCE by the clinic director.
-   * Creates the facility record AND the ADMIN account simultaneously.
-   */
   async registerFacility({ commit, dispatch }, { facility, admin }) {
-    const hashedPassword = await sha256(admin.password)
-
-    const facilityRecord = {
-      id:        'FAC-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      name:      facility.name,
-      region:    facility.region,
-      city:      facility.city,
-      quarter:   facility.quarter,
-      email:     facility.email,
-      createdAt: new Date().toISOString()
-    }
-
-    const adminRecord = {
-      id:           admin.staffId.trim().toUpperCase(),
-      fullName:     admin.fullName.trim(),
-      email:        admin.email.trim().toLowerCase(),
-      role:         ROLES.ADMIN,
-      passwordHash: hashedPassword,
-      facilityId:   facilityRecord.id,
-      active:       true,
-      createdAt:    new Date().toISOString(),
-      createdBy:    'SYSTEM'
-    }
-
-    commit('SET_FACILITY', facilityRecord)
-    commit('ADD_STAFF', adminRecord)
-    dispatch('_audit', { action: 'FACILITY_REGISTERED', actor: adminRecord.id, detail: `Facility "${facilityRecord.name}" registered.` })
-  },
-
-  async registerFacilityWithSupabase({ commit, dispatch, state }, { facility, admin, supabaseUrl, supabaseKey }) {
-    const result = await registerFacilityWithAdmin(
-      { facility, admin },
-      { supabaseUrl, supabaseKey }
-    )
-
-    if (result.status === 'pending_confirmation') {
-      return result
-    }
-
-    const hashedPassword = await sha256(admin.password)
-    const facilityRecord = buildSupabaseFacilityRecord(result, facility)
-    const adminRecord = buildSupabaseAdminRecord(result, admin, facilityRecord.id, hashedPassword)
-    const existingAdmin = state.staff.find(member => member.id === adminRecord.id)
-
-    commit('SET_FACILITY', facilityRecord)
-    if (existingAdmin) {
-      commit('UPDATE_STAFF', adminRecord)
-    } else {
-      commit('ADD_STAFF', adminRecord)
-    }
-
-    dispatch('_audit', {
-      action: 'FACILITY_REGISTERED_SUPABASE_COMPAT',
-      actor: adminRecord.id,
-      detail: `Facility "${facilityRecord.name}" registered through Supabase compatibility flow.`
-    })
-
-    return result
-  },
-
-  /**
-   * createStaffAccount — called by ADMIN only.
-   * Creates a staff account with hashed password.
-   */
-  async createStaffAccount({ commit, dispatch, rootState }, staffData) {
-    const actorId = rootState.auth.staffId
-    const hashedPassword = await sha256(staffData.password)
-
-    const member = {
-      id:           staffData.staffId.trim().toUpperCase(),
-      fullName:     staffData.fullName.trim(),
-      email:        staffData.email.trim().toLowerCase(),
-      role:         staffData.role,
-      position:     staffData.position || ROLE_LABELS[staffData.role] || staffData.role,
-      department:   staffData.department || '',
-      service:      staffData.service || '',
-      specialty:    staffData.specialty || '',
-      phiScope:     staffData.phiScope || defaultPhiScopeForRole(staffData.role),
-      passwordHash: hashedPassword,
-      facilityId:   rootState.facility.facility.id,
-      active:       true,
-      createdAt:    new Date().toISOString(),
-      createdBy:    actorId
-    }
-
-    commit('ADD_STAFF', member)
-    dispatch('_audit', {
-      action: 'ACCOUNT_CREATED',
-      actor: actorId,
-      detail: `Account created for ${member.fullName} (${member.id}) — Role: ${member.role}`
-    })
-  },
-
-  async inviteStaffAccount({ rootState }, { staff, endpoint }) {
-    return inviteStaff({
-      email: staff.email,
-      fullName: staff.fullName,
-      staffId: staff.staffId,
-      role: staff.role,
-      phone: staff.phone,
-      title: staff.title,
-      department: staff.department,
-      facilityId: rootState.facility.facility ? rootState.facility.facility.id : null
-    }, {
-      endpoint
-    })
-  },
-
-  /**
-   * deactivateStaffAccount — ADMIN only. Soft-delete (never hard-delete for audit integrity).
-   */
-  deactivateStaffAccount({ commit, dispatch, rootState }, staffId) {
-    const actorId = rootState.auth.staffId
-    commit('DEACTIVATE_STAFF', staffId)
-    dispatch('_audit', { action: 'ACCOUNT_DEACTIVATED', actor: actorId, detail: `Account ${staffId} deactivated.` })
-  },
-
-  /**
-   * resetStaffPassword — ADMIN only.
-   */
-  async resetStaffPassword({ commit, dispatch, rootState, state }, { staffId, newPassword }) {
-    const actorId = rootState.auth.staffId
-    const member = state.staff.find(s => s.id === staffId)
-    if (!member) return
-    const hashedPassword = await sha256(newPassword)
-    commit('UPDATE_STAFF', { ...member, passwordHash: hashedPassword })
-    dispatch('_audit', { action: 'PASSWORD_RESET', actor: actorId, detail: `Password reset for account ${staffId}.` })
-  },
-
-  saveHospitalModel({ commit, dispatch, rootState }, model) {
-    commit('SET_HOSPITAL_MODEL', model)
-    dispatch('_audit', {
-      action: 'HOSPITAL_MODEL_UPDATED',
-      actor: rootState.auth.staffId || 'SYSTEM',
-      detail: 'Hospital departments, specialties, workflows and PHI policies updated.'
-    })
-  },
-
-  updateDepartment({ commit, dispatch, rootState }, department) {
-    commit('UPDATE_DEPARTMENT', department)
-    dispatch('_audit', {
-      action: 'DEPARTMENT_UPDATED',
-      actor: rootState.auth.staffId || 'SYSTEM',
-      detail: `Department ${department.name || department.id} updated.`
-    })
-  },
-
-  /**
-   * _audit — internal only, never call from outside.
-   */
-  _audit({ commit }, { action, actor, detail }) {
-    commit('ADD_AUDIT', {
-      id:        Date.now(),
-      action,
-      actor,
-      detail,
-      timestamp: new Date().toISOString()
-    })
-  },
-
-  /**
-   * getFacilityRecord — used by auth store to attach facility name to session.
-   */
-  getFacilityRecord({ state }) {
-    return state.facility
-  },
-
-  /**
-   * verifyCredentials — used by auth store login.
-   * Returns the staff member if credentials match, null otherwise.
-   */
-  async verifyCredentials({ state }, { staffId, password, role }) {
-    const id = staffId.trim().toUpperCase()
-    const member = state.staff.find(s => s.id === id && s.role === role && s.active)
-    if (!member) return null
-    const hashedInput = await sha256(password)
-    if (hashedInput !== member.passwordHash) return null
-    // Return safe profile — NEVER return passwordHash
-    const { passwordHash, ...safeProfile } = member
-    return safeProfile
-  }
-}
-
-// ─── Getters ──────────────────────────────────────────────────────────────────
-export const getters = {
-  getFacility:       state => state.facility,
-  isSetupComplete:   state => state.setupComplete,
-  getAllStaff:        state => state.staff.map(({ passwordHash, ...s }) => s),  // strip hash
-  getActiveStaff:    state => state.staff.filter(s => s.active).map(({ passwordHash, ...s }) => s),
-  getStaffByRole:    state => role => state.staff.filter(s => s.role === role && s.active).map(({ passwordHash, ...s }) => s),
-  getAuditLog:       state => state.auditLog,
-  getHospitalModel:  state => normalizeHospitalModel(state.hospitalModel),
-  getDepartments:    state => normalizeHospitalModel(state.hospitalModel).departments,
-  getClinicalDepartments: state => normalizeHospitalModel(state.hospitalModel).departments.filter(item => item.type === 'clinical' || item.type === 'diagnostic'),
-  getAdministrativeUnits: state => normalizeHospitalModel(state.hospitalModel).departments.filter(item => item.type === 'administrative' || item.type === 'support'),
-  getClinicalServices: state => normalizeHospitalModel(state.hospitalModel).departments.flatMap(department => (department.services || []).map(service => ({ ...service, departmentId: department.id, departmentName: department.name }))),
-  getSpecialties: state => [...new Set(normalizeHospitalModel(state.hospitalModel).departments.flatMap(department => department.specialties || []))].sort(),
-  getWorkflowCatalog: state => normalizeHospitalModel(state.hospitalModel).workflows,
-  getPhiPolicies: state => normalizeHospitalModel(state.hospitalModel).phiPolicies,
-  getStaffContext: state => staffId => {
-    const member = state.staff.find(item => item.id === staffId)
-    if (!member) return null
-    const model = normalizeHospitalModel(state.hospitalModel)
-    const department = model.departments.find(item => item.id === member.department || item.name === member.department)
-    const service = department && (department.services || []).find(item => item.id === member.service || item.name === member.service)
-    const policy = model.phiPolicies[member.role] || model.phiPolicies.DEFAULT
-    const { passwordHash, ...safeMember } = member
-    return { ...safeMember, departmentRecord: department || null, serviceRecord: service || null, phiPolicy: policy }
-  }
-}
-
-function defaultPhiScopeForRole(role) {
-  return {
-    ADMIN: 'facility-administration',
-    DOCTOR: 'assigned-service-and-consult',
-    NP: 'assigned-service-and-consult',
-    NURSE: 'assigned-unit-care-team',
-    CNA: 'assigned-unit-care-team-limited',
-    MAJOR_SERVICE: 'unit-nursing-supervision',
-    NURSING_SUPERVISOR: 'facility-nursing-oversight',
-    MIDWIFE: 'maternal-care-team',
-    LAB: 'diagnostic-orders-only',
-    IMAGING: 'imaging-orders-only',
-    PHYSIOTHERAPIST: 'rehab-care-plan',
-    PHARMACY: 'medication-profile',
-    BILLING: 'billing-only',
-    RECORDS: 'records-management',
-    FRONT_DESK: 'demographics-and-consent',
-    SOCIAL_WORKER: 'social-care-minimum',
-    BIOMEDICAL: 'no-direct-phi'
-  }[role] || 'minimum-necessary'
-}
-
-function normalizeHospitalModel(model) {
-  const fallback = defaultHospitalOperatingModel()
-  return {
-    ...fallback,
-    ...(model || {}),
-    departments: (model && model.departments && model.departments.length) ? model.departments : fallback.departments,
-    workflows: (model && model.workflows && model.workflows.length) ? model.workflows : fallback.workflows,
-    phiPolicies: { ...fallback.phiPolicies, ...((model && model.phiPolicies) || {}) }
-  }
-}
-
-function defaultHospitalOperatingModel() {
-  return {
-    facilityDisplayName: 'Hopital General de Douala',
-    governance: {
-      administratorTitle: 'Directeur general',
-      medicalDirectorTitle: 'Directeur medical',
-      nursingDirectorTitle: 'Surveillant general',
-      serviceLeadTitle: 'Chef de service',
-      headNurseTitle: 'Major de service'
-    },
-    departments: [
-      {
-        id: 'urgence', name: 'Urgences', type: 'clinical', location: 'Bloc urgences', leadRole: 'Chef de service urgences', headNurseRole: 'Major des urgences',
-        specialties: ['Medecine d urgence', 'Traumatologie', 'Reanimation'],
-        services: [
-          { id: 'triage-urgence', name: 'Triage urgence', queueKey: 'triage', defaultPhiScope: 'urgent-care-team' },
-          { id: 'salle-dechocage', name: 'Salle de dechocage', queueKey: 'provider', defaultPhiScope: 'critical-care-team' },
-          { id: 'observation-urgence', name: 'Observation urgence', queueKey: 'inpatient', defaultPhiScope: 'ward-care-team' }
-        ]
-      },
-      {
-        id: 'medecine-interne', name: 'Medecine interne', type: 'clinical', location: 'Batiment medical', leadRole: 'Chef de service medecine', headNurseRole: 'Major medecine interne',
-        specialties: ['Cardiologie', 'Neurologie', 'Endocrinologie', 'Pneumologie', 'Nephrologie', 'Gastroenterologie'],
-        services: [
-          { id: 'consultation-medicale', name: 'Consultation medicale', queueKey: 'provider', defaultPhiScope: 'assigned-service' },
-          { id: 'hospitalisation-medicale', name: 'Hospitalisation medicale', queueKey: 'inpatient', defaultPhiScope: 'ward-care-team' }
-        ]
-      },
-      {
-        id: 'chirurgie', name: 'Chirurgie', type: 'clinical', location: 'Bloc operatoire', leadRole: 'Chef de service chirurgie', headNurseRole: 'Major bloc operatoire',
-        specialties: ['Chirurgie generale', 'Orthopedie', 'Urologie', 'Neurochirurgie', 'Anesthesie'],
-        services: [
-          { id: 'consultation-chirurgie', name: 'Consultation chirurgie', queueKey: 'provider', defaultPhiScope: 'assigned-service' },
-          { id: 'bloc-operatoire', name: 'Bloc operatoire', queueKey: 'task-worklist', defaultPhiScope: 'surgical-team' },
-          { id: 'suites-operatoires', name: 'Suites operatoires', queueKey: 'inpatient', defaultPhiScope: 'ward-care-team' }
-        ]
-      },
-      {
-        id: 'mere-enfant', name: 'Mere et enfant', type: 'clinical', location: 'Pavillon maternite pediatrie', leadRole: 'Chef de service mere-enfant', headNurseRole: 'Major maternite',
-        specialties: ['Gynecologie', 'Obstetrique', 'Sage-femme', 'Maieutique', 'Pediatrie', 'Neonatologie'],
-        services: [
-          { id: 'maternite', name: 'Maternite', queueKey: 'provider', defaultPhiScope: 'maternal-care-team' },
-          { id: 'consultation-prenatale', name: 'Consultation prenatale', queueKey: 'provider', defaultPhiScope: 'maternal-care-team' },
-          { id: 'salle-accouchement', name: 'Salle d accouchement', queueKey: 'task-worklist', defaultPhiScope: 'maternal-care-team' },
-          { id: 'pediatrie', name: 'Pediatrie', queueKey: 'provider', defaultPhiScope: 'pediatric-care-team' },
-          { id: 'neonatologie', name: 'Neonatologie', queueKey: 'inpatient', defaultPhiScope: 'restricted-care-team' }
-        ]
-      },
-      {
-        id: 'soins-infirmiers', name: 'Direction des soins infirmiers', type: 'clinical', location: 'Unites de soins', leadRole: 'Surveillant general', headNurseRole: 'Majors de service',
-        specialties: ['Soins generaux', 'Soins critiques', 'Pansements et plaies', 'Education therapeutique', 'Aide-soignant'],
-        services: [
-          { id: 'soins-generaux', name: 'Soins generaux', queueKey: 'task-worklist', defaultPhiScope: 'assigned-unit-care-team' },
-          { id: 'plaies-pansements', name: 'Plaies et pansements', queueKey: 'task-worklist', defaultPhiScope: 'assigned-unit-care-team' },
-          { id: 'aides-soignants', name: 'Aides-soignants', queueKey: 'task-worklist', defaultPhiScope: 'assigned-unit-care-team-limited' }
-        ]
-      },
-      {
-        id: 'diagnostic', name: 'Plateau technique', type: 'diagnostic', location: 'Diagnostic central', leadRole: 'Responsable plateau technique', headNurseRole: 'Major technique',
-        specialties: ['Laboratoire', 'Biologie medicale', 'Prelevement', 'Imagerie medicale', 'Radiologie', 'Echographie', 'Anatomopathologie'],
-        services: [
-          { id: 'laboratoire', name: 'Laboratoire', queueKey: 'diagnostics', defaultPhiScope: 'orders-and-results' },
-          { id: 'imagerie', name: 'Imagerie', queueKey: 'diagnostics', defaultPhiScope: 'orders-and-results' },
-          { id: 'banque-sang', name: 'Banque de sang', queueKey: 'diagnostics', defaultPhiScope: 'restricted-diagnostic' }
-        ]
-      },
-      {
-        id: 'readaptation', name: 'Readaptation et kinesitherapie', type: 'clinical', location: 'Plateau rehabilitation', leadRole: 'Responsable readaptation', headNurseRole: 'Referent kinesitherapie',
-        specialties: ['Kinesitherapie', 'Physiotherapie', 'Ergotherapie', 'Orthophonie', 'Reeducation fonctionnelle'],
-        services: [
-          { id: 'kinesitherapie', name: 'Kinesitherapie', queueKey: 'task-worklist', defaultPhiScope: 'rehab-care-plan' },
-          { id: 'reeducation', name: 'Reeducation fonctionnelle', queueKey: 'task-worklist', defaultPhiScope: 'rehab-care-plan' },
-          { id: 'ergotherapie', name: 'Ergotherapie', queueKey: 'task-worklist', defaultPhiScope: 'rehab-care-plan' }
-        ]
-      },
-      {
-        id: 'pharmacie', name: 'Pharmacie', type: 'support', location: 'Pharmacie hospitaliere', leadRole: 'Pharmacien chef', headNurseRole: 'Responsable dispensation',
-        specialties: ['Pharmacie clinique', 'Preparation', 'Dispensation', 'Stock medical'],
-        services: [
-          { id: 'dispensation', name: 'Dispensation', queueKey: 'task-worklist', defaultPhiScope: 'medication-profile' },
-          { id: 'stock', name: 'Gestion stock', queueKey: 'task-worklist', defaultPhiScope: 'no-direct-phi' }
-        ]
-      },
-      {
-        id: 'administration', name: 'Administration et finances', type: 'administrative', location: 'Administration', leadRole: 'Directeur administratif et financier', headNurseRole: 'Responsable admissions',
-        specialties: ['Admissions', 'Facturation', 'Assurance', 'Archives medicales', 'Qualite'],
-        services: [
-          { id: 'admissions', name: 'Admissions', queueKey: 'front-desk', defaultPhiScope: 'demographics-and-consent' },
-          { id: 'facturation', name: 'Facturation', queueKey: 'task-worklist', defaultPhiScope: 'billing-only' },
-          { id: 'assurance', name: 'Assurance et claims', queueKey: 'task-worklist', defaultPhiScope: 'coverage-and-claims' },
-          { id: 'archives', name: 'Archives dossier patient', queueKey: 'front-desk', defaultPhiScope: 'records-management' }
-        ]
+    commit('SET_LOADING', true)
+    try {
+      const payload = {
+        facilityName: facility.name,
+        facilityCode: facility.orgPrefix,
+        region: facility.region,
+        city: facility.city,
+        quarter: facility.quarter || '',
+        facilityEmail: facility.email,
+        facilityPhone: facility.phone || '',
+        adminFullName: admin.fullName,
+        adminEmail: facility.email, // Or generated admin email
+        adminPassword: admin.password
       }
-    ],
-    workflows: [
-      { id: 'admission-programmee', name: 'Admission programmee', stages: ['Admissions', 'Verification PHI', 'Triage', 'Consultation', 'Orders', 'Billing', 'Sortie'] },
-      { id: 'urgence-vitale', name: 'Urgence vitale', stages: ['Triage rapide', 'Emergency override PHI', 'Salle de dechocage', 'Diagnostic STAT', 'Hospitalisation ou sortie'] },
-      { id: 'hospitalisation', name: 'Hospitalisation', stages: ['Admission', 'Affectation lit', 'Plan de soins', 'Notes infirmieres', 'Visite medicale', 'Sortie'] },
-      { id: 'chirurgie', name: 'Parcours chirurgie', stages: ['Consultation', 'Consentement', 'Bilan pre-op', 'Bloc operatoire', 'Reveil', 'Suites operatoires'] },
-      { id: 'diagnostic', name: 'Diagnostic labo/imagerie', stages: ['Prescription', 'Prelevement ou examen', 'Validation resultat', 'Notification medecin', 'Archivage'] },
-      { id: 'assurance-facturation', name: 'Assurance et facturation', stages: ['Eligibilite', 'Pre-autorisation', 'Facturation', 'Claim', 'Paiement ou rejet'] }
-    ],
-    phiPolicies: {
-      ADMIN: { access: 'administrative', canOpenChart: true, requiresReason: true, breakGlass: false, note: 'Administrative access is audited and should avoid clinical details unless necessary.' },
-      DOCTOR: { access: 'clinical-full-assigned', canOpenChart: true, requiresReason: false, breakGlass: true, note: 'Clinical PHI for assigned services and consults.' },
-      NP: { access: 'clinical-full-assigned', canOpenChart: true, requiresReason: false, breakGlass: true, note: 'Advanced nursing/clinical PHI for assigned services.' },
-      NURSE: { access: 'care-team-assigned', canOpenChart: true, requiresReason: false, breakGlass: true, note: 'Nursing PHI for assigned unit and active care team.' },
-      CNA: { access: 'care-team-limited', canOpenChart: true, requiresReason: false, breakGlass: false, note: 'Limited nursing aide PHI for assigned tasks and unit.' },
-      MAJOR_SERVICE: { access: 'unit-nursing-supervision', canOpenChart: true, requiresReason: false, breakGlass: true, note: 'Head nurse oversight for assigned service, nursing tasks, handoff and safety.' },
-      NURSING_SUPERVISOR: { access: 'facility-nursing-oversight', canOpenChart: true, requiresReason: true, breakGlass: true, note: 'Facility nursing supervision across units with audited chart access.' },
-      MIDWIFE: { access: 'maternal-care-team', canOpenChart: true, requiresReason: false, breakGlass: true, note: 'Maternal and newborn PHI for assigned maternity care.' },
-      LAB: { access: 'diagnostic-orders-results', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Minimum necessary access to lab orders and results.' },
-      IMAGING: { access: 'imaging-orders-results', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Minimum necessary access to imaging orders and reports.' },
-      PHYSIOTHERAPIST: { access: 'rehab-care-plan', canOpenChart: true, requiresReason: false, breakGlass: false, note: 'Rehabilitation access to care plan, mobility notes and functional assessments.' },
-      PHARMACY: { access: 'medication-profile', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Medication profile, dispensing and stock-related access.' },
-      BILLING: { access: 'billing-only', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Billing, payer and claims data only.' },
-      RECORDS: { access: 'records-management', canOpenChart: true, requiresReason: true, breakGlass: false, note: 'Medical records management with audited chart access.' },
-      FRONT_DESK: { access: 'demographics-and-consent', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Registration, demographics, consent and appointment access.' },
-      SOCIAL_WORKER: { access: 'social-care-minimum', canOpenChart: true, requiresReason: true, breakGlass: false, note: 'Minimum necessary social support documentation.' },
-      BIOMEDICAL: { access: 'no-direct-phi', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'Equipment and device support without direct patient PHI.' },
-      DEFAULT: { access: 'minimum-necessary', canOpenChart: false, requiresReason: true, breakGlass: false, note: 'No PHI unless specifically assigned.' }
+      const { data } = await authApi.register(payload)
+      commit('SET_FACILITY', data.facility)
+      commit('SET_SETUP_COMPLETE', true)
+      return {
+        adminId: data.staff ? data.staff.staffCode : 'ADMIN001',
+        adminEmail: data.staff ? data.staff.email : facility.email
+      }
+    } catch (err) {
+      const message = err.message || err.response?.data?.error || 'Facility registration failed'
+      commit('SET_ERROR', message)
+      throw new Error(message)
+    } finally {
+      commit('SET_LOADING', false)
+    }
+  },
+
+  async updateFacility({ commit }, { id, ...data }) {
+    commit('SET_LOADING', true)
+    try {
+      const { data: updated } = await facilityApi.update(id, data)
+      commit('SET_FACILITY', updated.facility || updated)
+      return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    } finally {
+      commit('SET_LOADING', false)
+    }
+  },
+
+  async fetchStaff({ commit }) {
+    commit('SET_LOADING', true)
+    try {
+      const { data } = await staffApi.list()
+      commit('SET_STAFF', data.staff || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    } finally {
+      commit('SET_LOADING', false)
+    }
+  },
+
+  async createStaff({ commit }, staffData) {
+    commit('SET_LOADING', true)
+    try {
+      const { data } = await staffApi.create(staffData)
+      commit('ADD_STAFF', data.staffProfile || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    } finally {
+      commit('SET_LOADING', false)
+    }
+  },
+
+  async createStaffAccount({ commit, state }, formData) {
+    commit('SET_LOADING', true)
+    try {
+      const facility = state.facility || {}
+      const orgPrefix = facility.orgPrefix || facility.code || 'HGOPY'
+      const existingIds = (state.staff || []).map(s => s.staffCode || s.id)
+      const staffCode = generateStaffId(orgPrefix, formData.role, existingIds)
+      const domain = facility.facilityDomain || getFacilityDomain(facility.email, orgPrefix)
+      const email = generateStaffEmail(staffCode, domain)
+
+      const payload = {
+        staffCode,
+        fullName: formData.fullName,
+        email,
+        password: formData.password,
+        role: formData.role,
+        ...(formData.department ? { department: formData.department } : {}),
+        ...(formData.service ? { service: formData.service } : {}),
+        ...(formData.specialty ? { specialty: formData.specialty } : {}),
+        position: formData.position || undefined,
+        ...(formData.phiScope ? { phiScope: formData.phiScope } : {})
+      }
+
+      const { data } = await staffApi.create(payload)
+      commit('ADD_STAFF', data.staffProfile || data.staff || data)
+      return {
+        staffId: staffCode,
+        staffEmail: email,
+        ...data
+      }
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    } finally {
+      commit('SET_LOADING', false)
+    }
+  },
+
+  async deactivateStaffAccount({ dispatch }, id) {
+    return await dispatch('deactivateStaff', id)
+  },
+
+  async resetStaffPassword({ commit }, { staffId, newPassword }) {
+    try {
+      const { data } = await staffApi.update(staffId, { password: newPassword })
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+
+  async updateStaff({ commit }, { id, ...data }) {
+    try {
+      const { data: updated } = await staffApi.update(id, data)
+      commit('UPDATE_STAFF', updated.staffProfile || updated)
+      return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+
+  async deactivateStaff({ commit }, id) {
+    try {
+      const { data } = await staffApi.update(id, { status: 'inactive' })
+      commit('UPDATE_STAFF', data.staffProfile || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+
+  async fetchDepartments({ commit }) {
+    try {
+      const { data } = await departmentApi.list()
+      commit('SET_DEPARTMENTS', data.departments || [])
+      return data.departments
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+
+  async fetchAuditLog({ commit }, params = {}) {
+    try {
+      const { data } = await auditApi.list(params)
+      commit('SET_AUDIT_LOG', data.logs || [])
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+
+  async createDepartment({ dispatch }, payload) {
+    try {
+      const { data } = await departmentApi.create(payload)
+      await dispatch('fetchDepartments')
+      return data.department
+    } catch (err) {
+      throw err
+    }
+  },
+
+  async updateDepartment({ dispatch }, { id, ...payload }) {
+    try {
+      const { data } = await departmentApi.update(id, payload)
+      await dispatch('fetchDepartments')
+      return data.department
+    } catch (err) {
+      throw err
+    }
+  },
+
+  async deleteDepartment({ dispatch }, id) {
+    try {
+      await departmentApi.remove(id)
+      await dispatch('fetchDepartments')
+    } catch (err) {
+      throw err
     }
   }
+}
+
+export const getters = {
+  getFacility: (state) => state.facility || {},
+  getAllStaff:  (state) => state.staff || [],
+  getAuditLog: (state) => state.auditLog.length ? state.auditLog : (state.staffLoginHistory || []),
+  getClinicalDepartments: (state, getters) => getters.getHospitalModel.departments,
+  getSpecialties: (state, getters) => {
+    const depts = getters.getDepartments || []
+    const set = new Set()
+    depts.forEach(d => {
+      (d.specialties || []).forEach(s => set.add(s))
+    })
+    return Array.from(set)
+  },
+  getHospitalModel: (state) => {
+    const deptSpecialtiesMap = {
+      EMERGENCY:  ['Emergency Medicine', 'Trauma Care', 'Triage', 'Resuscitation'],
+      MEDICINE:   ['Internal Medicine', 'Cardiology', 'Endocrinology & Diabetes', 'Gastroenterology'],
+      SURGERY:    ['General Surgery', 'Visceral Surgery', 'Orthopedics & Traumatology', 'Anesthesia'],
+      PEDIATRICS: ['General Pediatrics', 'Neonatology', 'Pediatric Nutrition', 'Vaccination'],
+      OBGYN:      ['Obstetrics', 'Gynecology', 'Maternal-Fetal Medicine', 'Postpartum Care'],
+      ICU:        ['Intensive Care', 'Cardiovascular ICU', 'Mechanical Ventilation'],
+      OPD:        ['General Outpatient', 'Specialist Consultations', 'Preventive Care'],
+      LAB:        ['Clinical Biochemistry', 'Hematology', 'Bacteriology', 'Parasitology'],
+      IMAGING:    ['Diagnostic Radiology', 'Ultrasound Imaging', 'CT & MRI Scanning'],
+      PHARMACY:   ['Clinical Pharmacy', 'Hospital Dispensing', 'Pharmacovigilance']
+    }
+
+    if (state.departments && state.departments.length > 0) {
+      return {
+        departments: state.departments.map(d => {
+          const wards = (d.wards || []).map(w => ({
+            id:     w.id,
+            name:   w.name,
+            beds:   w.beds,
+            status: w.status,
+            queueKey: 'inpatient'
+          }))
+          const specialties = d.specialties && d.specialties.length > 0 
+            ? d.specialties 
+            : (deptSpecialtiesMap[d.code] || [d.name])
+
+          return {
+            id:               d.id,
+            code:             d.code,
+            name:             d.name,
+            location:         d.location || 'Main Complex',
+            type:             ['LAB', 'IMAGING'].includes(d.code) ? 'diagnostic' : ['PHARMACY'].includes(d.code) ? 'support' : 'clinical',
+            headOfDepartment: d.headOfDepartment,
+            leadRole:         d.headOfDepartment || 'Department Head',
+            status:           d.status,
+            wards:            wards,
+            services:         wards,
+            specialties:      specialties
+          }
+        })
+      }
+    }
+
+    // Default fallback mapping
+    return {
+      departments: DEFAULT_DEPARTMENTS.map(d => ({
+        ...d,
+        location: 'Main Complex',
+        type: ['LAB', 'IMAGING'].includes(d.code) ? 'diagnostic' : ['PHARMACY'].includes(d.code) ? 'support' : 'clinical',
+        leadRole: d.headOfDepartment || 'Department Head',
+        services: (d.wards || []).map(w => ({ ...w, queueKey: 'inpatient' })),
+        specialties: deptSpecialtiesMap[d.code] || [d.name]
+      }))
+    }
+  },
+  getDepartments: (state, getters) => getters.getHospitalModel.departments,
+  hospitalDepartments: (state, getters) => getters.getHospitalModel.departments,
+  getWorkflowCatalog: () => [
+    { id: 'w1', name: 'Emergency Triage & Admission', stages: ['Triage', 'Emergency Consult', 'Observation Ward / ICU'] },
+    { id: 'w2', name: 'Outpatient Consultation & Pharmacy', stages: ['Registration', 'OPD Consult', 'Lab / Imaging', 'Pharmacy'] },
+    { id: 'w3', name: 'Inpatient Surgical Care', stages: ['Admission', 'Pre-op Ward', 'Operating Theater', 'PACU', 'Inpatient Ward'] },
+    { id: 'w4', name: 'Maternal & Neonatal Care', stages: ['Antenatal Care', 'Delivery Room', 'Postpartum Ward', 'Neonatology'] }
+  ],
+  getPhiPolicies: () => ({
+    consentRequired: true,
+    auditEnabled: true,
+    dataRetentionYears: 10
+  })
 }
