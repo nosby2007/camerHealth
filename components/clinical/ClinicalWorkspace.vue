@@ -1105,34 +1105,22 @@
               />
             </section>
 
-            <section v-else-if="selectedChartTab === 'Lab Results'" class="flowsheet">
-              <FlowSection
-                title="Laboratory Orders and Results"
-                :columns="['Status', 'Priority', 'Result']"
-                :rows="labResultRows"
-              />
-            </section>
+            <Patient360LabResultsTab
+              v-else-if="selectedChartTab === 'Lab Results'"
+              :orders="patientLabOrders"
+              :role="currentRole"
+              :read-only="isPatientDischarged"
+              @record-result="openContextForm('labResult', $event)"
+              @new-order="openOrderComposer('lab')"
+            />
 
-            <section v-else-if="selectedChartTab === 'Wound Management'" class="flowsheet wound-management">
-              <div class="action-strip">
-                <v-btn v-if="!isPatientDischarged" x-small depressed color="#0f766e" dark @click="dialogs.woundCare = true">
-                  <v-icon x-small left>mdi-bandage</v-icon>Document Wound
-                </v-btn>
-              </div>
-              <div v-if="patientWounds.length" class="wound-grid">
-                <WoundCard
-                  v-for="wound in patientWounds"
-                  :key="wound.id"
-                  :wound="wound"
-                  :assessments="woundAssessmentsFor(wound.id)"
-                  @open="dialogs.woundCare = true"
-                />
-              </div>
-              <div v-else class="empty-wounds">
-                <v-icon size="48" color="#94a3b8">mdi-bandage</v-icon>
-                <span>No wounds documented for this patient yet.</span>
-              </div>
-            </section>
+            <Patient360WoundManagementTab
+              v-else-if="selectedChartTab === 'Wound Management'"
+              :wounds="patientWounds"
+              :assessments="woundAssessmentMap"
+              :read-only="isPatientDischarged"
+              @open-wound="openWoundDialog"
+            />
 
             <section v-else-if="selectedChartTab === 'Notes'" class="flowsheet notes-workspace">
               <div class="action-strip">
@@ -1253,59 +1241,62 @@
               :read-only="isPatientDischarged"
             />
 
-            <section v-else-if="selectedChartTab === 'Work List'" class="flowsheet">
-              <FlowSection
-                title="Work List"
-                required
-                :columns="['Time', 'Priority', 'Status']"
-                :rows="visibleWorklistRows"
-              />
-            </section>
+            <Patient360WorkListTab
+              v-else-if="selectedChartTab === 'Work List'"
+              :tasks="patientTasks"
+              :role="currentRole"
+              :read-only="isPatientDischarged"
+              @new-task="openContextForm('task')"
+              @update-status="updateWorkListTask"
+            />
 
-            <section v-else-if="selectedChartTab === 'Immunizations'" class="flowsheet">
-              <FlowSection
-                title="Immunizations"
-                :columns="['Status', 'Date', 'Source']"
-                :rows="immunizationRows"
-              />
-            </section>
+            <Patient360ImmunizationsTab
+              v-else-if="selectedChartTab === 'Immunizations'"
+              :patient-id="activePatientId"
+              :patient="findPatientRecord(activePatientId) || activePatient"
+              :role="currentRole"
+              :read-only="isPatientDischarged"
+              @saved="toastSuccess('Immunization record saved.')"
+            />
 
-            <section v-else-if="selectedChartTab === 'Care Teams'" class="flowsheet">
-              <FlowSection
-                title="Current Encounter Team"
-                :columns="['Role', 'Shift', 'Contact']"
-                :rows="visibleCareTeamRows"
-              />
-            </section>
+            <Patient360CareTeamTab
+              v-else-if="selectedChartTab === 'Care Teams'"
+              :members="visibleCareTeamRows"
+              :patient="activePatient"
+              :role="currentRole"
+              :read-only="isPatientDischarged"
+              @add-member="openContextForm('careTeam')"
+              @new-task="openContextForm('task')"
+              @handoff="openCommandAction('handoff')"
+            />
 
-            <section v-else-if="selectedChartTab === 'Handoff'" class="flowsheet">
-              <FlowSection
-                title="Nursing Handoff"
-                :columns="['Status', 'Owner', 'Concern']"
-                :rows="handoffRows"
-              />
-            </section>
+            <Patient360HandoffTab
+              v-else-if="selectedChartTab === 'Handoff'"
+              :patient="activePatient"
+              :notes="patientNursingNotes"
+              :tasks="patientTasks"
+              :lab-orders="patientLabOrders"
+              :imaging-orders="patientImagingOrders"
+              :read-only="isPatientDischarged"
+              @new-handoff="openCommandAction('handoff')"
+            />
 
-            <section v-else-if="selectedChartTab === 'Documents'" class="flowsheet">
-              <div class="action-strip">
-                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('document')">
-                  <v-icon x-small left>mdi-file-plus</v-icon>File document
-                </v-btn>
-              </div>
-              <FlowSection
-                title="Documents"
-                :columns="['Category', 'Status', 'Filed']"
-                :rows="documentRows"
-              />
-            </section>
+            <Patient360DocumentsTab
+              v-else-if="selectedChartTab === 'Documents'"
+              :documents="patientDocuments"
+              :role="currentRole"
+              :read-only="isPatientDischarged"
+              @file-document="openChartDialog('document')"
+            />
 
-            <section v-else-if="selectedChartTab === 'Registration'" class="flowsheet">
-              <FlowSection
-                title="Registration and Demographics"
-                :columns="['Value']"
-                :rows="registrationRows"
-              />
-            </section>
+            <Patient360RegistrationTab
+              v-else-if="selectedChartTab === 'Registration'"
+              :patient-id="activePatientId"
+              :patient="findPatientRecord(activePatientId) || activePatient"
+              :role="currentRole"
+              :read-only="isPatientDischarged"
+              @saved="toastSuccess('Registration updated.')"
+            />
 
             <section v-else-if="selectedChartTab === 'Navigators'" class="navigator-active-workspace">
               <header class="navigator-active-head">
@@ -2116,6 +2107,8 @@
       :open="dialogs.woundCare"
       :patient-id="activePatientId"
       :author-role="currentRole"
+      :initial-wound-id="selectedWoundForDialogId"
+      :read-only="isPatientDischarged"
       @close="closeChartDialog('woundCare')"
       @saved="handleWoundSaved"
     />
@@ -2229,7 +2222,6 @@ import RightClinicalPanel from '~/components/clinical/patient360/RightClinicalPa
 import TabNav from '~/components/clinical/patient360/TabNav.vue'
 import NoteDialog from '~/components/clinical/patient360/dialogs/NoteDialog.vue'
 import WoundCareDialog from '~/components/clinical/patient360/dialogs/WoundCareDialog.vue'
-import WoundCard from '~/components/nursing/WoundCard.vue'
 import CarePlanDialog from '~/components/clinical/patient360/dialogs/CarePlanDialog.vue'
 import DischargePlanDialog from '~/components/clinical/patient360/discharge/DischargePlanDialog.vue'
 import PatientBarcodeScannerDialog from '~/components/clinical/patient360/PatientBarcodeScannerDialog.vue'
@@ -2237,6 +2229,14 @@ import Patient360CarePlanTab from '~/components/clinical/patient360/care-plan/Pa
 import Patient360EducationTab from '~/components/clinical/patient360/education/Patient360EducationTab.vue'
 import Patient360ChartReviewTab from '~/components/clinical/patient360/chart-review/Patient360ChartReviewTab.vue'
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
+import Patient360LabResultsTab from '~/components/clinical/patient360/labs/Patient360LabResultsTab.vue'
+import Patient360WorkListTab from '~/components/clinical/patient360/work-list/Patient360WorkListTab.vue'
+import Patient360CareTeamTab from '~/components/clinical/patient360/care-team/Patient360CareTeamTab.vue'
+import Patient360ImmunizationsTab from '~/components/clinical/patient360/immunizations/Patient360ImmunizationsTab.vue'
+import Patient360HandoffTab from '~/components/clinical/patient360/handoff/Patient360HandoffTab.vue'
+import Patient360DocumentsTab from '~/components/clinical/patient360/documents/Patient360DocumentsTab.vue'
+import Patient360RegistrationTab from '~/components/clinical/patient360/registration/Patient360RegistrationTab.vue'
+import Patient360WoundManagementTab from '~/components/clinical/patient360/wounds/Patient360WoundManagementTab.vue'
 import TimedCareDocumentationDialog from '~/components/clinical/patient360/flowsheets/TimedCareDocumentationDialog.vue'
 import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
 import Patient360ContextForms from '~/components/clinical/patient360/dialogs/Patient360ContextForms.vue'
@@ -2399,7 +2399,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, WoundCard, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2703,6 +2703,7 @@ export default {
       marSearch: '',
       selectedMarMedication: null,
       selectedMarAction: 'given',
+      selectedWoundForDialogId: '',
       marTimeColumns: ['1400', '1500', '1600', '1700', '1800', '1900', '2000'],
       remoteAiCarePlan: null,
       aiCareLoading: false,
@@ -3271,6 +3272,12 @@ export default {
     patientWounds() {
       const all = this.$store.getters['nursing/getWounds'] || []
       return all.filter(item => item.patientId === this.activePatientId)
+    },
+    woundAssessmentMap() {
+      return this.patientWounds.reduce((map, wound) => {
+        map[wound.id] = this.woundAssessmentsFor(wound.id)
+        return map
+      }, {})
     },
     hasWoundAreaWarning() {
       return this.patientWounds.some(wound => this.woundAssessmentsFor(wound.id).some(item => item.warningAreaIncreased))
@@ -6298,6 +6305,16 @@ export default {
       if (!this.ensurePatientWritable() || !this.$refs.contextForms) return false
       return this.$refs.contextForms.open(kind, options)
     },
+    async updateWorkListTask({ task, status, reason }) {
+      if (!task || !task.id || !this.ensurePatientWritable()) return
+      const labels = { done: 'completed', hold: 'placed on hold', cancel: 'cancelled' }
+      await this.$store.dispatch('clinical/updateTaskStatus', {
+        id: task.id,
+        status,
+        reason: reason || `Task ${labels[status] || 'updated'} from Patient 360 Work List`
+      })
+      this.toastSuccess(`Task ${labels[status] || 'updated'}.`)
+    },
     handleContextFormSaved(message) {
       this.toastSuccess(message)
     },
@@ -6756,6 +6773,10 @@ export default {
       this.dialogs.note = false
       if (note) this.selectedNoteId = note.id
       this.toastSuccess('Note saved.')
+    },
+    openWoundDialog(wound) {
+      this.selectedWoundForDialogId = wound && wound.id ? wound.id : ''
+      this.dialogs.woundCare = true
     },
     async handleWoundSaved(payload) {
       const status = String(payload && payload.woundStatus ? payload.woundStatus : '').toLowerCase()

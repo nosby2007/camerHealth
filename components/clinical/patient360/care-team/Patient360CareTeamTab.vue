@@ -1,0 +1,43 @@
+<template>
+  <section class="team-workspace">
+    <header class="module-header"><div><span>CARE COORDINATION</span><h2>Care Team</h2><p>Current accountability, interdisciplinary coverage and handoff contacts.</p></div><div class="actions"><v-btn v-if="canCreateTask && !readOnly" x-small text color="#0f766e" @click="$emit('new-task')"><v-icon x-small left>mdi-clipboard-plus-outline</v-icon>Assign task</v-btn><v-btn v-if="canManageTeam && !readOnly" x-small depressed color="#0f766e" dark @click="$emit('add-member')"><v-icon x-small left>mdi-account-plus-outline</v-icon>Add member</v-btn></div></header>
+    <div v-if="readOnly" class="read-only"><v-icon x-small>mdi-lock-outline</v-icon> Discharged chart. Care-team records are read only.</div>
+    <div class="accountability-band">
+      <div><span>Attending / referent</span><strong>{{ attendingName }}</strong><small>{{ patient.service || patient.bed || 'Current service' }}</small></div>
+      <div><span>Bedside coverage</span><strong>{{ bedsideCount }} member(s)</strong><small>Active nursing and support roles</small></div>
+      <div><span>Consults / diagnostics</span><strong>{{ consultCount }} member(s)</strong><small>Interdisciplinary involvement</small></div>
+      <button type="button" @click="$emit('handoff')"><v-icon small>mdi-account-arrow-right-outline</v-icon><span>Shift continuity</span><strong>Open handoff</strong></button>
+    </div>
+    <div class="team-tools"><div role="group" aria-label="Care team filters"><button v-for="item in filters" :key="item.key" :class="{active:filter===item.key}" @click="filter=item.key">{{ item.label }} <b>{{ item.count }}</b></button></div><label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="search" type="search" placeholder="Search name, role or service" /></label></div>
+    <div class="team-list">
+      <article v-for="member in filteredMembers" :key="member.label">
+        <div class="avatar">{{ initials(member.label) }}</div>
+        <div class="identity"><strong>{{ member.label }}</strong><span>{{ member.values.Role || 'Care team member' }}</span></div>
+        <div><small>Coverage</small><strong>{{ member.values.Shift || 'Current' }}</strong></div>
+        <div><small>Contact / service</small><strong>{{ member.values.Contact || 'Not listed' }}</strong></div>
+        <b :class="['team-status',memberStatus(member)]">{{ statusLabel(member) }}</b>
+      </article>
+      <div v-if="!filteredMembers.length" class="empty"><v-icon size="38" color="#94a3b8">mdi-account-group-outline</v-icon><strong>No care-team member matches this view</strong><span>Add a member or change the filter.</span></div>
+    </div>
+  </section>
+</template>
+<script>
+export default {
+  name:'Patient360CareTeamTab',
+  props:{members:{type:Array,default:()=>[]},patient:{type:Object,default:()=>({})},role:{type:String,default:''},readOnly:{type:Boolean,default:false}},
+  data:()=>({filter:'all',search:''}),
+  computed:{
+    canManageTeam(){return ['ADMIN','DOCTOR','NP','NURSE','MIDWIFE','MAJOR_SERVICE','NURSING_SUPERVISOR'].includes(this.role)},
+    canCreateTask(){return ['ADMIN','DOCTOR','NP','NURSE','CNA','MIDWIFE','MAJOR_SERVICE','NURSING_SUPERVISOR','LAB','IMAGING','PHARMACY','SOCIAL_WORKER','PHYSIOTHERAPIST'].includes(this.role)},
+    attendingName(){return this.members.find(m=>/attending|referent/i.test(String(m.values?.Role||'')))?.label||this.patient.attending||this.patient.provider||'Not assigned'},
+    bedsideCount(){return this.members.filter(m=>/nurse|midwife|cna|bedside|aide/i.test(String(m.values?.Role||''))).length},
+    consultCount(){return this.members.filter(m=>/consult|lab|imaging|pharmacy|diet|social|physio|diagnostic/i.test(String(m.values?.Role||''))).length},
+    filters(){return[{key:'all',label:'All',count:this.members.length},{key:'bedside',label:'Bedside',count:this.bedsideCount},{key:'consults',label:'Consults',count:this.consultCount},{key:'on-call',label:'On call',count:this.members.filter(m=>/on call|requested/i.test(String(m.values?.Shift||''))).length}]},
+    filteredMembers(){const q=this.search.toLowerCase();return this.members.filter(m=>{const role=String(m.values?.Role||'');const shift=String(m.values?.Shift||'');if(this.filter==='bedside'&&!/nurse|midwife|cna|bedside|aide/i.test(role))return false;if(this.filter==='consults'&&!/consult|lab|imaging|pharmacy|diet|social|physio|diagnostic/i.test(role))return false;if(this.filter==='on-call'&&!/on call|requested/i.test(shift))return false;return !q||`${m.label} ${role} ${m.values?.Contact||''}`.toLowerCase().includes(q)})}
+  },
+  methods:{initials(name){return String(name||'?').split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase()},memberStatus(member){return /completed|inactive/i.test(String(member.values?.Shift||''))?'inactive':/on call|requested/i.test(String(member.values?.Shift||''))?'on-call':'active'},statusLabel(member){const state=this.memberStatus(member);return state==='on-call'?'On call':state==='inactive'?'Completed':'Active'}}
+}
+</script>
+<style scoped>
+.team-workspace{height:100%;display:flex;flex-direction:column;overflow:hidden;background:#f4f8f7;color:#17383a}.module-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#fff;border-bottom:1px solid #cbd9d8}.module-header span{font-size:10px;font-weight:800;color:#587473}.module-header h2{margin:1px 0;font-size:18px}.module-header p{margin:0;font-size:11px;color:#607877}.actions{display:flex;gap:6px}.read-only{padding:7px 14px;background:#f1f5f9;border-bottom:1px solid #cbd5e1;font-size:11px;font-weight:700}.accountability-band{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-bottom:1px solid #cfdcdb}.accountability-band>div,.accountability-band>button{min-height:70px;padding:10px 14px;border:0;border-right:1px solid #e0e8e7;background:#fff;text-align:left}.accountability-band span,.accountability-band strong,.accountability-band small{display:block}.accountability-band span{font-size:9px;font-weight:800;text-transform:uppercase;color:#617a78}.accountability-band strong{margin:3px 0;font-size:14px}.accountability-band small{font-size:10px;color:#617a78}.accountability-band button{display:grid;grid-template-columns:28px 1fr;align-content:center}.accountability-band button strong{grid-column:2;color:#0f766e}.team-tools{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#eaf1f0;border-bottom:1px solid #cfdddc}.team-tools>div{display:flex;gap:4px}.team-tools button{height:28px;padding:0 9px;border:1px solid #c3d3d1;background:#fff;font-size:10px;font-weight:700}.team-tools button.active{border-color:#0f766e;background:#e4f5f1}.team-tools b{margin-left:4px}.team-tools label{display:flex;gap:5px;align-items:center;width:min(320px,35%);padding:5px 8px;background:#fff;border:1px solid #bdcecc}.team-tools input{width:100%;border:0;outline:0;font-size:11px}.team-list{overflow:auto;flex:1;background:#fff}.team-list article{display:grid;grid-template-columns:38px minmax(210px,1.5fr) minmax(130px,1fr) minmax(150px,1fr) 80px;gap:12px;align-items:center;min-height:62px;padding:8px 14px;border-bottom:1px solid #dfe8e7}.team-list article:hover{background:#f5faf9}.avatar{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#d9eeea;color:#075f59;font-size:11px;font-weight:900}.identity strong,.identity span,.team-list article div>small,.team-list article div>strong{display:block}.identity strong,.team-list article div>strong{font-size:11px}.identity span,.team-list article div>small{font-size:10px;color:#647b79}.team-status{justify-self:start;padding:3px 7px;font-size:9px;text-transform:uppercase;background:#dcfce7;color:#166534}.team-status.on-call{background:#fef3c7;color:#92400e}.team-status.inactive{background:#e2e8f0;color:#475569}.empty{display:flex;min-height:210px;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:#667e7c;font-size:11px}@media(max-width:1100px){.accountability-band{grid-template-columns:repeat(2,1fr)}.team-list article{grid-template-columns:38px minmax(180px,1.4fr) 120px 140px 70px}.team-tools{align-items:stretch;flex-direction:column;gap:7px}.team-tools label{width:100%}}
+</style>
