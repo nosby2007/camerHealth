@@ -946,6 +946,12 @@ export const actions = {
       commit('SET_ERROR', err.response?.data?.error || err.message)
       throw err
     }
+  },
+  async registerPatient({ dispatch }, patientData) {
+    return await dispatch('registerPatientApi', patientData)
+  },
+  async updatePatient({ dispatch }, payload) {
+    return await dispatch('updatePatientApi', payload)
   }
 }
 
@@ -1213,34 +1219,8 @@ export const getters = {
       filedDocuments: documents.length,
       busiestQueue: queues.reduce((current, queue) => (queue.total > (current.total || 0) ? queue : current), {})
     }
-  },
-
-  async registerPatient({ commit, dispatch }, patientData) {
-    commit('SET_LOADING', true)
-    try {
-      const { data } = await patientApi.create(patientData)
-      commit('ADD_PATIENT', data.patient || data)
-      await dispatch('fetchPatients')
-      return data
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    } finally {
-      commit('SET_LOADING', false)
-    }
-  },
-
-  async updatePatient({ commit }, { id, ...data }) {
-    try {
-      const { data: updated } = await patientApi.update(id, data)
-      commit('UPDATE_PATIENT', updated.patient || updated)
-      return updated
-    } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
-      throw err
-    }
-  },
-
+  }
+}
 
 function saveToLocalStorage(key, data) {
   if (process.client) {
