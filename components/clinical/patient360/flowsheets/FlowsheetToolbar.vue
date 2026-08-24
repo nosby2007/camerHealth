@@ -166,23 +166,34 @@ export default {
 <style scoped>
 .toolbar {
   display: flex;
-  gap: 16px;
-  padding: 8px 12px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  gap: 8px;
+  min-height: 46px;
+  padding: 5px 8px;
+  background: #f7faf9;
+  border-bottom: 1px solid #cbd5e1;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 
 .toolbar-section {
   display: flex;
   gap: 4px;
   align-items: center;
+  flex: 0 0 auto;
 }
 
 .toolbar-section:not(:last-child) {
   border-right: 1px solid #ccc;
-  padding-right: 12px;
+  padding-right: 8px;
+}
+
+.toolbar ::v-deep .v-btn {
+  min-width: auto;
+  padding: 0 8px;
+  white-space: nowrap;
 }
 
 .save-status {

@@ -22,6 +22,14 @@
       Discharged chart. Education records are available in read-only mode.
     </div>
 
+    <div class="education-summary" aria-label="Patient education summary">
+      <div><v-icon small color="#0f766e">mdi-book-open-page-variant-outline</v-icon><span>Topics</span><strong>{{ educationSummary.titleCount }}</strong></div>
+      <div><v-icon small color="#0369a1">mdi-format-list-checks</v-icon><span>Teaching points</span><strong>{{ educationSummary.pointCount }}</strong></div>
+      <div><v-icon small color="#15803d">mdi-check-decagram-outline</v-icon><span>Completed</span><strong>{{ educationSummary.completedCount }}</strong></div>
+      <div><v-icon small color="#7c3aed">mdi-account-heart-outline</v-icon><span>Family sessions</span><strong>{{ educationSummary.familyEducationCount }}</strong></div>
+      <div class="completion-cell"><span>Overall completion</span><strong>{{ completionRate }}%</strong><i><b :style="{ width: `${completionRate}%` }"></b></i></div>
+    </div>
+
     <!-- Main Content -->
     <div class="education-content" :class="{ 'tree-collapsed': treeCollapsed }">
       <!-- Left: Education Tree -->
@@ -79,6 +87,7 @@
               <v-icon x-small>mdi-close</v-icon>
             </v-btn>
           </div>
+          <div v-if="!assignedMaterials.length" class="materials-empty">No material assigned to the discharge packet.</div>
         </div>
       </div>
     </div>
@@ -112,6 +121,25 @@
           <v-btn text small @click="showAddPointDialog = false">Cancel</v-btn>
           <v-btn depressed color="#0f766e" dark small @click="addPoint">Add</v-btn>
         </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="showAddMaterialDialog" max-width="560" persistent>
+      <v-card>
+        <v-card-title class="material-dialog-title">
+          <div><span>PATIENT EDUCATION</span><strong>Add material to discharge packet</strong></div>
+          <v-btn icon small @click="showAddMaterialDialog = false"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text class="pt-5">
+          <v-text-field v-model.trim="materialForm.title" label="Material title" dense outlined :rules="[requiredRule]" />
+          <div class="material-form-grid">
+            <v-select v-model="materialForm.language" :items="['French', 'English', 'Bilingual', 'Local language / interpreter']" label="Language" dense outlined />
+            <v-select v-model="materialForm.format" :items="['Verbal', 'Printed handout', 'Visual demonstration', 'Verbal + printed', 'Caregiver demonstration']" label="Format" dense outlined />
+          </div>
+          <v-textarea v-model.trim="materialForm.instructions" label="Key instructions / adaptation for patient literacy" rows="3" dense outlined />
+          <v-checkbox v-model="materialForm.addToAvs" dense hide-details label="Include in discharge / after-visit packet" />
+        </v-card-text>
+        <v-card-actions><v-spacer /><v-btn text small @click="showAddMaterialDialog = false">Cancel</v-btn><v-btn depressed dark color="#0f766e" small :loading="savingMaterial" @click="saveMaterial">Add material</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -168,7 +196,10 @@ export default {
       newPointLabel: '',
       newPointTopic: '',
       categories: ['general', 'infection', 'safety', 'wound', 'discharge', 'pain', 'nutrition'],
-      treeCollapsed: false
+      treeCollapsed: false,
+      savingMaterial: false,
+      requiredRule: value => Boolean(String(value || '').trim()) || 'Required',
+      materialForm: { title: '', language: 'French', format: 'Verbal + printed', instructions: '', addToAvs: true }
     }
   },
   computed: {
@@ -189,6 +220,12 @@ export default {
     },
     assignedMaterials() {
       return this.$store.getters['education/assignedMaterialsForEncounter']?.(this.patientId, this.encounterId) || []
+    },
+    educationSummary() {
+      return this.$store.getters['education/educationSummaryProjection']?.(this.patientId) || { titleCount: 0, pointCount: 0, completedCount: 0, familyEducationCount: 0 }
+    },
+    completionRate() {
+      return this.educationSummary.pointCount ? Math.round((this.educationSummary.completedCount / this.educationSummary.pointCount) * 100) : 0
     }
   },
   methods: {
@@ -254,14 +291,43 @@ export default {
     },
     openMaterialDialog() {
       if (!this.readOnly) this.showAddMaterialDialog = true
+    },
+    async saveMaterial() {
+      if (this.readOnly || !this.materialForm.title) return
+      this.savingMaterial = true
+      try {
+        const material = await this.$store.dispatch('education/createPatientMaterial', {
+          patientId: this.patientId,
+          title: this.materialForm.title,
+          language: this.materialForm.language,
+          format: this.materialForm.format,
+          instructions: this.materialForm.instructions
+        })
+        if (this.materialForm.addToAvs) {
+          await this.$store.dispatch('education/addMaterialToAvs', {
+            patientId: this.patientId,
+            encounterId: this.encounterId,
+            materialId: material.id
+          })
+        }
+        this.materialForm = { title: '', language: 'French', format: 'Verbal + printed', instructions: '', addToAvs: true }
+        this.showAddMaterialDialog = false
+        this.$toast?.success('Education material added')
+      } finally {
+        this.savingMaterial = false
+      }
     }
   },
   mounted() {
-    if (this.readOnly) return
-    this.$store.dispatch('education/initializeEducationForPatient', {
-      patientId: this.patientId,
-      encounterId: this.encounterId,
-      admissionId: this.admissionId
+    const initialize = this.readOnly
+      ? Promise.resolve()
+      : this.$store.dispatch('education/initializeEducationForPatient', {
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          admissionId: this.admissionId
+        })
+    Promise.resolve(initialize).then(() => {
+      if (!this.selectedTitleId && this.titles.length) this.selectedTitleId = this.titles[0].id
     })
   }
 }
@@ -316,6 +382,28 @@ export default {
   font-weight: 700;
 }
 
+.education-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(105px, 1fr)) minmax(180px, 1.35fr);
+  background: #fff;
+  border-bottom: 1px solid #d7e0df;
+}
+
+.education-summary > div {
+  min-height: 55px;
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  padding: 7px 12px;
+  border-right: 1px solid #e1e8e7;
+}
+
+.education-summary span { font-size: 10px; font-weight: 700; color: #526d70; }
+.education-summary strong { font-size: 18px; color: #17383a; }
+.education-summary .completion-cell { grid-template-columns: 1fr auto; align-content: center; }
+.completion-cell i { grid-column: 1 / -1; height: 5px; margin-top: 5px; background: #dce7e5; overflow: hidden; }
+.completion-cell b { display: block; height: 100%; background: #0f766e; }
+
 .education-tree-panel,
 .education-points-panel,
 .materials-panel {
@@ -366,6 +454,12 @@ export default {
   font-weight: 600;
   color: #134e4a;
 }
+
+.materials-empty { padding: 10px 6px; color: #708487; font-size: 10px; border-top: 1px solid #e5eceb; }
+.material-dialog-title { display: flex; justify-content: space-between; background: #166534; color: #fff; }
+.material-dialog-title span { display: block; font-size: 10px; font-weight: 800; }
+.material-dialog-title strong { display: block; font-size: 16px; }
+.material-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 
 .empty {
   color: #94a3b8;
@@ -418,5 +512,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+@media (max-width: 1100px) {
+  .education-summary { grid-template-columns: repeat(3, 1fr); }
+  .education-content { grid-template-columns: 220px 1fr; }
+  .materials-panel { display: none; }
 }
 </style>

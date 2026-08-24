@@ -24,7 +24,7 @@
             <v-icon size="40" color="#94a3b8">mdi-bandage</v-icon>
             <span>No wounds documented yet for this patient.</span>
           </div>
-          <v-btn depressed color="#0f766e" dark class="font-weight-black mt-3" @click="mode = 'new'">
+          <v-btn v-if="!readOnly" depressed color="#0f766e" dark class="font-weight-black mt-3" @click="mode = 'new'">
             <v-icon small left>mdi-plus</v-icon>Document a new wound
           </v-btn>
         </section>
@@ -72,7 +72,7 @@
           <p class="section-label mt-4">Wound Photos (Assessment ID: {{ assessmentId }})</p>
           <div class="photo-section">
             <!-- Photo Capture -->
-            <div class="photo-input-area">
+            <div v-if="!readOnly" class="photo-input-area">
               <v-btn
                 color="primary"
                 dark
@@ -151,7 +151,7 @@
         <span v-if="lastWarning" class="warning-flag"><v-icon x-small color="#be123c">mdi-alert</v-icon>Surface increased since prior measurement</span>
         <v-spacer />
         <v-btn text small @click="$emit('close')">Cancel</v-btn>
-        <v-btn depressed color="#0f766e" dark small :loading="saving" @click="save">
+        <v-btn v-if="!readOnly" depressed color="#0f766e" dark small :loading="saving" @click="save">
           <v-icon x-small left>mdi-content-save</v-icon>Save assessment
         </v-btn>
       </v-card-actions>
@@ -184,7 +184,9 @@ export default {
   props: {
     open: { type: Boolean, default: false },
     patientId: { type: String, required: true },
-    authorRole: { type: String, default: '' }
+    authorRole: { type: String, default: '' },
+    initialWoundId: { type: String, default: '' },
+    readOnly: { type: Boolean, default: false }
   },
   data() {
     return {
@@ -221,6 +223,8 @@ export default {
       if (value) {
         this.reset()
         this.assessmentId = uuidv4()
+        const wound = this.patientWounds.find(item => item.id === this.initialWoundId)
+        if (wound) this.selectWound(wound)
       }
     },
     patientId() {
@@ -308,6 +312,16 @@ export default {
           assessmentId: this.assessmentId,
           ...this.assessment
         })
+
+        const wound = this.patientWounds.find(item => item.id === this.selectedWoundId)
+        if (wound && this.assessment.woundStatus && this.assessment.woundStatus !== wound.status) {
+          await this.$store.dispatch('nursing/updateWound', {
+            ...wound,
+            status: this.assessment.woundStatus,
+            statusUpdatedAt: new Date().toISOString(),
+            statusUpdatedByRole: this.authorRole
+          })
+        }
 
         if (this.assessment.photos?.length) {
           for (const photo of this.assessment.photos) {

@@ -42,11 +42,12 @@
         @select-template="selectTemplate"
       />
 
-      <div class="flowsheet-body">
+      <div :class="['flowsheet-body', { 'body-nav-collapsed': isBodyNavCollapsed, 'detail-panel-collapsed': isRightPanelCollapsed }]">
         <FlowsheetBodySystemNav
           :template-id="selectedTemplateId"
           :sections="sections"
           @filter-sections="filterBySections"
+          @collapse-change="isBodyNavCollapsed = $event"
         />
 
         <div :class="['flowsheet-grid-container', { 'read-only-grid': readOnly }]">
@@ -157,6 +158,7 @@ export default {
       showHistoryDialog: false,
       showTimedCareDialog: false,
       filteredBySystems: null,
+      isBodyNavCollapsed: false,
       isRightPanelCollapsed: false
     }
   },
@@ -240,18 +242,20 @@ export default {
     },
     createInitialColumns() {
       if (this.readOnly) return
-      // Create 3 initial time columns
-      const times = ['08:00', '12:00', '16:00']
-      times.forEach(time => {
-        if (this.$store.state.flowsheets.columns.length < 3) {
-          this.$store.dispatch('flowsheets/createColumn', {
-            patientId: this.patientId,
-            encounterId: this.encounterId,
-            admissionId: this.admissionId,
-            documentedAt: new Date().toISOString(),
-            source: 'manual'
-          })
-        }
+      const existingColumns = this.$store.state.flowsheets.columns.filter(
+        column => column.patientId === this.patientId && column.encounterId === this.encounterId
+      )
+      const scheduledHours = [8, 12, 16]
+      scheduledHours.slice(existingColumns.length).forEach(hour => {
+        const documentedAt = new Date()
+        documentedAt.setHours(hour, 0, 0, 0)
+        this.$store.dispatch('flowsheets/createColumn', {
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          admissionId: this.admissionId,
+          documentedAt: documentedAt.toISOString(),
+          source: 'scheduled'
+        })
       })
     },
     addRows(rows) {
@@ -399,13 +403,23 @@ export default {
 }
 
 .flowsheet-body {
+  --body-nav-width: 190px;
+  --detail-panel-width: 260px;
   display: grid;
-  grid-template-columns: 200px 1fr 250px;
+  grid-template-columns: var(--body-nav-width) minmax(520px, 1fr) var(--detail-panel-width);
   flex: 1;
-  gap: 1px;
-  background: #e8eaea;
+  min-height: 420px;
+  background: #d8e1e0;
   overflow: hidden;
   transition: grid-template-columns 0.3s ease;
+}
+
+.flowsheet-body.body-nav-collapsed {
+  --body-nav-width: 40px;
+}
+
+.flowsheet-body.detail-panel-collapsed {
+  --detail-panel-width: 40px;
 }
 
 .flowsheet-right-panel {
@@ -415,12 +429,11 @@ export default {
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  min-width: 40px;
+  min-width: 0;
 }
 
 .flowsheet-right-panel.collapsed {
-  width: 40px;
-  min-width: 40px;
+  width: auto;
 }
 
 .panel-collapse-btn {
@@ -463,7 +476,16 @@ export default {
   }
 
   .flowsheet-body {
+    --body-nav-width: 1fr;
+    --detail-panel-width: 1fr;
     grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .flowsheet-right-panel,
+  .flowsheet-right-panel.collapsed {
+    min-height: 44px;
+    width: auto;
   }
 }
 </style>

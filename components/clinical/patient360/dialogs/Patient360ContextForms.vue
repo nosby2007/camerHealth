@@ -69,12 +69,25 @@
         <v-card-text>
           <v-select v-model="forms.labResult.orderId" :items="labOrderOptions" item-text="text" item-value="value" label="Laboratory order" dense outlined :rules="[requiredRule]" />
           <div class="form-grid two">
+            <v-text-field v-model="forms.labResult.specimen" label="Specimen / sample" dense outlined :rules="[requiredRule]" />
+            <v-text-field v-model="forms.labResult.collectedAt" label="Collected date and time" type="datetime-local" dense outlined :rules="[requiredRule]" />
+            <v-text-field v-model="forms.labResult.collectedBy" label="Collected by" dense outlined />
+            <v-select v-model="forms.labResult.collectionStatus" :items="['Collected', 'Received in laboratory', 'Rejected / recollect']" label="Specimen status" dense outlined />
+          </div>
+          <div class="form-grid two">
             <v-text-field v-model="forms.labResult.result" label="Result" dense outlined :rules="[requiredRule]" />
             <v-text-field v-model="forms.labResult.unit" label="Unit" dense outlined />
             <v-text-field v-model="forms.labResult.referenceRange" label="Reference range" dense outlined />
             <v-select v-model="forms.labResult.flag" :items="['Normal', 'Low', 'High', 'Critical']" label="Flag" dense outlined />
           </div>
           <v-textarea v-model="forms.labResult.comment" label="Laboratory comment / critical result communication" rows="3" dense outlined />
+          <div v-if="forms.labResult.flag === 'Critical'" class="critical-result-fields">
+            <strong>Critical result communication</strong>
+            <div class="form-grid two">
+              <v-text-field v-model="forms.labResult.criticalCommunicatedTo" label="Communicated to" dense outlined :rules="[requiredRule]" />
+              <v-text-field v-model="forms.labResult.communicationAt" label="Communication date and time" type="datetime-local" dense outlined :rules="[requiredRule]" />
+            </div>
+          </div>
         </v-card-text>
         <v-card-actions><v-spacer /><v-btn text small @click="close('labResult')">Cancel</v-btn><v-btn depressed dark color="#0369a1" small :loading="saving" @click="saveLabResult">Validate result</v-btn></v-card-actions>
       </v-card>
@@ -169,7 +182,7 @@
 const freshForms = () => ({
   task: { title: '', assignedToRole: 'NURSE', priority: 'Today', dueAt: '', frequency: 'Once', instructions: '' },
   safety: { type: 'allergies', allergies: '', allergySeverity: 'Not applicable', precautions: '', infectionStatus: '', fallRisk: 'Low', assistance: 'Independent', note: '' },
-  labResult: { orderId: '', result: '', unit: '', referenceRange: '', flag: 'Normal', comment: '' },
+  labResult: { orderId: '', specimen: '', collectedAt: '', collectedBy: '', collectionStatus: 'Collected', result: '', unit: '', referenceRange: '', flag: 'Normal', comment: '', criticalCommunicatedTo: '', communicationAt: '' },
   imagingResult: { orderId: '', findings: '', impression: '', urgency: 'Routine', recommendation: '' },
   careTeam: { name: '', role: 'NURSE', service: '', contact: '', responsibility: 'Bedside care', status: 'Active', note: '' },
   social: { domain: 'Transportation', status: 'Needs review', finding: '', intervention: '', owner: '', followUpAt: '' },
@@ -234,7 +247,15 @@ export default {
         this.forms.safety.precautions = this.patient.precautions || ''
         this.forms.safety.infectionStatus = this.patient.infectionStatus || ''
       }
-      if (kind === 'labResult') this.forms.labResult.orderId = options.orderId || this.labOrderOptions[0]?.value || ''
+      if (kind === 'labResult') {
+        this.forms.labResult.orderId = options.orderId || this.labOrderOptions[0]?.value || ''
+        const order = this.labOrders.find(item => item.id === this.forms.labResult.orderId) || {}
+        this.forms.labResult.specimen = order.specimen || order.specimenType || ''
+        this.forms.labResult.collectedAt = this.toLocalDateTime(order.collectedAt || new Date())
+        this.forms.labResult.collectedBy = order.collectedBy || this.$store.state.auth?.fullName || ''
+        this.forms.labResult.collectionStatus = order.collectionStatus || 'Collected'
+        this.forms.labResult.communicationAt = this.toLocalDateTime(new Date())
+      }
       if (kind === 'imagingResult') this.forms.imagingResult.orderId = options.orderId || this.imagingOrderOptions[0]?.value || ''
       if (kind === 'education') this.forms.education.topic = options.topic || ''
       this.$set(this.dialogs, kind, true)
@@ -282,9 +303,14 @@ export default {
     },
     async saveLabResult() {
       const order = this.labOrders.find(item => item.id === this.forms.labResult.orderId)
-      if (!order || !this.forms.labResult.result) return
+      const result = this.forms.labResult
+      if (!order || !result.result || !result.specimen || !result.collectedAt) return
+      if (result.flag === 'Critical' && !result.criticalCommunicatedTo) {
+        this.$emit('error', 'Document who received the critical laboratory result.')
+        return
+      }
       await this.runSave('labResult', async () => {
-        await this.$store.dispatch('clinical/updateLabOrder', { ...order, ...this.forms.labResult, status: 'Completed', resultedAt: new Date().toISOString(), resultedByRole: this.role })
+        await this.$store.dispatch('clinical/updateLabOrder', { ...order, ...result, collectedAt: new Date(result.collectedAt).toISOString(), communicationAt: result.flag === 'Critical' ? new Date(result.communicationAt).toISOString() : '', status: 'Completed', resultedAt: new Date().toISOString(), resultedByRole: this.role })
         await this.completeRelatedTask(order.id, 'Laboratory result validated')
         this.notify('Laboratory result validated.')
       })
@@ -329,6 +355,12 @@ export default {
       const task = (this.$store.getters['clinical/getTasks'] || []).find(item => item.patientId === this.patientId && item.relatedId === relatedId && !['done', 'cancel'].includes(item.status))
       if (task) await this.$store.dispatch('clinical/updateTaskStatus', { id: task.id, status: 'done', reason })
     },
+    toLocalDateTime(value) {
+      const date = value instanceof Date ? value : new Date(value)
+      if (Number.isNaN(date.getTime())) return ''
+      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      return local.toISOString().slice(0, 16)
+    },
     async runSave(kind, operation) {
       this.saving = true
       try { await operation(); this.close(kind) } catch (error) { this.$emit('error', 'Unable to save this Patient 360 form.') } finally { this.saving = false }
@@ -345,6 +377,8 @@ export default {
 .form-title.team { background: #134e4a; }
 .form-title.social { background: #9f1239; }
 .form-title.education { background: #166534; }
+.critical-result-fields { margin-top: 10px; padding: 10px; border-left: 3px solid #be123c; background: #fff1f2; }
+.critical-result-fields > strong { display: block; margin-bottom: 10px; color: #9f1239; font-size: 11px; text-transform: uppercase; }
 .form-title span { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; }
 .form-title strong { display: block; font-size: 16px; }
 .form-grid { display: grid; gap: 10px; }

@@ -291,6 +291,21 @@ export const actions = {
     return assignment
   },
 
+  createPatientMaterial({ commit, dispatch, rootState }, { patientId, title, language, format, instructions }) {
+    const material = withBase(rootState, {
+      patientId,
+      title,
+      language: language || 'French',
+      format: format || 'Verbal + printed',
+      instructions: instructions || '',
+      status: 'active',
+      createdBy: rootState.auth?.fullName || rootState.auth?.staffId
+    }, 'MAT')
+    commit('ADD_MATERIAL', material)
+    dispatch('audit', { action: 'EDUCATION_MATERIAL_CREATED', targetId: material.id, patientId })
+    return material
+  },
+
   removeMaterialFromAvs({ state, commit, dispatch, rootState }, { assignmentId, patientId }) {
     const assignment = state.materialAssignments.find(a => a.id === assignmentId)
     if (assignment) {
@@ -394,6 +409,13 @@ export const getters = {
       const material = state.patientMaterials.find(m => m.id === a.materialId)
       return { ...a, material }
     })
+  },
+
+  materialsForPatient: (state, getters, rootState, rootGetters) => (patientId) => {
+    return scoped(state.patientMaterials, rootState, rootGetters)
+      .filter(material => !material.patientId || material.patientId === patientId)
+      .filter(material => material.status !== 'inactive')
+      .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')))
   },
 
   educationCompletionSummary: (state, getters, rootState, rootGetters) => (patientId) => {
