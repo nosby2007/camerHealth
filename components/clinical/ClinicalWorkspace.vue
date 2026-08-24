@@ -1267,6 +1267,20 @@
               @update-status="updateWorkListTask"
             />
 
+            <Patient360RoleCoordinationTab
+              v-else-if="['Social Services', 'Unit Management', 'Nursing Supervision'].includes(selectedChartTab)"
+              :patient-id="activePatientId"
+              :patient="findPatientRecord(activePatientId) || activePatient"
+              :role="currentRole"
+              :workspace-tab="selectedChartTab"
+              :tasks="patientTasks"
+              :documents="patientDocuments"
+              :members="visibleCareTeamRows"
+              :read-only="isPatientDischarged"
+              @open-tab="selectChartTab"
+              @saved="toastSuccess"
+            />
+
             <Patient360ImmunizationsTab
               v-else-if="selectedChartTab === 'Immunizations'"
               :patient-id="activePatientId"
@@ -2292,6 +2306,7 @@ import Patient360LabResultsTab from '~/components/clinical/patient360/labs/Patie
 import Patient360MedicationTab from '~/components/clinical/patient360/medications/Patient360MedicationTab.vue'
 import Patient360WorkListTab from '~/components/clinical/patient360/work-list/Patient360WorkListTab.vue'
 import Patient360CareTeamTab from '~/components/clinical/patient360/care-team/Patient360CareTeamTab.vue'
+import Patient360RoleCoordinationTab from '~/components/clinical/patient360/coordination/Patient360RoleCoordinationTab.vue'
 import Patient360ImmunizationsTab from '~/components/clinical/patient360/immunizations/Patient360ImmunizationsTab.vue'
 import Patient360HandoffTab from '~/components/clinical/patient360/handoff/Patient360HandoffTab.vue'
 import Patient360DocumentsTab from '~/components/clinical/patient360/documents/Patient360DocumentsTab.vue'
@@ -2391,25 +2406,36 @@ const ALL_CLINICAL_TABS = [
   'Care Teams',
   'Handoff',
   'Documents',
-  'Registration'
+  'Registration',
+  'Social Services',
+  'Unit Management',
+  'Nursing Supervision'
 ]
 
 // Tabs shown directly in the tab bar; everything else in visibleChartTabs collapses into the More menu.
 const PRIMARY_TAB_ORDER = ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Chart Review', 'Orders', 'MAR', 'Flowsheets', 'Notes', 'Care Plan']
 
+const ROLE_PRIMARY_TABS = {
+  SOCIAL_WORKER: ['Summary', 'Social Services', 'Notes', 'Care Plan', 'Work List', 'Care Teams', 'Education', 'Documents'],
+  MAJOR_SERVICE: ['Summary', 'Unit Management', 'Nurse Command Center', 'Work List', 'Care Teams', 'Notes', 'Handoff', 'Care Plan', 'Documents'],
+  NURSING_SUPERVISOR: ['Summary', 'Nursing Supervision', 'Nurse Command Center', 'Work List', 'Care Teams', 'Notes', 'Handoff', 'Documents']
+}
+
 const RIGHT_PANEL_DEFAULT_COLLAPSED_TABS = ['Notes', 'Flowsheets', 'MAR', 'Orders']
 const CHART_TAB_LAYOUT_KEY = 'camero_health_patient360Tabs'
 
 const ADMIN_LIKE_ROLES = ['ADMIN', 'RECORDS', 'BILLING', 'FRONT_DESK']
+const ROLE_COORDINATION_TABS = ['Social Services', 'Unit Management', 'Nursing Supervision']
+const GENERAL_CLINICAL_TABS = ALL_CLINICAL_TABS.filter(tab => !ROLE_COORDINATION_TABS.includes(tab))
 
 const TAB_ACCESS = {
   ADMIN: ALL_CLINICAL_TABS,
-  DOCTOR: ALL_CLINICAL_TABS,
-  NP: ALL_CLINICAL_TABS,
-  NURSE: ALL_CLINICAL_TABS,
-  MIDWIFE: ALL_CLINICAL_TABS.filter(tab => !['Sedation/Procedure Documentation'].includes(tab)),
-  MAJOR_SERVICE: ALL_CLINICAL_TABS,
-  NURSING_SUPERVISOR: ALL_CLINICAL_TABS,
+  DOCTOR: GENERAL_CLINICAL_TABS,
+  NP: GENERAL_CLINICAL_TABS,
+  NURSE: GENERAL_CLINICAL_TABS,
+  MIDWIFE: GENERAL_CLINICAL_TABS.filter(tab => tab !== 'Sedation/Procedure Documentation'),
+  MAJOR_SERVICE: [...GENERAL_CLINICAL_TABS, 'Unit Management'],
+  NURSING_SUPERVISOR: [...GENERAL_CLINICAL_TABS, 'Nursing Supervision'],
   CNA: ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Navigators', 'Flowsheets', 'Work List', 'Care Plan', 'Education', 'Handoff'],
   LAB: ['Summary', 'EMR Command Center', 'Chart Review', 'Navigators', 'Orders', 'Lab Results', 'Work List'],
   IMAGING: ['Summary', 'EMR Command Center', 'Chart Review', 'Navigators', 'Orders', 'Work List', 'Documents'],
@@ -2417,7 +2443,7 @@ const TAB_ACCESS = {
   FRONT_DESK: ['Summary', 'EMR Command Center', 'Registration', 'Documents', 'Care Teams'],
   RECORDS: ['Summary', 'EMR Command Center', 'Chart Review', 'Documents', 'Registration', 'Care Teams'],
   BILLING: ['Summary', 'EMR Command Center', 'Registration', 'Documents'],
-  SOCIAL_WORKER: ['Summary', 'EMR Command Center', 'Navigators', 'Notes', 'Care Plan', 'Education'],
+  SOCIAL_WORKER: ['Summary', 'Social Services', 'EMR Command Center', 'Navigators', 'Notes', 'Care Plan', 'Education', 'Work List', 'Care Teams', 'Handoff', 'Documents'],
   PHYSIOTHERAPIST: ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Navigators', 'Flowsheets', 'Care Plan', 'Work List', 'Notes']
 }
 
@@ -2461,7 +2487,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360RoleCoordinationTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2864,6 +2890,15 @@ export default {
       if (role === 'DOCTOR') {
         options.push({ key: 'progress', label: 'Progress Note', icon: 'mdi-stethoscope', kind: 'note', noteType: 'progress_note', dialogTitle: 'Progress Note' })
       }
+      if (role === 'SOCIAL_WORKER') {
+        options.push({ key: 'social', label: 'Social Work Note', icon: 'mdi-hand-heart-outline', kind: 'note', noteType: 'social_coordination_note', dialogTitle: 'Social Work Note' })
+      }
+      if (role === 'MAJOR_SERVICE') {
+        options.push({ key: 'unit-management', label: 'Unit Management Note', icon: 'mdi-clipboard-account-outline', kind: 'note', noteType: 'unit_coordination_note', dialogTitle: 'Unit Management Note' })
+      }
+      if (role === 'NURSING_SUPERVISOR') {
+        options.push({ key: 'nursing-supervision', label: 'Nursing Supervision Note', icon: 'mdi-account-supervisor-outline', kind: 'note', noteType: 'supervision_coordination_note', dialogTitle: 'Nursing Supervision Note' })
+      }
       return options
     },
     signableNotes() {
@@ -2894,10 +2929,11 @@ export default {
       return this.rightPanelCollapsed || this.isNarrowRight
     },
     primaryTabs() {
-      return PRIMARY_TAB_ORDER.filter(tab => this.visibleChartTabs.includes(tab))
+      const order = ROLE_PRIMARY_TABS[this.currentRole] || PRIMARY_TAB_ORDER
+      return order.filter(tab => this.visibleChartTabs.includes(tab))
     },
     overflowTabs() {
-      return this.visibleChartTabs.filter(tab => !PRIMARY_TAB_ORDER.includes(tab))
+      return this.visibleChartTabs.filter(tab => !this.primaryTabs.includes(tab))
     },
     fallRiskEntry() {
       const patient = this.findPatientRecord(this.activePatientId)
@@ -6859,7 +6895,10 @@ export default {
         progress_note: 'Progress Note',
         incident_note: 'Incident Note',
         provider_notification: 'Provider Notification',
-        discharge_note: 'Discharge Note'
+        discharge_note: 'Discharge Note',
+        social_coordination_note: 'Social Work Note',
+        unit_coordination_note: 'Unit Management Note',
+        supervision_coordination_note: 'Nursing Supervision Note'
       }
       return map[type] || 'Clinical Note'
     },
@@ -7319,6 +7358,9 @@ export default {
         'Care Plan': 'discharge',
         Education: 'discharge',
         'Work List': 'worklist',
+        'Social Services': 'sdoh',
+        'Unit Management': 'worklist',
+        'Nursing Supervision': 'worklist',
         Immunizations: 'admission',
         'Sedation/Procedure Documentation': 'transfer',
         'Care Teams': 'careteam',
