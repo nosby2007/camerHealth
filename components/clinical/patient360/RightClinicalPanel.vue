@@ -30,7 +30,7 @@
       <section v-if="canViewOrders" class="orders-panel">
         <div class="orders-header">
           <strong>Inpatient Orders</strong>
-          <v-btn x-small depressed color="#0f766e" dark class="font-weight-black" @click="$emit('new-order')">New</v-btn>
+          <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark class="font-weight-black" @click="$emit('new-order')">New</v-btn>
         </div>
         <div v-if="activeOrders.length" class="order-list">
           <article v-for="order in activeOrders" :key="order.title" class="order-row">
@@ -45,7 +45,7 @@
           <v-icon size="52" color="#94a3b8">mdi-clipboard-text-outline</v-icon>
           <span>No Orders</span>
         </div>
-        <button class="sign-button" @click="$emit('sign-orders')">
+        <button v-if="!readOnly" class="sign-button" @click="$emit('sign-orders')">
           <v-icon small>mdi-draw-pen</v-icon>
           Sign
         </button>
@@ -80,7 +80,7 @@
       <button type="button" class="rail-icon" aria-label="Index / quick links">
         <v-icon small color="#0f766e">mdi-format-list-bulleted</v-icon>
       </button>
-      <button v-if="canViewOrders" type="button" class="rail-icon" :aria-label="`Orders: ${activeOrders.length} active`" @click="$emit('sign-orders')">
+      <button v-if="canViewOrders" type="button" class="rail-icon" :aria-label="`Orders: ${activeOrders.length} active`" @click="!readOnly && $emit('sign-orders')">
         <v-icon small color="#0369a1">mdi-clipboard-text-outline</v-icon>
       </button>
       <button type="button" class="rail-icon" :aria-label="`Recent labs: ${recentLabItems.length}`">
@@ -109,7 +109,8 @@ export default {
     imagingOrders: { type: Array, default: () => [] },
     tasks: { type: Array, default: () => [] },
     careTeamRows: { type: Array, default: () => [] },
-    collapsed: { type: Boolean, default: false }
+    collapsed: { type: Boolean, default: false },
+    readOnly: { type: Boolean, default: false }
   },
   computed: {
     recentLabItems() {

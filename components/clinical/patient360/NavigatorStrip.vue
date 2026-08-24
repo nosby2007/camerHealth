@@ -98,7 +98,7 @@
 </template>
 
 <script>
-import { mapState, mapActions } from 'vuex'
+import { mapState } from 'vuex'
 import AdmissionChecklistForm from './navigator/AdmissionChecklistForm.vue'
 import TransferChecklistForm from './navigator/TransferChecklistForm.vue'
 import DischargeSummaryForm from './navigator/DischargeSummaryForm.vue'
@@ -114,7 +114,8 @@ export default {
     patientId: { type: String, required: true },
     patientName: { type: String, required: true },
     patientMeta: { type: String, default: '' },
-    currentState: { type: String, default: 'active-care' }
+    currentState: { type: String, default: 'active-care' },
+    readOnly: { type: Boolean, default: false }
   },
   data() {
     return {
@@ -126,56 +127,67 @@ export default {
   computed: {
     ...mapState('clinical', ['alerts']),
     canAdmit() {
-      return this.currentState === 'admission'
+      return !this.readOnly && this.currentState === 'admission'
     },
     canTransfer() {
-      return this.currentState === 'active-care'
+      return !this.readOnly && this.currentState === 'active-care'
     },
     canDischarge() {
-      return this.currentState === 'active-care'
+      return !this.readOnly && this.currentState === 'active-care'
     },
     alertCount() {
       return (this.alerts || []).filter(a => !a.acknowledged).length
     }
   },
   methods: {
-    ...mapActions('nursing', ['createNursingTask']),
     openAdmissionChecklist() {
+      if (this.readOnly) return
       this.showAdmissionDialog = true
     },
     openTransferChecklist() {
+      if (this.readOnly) return
       this.showTransferDialog = true
     },
     openDischargeSummary() {
+      if (this.readOnly) return
       this.showDischargeDialog = true
     },
-    handleAdmissionSave(data) {
-      this.createNursingTask({
+    async handleAdmissionSave(data) {
+      const task = await this.$store.dispatch('clinical/createTask', {
         patientId: this.patientId,
-        type: 'ADMISSION_CHECKLIST',
-        data,
-        status: 'completed'
+        relatedType: 'admission-checklist',
+        title: 'Admission checklist completed',
+        assignedToRole: 'NURSE',
+        priority: 'Today',
+        actionReason: JSON.stringify(data)
       })
+      await this.$store.dispatch('clinical/updateTaskStatus', { id: task.id, status: 'done', reason: 'Admission checklist filed' })
       this.showAdmissionDialog = false
       this.$emit('admission-complete', data)
     },
-    handleTransferSave(data) {
-      this.createNursingTask({
+    async handleTransferSave(data) {
+      const task = await this.$store.dispatch('clinical/createTask', {
         patientId: this.patientId,
-        type: 'TRANSFER_CHECKLIST',
-        data,
-        status: 'completed'
+        relatedType: 'transfer-checklist',
+        title: `Transfer checklist: ${data.transferLocation || 'destination'}`,
+        assignedToRole: 'NURSE',
+        priority: 'Today',
+        actionReason: JSON.stringify(data)
       })
+      await this.$store.dispatch('clinical/updateTaskStatus', { id: task.id, status: 'done', reason: 'Transfer checklist filed' })
       this.showTransferDialog = false
       this.$emit('transfer-complete', data)
     },
-    handleDischargeSave(data) {
-      this.createNursingTask({
+    async handleDischargeSave(data) {
+      const task = await this.$store.dispatch('clinical/createTask', {
         patientId: this.patientId,
-        type: 'DISCHARGE_SUMMARY',
-        data,
-        status: 'completed'
+        relatedType: 'discharge-summary',
+        title: 'Discharge summary completed',
+        assignedToRole: 'NURSE',
+        priority: 'Today',
+        actionReason: JSON.stringify(data)
       })
+      await this.$store.dispatch('clinical/updateTaskStatus', { id: task.id, status: 'done', reason: 'Discharge summary filed' })
       this.showDischargeDialog = false
       this.$emit('discharge-complete', data)
     }

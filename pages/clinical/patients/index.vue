@@ -29,6 +29,11 @@
     <!-- Patients Table -->
     <v-card flat tile v-else class="table-container bg-transparent">
       <div class="d-flex flex-wrap mb-4" style="gap:10px">
+        <v-btn-toggle v-model="statusFilter" mandatory dense class="patient-status-filter">
+          <v-btn v-for="item in statusFilters" :key="item.value" small :value="item.value">
+            {{ item.text }} <span>{{ statusCount(item.value) }}</span>
+          </v-btn>
+        </v-btn-toggle>
         <v-text-field
           v-model="search"
           placeholder="Search name, MRN, phone, department"
@@ -96,6 +101,9 @@
             {{ item.serviceRouting || 'Service pending' }}<span v-if="item.specialtyRouting"> · {{ item.specialtyRouting }}</span>
           </div>
           <div v-if="item.riskReasons && item.riskReasons.length" class="text-caption grey--text text-truncate" style="max-width:220px">{{ item.riskReasons.join(', ') }}</div>
+          <v-chip v-if="item.isDischarged" x-small label color="#475569" dark class="font-weight-black mt-1">
+            <v-icon x-small left>mdi-lock-outline</v-icon>DISCHARGED
+          </v-chip>
         </template>
         <template v-slot:item.openOrders="{ item }">
           <span class="font-weight-bold">{{ item.openOrders.length }}</span>
@@ -112,6 +120,7 @@
               <v-icon small>mdi-eye</v-icon>
             </v-btn>
             <v-btn icon small color="#003366" title="Triage infirmier"
+              v-if="!item.isDischarged"
               @click.stop="$router.push('/clinical/patients/' + item.id + '/encounter/nurse')">
               <v-icon small>mdi-stethoscope</v-icon>
             </v-btn>
@@ -126,6 +135,13 @@ export default {
   data() {
     return {
       search: '',
+      statusFilter: 'all',
+      statusFilters: [
+        { text: 'All patients', value: 'all' },
+        { text: 'Waiting list', value: 'waiting' },
+        { text: 'Active', value: 'active' },
+        { text: 'Inactive', value: 'inactive' }
+      ],
       riskFilter: '',
       departmentFilter: '',
       riskFilters: [
@@ -157,13 +173,17 @@ export default {
     },
     filteredPatients() {
       return this.patients.filter(patient => {
+        const statusMatches = this.statusFilter === 'all' || patient.lifecycleStatus === this.statusFilter
         const riskMatches = !this.riskFilter || patient.riskLevel === this.riskFilter
         const departmentMatches = !this.departmentFilter || this.departmentFilter === 'All departments' || patient.currentDepartment === this.departmentFilter
-        return riskMatches && departmentMatches
+        return statusMatches && riskMatches && departmentMatches
       })
     }
   },
   methods: {
+    statusCount(status) {
+      return status === 'all' ? this.patients.length : this.patients.filter(patient => patient.lifecycleStatus === status).length
+    },
     hasConsultationClearance(patientId) {
       return !!this.$store.getters['billing/getPaymentClearance'](patientId, 'consultation')
     },
@@ -199,6 +219,11 @@ export default {
 .bg-transparent { background: transparent !important; }
 .max-400 { max-width: 400px; }
 .filter-control { max-width: 190px; }
+.patient-status-filter { flex: 0 0 100%; background: #fff; border: 1px solid #cbd5e1; }
+.patient-status-filter .v-btn { min-width: 132px; border-radius: 0; text-transform: none; font-weight: 800; }
+.patient-status-filter .v-btn span span { margin-left: 7px; padding: 1px 6px; background: #e2e8f0; color: #334155; font-size: 10px; }
+.patient-status-filter .v-btn--active { background: #0f766e !important; color: #fff !important; }
+.patient-status-filter .v-btn--active span span { background: rgba(255,255,255,.2); color: #fff; }
 .patient-link { color: #20B2AA; text-decoration: none; font-weight: 700; }
 .patient-link:hover { text-decoration: underline; }
 .empty-state {

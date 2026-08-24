@@ -13,6 +13,9 @@
 
       <v-card-text class="form-body">
         <form @submit.prevent="submitForm">
+          <v-alert v-if="validationError" dense text type="error" class="mb-4">
+            {{ validationError }}
+          </v-alert>
           <!-- Discharge Planning -->
           <section class="form-section">
             <h3 class="section-title">Discharge Planning</h3>
@@ -302,8 +305,6 @@
 </template>
 
 <script>
-import { mapActions } from 'vuex'
-
 export default {
   name: 'DischargeSummaryForm',
   props: {
@@ -311,6 +312,7 @@ export default {
   },
   data() {
     return {
+      validationError: '',
       form: {
         dischargeDateTime: '',
         dischargeDisposition: 'Home',
@@ -356,25 +358,30 @@ export default {
     }
   },
   methods: {
-    ...mapActions('nursing', ['createNursingTask']),
-    async submitForm() {
-      if (!this.form.dischargeDateTime || !this.form.dischargeDisposition) {
-        alert('Please complete all required fields')
+    submitForm() {
+      const requiredText = [
+        ['discharge date and time', this.form.dischargeDateTime],
+        ['disposition', this.form.dischargeDisposition],
+        ['primary diagnosis', this.form.primaryDiagnosis],
+        ['condition summary', this.form.conditionSummary],
+        ['return precautions', this.form.returnPrecautions]
+      ]
+      const missing = requiredText.filter(([, value]) => !String(value || '').trim()).map(([label]) => label)
+      if (missing.length) {
+        this.validationError = `Complete the required fields: ${missing.join(', ')}.`
+        return
+      }
+      if (!this.form.medicationReconciliation) {
+        this.validationError = 'Medication reconciliation must be completed before discharge.'
+        return
+      }
+      if (!Object.values(this.form.education).some(Boolean)) {
+        this.validationError = 'Document at least one patient or family education topic.'
         return
       }
 
-      try {
-        await this.createNursingTask({
-          patientId: this.patientId,
-          type: 'DISCHARGE_SUMMARY',
-          data: this.form,
-          status: 'completed',
-          completedAt: new Date().toISOString()
-        })
-        this.$emit('save', this.form)
-      } catch (error) {
-        console.error('Error saving discharge summary:', error)
-      }
+      this.validationError = ''
+      this.$emit('save', { ...this.form, completedAt: new Date().toISOString() })
     }
   }
 }

@@ -236,8 +236,6 @@
 </template>
 
 <script>
-import { mapActions } from 'vuex'
-
 export default {
   name: 'AdmissionChecklistForm',
   props: {
@@ -302,20 +300,8 @@ export default {
     }
   },
   methods: {
-    ...mapActions('nursing', ['createNursingTask']),
-    async submitForm() {
-      try {
-        await this.createNursingTask({
-          patientId: this.patientId,
-          type: 'ADMISSION_CHECKLIST',
-          data: this.form,
-          status: 'completed',
-          completedAt: new Date().toISOString()
-        })
-        this.$emit('save', this.form)
-      } catch (error) {
-        console.error('Error saving admission checklist:', error)
-      }
+    submitForm() {
+      this.$emit('save', { ...this.form, completedAt: new Date().toISOString() })
     }
   }
 }

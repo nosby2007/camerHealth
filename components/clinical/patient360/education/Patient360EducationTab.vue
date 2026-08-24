@@ -3,10 +3,10 @@
     <!-- Toolbar -->
     <div class="education-toolbar">
       <div class="toolbar-actions">
-        <v-btn x-small depressed color="#0f766e" dark @click="showAddTitleDialog = true">
+        <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="showAddTitleDialog = true">
           <v-icon x-small left>mdi-plus</v-icon>Add Title
         </v-btn>
-        <v-btn x-small text @click="showAddPointDialog = true">
+        <v-btn v-if="!readOnly" x-small text @click="showAddPointDialog = true">
           <v-icon x-small left>mdi-plus</v-icon>Add Point
         </v-btn>
       </div>
@@ -15,6 +15,11 @@
         <v-checkbox v-model="showActive" dense label="Active Only" class="mt-0" />
         <v-checkbox v-model="hideDescriptions" dense label="Hide Descriptions" class="mt-0" />
       </div>
+    </div>
+
+    <div v-if="readOnly" class="read-only-notice">
+      <v-icon x-small>mdi-lock-outline</v-icon>
+      Discharged chart. Education records are available in read-only mode.
     </div>
 
     <!-- Main Content -->
@@ -51,7 +56,7 @@
               :hide-description="hideDescriptions"
               @select="selectedPointId = point.id"
               @document="documentPoint(point)"
-              @add-material="showAddMaterialDialog = true"
+              @add-material="openMaterialDialog"
             />
           </div>
         </div>
@@ -63,14 +68,14 @@
       <!-- Right: Patient Materials -->
       <div class="materials-panel">
         <h4>Patient Materials</h4>
-        <v-btn x-small text color="#0f766e" @click="showAddMaterialDialog = true">
+        <v-btn v-if="!readOnly" x-small text color="#0f766e" @click="showAddMaterialDialog = true">
           <v-icon x-small left>mdi-plus</v-icon>Add Material
         </v-btn>
 
         <div class="materials-list">
           <div v-for="assignment in assignedMaterials" :key="assignment.id" class="material-item">
             <span class="material-title">{{ assignment.material?.title }}</span>
-            <v-btn x-small icon @click="removeMaterialFromAvs(assignment.id)">
+            <v-btn v-if="!readOnly" x-small icon @click="removeMaterialFromAvs(assignment.id)">
               <v-icon x-small>mdi-close</v-icon>
             </v-btn>
           </div>
@@ -131,11 +136,21 @@ export default {
     EducationPointCard,
     EducationDocumentDialog
   },
+  watch: {
+    readOnly(value) {
+      if (!value) return
+      this.showAddTitleDialog = false
+      this.showAddPointDialog = false
+      this.showAddMaterialDialog = false
+      this.showDocumentDialog = false
+    }
+  },
   props: {
     patientId: { type: String, required: true },
     encounterId: { type: String, required: true },
     admissionId: { type: String, default: '' },
-    role: { type: String, default: '' }
+    role: { type: String, default: '' },
+    readOnly: { type: Boolean, default: false }
   },
   data() {
     return {
@@ -178,6 +193,7 @@ export default {
   },
   methods: {
     addTitle() {
+      if (this.readOnly) return
       this.$store.dispatch('education/addEducationTitle', {
         patientId: this.patientId,
         encounterId: this.encounterId,
@@ -190,6 +206,7 @@ export default {
       this.$toast?.success('Title added')
     },
     addPoint() {
+      if (this.readOnly) return
       this.$store.dispatch('education/addEducationPoint', {
         titleId: this.newPointTitleId,
         patientId: this.patientId,
@@ -204,10 +221,12 @@ export default {
       this.$toast?.success('Point added')
     },
     documentPoint(point) {
+      if (this.readOnly) return
       this.selectedPointId = point.id
       this.showDocumentDialog = true
     },
     async fileEducation(data) {
+      if (this.readOnly) return
       const doc = await this.$store.dispatch('education/documentEducationPoint', {
         pointId: this.selectedPointId,
         titleId: this.selectedTitleId,
@@ -226,14 +245,19 @@ export default {
       this.$toast?.success('Education documented')
     },
     removeMaterialFromAvs(assignmentId) {
+      if (this.readOnly) return
       this.$store.dispatch('education/removeMaterialFromAvs', {
         assignmentId,
         patientId: this.patientId
       })
       this.$toast?.success('Material removed')
+    },
+    openMaterialDialog() {
+      if (!this.readOnly) this.showAddMaterialDialog = true
     }
   },
   mounted() {
+    if (this.readOnly) return
     this.$store.dispatch('education/initializeEducationForPatient', {
       patientId: this.patientId,
       encounterId: this.encounterId,
@@ -278,6 +302,18 @@ export default {
 
 .education-content.tree-collapsed {
   grid-template-columns: 40px 1fr 280px;
+}
+
+.read-only-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #cbd5e1;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .education-tree-panel,
