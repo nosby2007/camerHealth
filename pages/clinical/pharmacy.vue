@@ -148,8 +148,12 @@
                       </v-btn>
                     </v-btn-toggle>
                     <v-alert v-if="stockStatus === 'false'" dense text type="warning" class="rounded-0 text-caption mb-0" color="orange">
-                      Patient will be informed to procure this medication externally.
+                      <strong>OUT-OF-STOCK PLAN REQUIRED</strong><br>
+                      {{ selectedRx.stockAction || 'Document external procurement, substitution review or restock follow-up.' }}
                     </v-alert>
+                    <v-btn v-if="stockStatus === 'false'" small block tile outlined color="#C0392B" class="mt-3 font-weight-black text-caption" @click="openStockIssueDialog">
+                      <v-icon left x-small>mdi-clipboard-alert-outline</v-icon>{{ selectedRx.stockIssueReason ? 'UPDATE STOCK PLAN' : 'DOCUMENT STOCK PLAN' }}
+                    </v-btn>
                   </div>
                 </v-card>
               </v-col>
@@ -293,6 +297,30 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="stockIssueDialog" max-width="620" persistent scrollable>
+      <v-card flat tile>
+        <div class="pa-4 white--text font-weight-black text-caption uppercase ls-1 d-flex align-center justify-space-between" style="background:#9f1239">
+          <span><v-icon left small dark>mdi-package-variant-remove</v-icon>OUT-OF-STOCK CONTINUITY PLAN</span>
+          <v-btn icon dark x-small @click="closeStockIssueDialog"><v-icon>mdi-close</v-icon></v-btn>
+        </div>
+        <v-card-text v-if="selectedRx" class="pa-5">
+          <v-alert dense text type="warning" tile class="text-caption">Dispensing remains blocked until stock is restored. Document how the patient and prescriber will be supported.</v-alert>
+          <div class="text-subtitle-2 font-weight-black mb-4">{{ selectedRx.medication }} · {{ selectedRx.patientName }}</div>
+          <v-select v-model="stockIssueForm.reason" :items="stockIssueReasons" label="Reason" outlined tile dense />
+          <v-select v-model="stockIssueForm.action" :items="stockIssueActions" label="Continuity action" outlined tile dense />
+          <v-text-field v-if="stockIssueForm.action === 'Expected restock / backorder'" v-model="stockIssueForm.expectedRestockAt" type="date" label="Expected restock date" outlined tile dense />
+          <v-text-field v-if="stockIssueForm.action === 'Request prescriber substitution'" v-model="stockIssueForm.suggestedAlternative" label="Suggested formulary alternative (prescriber must approve)" outlined tile dense />
+          <v-checkbox v-model="stockIssueForm.patientCounselled" dense hide-details class="mt-0 mb-3" label="Patient / caregiver informed and counselled" />
+          <v-textarea v-model.trim="stockIssueForm.notes" label="Pharmacist notes and contact instructions" rows="3" outlined tile dense />
+        </v-card-text>
+        <v-card-actions class="pa-4 b-top">
+          <v-spacer />
+          <v-btn text tile class="font-weight-black text-caption" @click="closeStockIssueDialog">CANCEL</v-btn>
+          <v-btn color="#9f1239" dark tile depressed class="font-weight-black text-caption" :disabled="!stockIssueForm.reason || !stockIssueForm.action" @click="saveStockIssue">SAVE CONTINUITY PLAN</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
   </v-container>
 </template>
 
@@ -307,11 +335,16 @@ export default {
       selectedRx: null,
       stockStatus: null,
       dispenseDialog: false,
+      stockIssueDialog: false,
       dispenseForm: { qty: 1, pharmacistNotes: '' },
+      stockIssueForm: { reason: '', action: '', expectedRestockAt: '', suggestedAlternative: '', patientCounselled: false, notes: '' },
+      stockIssueReasons: ['Temporary stockout', 'Not stocked by hospital', 'Expired / quarantined stock', 'Supply chain delay', 'Quantity insufficient'],
+      stockIssueActions: ['External pharmacy referral', 'Request prescriber substitution', 'Expected restock / backorder', 'Transfer stock from another unit or facility'],
       statusFilters: [
         { value: '', label: 'ALL' },
         { value: 'Pending', label: 'PENDING' },
         { value: 'Partially Dispensed', label: 'PARTIAL' },
+        { value: 'Out of Stock', label: 'OUT OF STOCK' },
         { value: 'Dispensed', label: 'DONE' }
       ]
     }
@@ -331,7 +364,7 @@ export default {
           const paymentStatus = charge ? (charge.status === 'Paid' ? 'Paid' : 'Unpaid') : (m.paymentStatus || 'Unpaid')
           return {
             ...m,
-            medication: m.drug || m.medication || '—',
+            medication: m.medication || m.drug || m.name || 'Medication not labelled',
             dosage: m.dose || m.dosage || '',
             route: m.route || '',
             patientName: p ? (p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim()) : m.patientId,
@@ -374,15 +407,76 @@ export default {
       this.dispenseForm = { qty: rx.quantity || 1, pharmacistNotes: rx.pharmacistNotes || '' }
     },
     async updateStock(val) {
+      if (!this.selectedRx) return
+      if (!val) {
+        this.stockStatus = 'false'
+        this.openStockIssueDialog()
+        return
+      }
+      const updated = {
+        ...this.selectedRx,
+        inStock: true,
+        dispensingStatus: this.selectedRx.dispensingStatus === 'Out of Stock' ? 'Pending' : (this.selectedRx.dispensingStatus || 'Pending'),
+        stockRestoredAt: new Date().toISOString(),
+        stockRestoredBy: this.actorName()
+      }
       try {
-        await this.$store.dispatch('clinical/updateMedication', {
-          id: this.selectedRx.id,
-          inStock: val
-        })
-        this.selectedRx = { ...this.selectedRx, inStock: val }
-        this.$toast.info(val ? '✓ Marked as in stock' : '✗ Marked as out of stock — patient will be notified')
+        await this.$store.dispatch('clinical/updateMedication', updated)
+        this.selectedRx = updated
+        this.$toast.success('Medication marked in stock. Dispensing can continue after safety checks.')
       } catch (err) {
         this.$toast.error(err.response?.data?.error || err.message || 'Failed to update stock.')
+      }
+    },
+    openStockIssueDialog() {
+      if (!this.selectedRx) return
+      this.stockIssueForm = {
+        reason: this.selectedRx.stockIssueReason || 'Temporary stockout',
+        action: this.selectedRx.stockAction || 'External pharmacy referral',
+        expectedRestockAt: this.selectedRx.expectedRestockAt || '',
+        suggestedAlternative: this.selectedRx.suggestedAlternative || '',
+        patientCounselled: Boolean(this.selectedRx.patientCounselled),
+        notes: this.selectedRx.stockIssueNotes || ''
+      }
+      this.stockIssueDialog = true
+    },
+    closeStockIssueDialog() {
+      this.stockIssueDialog = false
+      this.stockStatus = this.selectedRx && this.selectedRx.inStock === true ? 'true' : this.selectedRx && this.selectedRx.inStock === false ? 'false' : null
+    },
+    async saveStockIssue() {
+      if (!this.selectedRx || !this.stockIssueForm.reason || !this.stockIssueForm.action) return
+      const reviewedAt = new Date().toISOString()
+      const updated = {
+        ...this.selectedRx,
+        inStock: false,
+        dispensingStatus: 'Out of Stock',
+        stockIssueReason: this.stockIssueForm.reason,
+        stockAction: this.stockIssueForm.action,
+        expectedRestockAt: this.stockIssueForm.expectedRestockAt,
+        suggestedAlternative: this.stockIssueForm.suggestedAlternative,
+        patientCounselled: this.stockIssueForm.patientCounselled,
+        stockIssueNotes: this.stockIssueForm.notes,
+        stockReviewedAt: reviewedAt,
+        stockReviewedBy: this.actorName()
+      }
+      try {
+        await this.$store.dispatch('clinical/updateMedication', updated)
+        await this.$store.dispatch('clinical/createTask', {
+          patientId: updated.patientId,
+          relatedType: 'medication-stockout',
+          relatedId: updated.id,
+          title: `Resolve medication stockout: ${updated.medication}`,
+          assignedToRole: this.stockIssueForm.action === 'Request prescriber substitution' ? 'DOCTOR' : 'PHARMACY',
+          priority: 'Today',
+          actionReason: [this.stockIssueForm.reason, this.stockIssueForm.action, this.stockIssueForm.suggestedAlternative, this.stockIssueForm.notes].filter(Boolean).join(' | ')
+        })
+        this.selectedRx = updated
+        this.stockStatus = 'false'
+        this.stockIssueDialog = false
+        this.$toast.warning('Out-of-stock plan recorded and follow-up task created.')
+      } catch (e) {
+        this.$toast.error('Unable to save the out-of-stock plan.')
       }
     },
     async confirmDispense() {
@@ -418,8 +512,11 @@ export default {
     statusColor(s) {
       return {
         Active: '#003366', Pending: '#D97706', Dispensed: '#00A99D',
-        Discontinued: '#C0392B', Completed: '#6B7280', 'Partially Dispensed': '#7C3AED'
+        Discontinued: '#C0392B', Completed: '#6B7280', 'Partially Dispensed': '#7C3AED', 'Out of Stock': '#9f1239'
       }[s] || '#6B7280'
+    },
+    actorName() {
+      return this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Pharmacist'
     }
   }
 }

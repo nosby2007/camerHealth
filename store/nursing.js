@@ -46,34 +46,39 @@ export const mutations = {
 
 export const actions = {
   createBodyMapMarker({ commit, dispatch, rootState }, marker) {
+    assertPatientWritable(rootState, marker.patientId)
     const record = withBase(rootState, marker, 'BMM')
     commit('ADD_RECORD', { collection: 'bodyMapMarkers', record })
     dispatch('audit', { action: 'BODY_MARKER_CREATED', targetTable: 'body_map_markers', targetId: record.id, patientId: record.patientId })
     return record
   },
-  updateBodyMapMarker({ state, commit, dispatch }, marker) {
+  updateBodyMapMarker({ state, commit, dispatch, rootState }, marker) {
     const existing = state.bodyMapMarkers.find(item => item.id === marker.id)
     if (!existing) return null
+    assertPatientWritable(rootState, existing.patientId)
     const record = { ...existing, ...marker, updatedAt: new Date().toISOString() }
     commit('UPDATE_RECORD', { collection: 'bodyMapMarkers', record })
     dispatch('audit', { action: 'BODY_MARKER_UPDATED', targetTable: 'body_map_markers', targetId: record.id, patientId: record.patientId })
     return record
   },
   createWound({ commit, dispatch, rootState }, wound) {
+    assertPatientWritable(rootState, wound.patientId)
     const record = withBase(rootState, { status: 'active', ...wound }, 'WND')
     commit('ADD_RECORD', { collection: 'wounds', record })
     dispatch('audit', { action: 'WOUND_CREATED', targetTable: 'wounds', targetId: record.id, patientId: record.patientId })
     return record
   },
-  updateWound({ state, commit, dispatch }, wound) {
+  updateWound({ state, commit, dispatch, rootState }, wound) {
     const existing = state.wounds.find(item => item.id === wound.id)
     if (!existing) return null
+    assertPatientWritable(rootState, existing.patientId)
     const record = { ...existing, ...wound, updatedAt: new Date().toISOString() }
     commit('UPDATE_RECORD', { collection: 'wounds', record })
     dispatch('audit', { action: 'WOUND_UPDATED', targetTable: 'wounds', targetId: record.id, patientId: record.patientId })
     return record
   },
   createWoundAssessment({ state, commit, dispatch, rootState }, assessment) {
+    assertPatientWritable(rootState, assessment.patientId || state.wounds.find(item => item.id === assessment.woundId)?.patientId)
     const surfaceArea = calculateWoundSurfaceArea(assessment.lengthCm, assessment.widthCm)
     const volume = calculateWoundVolume(assessment.lengthCm, assessment.widthCm, assessment.depthCm)
     const wound = state.wounds.find(item => item.id === assessment.woundId)
@@ -92,18 +97,21 @@ export const actions = {
     return record
   },
   addWoundPhoto({ commit, dispatch, rootState }, photo) {
+    assertPatientWritable(rootState, photo.patientId)
     const record = withBase(rootState, photo, 'WPH')
     commit('ADD_RECORD', { collection: 'woundPhotos', record })
     dispatch('audit', { action: 'WOUND_PHOTO_ADDED', targetTable: 'wound_photos', targetId: record.id, patientId: record.patientId })
     return record
   },
   createNursingAssessment({ commit, dispatch, rootState }, assessment) {
+    assertPatientWritable(rootState, assessment.patientId)
     const record = withBase(rootState, assessment, 'NAS')
     commit('ADD_RECORD', { collection: 'nursingAssessments', record })
     dispatch('audit', { action: 'NURSING_ASSESSMENT_CREATED', targetTable: 'nursing_assessments', targetId: record.id, patientId: record.patientId })
     return record
   },
   createOrder({ commit, dispatch, rootState }, order) {
+    assertPatientWritable(rootState, order.patientId)
     const record = withBase(rootState, { status: 'active', ...order }, 'ORD')
     commit('ADD_RECORD', { collection: 'orders', record })
     dispatch('audit', { action: 'ORDER_CREATED', targetTable: 'orders', targetId: record.id, patientId: record.patientId })
@@ -124,6 +132,7 @@ export const actions = {
     return record
   },
   createTask({ commit, dispatch, rootState }, task) {
+    assertPatientWritable(rootState, task.patientId)
     const record = withBase(rootState, { status: 'pending', priority: 'routine', ...task }, 'NTK')
     commit('ADD_RECORD', { collection: 'tasks', record })
     dispatch('audit', { action: 'TASK_CREATED', targetTable: 'tasks', targetId: record.id, patientId: record.patientId })
@@ -132,6 +141,7 @@ export const actions = {
   updateTaskStatus({ state, commit, dispatch, rootState }, { id, status, reason }) {
     const task = state.tasks.find(item => item.id === id)
     if (!task) return null
+    assertPatientWritable(rootState, task.patientId)
     const allowed = ['pending', 'in_progress', 'completed', 'refused', 'missed', 'cancelled']
     if (!allowed.includes(status)) return null
     const now = new Date().toISOString()
@@ -151,14 +161,16 @@ export const actions = {
     return record
   },
   createClinicalNote({ commit, dispatch, rootState }, note) {
+    assertPatientWritable(rootState, note.patientId)
     const record = withBase(rootState, { status: 'draft', ...note }, 'CNO')
     commit('ADD_RECORD', { collection: 'clinicalNotes', record })
     dispatch('audit', { action: 'NOTE_CREATED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
     return record
   },
-  updateClinicalNote({ state, commit, dispatch }, note) {
+  updateClinicalNote({ state, commit, dispatch, rootState }, note) {
     const existing = state.clinicalNotes.find(item => item.id === note.id)
     if (!existing || existing.status === 'signed') return null
+    assertPatientWritable(rootState, existing.patientId)
     const record = { ...existing, ...note, updatedAt: new Date().toISOString() }
     commit('UPDATE_RECORD', { collection: 'clinicalNotes', record })
     dispatch('audit', { action: 'NOTE_UPDATED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
@@ -167,14 +179,25 @@ export const actions = {
   signClinicalNote({ state, commit, dispatch, rootState }, id) {
     const note = state.clinicalNotes.find(item => item.id === id)
     if (!note) return null
+    assertPatientWritable(rootState, note.patientId)
     const record = { ...note, status: 'signed', signedAt: new Date().toISOString(), signedBy: rootState.auth.fullName || rootState.auth.staffId }
     commit('UPDATE_RECORD', { collection: 'clinicalNotes', record })
     dispatch('audit', { action: 'NOTE_SIGNED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
     return record
   },
+  shareClinicalNote({ state, commit, dispatch, rootState }, id) {
+    const note = state.clinicalNotes.find(item => item.id === id)
+    if (!note || note.status === 'draft') return null
+    assertPatientWritable(rootState, note.patientId)
+    const record = { ...note, sharedWithCareTeam: true, sharedAt: new Date().toISOString(), sharedBy: rootState.auth.fullName || rootState.auth.staffId }
+    commit('UPDATE_RECORD', { collection: 'clinicalNotes', record })
+    dispatch('audit', { action: 'NOTE_SHARED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
+    return record
+  },
   amendClinicalNote({ state, commit, dispatch, rootState }, { id, amendment }) {
     const note = state.clinicalNotes.find(item => item.id === id)
     if (!note || note.status !== 'signed') return null
+    assertPatientWritable(rootState, note.patientId)
     const record = {
       ...note,
       status: 'amended',
@@ -187,13 +210,76 @@ export const actions = {
     dispatch('audit', { action: 'NOTE_AMENDED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
     return record
   },
+  createOrder({ commit, dispatch, rootState }, order) {
+    assertPatientWritable(rootState, order.patientId)
+    const record = withBase(rootState, { status: 'draft', ...order }, 'ORD')
+    commit('ADD_RECORD', { collection: 'orders', record })
+    dispatch('audit', { action: 'ORDER_CREATED', targetTable: 'orders', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+  signOrder({ state, commit, dispatch, rootState }, id) {
+    const order = state.orders.find(item => item.id === id)
+    if (!order) return null
+    assertPatientWritable(rootState, order.patientId)
+    const record = { ...order, status: 'signed', signedAt: new Date().toISOString(), signedBy: rootState.auth.fullName || rootState.auth.staffId }
+    commit('UPDATE_RECORD', { collection: 'orders', record })
+    dispatch('audit', { action: 'ORDER_SIGNED', targetTable: 'orders', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+  updateMedicationAdministration({ commit, dispatch, rootState }, { patientId, encounterId, medicationId, marData }) {
+    assertPatientWritable(rootState, patientId)
+    const record = withBase(rootState, {
+      patientId,
+      encounterId,
+      medicationId,
+      ...marData,
+      status: marData.status || 'given'
+    }, 'MAR')
+    commit('ADD_RECORD', { collection: 'documents', record })
+    dispatch('audit', { action: 'MEDICATION_ADMINISTERED', targetTable: 'medication_administrations', targetId: record.id, patientId })
+    return record
+  },
+  completeMedicationReconciliation({ commit, dispatch, rootState }, { patientId, encounterId, reconciliationData, completedAt }) {
+    assertPatientWritable(rootState, patientId)
+    const record = withBase(rootState, {
+      patientId,
+      encounterId,
+      type: 'medication_reconciliation',
+      ...reconciliationData,
+      completedAt,
+      status: 'completed'
+    }, 'MRC')
+    commit('ADD_RECORD', { collection: 'documents', record })
+    dispatch('audit', { action: 'MEDICATION_RECONCILIATION_COMPLETED', targetTable: 'medication_reconciliations', targetId: record.id, patientId })
+    return record
+  },
   createCarePlan({ commit, dispatch, rootState }, carePlan) {
-    const record = withBase(rootState, { status: 'active', ...carePlan }, 'CPL')
+    assertPatientWritable(rootState, carePlan.patientId)
+    const record = withBase(rootState, { status: 'draft', ...carePlan }, 'CPL')
     commit('ADD_RECORD', { collection: 'carePlans', record })
     dispatch('audit', { action: 'CARE_PLAN_CREATED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
     return record
   },
+  signCarePlan({ state, commit, dispatch, rootState }, id) {
+    const plan = state.carePlans.find(item => item.id === id)
+    if (!plan) return null
+    assertPatientWritable(rootState, plan.patientId)
+    const record = { ...plan, status: 'active', signedAt: new Date().toISOString(), signedBy: rootState.auth.fullName || rootState.auth.staffId }
+    commit('UPDATE_RECORD', { collection: 'carePlans', record })
+    dispatch('audit', { action: 'CARE_PLAN_SIGNED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
+    return record
+  },
+  archiveCarePlan({ state, commit, dispatch, rootState }, id) {
+    const plan = state.carePlans.find(item => item.id === id)
+    if (!plan) return null
+    assertPatientWritable(rootState, plan.patientId)
+    const record = { ...plan, status: 'archived', archivedAt: new Date().toISOString(), archivedBy: rootState.auth.fullName || rootState.auth.staffId }
+    commit('UPDATE_RECORD', { collection: 'carePlans', record })
+    dispatch('audit', { action: 'CARE_PLAN_ARCHIVED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
+    return record
+  },
   createDocument({ commit, dispatch, rootState }, document) {
+    assertPatientWritable(rootState, document.patientId)
     const record = withBase(rootState, document, 'NDC')
     commit('ADD_RECORD', { collection: 'documents', record })
     dispatch('audit', { action: 'DOCUMENT_CREATED', targetTable: 'documents', targetId: record.id, patientId: record.patientId })
@@ -215,45 +301,67 @@ export const actions = {
   }
 }
 
+function scoped(items, rootState, rootGetters) {
+  const isClinical = rootGetters['clinical/isClinical']
+  if (!isClinical) return items
+  const facilityId = rootState.auth.facilityId
+  return items.filter(item => !item.facilityId || item.facilityId === facilityId)
+}
+
+function assertPatientWritable(rootState, patientId) {
+  if (!patientId) return
+  const patient = rootState.clinical?.patients?.find(item => item.id === patientId)
+  if (!patient) return
+  const status = String(patient.patientStatus || patient.admissionStatus || '').toLowerCase()
+  if (status === 'discharged' || String(patient.recordStatus || '').toLowerCase() === 'inactive' || patient.active === false) {
+    throw new Error('PATIENT_DISCHARGED_READ_ONLY')
+  }
+}
+
 export const getters = {
-  getBodyMapMarkers: state => state.bodyMapMarkers,
-  getWounds: state => state.wounds,
-  getWoundAssessments: state => state.woundAssessments,
-  getWoundPhotos: state => state.woundPhotos,
-  getNursingAssessments: state => state.nursingAssessments,
-  getClinicalNotes: state => state.clinicalNotes,
-  getOrders: state => state.orders,
-  getTasks: state => state.tasks,
-  getCarePlans: state => state.carePlans,
-  getDocuments: state => state.documents,
-  getAuditLogs: state => state.auditLogs,
+  getBodyMapMarkers: (state, getters, rootState, rootGetters) => scoped(state.bodyMapMarkers, rootState, rootGetters),
+  getWounds: (state, getters, rootState, rootGetters) => scoped(state.wounds, rootState, rootGetters),
+  getWoundAssessments: (state, getters, rootState, rootGetters) => scoped(state.woundAssessments, rootState, rootGetters),
+  getWoundPhotos: (state, getters, rootState, rootGetters) => scoped(state.woundPhotos, rootState, rootGetters),
+  getNursingAssessments: (state, getters, rootState, rootGetters) => scoped(state.nursingAssessments, rootState, rootGetters),
+  getClinicalNotes: (state, getters, rootState, rootGetters) => scoped(state.clinicalNotes, rootState, rootGetters),
+  getOrders: (state, getters, rootState, rootGetters) => scoped(state.orders, rootState, rootGetters),
+  getTasks: (state, getters, rootState, rootGetters) => scoped(state.tasks, rootState, rootGetters),
+  getCarePlans: (state, getters, rootState, rootGetters) => scoped(state.carePlans, rootState, rootGetters),
+  getDocuments: (state, getters, rootState, rootGetters) => scoped(state.documents, rootState, rootGetters),
+  getAuditLogs: (state, getters, rootState, rootGetters) => scoped(state.auditLogs, rootState, rootGetters),
   patientNursing360: (state, getters, rootState, rootGetters) => patientId => {
     const patients = rootGetters['clinical/getPatients'] || []
     const patient = patients.find(item => item.id === patientId)
+    const forPatient = collection => getters[collection].filter(item => item.patientId === patientId)
     return {
       patient,
-      markers: state.bodyMapMarkers.filter(item => item.patientId === patientId),
-      wounds: state.wounds.filter(item => item.patientId === patientId),
-      woundAssessments: state.woundAssessments.filter(item => item.patientId === patientId),
-      notes: state.clinicalNotes.filter(item => item.patientId === patientId),
-      tasks: state.tasks.filter(item => item.patientId === patientId),
-      orders: state.orders.filter(item => item.patientId === patientId),
-      carePlans: state.carePlans.filter(item => item.patientId === patientId),
-      documents: state.documents.filter(item => item.patientId === patientId),
-      audit: state.auditLogs.filter(item => item.patientId === patientId)
+      markers: forPatient('getBodyMapMarkers'),
+      wounds: forPatient('getWounds'),
+      woundAssessments: forPatient('getWoundAssessments'),
+      notes: forPatient('getClinicalNotes'),
+      tasks: forPatient('getTasks'),
+      orders: forPatient('getOrders'),
+      carePlans: forPatient('getCarePlans'),
+      documents: forPatient('getDocuments'),
+      audit: forPatient('getAuditLogs')
     }
   },
-  woundTrend: state => woundId => state.woundAssessments
+  woundTrend: (state, getters, rootState, rootGetters) => woundId => scoped(state.woundAssessments, rootState, rootGetters)
     .filter(item => item.woundId === woundId)
     .sort((a, b) => new Date(a.assessedAt || a.createdAt) - new Date(b.assessedAt || b.createdAt)),
   nurseDashboardMetrics: (state, getters, rootState, rootGetters) => {
     const patients = rootGetters['clinical/patientDirectory'] || []
+    const tasks = getters.getTasks
+    const wounds = getters.getWounds
+    const notes = getters.getClinicalNotes
+    const woundAssessments = getters.getWoundAssessments
     return {
       assignedPatients: patients.length,
-      openTasks: state.tasks.filter(item => ['pending', 'in_progress'].includes(item.status)).length,
-      activeWounds: state.wounds.filter(item => item.status !== 'healed' && item.status !== 'closed').length,
-      unsignedNotes: state.clinicalNotes.filter(item => item.status !== 'signed').length,
-      woundWarnings: state.woundAssessments.filter(item => item.warningAreaIncreased).length
+      openTasks: tasks.filter(item => ['pending', 'in_progress'].includes(item.status)).length,
+      activeWounds: wounds.filter(item => item.status !== 'healed' && item.status !== 'closed').length,
+      unsignedNotes: notes.filter(item => item.status !== 'signed').length,
+      woundWarnings: woundAssessments.filter(item => item.warningAreaIncreased).length
     }
   }
 }

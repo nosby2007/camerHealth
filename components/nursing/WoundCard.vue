@@ -18,7 +18,8 @@
       <div class="text-caption grey--text mt-4">{{ latest.treatmentPlan || latest.treatment_plan || 'No treatment plan documented yet.' }}</div>
     </div>
     <div class="pa-3 bg-grey lighten-4 border-top text-right">
-      <v-btn x-small tile depressed color="#003366" dark class="font-weight-black" :to="detailTo"><v-icon left x-small>mdi-open-in-new</v-icon>Open</v-btn>
+      <v-btn v-if="detailTo" x-small tile depressed color="#003366" dark class="font-weight-black" :to="detailTo"><v-icon left x-small>mdi-open-in-new</v-icon>Open</v-btn>
+      <v-btn v-else x-small tile depressed color="#003366" dark class="font-weight-black" @click="$emit('open', wound)"><v-icon left x-small>mdi-open-in-new</v-icon>Open</v-btn>
     </div>
   </v-card>
 </template>

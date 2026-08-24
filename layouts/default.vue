@@ -133,7 +133,7 @@ export default {
         { icon: 'mdi-account-multiple', titleKey: 'Staff Accounts',    to: '/admin/staff',           roles: ['ADMIN'] },
         { icon: 'mdi-history',          titleKey: 'Audit Log',         to: '/admin/audit',           roles: ['ADMIN'] },
         { icon: 'mdi-shield-crown',     titleKey: 'Super Admin',       to: '/super-admin',           roles: ['ADMIN'] },
-        { icon: 'mdi-monitor-dashboard', titleKey: 'Patient Workflow 360', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
+        { icon: 'mdi-monitor-dashboard', titleKey: 'EMR Command Center', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
         // ── Patient Modules ──
         { icon: 'mdi-account-group',    titleKey: 'Patient Listing',   to: '/clinical/patients',     roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS', 'FRONT_DESK'] },
         { icon: 'mdi-account-plus',     titleKey: 'New Patient',       to: '/clinical/patients/new', roles: ['ADMIN', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },
@@ -152,6 +152,8 @@ export default {
     };
   },
   mounted() {
+    const savedLocale = window.localStorage.getItem('camero_health_locale')
+    if (savedLocale === 'en' || savedLocale === 'fr') this.setLang(savedLocale, false)
     this.$store.commit('clinical/LOAD_FROM_STORAGE');
     this.$store.commit('facility/RELOAD_FROM_STORAGE');
     if (this.isMinistry) {
@@ -165,10 +167,11 @@ export default {
   },
   methods: {
     ...mapActions("auth", ["logout"]),
-    setLang(lang) {
+    setLang(lang, notify = true) {
       this.$store.commit('SET_LANG', lang);
       this.$i18n.locale = lang;
-      this.$toast.success(lang === 'fr' ? 'Langue changée en Français' : 'Language set to English');
+      window.localStorage.setItem('camero_health_locale', lang);
+      if (notify) this.$toast.success(lang === 'fr' ? 'Langue changée en Français' : 'Language set to English');
     }
   },
   computed: {

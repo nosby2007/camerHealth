@@ -5,7 +5,7 @@ function buildKey(req, scope) {
   const forwarded = req.headers['x-forwarded-for']
   const ip = Array.isArray(forwarded)
     ? forwarded[0]
-    : (forwarded || req.socket.remoteAddress || 'unknown-ip')
+    : (forwarded || (req.socket && req.socket.remoteAddress) || 'unknown-ip')
   return `${scope}:${ip}`
 }
 
