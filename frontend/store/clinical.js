@@ -950,21 +950,13 @@ export const actions = {
 }
 
 export const getters = {
-  getPatients: state => state.patients,
-  patientDirectory: state => state.patients,
   patientDirectoryAll: state => state.patients,
   patientById: state => id => state.patients.find(p => p.id === id),
   getPatient: state => id => state.patients.find(p => p.id === id) || null,
   patientsByDepartment: state => dept =>
     state.patients.filter(p => p.currentDepartment === dept || p.departmentRouting === dept),
-  getVisits: state => state.visits,
-  getInpatients: state => state.inpatients,
-  getLabOrders: state => state.labOrders,
-  getImagingOrders: state => state.imagingOrders,
-  getMedications: state => state.medications,
   loading: state => state.loading,
-  error: state => state.error
-}
+  error: state => state.error,
 
   // FILTERED DATA
   getPatients: (state, getters, rootState) => {

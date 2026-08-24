@@ -5765,10 +5765,10 @@ export default {
         })
         if (this.$toast) this.$toast.success(`Patient successfully transferred to ${this.transferForm.targetDepartment}`)
         this.showTransferDialog = false
-      } catch (err) {
-        if (this.$toast) this.$toast.error('Failed to transfer patient: ' + err.message)
       } finally {
         this.transferLoading = false
+      }
+    },
     avatarStorageKey() {
       return `camero_patient_avatar_placements_${this.activePatientId || 'demo'}`
     },
