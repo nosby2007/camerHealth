@@ -780,6 +780,10 @@
                       <v-icon x-small>mdi-camera-plus</v-icon>
                       Photo / document
                     </button>
+                    <button v-if="avatarPlacements.length" class="danger" @click="openClearAvatarDialog">
+                      <v-icon x-small>mdi-eraser-variant</v-icon>
+                      Clear avatar
+                    </button>
                   </div>
                   <FlowSection
                     title="Selected Zone Detail"
@@ -1106,26 +1110,25 @@
               </div>
             </section>
 
-            <section v-else-if="selectedChartTab === 'Medications'" class="flowsheet">
-              <div class="action-strip">
-                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('medication')">
-                  <v-icon x-small left>mdi-pill-plus</v-icon>Medication order
-                </v-btn>
-              </div>
-              <FlowSection
-                title="Medication Profile"
-                :columns="['Status', 'Route', 'Instructions']"
-                :rows="medicationProfileRows"
-              />
-            </section>
+            <Patient360MedicationTab
+              v-else-if="selectedChartTab === 'Medications'"
+              :medications="patientMedications"
+              :patient="activePatient"
+              :role="currentRole"
+              :read-only="isPatientDischarged"
+              @prescribe="openMedicationFromCatalog"
+            />
 
             <Patient360LabResultsTab
               v-else-if="selectedChartTab === 'Lab Results'"
               :orders="patientLabOrders"
+              :imaging-orders="patientImagingOrders"
               :role="currentRole"
               :read-only="isPatientDischarged"
               @record-result="openContextForm('labResult', $event)"
               @new-order="openOrderComposer('lab')"
+              @record-imaging-result="openContextForm('imagingResult', $event)"
+              @new-imaging-order="openOrderComposer('imaging')"
             />
 
             <Patient360WoundManagementTab
@@ -1968,8 +1971,15 @@
               <v-text-field v-model="forms.order.medication.dosage" label="Dose" dense outlined />
               <v-select v-model="forms.order.medication.route" :items="medicationRoutes" label="Route" dense outlined />
               <v-text-field v-model="forms.order.medication.frequency" label="Frequency" dense outlined />
+              <v-text-field v-model="forms.order.medication.medicationClass" label="Medication class" dense outlined readonly />
+              <v-text-field v-model="forms.order.medication.indication" label="Clinical indication / need" dense outlined />
             </div>
             <v-textarea v-model="forms.order.instructions" label="Administration instructions" rows="2" dense outlined />
+            <div v-if="forms.order.medication.sideEffects || forms.order.medication.education || forms.order.medication.safetyWarnings" class="medication-order-support">
+              <div v-if="forms.order.medication.sideEffects"><strong>Common side effects</strong><span>{{ forms.order.medication.sideEffects }}</span></div>
+              <div v-if="forms.order.medication.education"><strong>Patient education</strong><span>{{ forms.order.medication.education }}</span></div>
+              <div v-if="forms.order.medication.safetyWarnings" class="warning"><strong>Safety verification</strong><span>{{ forms.order.medication.safetyWarnings }}</span></div>
+            </div>
           </v-form>
         </v-card-text>
         <v-card-actions class="dialog-actions">
@@ -2120,6 +2130,28 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="dialogs.clearAvatar" max-width="560" persistent>
+      <v-card class="chart-dialog">
+        <v-card-title class="dialog-title">
+          <div><span>Avatar safety action</span><strong>Clear active markers</strong></div>
+          <v-btn icon small @click="dialogs.clearAvatar = false"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-alert tile dense type="warning" text class="mb-4">
+            This will remove {{ avatarPlacements.length }} marker(s) from the visible body map. Wounds, device records, notes and audit history will remain available.
+          </v-alert>
+          <v-textarea v-model.trim="avatarClearReason" label="Clinical reason for clearing the avatar" rows="3" dense outlined :rules="[requiredRule]" placeholder="Example: end of encounter review; active sites reconciled and will be remapped." />
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <v-spacer />
+          <v-btn text small @click="dialogs.clearAvatar = false">Cancel</v-btn>
+          <v-btn depressed color="#b91c1c" dark small :disabled="!avatarClearReason" :loading="savingDialog" @click="clearAvatarMarkers">
+            <v-icon x-small left>mdi-eraser-variant</v-icon>Clear visible markers
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <NoteDialog
       :open="dialogs.note"
       :patient-id="activePatientId"
@@ -2257,6 +2289,7 @@ import Patient360EducationTab from '~/components/clinical/patient360/education/P
 import Patient360ChartReviewTab from '~/components/clinical/patient360/chart-review/Patient360ChartReviewTab.vue'
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
 import Patient360LabResultsTab from '~/components/clinical/patient360/labs/Patient360LabResultsTab.vue'
+import Patient360MedicationTab from '~/components/clinical/patient360/medications/Patient360MedicationTab.vue'
 import Patient360WorkListTab from '~/components/clinical/patient360/work-list/Patient360WorkListTab.vue'
 import Patient360CareTeamTab from '~/components/clinical/patient360/care-team/Patient360CareTeamTab.vue'
 import Patient360ImmunizationsTab from '~/components/clinical/patient360/immunizations/Patient360ImmunizationsTab.vue'
@@ -2278,6 +2311,7 @@ const {
   isResolvedAvatarStatus,
   statusOptionsForAvatarType
 } = require('~/util/avatar-workflow.cjs')
+const { findMedicationCatalogItem } = require('~/util/medication-catalog.cjs')
 
 function firstFiledValue(record, keys, fallback = '') {
   for (const key of keys) {
@@ -2427,7 +2461,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -2732,6 +2766,7 @@ export default {
       selectedMarMedication: null,
       selectedMarAction: 'given',
       selectedWoundForDialogId: '',
+      avatarClearReason: '',
       marTimeColumns: ['1400', '1500', '1600', '1700', '1800', '1900', '2000'],
       remoteAiCarePlan: null,
       aiCareLoading: false,
@@ -2751,6 +2786,7 @@ export default {
         woundCare: false,
         carePlan: false,
         avatarPlacement: false,
+        clearAvatar: false,
         timedCare: false,
         tabManager: false
       },
@@ -4750,6 +4786,7 @@ export default {
         : this.marRows.map((row, index) => ({ id: `demo-mar-${index}`, drug: row.label, status: 'Active', frequency: Object.values(row.values).includes('Due') ? 'Scheduled' : 'PRN', dose: '', route: '', demoValues: row.values }))
       return medications.map((med, index) => {
         const name = med.drug || med.medication || med.name || med.label || 'Medication'
+        const catalogItem = findMedicationCatalogItem(name)
         const route = med.route || (/(iv|infusion)/i.test(name) ? 'IV' : 'Oral')
         const frequency = med.frequency || med.instructions || med.prescriptionText || 'Scheduled'
         const isPrn = /prn|as needed|au besoin/i.test(frequency)
@@ -4771,7 +4808,9 @@ export default {
           route,
           frequency,
           dispense: med.dispenseLocation || med.dispenseAt || 'Central pharmacy / unit stock',
-          education: med.education || `Educate patient on ${name}, indication, expected effect and side effects.`,
+          medicationClass: med.medicationClass || (catalogItem && catalogItem.medicationClass) || '',
+          sideEffects: med.sideEffects || (catalogItem && catalogItem.sideEffects) || '',
+          education: med.education || (catalogItem && catalogItem.education) || `Educate patient on ${name}, indication, expected effect and side effects.`,
           status,
           statusClass,
           scheduleType: isInfusion ? 'infusion' : isPrn ? 'prn' : 'scheduled',
@@ -5648,9 +5687,11 @@ export default {
       return `camero_patient_avatar_placements_${this.activePatientId || 'demo'}`
     },
     loadAvatarPlacements() {
-      const storeMarkers = (this.$store.getters['nursing/getBodyMapMarkers'] || [])
-        .filter(item => item.patientId === this.activePatientId && item.source === 'avatar' && !['resolved', 'removed'].includes(String(item.status || '').toLowerCase()))
-      if (storeMarkers.length) {
+      const patientMarkers = (this.$store.getters['nursing/getBodyMapMarkers'] || [])
+        .filter(item => item.patientId === this.activePatientId && item.source === 'avatar')
+      const storeMarkers = patientMarkers
+        .filter(item => !['resolved', 'removed'].includes(String(item.status || '').toLowerCase()))
+      if (patientMarkers.length) {
         this.avatarPlacements = storeMarkers.map(this.normalizeAvatarPlacement)
         this.avatarPlacementSequence = this.avatarPlacements.length
         if (process.client) this.persistAvatarPlacements()
@@ -5795,6 +5836,53 @@ export default {
     closeAvatarPlacementDialog() {
       this.$set(this.dialogs, 'avatarPlacement', false)
       this.forms.avatarPlacement = { ...defaultDialogForms().avatarPlacement }
+    },
+    openClearAvatarDialog() {
+      if (!this.ensurePatientWritable() || !this.avatarPlacements.length) return
+      this.avatarClearReason = ''
+      this.$set(this.dialogs, 'clearAvatar', true)
+    },
+    async clearAvatarMarkers() {
+      if (!this.ensurePatientWritable()) return
+      const reason = String(this.avatarClearReason || '').trim()
+      if (!reason) {
+        this.toastError('Document the clinical reason before clearing the avatar.')
+        return
+      }
+      const activeIds = new Set(this.avatarPlacements.map(item => item.id))
+      const markers = (this.$store.getters['nursing/getBodyMapMarkers'] || [])
+        .filter(item => item.patientId === this.activePatientId && item.source === 'avatar' && activeIds.has(item.id))
+      const clearedAt = new Date().toISOString()
+      this.savingDialog = true
+      try {
+        await Promise.all(markers.map(marker => this.$store.dispatch('nursing/updateBodyMapMarker', {
+          ...marker,
+          status: 'Removed',
+          removalReason: reason,
+          removedAt: clearedAt,
+          removedBy: this.actorName(),
+          batchCleared: true
+        })))
+        await this.$store.dispatch('clinical/addNursingNote', {
+          patientId: this.activePatientId,
+          recordedBy: this.actorName(),
+          recordedAt: clearedAt,
+          actions: [`Avatar cleared (${this.avatarPlacements.length} markers)`],
+          observation: 'Visible wound, line and device markers reconciled and removed from the body map.',
+          response: reason,
+          orientation: 'Underlying clinical records and audit history retained.'
+        })
+        this.avatarPlacements = []
+        this.selectedAvatarTool = ''
+        this.persistAvatarPlacements()
+        this.$set(this.dialogs, 'clearAvatar', false)
+        this.avatarClearReason = ''
+        this.toastSuccess('Avatar cleared. Clinical records remain in the chart history.')
+      } catch (e) {
+        this.toastError('Unable to clear the avatar markers.')
+      } finally {
+        this.savingDialog = false
+      }
     },
     prepareAvatarPlacementRemoval() {
       this.forms.avatarPlacement.status = this.forms.avatarPlacement.type === 'wound' ? 'Resolved' : 'Removed'
@@ -6558,6 +6646,12 @@ export default {
           this.forms.order.medication.dosage = order.raw.dose || order.raw.dosage || ''
           this.forms.order.medication.route = order.raw.route || 'Oral'
           this.forms.order.medication.frequency = order.raw.frequency || ''
+          const catalogItem = findMedicationCatalogItem(this.forms.order.medication.medication)
+          this.forms.order.medication.medicationClass = order.raw.medicationClass || (catalogItem && catalogItem.medicationClass) || ''
+          this.forms.order.medication.indication = order.raw.indication || ''
+          this.forms.order.medication.sideEffects = order.raw.sideEffects || (catalogItem && catalogItem.sideEffects) || ''
+          this.forms.order.medication.education = order.raw.education || (catalogItem && catalogItem.education) || ''
+          this.forms.order.medication.safetyWarnings = order.raw.safetyWarnings || (catalogItem && catalogItem.warnings) || ''
           this.forms.order.instructions = order.raw.instructions || order.detail || ''
         }
         return
@@ -6571,6 +6665,18 @@ export default {
         return
       }
       this.openChartDialog('nurse')
+    },
+    openMedicationFromCatalog(item) {
+      if (!item || !this.ensurePatientWritable()) return
+      this.openChartDialog('medication')
+      this.forms.order.medication.medication = item.genericName || ''
+      this.forms.order.medication.route = item.routes && item.routes[0] ? item.routes[0] : 'Oral'
+      this.forms.order.medication.medicationClass = item.medicationClass || ''
+      this.forms.order.medication.indication = item.needs && item.needs[0] ? item.needs[0] : ''
+      this.forms.order.medication.sideEffects = item.sideEffects || ''
+      this.forms.order.medication.education = item.education || ''
+      this.forms.order.medication.safetyWarnings = item.warnings || ''
+      this.forms.order.instructions = ''
     },
     async handleOrderAction(action, order) {
       if (!order) return
@@ -7067,6 +7173,7 @@ export default {
       try {
         const patientId = this.activePatientId
         const recordedBy = this.actorName()
+        const catalogItem = findMedicationCatalogItem(this.forms.order.medication.medication)
         const record = await this.$store.dispatch('clinical/prescribeMedication', {
           patientId,
           medication: this.forms.order.medication.medication,
@@ -7075,6 +7182,11 @@ export default {
           dose: this.forms.order.medication.dosage,
           route: this.forms.order.medication.route,
           frequency: this.forms.order.medication.frequency,
+          medicationClass: this.forms.order.medication.medicationClass || (catalogItem && catalogItem.medicationClass) || '',
+          indication: this.forms.order.medication.indication || '',
+          sideEffects: this.forms.order.medication.sideEffects || (catalogItem && catalogItem.sideEffects) || '',
+          education: this.forms.order.medication.education || (catalogItem && catalogItem.education) || '',
+          safetyWarnings: this.forms.order.medication.safetyWarnings || (catalogItem && catalogItem.warnings) || '',
           instructions: this.forms.order.instructions,
           prescribedBy: recordedBy
         })
@@ -7386,7 +7498,7 @@ function defaultDialogForms() {
       instructions: '',
       lab: { testName: '', priority: 'Routine' },
       imaging: { modality: '', priority: 'Routine' },
-      medication: { medication: '', dosage: '', route: 'Oral', frequency: '' }
+      medication: { medication: '', dosage: '', route: 'Oral', frequency: '', medicationClass: '', indication: '', sideEffects: '', education: '', safetyWarnings: '' }
     },
     mar: {
       action: 'Given',
@@ -10680,4 +10792,8 @@ function latestByDate(items, field) {
   .navigator-readiness { grid-template-columns: 1fr; }
   .navigator-readiness > small { grid-column: auto; }
 }
+</style>
+
+<style scoped>
+.medication-order-support{display:grid;gap:7px;margin-top:2px}.medication-order-support>div{display:grid;gap:2px;padding:8px 10px;background:#eef7f6;border-left:3px solid #0f766e;font-size:11px}.medication-order-support>div.warning{background:#fff7ed;border-left-color:#c2410c}.medication-order-support strong{font-size:9px;text-transform:uppercase;color:#536d73}.avatar-actions button.danger{border-color:#fecaca;color:#991b1b;background:#fff7f7}
 </style>

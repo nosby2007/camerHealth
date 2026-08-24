@@ -313,6 +313,16 @@ export default {
           ...this.assessment
         })
 
+        const wound = this.patientWounds.find(item => item.id === this.selectedWoundId)
+        if (wound && this.assessment.woundStatus && this.assessment.woundStatus !== wound.status) {
+          await this.$store.dispatch('nursing/updateWound', {
+            ...wound,
+            status: this.assessment.woundStatus,
+            statusUpdatedAt: new Date().toISOString(),
+            statusUpdatedByRole: this.authorRole
+          })
+        }
+
         if (this.assessment.photos?.length) {
           for (const photo of this.assessment.photos) {
             await this.$store.dispatch('nursing/addWoundPhoto', {
