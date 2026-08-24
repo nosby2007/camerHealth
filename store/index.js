@@ -2,7 +2,8 @@
 // root in module format preserves auth, clinical, nursing and all other modules.
 export const state = () => ({
   appLoading: false,
-  appError: null
+  appError: null,
+  locale: 'fr'
 })
 
 export const mutations = {
@@ -11,6 +12,9 @@ export const mutations = {
   },
   SET_ERROR(state, error) {
     state.appError = error
+  },
+  SET_LANG(state, locale) {
+    state.locale = locale === 'en' ? 'en' : 'fr'
   }
 }
 

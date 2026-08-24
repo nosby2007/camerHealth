@@ -507,6 +507,13 @@
                 </article>
               </div>
 
+              <div class="command-live-strip" aria-label="Live patient operations">
+                <button type="button" @click="selectChartTab('Work List')"><span>{{ $t('clinical360.command.open_work') }}</span><strong>{{ patientTasks.length }}</strong><small>{{ $t('clinical360.command.assigned_tasks') }}</small></button>
+                <button type="button" @click="selectChartTab('Orders')"><span>{{ $t('clinical360.command.diagnostics') }}</span><strong>{{ patientLabOrders.length + patientImagingOrders.length }}</strong><small>{{ $t('clinical360.command.lab_imaging') }}</small></button>
+                <button type="button" @click="selectChartTab('Documents')"><span>{{ $t('clinical360.command.chart_records') }}</span><strong>{{ patientDocuments.length }}</strong><small>{{ $t('clinical360.command.filed_documents') }}</small></button>
+                <button type="button" @click="selectChartTab('Care Teams')"><span>{{ $t('clinical360.command.coverage') }}</span><strong>{{ visibleCareTeamRows.length }}</strong><small>{{ $t('clinical360.command.team_members') }}</small></button>
+              </div>
+
               <div class="command-two-column">
                 <FlowSection
                   title="Department Coverage"
@@ -565,15 +572,22 @@
                 </div>
               </div>
 
+              <div class="command-live-strip nurse-live" aria-label="Live nursing situation">
+                <button type="button" @click="openCommandAction('nurse')"><span>{{ $t('clinical360.command.last_vitals') }}</span><strong>{{ latestVitalsSummary || $t('clinical360.common.due') }}</strong><small>{{ $t('clinical360.command.document_assessment') }}</small></button>
+                <button type="button" @click="selectChartTab('MAR')"><span>{{ $t('clinical360.command.medication_profile') }}</span><strong>{{ patientMedications.length }}</strong><small>{{ $t('clinical360.command.active_items') }}</small></button>
+                <button type="button" @click="selectChartTab('Wound Management')"><span>{{ $t('clinical360.command.skin_integrity') }}</span><strong>{{ patientWounds.length }}</strong><small>{{ $t('clinical360.command.documented_wounds') }}</small></button>
+                <button type="button" @click="selectChartTab('Handoff')"><span>{{ $t('clinical360.command.shift_handoff') }}</span><strong>{{ latestNursingNote ? $t('clinical360.common.started') : $t('clinical360.common.due') }}</strong><small>{{ $t('clinical360.command.continuity_record') }}</small></button>
+              </div>
+
               <div class="nurse-focus-grid">
-                <article v-for="item in nurseCommandTiles" :key="item.label" :class="['nurse-focus-card', item.status]">
+                <button v-for="item in nurseCommandTiles" :key="item.label" type="button" :class="['nurse-focus-card', item.status]" @click="openNurseCommandTile(item)">
                   <v-icon small>{{ item.icon }}</v-icon>
                   <div>
                     <strong>{{ item.label }}</strong>
                     <span>{{ item.value }}</span>
                     <p>{{ item.action }}</p>
                   </div>
-                </article>
+                </button>
               </div>
 
               <div class="command-two-column">
@@ -1283,10 +1297,12 @@
 
             <Patient360DocumentsTab
               v-else-if="selectedChartTab === 'Documents'"
+              :patient-id="activePatientId"
               :documents="patientDocuments"
               :role="currentRole"
               :read-only="isPatientDischarged"
               @file-document="openChartDialog('document')"
+              @saved="toastSuccess"
             />
 
             <Patient360RegistrationTab
@@ -1296,6 +1312,17 @@
               :role="currentRole"
               :read-only="isPatientDischarged"
               @saved="toastSuccess('Registration updated.')"
+            />
+
+            <Patient360ProcedureTab
+              v-else-if="selectedChartTab === 'Sedation/Procedure Documentation'"
+              :patient-id="activePatientId"
+              :patient="findPatientRecord(activePatientId) || activePatient"
+              :documents="patientDocuments"
+              :tasks="patientTasks"
+              :role="currentRole"
+              :read-only="isPatientDischarged"
+              @saved="toastSuccess"
             />
 
             <section v-else-if="selectedChartTab === 'Navigators'" class="navigator-active-workspace">
@@ -2237,6 +2264,7 @@ import Patient360HandoffTab from '~/components/clinical/patient360/handoff/Patie
 import Patient360DocumentsTab from '~/components/clinical/patient360/documents/Patient360DocumentsTab.vue'
 import Patient360RegistrationTab from '~/components/clinical/patient360/registration/Patient360RegistrationTab.vue'
 import Patient360WoundManagementTab from '~/components/clinical/patient360/wounds/Patient360WoundManagementTab.vue'
+import Patient360ProcedureTab from '~/components/clinical/patient360/procedure/Patient360ProcedureTab.vue'
 import TimedCareDocumentationDialog from '~/components/clinical/patient360/flowsheets/TimedCareDocumentationDialog.vue'
 import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
 import Patient360ContextForms from '~/components/clinical/patient360/dialogs/Patient360ContextForms.vue'
@@ -2399,7 +2427,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false }
@@ -6173,6 +6201,16 @@ export default {
       if (value.includes('wound')) return 'wound'
       return 'nursing'
     },
+    openNurseCommandTile(item) {
+      const label = String(item && item.label ? item.label : '').toLowerCase()
+      if (/vital|assessment/.test(label)) return this.openCommandAction('nurse')
+      if (/medication/.test(label)) return this.selectChartTab('MAR')
+      if (/wound|skin/.test(label)) return this.selectChartTab('Wound Management')
+      if (/mobility|hygiene|support/.test(label)) return this.openCommandAction('flowsheet')
+      if (/handoff/.test(label)) return this.selectChartTab('Handoff')
+      if (/documentation|note/.test(label)) return this.selectChartTab('Notes')
+      return this.selectChartTab('Work List')
+    },
     openCommandAction(action) {
       const target = String(action || '').toLowerCase()
       if (this.isPatientDischarged) {
@@ -9181,6 +9219,27 @@ function latestByDate(items, field) {
   border-color: #0f766e;
   color: #0f766e;
 }
+.command-live-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  border: 1px solid #b8d3cf;
+  background: #fff;
+}
+.command-live-strip button {
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  padding: 9px 11px;
+  text-align: left;
+  border-right: 1px solid #dbe6e3;
+}
+.command-live-strip button:last-child { border-right: 0; }
+.command-live-strip span { color: #475569; font-size: 11px; font-weight: 800; }
+.command-live-strip strong { color: #0f766e; font-size: 16px; text-align: right; }
+.command-live-strip small { grid-column: 1 / -1; color: #64748b; }
+.command-live-strip button:hover { background: #eef7f5; }
+.nurse-live { border-color: #a7c6df; }
 .command-two-column {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
@@ -9201,7 +9260,10 @@ function latestByDate(items, field) {
   border: 1px solid #dbe6e3;
   border-left: 4px solid #94a3b8;
   padding: 9px;
+  text-align: left;
+  cursor: pointer;
 }
+.nurse-focus-card:hover { background: #f0fdfa; border-color: #0f766e; }
 .nurse-focus-card.complete { border-left-color: #16a34a; }
 .nurse-focus-card.active { border-left-color: #0369a1; }
 .nurse-focus-card.due { border-left-color: #be123c; }

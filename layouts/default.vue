@@ -151,6 +151,8 @@ export default {
     };
   },
   mounted() {
+    const savedLocale = window.localStorage.getItem('camero_health_locale')
+    if (savedLocale === 'en' || savedLocale === 'fr') this.setLang(savedLocale, false)
     this.$store.commit('clinical/LOAD_FROM_STORAGE');
     this.$store.commit('facility/RELOAD_FROM_STORAGE');
     if (this.isMinistry) {
@@ -164,10 +166,11 @@ export default {
   },
   methods: {
     ...mapActions("auth", ["logout"]),
-    setLang(lang) {
+    setLang(lang, notify = true) {
       this.$store.commit('SET_LANG', lang);
       this.$i18n.locale = lang;
-      this.$toast.success(lang === 'fr' ? 'Langue changée en Français' : 'Language set to English');
+      window.localStorage.setItem('camero_health_locale', lang);
+      if (notify) this.$toast.success(lang === 'fr' ? 'Langue changée en Français' : 'Language set to English');
     }
   },
   computed: {

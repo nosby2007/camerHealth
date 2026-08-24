@@ -19,7 +19,7 @@
         :class="{ active: selectedTab === tab }"
         @click="$emit('select', tab)"
       >
-        {{ tab }}
+        {{ tabLabel(tab) }}
       </button>
 
       <v-menu v-if="overflowTabs.length" offset-y>
@@ -33,7 +33,7 @@
             aria-haspopup="true"
             :aria-label="isOverflowActive ? `More sections, current: ${selectedTab}` : 'More sections'"
           >
-            <span>{{ isOverflowActive ? selectedTab : 'More' }}</span>
+            <span>{{ isOverflowActive ? tabLabel(selectedTab) : $t('clinical360.common.more') }}</span>
             <v-icon x-small>mdi-chevron-down</v-icon>
           </button>
         </template>
@@ -44,7 +44,7 @@
             :class="{ 'v-list-item--active': selectedTab === tab }"
             @click="$emit('select', tab)"
           >
-            <v-list-item-title>{{ tab }}</v-list-item-title>
+            <v-list-item-title>{{ tabLabel(tab) }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
@@ -75,6 +75,34 @@ export default {
     }
   },
   methods: {
+    tabLabel(tab) {
+      const keys = {
+        Summary: 'summary',
+        'EMR Command Center': 'emr_command',
+        'Nurse Command Center': 'nurse_command',
+        'Chart Review': 'chart_review',
+        Navigators: 'navigators',
+        Avatar: 'avatar',
+        Flowsheets: 'flowsheets',
+        Orders: 'orders',
+        MAR: 'mar',
+        Medications: 'medications',
+        'Lab Results': 'lab_results',
+        'Wound Management': 'wound_management',
+        Notes: 'notes',
+        'Care Plan': 'care_plan',
+        Education: 'education',
+        'Work List': 'work_list',
+        Immunizations: 'immunizations',
+        'Sedation/Procedure Documentation': 'procedure',
+        'Care Teams': 'care_teams',
+        Handoff: 'handoff',
+        Documents: 'documents',
+        Registration: 'registration'
+      }
+      const key = keys[tab]
+      return key ? this.$t(`clinical360.tabs.${key}`) : tab
+    },
     scrollTabs(direction) {
       const el = this.$refs.tabScroller
       if (!el) return
