@@ -28,13 +28,27 @@ const app = express()
 app.use(helmet())
 app.use(compression())
 app.use(morgan(NODE_ENV === 'production' ? 'combined' : 'dev'))
-app.use(cors({
-  origin: true, // Allow any origin in development
+
+const allowedOrigins = CORS_ORIGIN
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean)
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || NODE_ENV !== 'production' || allowedOrigins.includes(origin)) {
+      return callback(null, true)
+    }
+    const error = new Error('Origin not allowed by CORS')
+    error.status = 403
+    return callback(error)
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Facility-ID']
-}))
-app.options('*', cors())
+}
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
@@ -149,19 +163,21 @@ async function main() {
   }
 }
 
-main()
+if (require.main === module) {
+  main()
 
-// ─── Graceful Shutdown ─────────────────────────────────────────────────────
-process.on('SIGTERM', async () => {
-  console.log('[SHUTDOWN] SIGTERM received')
-  await prisma.$disconnect()
-  process.exit(0)
-})
+  // ─── Graceful Shutdown ───────────────────────────────────────────────────
+  process.on('SIGTERM', async () => {
+    console.log('[SHUTDOWN] SIGTERM received')
+    await prisma.$disconnect()
+    process.exit(0)
+  })
 
-process.on('SIGINT', async () => {
-  console.log('[SHUTDOWN] SIGINT received')
-  await prisma.$disconnect()
-  process.exit(0)
-})
+  process.on('SIGINT', async () => {
+    console.log('[SHUTDOWN] SIGINT received')
+    await prisma.$disconnect()
+    process.exit(0)
+  })
+}
 
 module.exports = app

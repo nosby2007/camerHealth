@@ -12,9 +12,34 @@ The default alias is deliberately `dev` to reduce the risk of an accidental prod
 
 ## Current migration boundary
 
-Firebase Hosting serves the generated Nuxt SPA. The existing Node API and PostgreSQL/Supabase clinical data remain unchanged during this first migration step. Authentication, database, Storage, Functions, and clinical records must not be moved without a separate tenant-isolation and security-rules review.
+Firebase Hosting serves the generated Nuxt SPA. The Express API is packaged as the second-generation Firebase Function `api` in `europe-west1`, and Hosting forwards `/api/**` to that function. PostgreSQL/Supabase remains the clinical system of record during this migration step.
+
+Authentication, database, and Storage must not be replaced without a separate tenant-isolation and security-rules review. The Firebase Function reads the existing backend configuration from Secret Manager; no backend credential is included in the function bundle.
 
 Firebase web API keys identify a Firebase project and are public by design. Backend service-account credentials, private keys, database passwords, JWT secrets, and Supabase service-role keys must remain outside Git.
+
+## Configure backend secrets
+
+Configure these secrets independently in every Firebase project before deploying the API:
+
+```powershell
+npx firebase-tools functions:secrets:set DATABASE_URL --project camerohealth-dev
+npx firebase-tools functions:secrets:set DIRECT_URL --project camerohealth-dev
+npx firebase-tools functions:secrets:set JWT_SECRET --project camerohealth-dev
+npx firebase-tools functions:secrets:set JWT_EXPIRES_IN --project camerohealth-dev
+npx firebase-tools functions:secrets:set CORS_ORIGIN --project camerohealth-dev
+npx firebase-tools functions:secrets:set SUPABASE_URL --project camerohealth-dev
+npx firebase-tools functions:secrets:set SUPABASE_SERVICE_KEY --project camerohealth-dev
+npx firebase-tools functions:secrets:set SUPABASE_STORAGE_BUCKET --project camerohealth-dev
+```
+
+For `CORS_ORIGIN`, use the comma-separated Hosting origins for the target environment. Never paste secret values into a command argument, tracked script, or CI log; allow the CLI to prompt securely.
+
+Deploy the development API after all secrets exist:
+
+```powershell
+npx firebase-tools deploy --only functions:api --project camerohealth-dev
+```
 
 ## Deploy Hosting
 
@@ -28,7 +53,7 @@ Firebase web API keys identify a Firebase project and are public by design. Back
 .\scripts\deploy-firebase-hosting.ps1 -Environment pro
 ```
 
-The script verifies project access, generates `frontend/dist`, and deploys Hosting only. It never deploys Functions, Firestore rules, Storage rules, or backend services.
+The script verifies project access, generates `frontend/dist`, and deploys Hosting only. The API Function must already exist for the `/api/**` rewrite. The script never deploys Firestore rules, Storage rules, or other backend services.
 
 ## Promotion policy
 

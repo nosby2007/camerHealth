@@ -4,7 +4,10 @@
   "description": "CameroHealth REST API — Express + Prisma + Supabase PostgreSQL",
   "private": true,
   "type": "commonjs",
-  "main": "src/index.js",
+  "main": "firebase.js",
+  "engines": {
+    "node": "20"
+  },
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
@@ -27,6 +30,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.1",
+    "firebase-functions": "^6.4.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
