@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "camerohealth-dev",
+    "dev": "camerohealth-dev",
+    "staging": "camerohealth-staging",
+    "pro": "camerohealth-pro"
+  }
+}
