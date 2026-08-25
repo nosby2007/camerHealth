@@ -11,7 +11,8 @@
     "start": "nuxt start",
     "generate": "cross-env NODE_ENV=production nuxt generate",
     "lint": "eslint --ext .js,.vue --ignore-path .gitignore .",
-    "test:nursing": "node tests/nursing-workflow.test.cjs"
+    "test:nursing": "node tests/nursing-workflow.test.cjs",
+    "test:patient360": "node --test tests/patient-360-policy.test.cjs tests/patient-search.test.cjs tests/clinical-workflow.test.js"
   },
   "dependencies": {
     "@nuxtjs/axios": "^5.9.5",

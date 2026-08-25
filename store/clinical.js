@@ -1,3 +1,4 @@
+const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
 
 export const state = () => ({
   patients: [],
@@ -261,7 +262,6 @@ export const actions = {
     const existing = state.patients.find(item => item.id === patientId)
     if (!existing) throw new Error('Patient record not found')
     if (String(existing.patientStatus || '').toLowerCase() === 'discharged') return existing
-
     const requestedDischargeAt = payload.dischargedAt || payload.dischargeDateTime
     const parsedDischargeAt = requestedDischargeAt ? new Date(requestedDischargeAt) : new Date()
     const dischargedAt = isNaN(parsedDischargeAt.getTime()) ? new Date().toISOString() : parsedDischargeAt.toISOString()
@@ -532,7 +532,9 @@ export const actions = {
       admittedAt: new Date().toISOString()
     })
   },
-  updateInpatient({ commit }, record) {
+  updateInpatient({ state, commit }, record) {
+    const existing = state.inpatients.find(item => item.id === record.id)
+    assertPatientWritable(state, record.patientId || (existing && existing.patientId))
     commit('UPDATE_INPATIENT', record)
   },
   scheduleAppointment({ commit, rootState }, appt) {
@@ -559,7 +561,9 @@ export const actions = {
     commit('ADD_MEDICATION', medicationRecord)
     return medicationRecord
   },
-  updateMedication({ commit }, med) {
+  updateMedication({ state, commit }, med) {
+    const existing = state.medications.find(item => item.id === med.id)
+    assertPatientWritable(state, med.patientId || (existing && existing.patientId))
     commit('UPDATE_MEDICATION', med)
   },
   orderLab({ state, commit, rootState }, order) {
@@ -574,7 +578,9 @@ export const actions = {
     commit('ADD_LAB_ORDER', labOrderRecord)
     return labOrderRecord
   },
-  updateLabOrder({ commit }, order) {
+  updateLabOrder({ state, commit }, order) {
+    const existing = state.labOrders.find(item => item.id === order.id)
+    assertPatientWritable(state, order.patientId || (existing && existing.patientId))
     commit('UPDATE_LAB_ORDER', order)
   },
   orderImaging({ state, commit, rootState }, order) {
@@ -589,7 +595,9 @@ export const actions = {
     commit('ADD_IMAGING_ORDER', imagingOrderRecord)
     return imagingOrderRecord
   },
-  updateImagingOrder({ commit }, order) {
+  updateImagingOrder({ state, commit }, order) {
+    const existing = state.imagingOrders.find(item => item.id === order.id)
+    assertPatientWritable(state, order.patientId || (existing && existing.patientId))
     commit('UPDATE_IMAGING_ORDER', order)
   },
   createInvoice({ commit, rootState }, invoice) {
@@ -767,6 +775,7 @@ export const actions = {
   updateTaskStatus({ state, commit, rootState }, payload) {
     const task = state.tasks.find(t => t.id === payload.id)
     if (!task) return
+    assertPatientWritable(state, task.patientId)
     if (!['done', 'hold', 'cancel'].includes(payload.status)) return
     const now = new Date().toISOString()
     const actor = payload.updatedBy || rootState.auth.fullName || 'Unknown user'
@@ -791,17 +800,22 @@ export const actions = {
     }
     commit('UPDATE_TASK', next)
   },
-  createDocument({ commit, rootState }, document) {
-    commit('ADD_DOCUMENT', {
+  createDocument({ state, commit, rootState }, document) {
+    assertPatientWritable(state, document.patientId)
+    const record = {
       ...document,
       id: 'DOC-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       institution: rootState.auth.institution,
       status: document.status || 'Filed',
       createdAt: new Date().toISOString(),
       createdBy: rootState.auth.fullName || 'Unknown user'
-    })
+    }
+    commit('ADD_DOCUMENT', record)
+    return record
   },
-  updateDocument({ commit }, document) {
+  updateDocument({ state, commit }, document) {
+    const existing = state.documents.find(item => item.id === document.id)
+    assertPatientWritable(state, document.patientId || (existing && existing.patientId))
     commit('UPDATE_DOCUMENT', document)
   },
   createInsuranceClaim({ commit, rootState }, claim) {
@@ -1014,7 +1028,9 @@ export const getters = {
       return {
         ...patient,
         displayName: patient.name || `${patient.firstName || ''} ${patient.lastName || ''}`.trim(),
-        mrn: patient.externalId || patient.id,
+        mrn: patient.mrn || patient.externalId || patient.id,
+        externalId: patient.externalId || patient.mrn || patient.id,
+        barcode: patient.barcode || '',
         currentDepartment: isDischarged ? 'Inactive / Discharged' : resolveCurrentDepartment({ patient, activeInpatient, openOrders, latestVisit, nextAppointment }),
         lifecycleStatus: isDischarged ? 'inactive' : ((!latestVisit && !activeInpatient) || patient.pendingAdmission || ['waiting', 'waitlisted', 'registered', 'pending'].includes(String(patient.patientStatus || '').toLowerCase()) ? 'waiting' : 'active'),
         isDischarged,
@@ -1213,11 +1229,7 @@ function assertPatientWritable(state, patientId) {
   if (!patientId) return
   const patient = state.patients.find(item => item.id === patientId)
   if (!patient) return
-  const status = String(patient.patientStatus || patient.admissionStatus || '').toLowerCase()
-  const inactive = String(patient.recordStatus || '').toLowerCase() === 'inactive' || patient.active === false
-  if (status === 'discharged' || inactive) {
-    throw new Error('PATIENT_DISCHARGED_READ_ONLY')
-  }
+  assertWritableRecord(patient)
 }
 
 function latestByDate(records, field) {

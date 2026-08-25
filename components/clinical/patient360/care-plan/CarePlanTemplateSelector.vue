@@ -345,7 +345,7 @@ export default {
 }
 
 .form-header {
-  background: linear-gradient(90deg, #7c3aed 0%, #6d28d9 100%);
+  background: #0f766e;
   color: white !important;
   padding: 16px;
   display: flex;
@@ -399,10 +399,10 @@ export default {
 }
 
 .template-card:hover {
-  border-color: #7c3aed;
-  background: #f5f3ff;
+  border-color: #0f766e;
+  background: #f0fdfa;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1);
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.1);
 }
 
 .template-icon {

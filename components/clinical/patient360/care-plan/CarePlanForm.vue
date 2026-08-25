@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-file-document</v-icon>
-        <span>{{ isNew ? 'Create Care Plan' : 'Edit Care Plan' }}</span>
+        <span>Create Care Plan<span v-if="template"> from {{ template.title }}</span></span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -312,11 +312,11 @@ export default {
   props: {
     patientId: { type: String, required: true },
     encounterId: { type: String, required: true },
+    admissionId: { type: String, default: '' },
     template: { type: Object, default: null }
   },
   data() {
     return {
-      isNew: !this.template,
       form: {
         title: this.template?.title || '',
         diagnosis: this.template?.problems?.[0] || '',
@@ -324,7 +324,7 @@ export default {
         targetDate: '',
         status: 'Draft',
         priority: 'Medium',
-        problems: this.template?.problems || [],
+        problems: this.template?.problems ? [...this.template.problems] : [],
         goals: this.template?.sampleGoals?.map(g => ({
           description: g,
           timeline: '1 week',
@@ -389,21 +389,24 @@ export default {
     },
     async submitForm() {
       if (!this.form.title || !this.form.diagnosis) {
-        alert('Please fill in required fields')
+        this.$emit('error', 'Care plan title and primary diagnosis are required.')
         return
       }
 
       try {
-        await this.createCarePlan({
+        const record = await this.createCarePlan({
           patientId: this.patientId,
           encounterId: this.encounterId,
+          admissionId: this.admissionId,
+          templateId: this.template ? this.template.id : null,
           ...this.form,
           createdAt: new Date().toISOString()
         })
-        this.$emit('save', this.form)
+        this.$emit('save', record)
       } catch (error) {
-        console.error('Error creating care plan:', error)
-        alert('Error creating care plan')
+        this.$emit('error', error && error.message === 'PATIENT_DISCHARGED_READ_ONLY'
+          ? 'Discharged charts are read-only.'
+          : 'Unable to create the care plan.')
       }
     }
   }
@@ -416,7 +419,7 @@ export default {
 }
 
 .form-header {
-  background: linear-gradient(90deg, #7c3aed 0%, #6d28d9 100%);
+  background: #0f766e;
   color: white !important;
   padding: 16px;
   display: flex;

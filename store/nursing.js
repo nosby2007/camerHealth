@@ -4,6 +4,7 @@ const {
   hasWoundAreaIncreased,
   taskFromProviderOrder
 } = require('../util/nursing-workflow.cjs')
+const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
 
 const PREFIX = 'camero_health_nursing_'
 
@@ -312,10 +313,7 @@ function assertPatientWritable(rootState, patientId) {
   if (!patientId) return
   const patient = rootState.clinical?.patients?.find(item => item.id === patientId)
   if (!patient) return
-  const status = String(patient.patientStatus || patient.admissionStatus || '').toLowerCase()
-  if (status === 'discharged' || String(patient.recordStatus || '').toLowerCase() === 'inactive' || patient.active === false) {
-    throw new Error('PATIENT_DISCHARGED_READ_ONLY')
-  }
+  assertWritableRecord(patient)
 }
 
 export const getters = {

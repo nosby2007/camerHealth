@@ -8,9 +8,36 @@
         <strong>CameroHealth Chart</strong>
         <span class="environment">Clinical Workflow</span>
       </div>
-      <div class="search-box">
+      <div class="search-box" role="combobox" :aria-expanded="String(globalSearchOpen)" aria-haspopup="listbox">
         <v-icon small color="#64748b">mdi-magnify</v-icon>
-        <span>Search chart, order, patient, navigator</span>
+        <input
+          v-model="globalSearchQuery"
+          type="search"
+          aria-label="Search patient chart"
+          placeholder="Search patient, MRN, order, tab"
+          @focus="globalSearchOpen = true"
+          @blur="scheduleGlobalSearchClose"
+          @keydown.enter.prevent="submitGlobalSearch"
+          @keydown.esc.prevent="clearGlobalSearch"
+        >
+        <button v-if="globalSearchQuery" type="button" class="search-clear" title="Clear search" @mousedown.prevent @click="clearGlobalSearch">
+          <v-icon x-small>mdi-close</v-icon>
+        </button>
+        <div v-if="globalSearchOpen && globalSearchQuery" class="global-search-results" role="listbox">
+          <button
+            v-for="result in globalSearchResults"
+            :key="result.key"
+            type="button"
+            role="option"
+            @mousedown.prevent
+            @click="selectGlobalSearchResult(result)"
+          >
+            <v-icon small :color="result.color || '#0f766e'">{{ result.icon }}</v-icon>
+            <span><strong>{{ result.title }}</strong><small>{{ result.meta }}</small></span>
+            <b>{{ result.group }}</b>
+          </button>
+          <div v-if="!globalSearchResults.length" class="search-empty">No matching patient, MRN, order or chart section.</div>
+        </div>
       </div>
       <div class="topbar-actions">
         <v-btn v-if="patientScoped" x-small text color="#0f766e" class="font-weight-black" to="/clinical/patients">
@@ -19,8 +46,8 @@
         <v-btn x-small text color="#0f766e" class="font-weight-black" @click="dialogs.scan = true">
           <v-icon x-small left>mdi-barcode-scan</v-icon>Scan bracelet
         </v-btn>
-        <label class="role-switcher">
-          <span>Role</span>
+        <label v-if="canPreviewRole" class="role-switcher">
+          <span>Preview role</span>
           <select v-model="previewRole">
             <option v-for="role in roleOptions" :key="role.value" :value="role.value">
               {{ role.short }}
@@ -1238,6 +1265,8 @@
               :admission-id="currentAdmissionId"
               :role="currentRole"
               :read-only="isPatientDischarged"
+              @saved="toastSuccess('Care plan created and added to the patient chart.')"
+              @error="toastError($event)"
             />
 
             <Patient360EducationTab
@@ -1279,6 +1308,7 @@
               :read-only="isPatientDischarged"
               @open-tab="selectChartTab"
               @saved="toastSuccess"
+              @error="toastError"
             />
 
             <Patient360ImmunizationsTab
@@ -2327,6 +2357,8 @@ const {
   statusOptionsForAvatarType
 } = require('~/util/avatar-workflow.cjs')
 const { findMedicationCatalogItem } = require('~/util/medication-catalog.cjs')
+const { canPreviewRole: rolePreviewAllowed } = require('~/util/patient-360-policy.cjs')
+const { normalizeSearchValue, matchesPatientQuery, exactPatientIdentifierMatch } = require('~/util/patient-search.cjs')
 
 function firstFiledValue(record, keys, fallback = '') {
   for (const key of keys) {
@@ -2497,6 +2529,8 @@ export default {
       activeChartId: this.patientId || 'demo-1',
       previewRole: this.$store.state.auth.role || 'NURSE',
       selectedChartTab: 'Summary',
+      globalSearchQuery: '',
+      globalSearchOpen: false,
       leftPanelCollapsed: false,
       rightPanelOverride: null,
       isNarrowRight: false,
@@ -2871,7 +2905,13 @@ export default {
       return this.patientId || this.activeChartId || (this.$route.params && this.$route.params.id) || ''
     },
     currentRole() {
-      return this.previewRole || this.$store.state.auth.role || 'NURSE'
+      return this.canPreviewRole ? this.previewRole : this.actualRole
+    },
+    actualRole() {
+      return this.$store.state.auth.role || 'NURSE'
+    },
+    canPreviewRole() {
+      return rolePreviewAllowed(this.actualRole, process.env.NODE_ENV)
     },
     canLaunchMedical() {
       return ['ADMIN', 'DOCTOR', 'NP'].includes(this.currentRole)
@@ -2995,6 +3035,51 @@ export default {
     visibleNavigatorTabs() {
       const allowed = NAV_ACCESS[this.currentRole] || NAV_ACCESS.NURSE
       return this.navigatorTabs.filter(item => allowed.includes(item.key))
+    },
+    globalSearchResults() {
+      const query = normalizeSearchValue(this.globalSearchQuery)
+      if (!query) return []
+      const results = []
+      const directory = this.$store.getters['clinical/patientDirectory'] || []
+      directory.filter(patient => matchesPatientQuery(patient, query)).slice(0, 5).forEach(patient => {
+        results.push({
+          key: `patient-${patient.id}`,
+          type: 'patient',
+          patient,
+          title: patient.displayName || patient.name || patient.id,
+          meta: [patient.mrn, patient.currentDepartment].filter(Boolean).join(' · '),
+          group: 'Patient',
+          icon: 'mdi-account-box-outline'
+        })
+      })
+      this.visibleChartTabs.filter(tab => normalizeSearchValue(tab).includes(query)).slice(0, 4).forEach(tab => {
+        results.push({ key: `tab-${tab}`, type: 'tab', tab, title: tab, meta: 'Open chart workspace', group: 'Tab', icon: 'mdi-tab' })
+      })
+      this.visibleNavigatorTabs.forEach(navigator => {
+        const section = (navigator.sections || []).find(item => normalizeSearchValue(`${item.label} ${item.group}`).includes(query))
+        if (normalizeSearchValue(navigator.label).includes(query) || section) {
+          results.push({
+            key: `navigator-${navigator.key}-${section ? section.key : 'root'}`,
+            type: 'navigator',
+            navigator,
+            section,
+            title: section ? section.label : navigator.label,
+            meta: `${navigator.label} navigator${section && section.group ? ` · ${section.group}` : ''}`,
+            group: 'Navigator',
+            icon: navigator.icon || 'mdi-compass-outline'
+          })
+        }
+      })
+      const activities = [
+        ...this.patientLabOrders.map(item => ({ item, tab: 'Lab Results', label: item.testName || item.test || item.name || 'Lab order', icon: 'mdi-flask-outline' })),
+        ...this.patientImagingOrders.map(item => ({ item, tab: 'Lab Results', label: item.modality || item.exam || item.name || 'Imaging order', icon: 'mdi-radiology-box-outline' })),
+        ...this.patientTasks.map(item => ({ item, tab: 'Work List', label: item.title || item.task || 'Care task', icon: 'mdi-clipboard-check-outline' })),
+        ...this.patientMedications.map(item => ({ item, tab: 'Medications', label: item.medication || item.name || 'Medication', icon: 'mdi-pill' }))
+      ]
+      activities.filter(activity => normalizeSearchValue(`${activity.label} ${activity.item.status || ''}`).includes(query)).slice(0, 4).forEach((activity, index) => {
+        results.push({ key: `activity-${activity.tab}-${activity.item.id || index}`, type: 'activity', ...activity, title: activity.label, meta: activity.item.status || 'Open record', group: 'Chart', icon: activity.icon })
+      })
+      return results.slice(0, 12)
     },
     activeNavigator() {
       return this.visibleNavigatorTabs.find(item => item.key === this.selectedNavigator) || this.visibleNavigatorTabs[0] || this.navigatorTabs[0]
@@ -5719,6 +5804,37 @@ export default {
     if (process.client) window.removeEventListener('resize', this.updateViewportBreakpoints)
   },
   methods: {
+    submitGlobalSearch() {
+      const directory = this.$store.getters['clinical/patientDirectory'] || []
+      const exactPatient = directory.find(patient => exactPatientIdentifierMatch(patient, this.globalSearchQuery))
+      if (exactPatient) {
+        this.selectGlobalSearchResult({ type: 'patient', patient: exactPatient })
+        return
+      }
+      if (this.globalSearchResults.length) this.selectGlobalSearchResult(this.globalSearchResults[0])
+    },
+    selectGlobalSearchResult(result) {
+      if (!result) return
+      if (result.type === 'patient' && result.patient) {
+        this.$router.push(`/clinical/patients/${result.patient.id}`)
+      } else if (result.type === 'tab') {
+        this.selectChartTab(result.tab)
+      } else if (result.type === 'navigator') {
+        this.selectNavigator(result.navigator.key)
+        if (result.section) this.selectNavigatorSection(result.section.key)
+      } else if (result.type === 'activity') {
+        const targetTab = this.visibleChartTabs.includes(result.tab) ? result.tab : 'Chart Review'
+        this.selectChartTab(targetTab)
+      }
+      this.clearGlobalSearch()
+    },
+    scheduleGlobalSearchClose() {
+      setTimeout(() => { this.globalSearchOpen = false }, 120)
+    },
+    clearGlobalSearch() {
+      this.globalSearchQuery = ''
+      this.globalSearchOpen = false
+    },
     avatarStorageKey() {
       return `camero_patient_avatar_placements_${this.activePatientId || 'demo'}`
     },
@@ -7659,7 +7775,53 @@ function latestByDate(items, field) {
   gap: 8px;
   color: #64748b;
   justify-content: center;
+  position: relative;
+  z-index: 40;
 }
+.search-box input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.search-box input::placeholder { color: #64748b; opacity: 1; }
+.search-clear { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 0; background: transparent; color: #475569; }
+.global-search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid #94a3b8;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .18);
+}
+.global-search-results > button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.global-search-results > button:hover,
+.global-search-results > button:focus { background: #f0fdfa; outline: 2px solid #0f766e; outline-offset: -2px; }
+.global-search-results > button > span { display: grid; min-width: 0; }
+.global-search-results strong { overflow: hidden; color: #0f172a; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.global-search-results small { overflow: hidden; color: #64748b; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.global-search-results b { color: #0f766e; font-size: 8px; text-transform: uppercase; }
+.search-empty { padding: 14px; color: #64748b; font-size: 10px; text-align: center; }
 .topbar-actions {
   justify-content: flex-end;
   gap: 8px;

@@ -1,5 +1,15 @@
 <template>
   <div class="care-plan-workspace">
+    <div class="care-plan-toolbar">
+      <div>
+        <strong>Patient Care Plan</strong>
+        <span>Prebuilt clinical plans, individualized goals and documented progress</span>
+      </div>
+      <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="openTemplateSelector">
+        <v-icon x-small left>mdi-plus</v-icon>New care plan
+      </v-btn>
+    </div>
+
     <CarePlanSubTabs
       :selected-subview="selectedSubview"
       @select="selectedSubview = $event"
@@ -17,6 +27,9 @@
         :encounter-id="encounterId"
         :admission-id="admissionId"
         :role="role"
+        :read-only="readOnly"
+        @create="openTemplateSelector"
+        @manage="selectedSubview = 'managePlanDocumentProgress'"
       />
 
       <CarePlanManageProgress
@@ -35,6 +48,27 @@
         :role="role"
       />
     </div>
+
+    <v-dialog v-model="showTemplateSelector" max-width="1080" persistent scrollable>
+      <CarePlanTemplateSelector
+        :patient-id="patientId"
+        @close="showTemplateSelector = false"
+        @select="startFromTemplate"
+      />
+    </v-dialog>
+
+    <v-dialog v-model="showCarePlanForm" max-width="1080" persistent scrollable>
+      <CarePlanForm
+        v-if="showCarePlanForm"
+        :patient-id="patientId"
+        :encounter-id="encounterId"
+        :admission-id="admissionId"
+        :template="selectedTemplate"
+        @close="closeCarePlanForm"
+        @save="handleCarePlanSaved"
+        @error="$emit('error', $event)"
+      />
+    </v-dialog>
   </div>
 </template>
 
@@ -43,6 +77,8 @@ import CarePlanSubTabs from './CarePlanSubTabs.vue'
 import CarePlanOverview from './CarePlanOverview.vue'
 import CarePlanManageProgress from './CarePlanManageProgress.vue'
 import CarePlanSummaryAndNote from './CarePlanSummaryAndNote.vue'
+import CarePlanTemplateSelector from './CarePlanTemplateSelector.vue'
+import CarePlanForm from './CarePlanForm.vue'
 
 export default {
   name: 'Patient360CarePlanTab',
@@ -50,7 +86,9 @@ export default {
     CarePlanSubTabs,
     CarePlanOverview,
     CarePlanManageProgress,
-    CarePlanSummaryAndNote
+    CarePlanSummaryAndNote,
+    CarePlanTemplateSelector,
+    CarePlanForm
   },
   props: {
     patientId: { type: String, required: true },
@@ -61,12 +99,48 @@ export default {
   },
   data() {
     return {
-      selectedSubview: 'overview'
+      selectedSubview: 'overview',
+      showTemplateSelector: false,
+      showCarePlanForm: false,
+      selectedTemplate: null
     }
   },
   watch: {
     patientId() {
       this.selectedSubview = 'overview'
+      this.initializeCarePlan()
+    }
+  },
+  mounted() {
+    this.initializeCarePlan()
+  },
+  methods: {
+    initializeCarePlan() {
+      if (this.readOnly) return
+      this.$store.dispatch('carePlan/initializeCarePlanForPatient', {
+        patientId: this.patientId,
+        encounterId: this.encounterId,
+        admissionId: this.admissionId
+      })
+    },
+    openTemplateSelector() {
+      if (this.readOnly) return
+      this.selectedTemplate = null
+      this.showTemplateSelector = true
+    },
+    startFromTemplate(template) {
+      this.selectedTemplate = template
+      this.showTemplateSelector = false
+      this.showCarePlanForm = true
+    },
+    closeCarePlanForm() {
+      this.showCarePlanForm = false
+      this.selectedTemplate = null
+    },
+    handleCarePlanSaved(record) {
+      this.closeCarePlanForm()
+      this.selectedSubview = 'overview'
+      this.$emit('saved', record)
     }
   }
 }
@@ -86,6 +160,20 @@ export default {
   min-height: 0;
   flex-direction: column;
 }
+
+.care-plan-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #cbd5e1;
+  background: #f8fafc;
+}
+.care-plan-toolbar > div { display: grid; gap: 2px; }
+.care-plan-toolbar strong { color: #134e4a; font-size: 13px; }
+.care-plan-toolbar span { color: #64748b; font-size: 10px; }
 
 .read-only-notice {
   display: flex;

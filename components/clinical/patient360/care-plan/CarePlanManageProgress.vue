@@ -159,7 +159,7 @@ export default {
       this.$toast?.success('Progress documented')
     },
     applyToAll(status) {
-      const plans = this.$store.state.carePlan?.carePlans || []
+      const plans = (this.$store.state.carePlan?.carePlans || []).filter(plan => plan.patientId === this.patientId)
       plans.forEach(plan => {
         this.$store.dispatch('carePlan/applyProgressToAllUndocumented', {
           carePlanId: plan.id,
@@ -171,7 +171,7 @@ export default {
       this.$toast?.success('Applied to all undocumented goals')
     },
     markReviewed() {
-      const plans = this.$store.state.carePlan?.carePlans || []
+      const plans = (this.$store.state.carePlan?.carePlans || []).filter(plan => plan.patientId === this.patientId)
       if (plans.length > 0) {
         this.$store.dispatch('carePlan/markCarePlanReviewed', {
           carePlanId: plans[0].id,

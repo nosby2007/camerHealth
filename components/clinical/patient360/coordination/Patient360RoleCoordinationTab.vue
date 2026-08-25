@@ -90,7 +90,7 @@
             <v-checkbox v-model="noteForm.share" :disabled="noteForm.status !== 'signed'" :label="copy.shareTeam" dense />
           </div>
         </v-card-text>
-        <v-card-actions><v-spacer /><v-btn text @click="dialogs.note=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="!noteForm.title || !noteForm.body" @click="saveNote">{{ copy.save }}</v-btn></v-card-actions>
+        <v-card-actions><v-spacer /><v-btn text @click="dialogs.note=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="readOnly || !noteForm.title || !noteForm.body" @click="saveNote">{{ copy.save }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -111,7 +111,7 @@
             <v-text-field v-model="meetingForm.dueAt" type="datetime-local" :label="copy.due" dense outlined />
           </div>
         </v-card-text>
-        <v-card-actions><v-spacer /><v-btn text @click="dialogs.meeting=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="!meetingForm.type || !meetingForm.decisions" @click="saveMeeting">{{ copy.fileMinutes }}</v-btn></v-card-actions>
+        <v-card-actions><v-spacer /><v-btn text @click="dialogs.meeting=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="readOnly || !meetingForm.type || !meetingForm.decisions" @click="saveMeeting">{{ copy.fileMinutes }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -127,7 +127,7 @@
           <v-text-field v-model="assignmentForm.dueAt" type="datetime-local" :label="copy.due" dense outlined />
           <v-textarea v-model.trim="assignmentForm.reason" :label="copy.instructions" rows="3" dense outlined />
         </v-card-text>
-        <v-card-actions><v-spacer /><v-btn text @click="dialogs.assignment=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="!assignmentForm.title || !assignmentForm.assignedRole" @click="saveAssignment">{{ copy.assign }}</v-btn></v-card-actions>
+        <v-card-actions><v-spacer /><v-btn text @click="dialogs.assignment=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="readOnly || !assignmentForm.title || !assignmentForm.assignedRole" @click="saveAssignment">{{ copy.assign }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </section>
@@ -175,12 +175,12 @@ export default {
         social: { eyebrow: 'CONTINUITE ET ACCOMPAGNEMENT', title: 'Service social', subtitle: 'Evaluation sociale, obstacles a la sortie, ressources et coordination familiale.' },
         unit: { eyebrow: 'PILOTAGE OPERATIONNEL', title: 'Pilotage du service', subtitle: 'Couverture du personnel, charge de travail, securite et coordination du service.' },
         supervision: { eyebrow: 'GOUVERNANCE DES SOINS', title: 'Supervision infirmiere', subtitle: 'Surveillance transversale des services, qualite, effectifs et escalades cliniques.' },
-        careTeam: 'Equipe de soins', note: 'Rediger une note', assignment: 'Affecter', conference: 'Conference', readOnly: 'Patient sorti : cet espace est en lecture seule.', workQueue: 'TRAVAIL ACTIF', workQueueTitle: 'Actions et suivis', viewAll: 'Voir la liste', item: 'Element', owner: 'Responsable', due: 'Echeance', status: 'Statut', noDetail: 'Aucun detail', team: 'Equipe', noTasks: 'Aucune action ouverte dans ce perimetre.', governance: 'COORDINATION', meetingsTitle: 'IDT, qualite et reunions cliniques', add: 'Ajouter', noMeetings: 'Aucun compte rendu de reunion pour ce patient.', coverage: 'COUVERTURE', staffTitle: 'Personnel disponible', available: 'Disponible', noStaff: 'Aucun membre actif trouve.', interdisciplinary: 'INTERDISCIPLINAIRE', patientTeam: 'Equipe du patient', openCareTeam: 'Ouvrir toute l equipe', noteDialog: 'Nouvelle note professionnelle', noteTitle: 'Titre de la note', noteBody: 'Evaluation, constat et plan', noteStatus: 'Statut', shareTeam: 'Partager avec l equipe de soins', meetingDialog: 'Conference et compte rendu', meetingType: 'Type de reunion', date: 'Date et heure', attendees: 'Participants', agenda: 'Ordre du jour', decisions: 'Decisions et recommandations', followUp: 'Action de suivi', priority: 'Priorite', instructions: 'Instructions / justification', fileMinutes: 'Classer le compte rendu', assignmentDialog: 'Nouvelle affectation', taskTitle: 'Tache ou intervention', assign: 'Affecter', cancel: 'Annuler', save: 'Enregistrer' }
+        careTeam: 'Equipe de soins', note: 'Rediger une note', assignment: 'Affecter', conference: 'Conference', readOnly: 'Patient sorti : cet espace est en lecture seule.', workQueue: 'TRAVAIL ACTIF', workQueueTitle: 'Actions et suivis', viewAll: 'Voir la liste', item: 'Element', owner: 'Responsable', due: 'Echeance', status: 'Statut', noDetail: 'Aucun detail', team: 'Equipe', noTasks: 'Aucune action ouverte dans ce perimetre.', governance: 'COORDINATION', meetingsTitle: 'IDT, qualite et reunions cliniques', add: 'Ajouter', noMeetings: 'Aucun compte rendu de reunion pour ce patient.', coverage: 'COUVERTURE', staffTitle: 'Personnel disponible', available: 'Disponible', noStaff: 'Aucun membre actif trouve.', interdisciplinary: 'INTERDISCIPLINAIRE', patientTeam: 'Equipe du patient', openCareTeam: 'Ouvrir toute l equipe', noteDialog: 'Nouvelle note professionnelle', noteTitle: 'Titre de la note', noteBody: 'Evaluation, constat et plan', noteStatus: 'Statut', shareTeam: 'Partager avec l equipe de soins', meetingDialog: 'Conference et compte rendu', meetingType: 'Type de reunion', date: 'Date et heure', attendees: 'Participants', agenda: 'Ordre du jour', decisions: 'Decisions et recommandations', followUp: 'Action de suivi', priority: 'Priorite', instructions: 'Instructions / justification', fileMinutes: 'Classer le compte rendu', assignmentDialog: 'Nouvelle affectation', taskTitle: 'Tache ou intervention', assign: 'Affecter', cancel: 'Annuler', save: 'Enregistrer', saveError: 'Enregistrement impossible. Verifiez vos droits et le statut du patient.' }
       const en = {
         social: { eyebrow: 'CONTINUITY AND SUPPORT', title: 'Social Services', subtitle: 'Social assessment, discharge barriers, resources and family coordination.' },
         unit: { eyebrow: 'UNIT OPERATIONS', title: 'Unit Management', subtitle: 'Staff coverage, workload, safety and service coordination.' },
         supervision: { eyebrow: 'NURSING GOVERNANCE', title: 'Nursing Supervision', subtitle: 'Cross-unit oversight, quality, staffing and clinical escalation.' },
-        careTeam: 'Care team', note: 'Write note', assignment: 'Assign', conference: 'Conference', readOnly: 'Discharged patient: this workspace is read only.', workQueue: 'ACTIVE WORK', workQueueTitle: 'Actions and follow-up', viewAll: 'View work list', item: 'Item', owner: 'Owner', due: 'Due', status: 'Status', noDetail: 'No detail', team: 'Team', noTasks: 'No open action in this scope.', governance: 'COORDINATION', meetingsTitle: 'IDT, quality and clinical meetings', add: 'Add', noMeetings: 'No meeting minutes filed for this patient.', coverage: 'COVERAGE', staffTitle: 'Available staff', available: 'Available', noStaff: 'No active staff member found.', interdisciplinary: 'INTERDISCIPLINARY', patientTeam: 'Patient care team', openCareTeam: 'Open full care team', noteDialog: 'New professional note', noteTitle: 'Note title', noteBody: 'Assessment, findings and plan', noteStatus: 'Status', shareTeam: 'Share with care team', meetingDialog: 'Conference and meeting minutes', meetingType: 'Meeting type', date: 'Date and time', attendees: 'Attendees', agenda: 'Agenda', decisions: 'Decisions and recommendations', followUp: 'Follow-up action', priority: 'Priority', instructions: 'Instructions / rationale', fileMinutes: 'File meeting minutes', assignmentDialog: 'New assignment', taskTitle: 'Task or intervention', assign: 'Assign', cancel: 'Cancel', save: 'Save' }
+        careTeam: 'Care team', note: 'Write note', assignment: 'Assign', conference: 'Conference', readOnly: 'Discharged patient: this workspace is read only.', workQueue: 'ACTIVE WORK', workQueueTitle: 'Actions and follow-up', viewAll: 'View work list', item: 'Item', owner: 'Owner', due: 'Due', status: 'Status', noDetail: 'No detail', team: 'Team', noTasks: 'No open action in this scope.', governance: 'COORDINATION', meetingsTitle: 'IDT, quality and clinical meetings', add: 'Add', noMeetings: 'No meeting minutes filed for this patient.', coverage: 'COVERAGE', staffTitle: 'Available staff', available: 'Available', noStaff: 'No active staff member found.', interdisciplinary: 'INTERDISCIPLINARY', patientTeam: 'Patient care team', openCareTeam: 'Open full care team', noteDialog: 'New professional note', noteTitle: 'Note title', noteBody: 'Assessment, findings and plan', noteStatus: 'Status', shareTeam: 'Share with care team', meetingDialog: 'Conference and meeting minutes', meetingType: 'Meeting type', date: 'Date and time', attendees: 'Attendees', agenda: 'Agenda', decisions: 'Decisions and recommendations', followUp: 'Follow-up action', priority: 'Priority', instructions: 'Instructions / rationale', fileMinutes: 'File meeting minutes', assignmentDialog: 'New assignment', taskTitle: 'Task or intervention', assign: 'Assign', cancel: 'Cancel', save: 'Save', saveError: 'Unable to save. Check your access and the patient chart status.' }
       const source = this.isFrench ? fr : en
       return { ...source, ...source[this.mode] }
     },
@@ -221,6 +221,7 @@ export default {
     openMeeting() { this.meetingForm = { type: 'IDT Conference', scheduledAt: this.nowLocal(), attendees: '', agenda: '', decisions: '', followUp: '', assignedRole: this.mode === 'social' ? 'SOCIAL_WORKER' : 'NURSE', dueAt: '' }; this.dialogs.meeting = true },
     openAssignment() { this.assignmentForm = { title: '', assignedRole: this.mode === 'social' ? 'SOCIAL_WORKER' : 'NURSE', priority: 'Today', dueAt: '', reason: '' }; this.dialogs.assignment = true },
     async saveNote() {
+      if (this.readOnly) return this.$emit('error', this.copy.readOnly)
       this.saving = true
       try {
         const note = await this.$store.dispatch('nursing/createClinicalNote', { patientId: this.patientId, noteType: `${this.mode}_coordination_note`, title: this.noteForm.title, body: this.noteForm.body })
@@ -230,9 +231,10 @@ export default {
         }
         this.dialogs.note = false
         this.$emit('saved', this.isFrench ? 'Note enregistree.' : 'Note saved.')
-      } finally { this.saving = false }
+      } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
     },
     async saveMeeting() {
+      if (this.readOnly) return this.$emit('error', this.copy.readOnly)
       this.saving = true
       try {
         const form = this.meetingForm
@@ -240,16 +242,17 @@ export default {
         if (form.followUp) await this.$store.dispatch('clinical/createTask', { patientId: this.patientId, title: form.followUp, assignedToRole: form.assignedRole, priority: 'Today', dueAt: form.dueAt || null, relatedType: 'care-team-conference', actionReason: `${form.type}: ${form.decisions}` })
         this.dialogs.meeting = false
         this.$emit('saved', this.isFrench ? 'Compte rendu classe.' : 'Meeting minutes filed.')
-      } finally { this.saving = false }
+      } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
     },
     async saveAssignment() {
+      if (this.readOnly) return this.$emit('error', this.copy.readOnly)
       this.saving = true
       try {
         const form = this.assignmentForm
         await this.$store.dispatch('clinical/createTask', { patientId: this.patientId, title: form.title, assignedToRole: form.assignedRole, priority: form.priority, dueAt: form.dueAt || null, relatedType: `${this.mode}-coordination`, actionReason: form.reason || `${this.copy.title} assignment` })
         this.dialogs.assignment = false
         this.$emit('saved', this.isFrench ? 'Tache affectee.' : 'Task assigned.')
-      } finally { this.saving = false }
+      } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
     }
   }
 }

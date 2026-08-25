@@ -34,8 +34,8 @@
             <span class="value">{{ overview.overdueCount }}</span>
           </div>
         </div>
-        <v-btn x-small text color="#0f766e" @click="$router.push(`/clinical/patients/${patientId}?tab=Care Plan`)">
-          View Care Plan Progress
+        <v-btn x-small text color="#0f766e" @click="$emit('manage')">
+          View care plan progress
         </v-btn>
       </section>
 
@@ -48,6 +48,29 @@
         </div>
       </section>
     </div>
+
+    <section class="overview-section full-width">
+      <div class="section-heading">
+        <h3>Active and historical care plans</h3>
+        <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="$emit('create')">
+          <v-icon x-small left>mdi-plus</v-icon>Add from template
+        </v-btn>
+      </div>
+      <div v-if="carePlans.length" class="plan-list">
+        <button v-for="plan in carePlans" :key="plan.id" type="button" class="plan-row" @click="$emit('manage', plan.id)">
+          <v-icon small color="#0f766e">mdi-clipboard-check-outline</v-icon>
+          <span>
+            <strong>{{ plan.name || plan.title }}</strong>
+            <small>{{ plan.diagnosis || plan.type || 'Clinical care plan' }}</small>
+          </span>
+          <span class="plan-meta">
+            <b :class="statusClass(plan.status)">{{ plan.status || 'active' }}</b>
+            <small>{{ formatDate(plan.createdAt) }}</small>
+          </span>
+        </button>
+      </div>
+      <div v-else class="empty">No care plan has been created for this encounter.</div>
+    </section>
 
     <!-- Bottom: Most Recent Care Plan Note -->
     <section class="overview-section full-width">
@@ -77,7 +100,8 @@ export default {
     patientId: { type: String, required: true },
     encounterId: { type: String, required: true },
     admissionId: { type: String, default: '' },
-    role: { type: String, default: '' }
+    role: { type: String, default: '' },
+    readOnly: { type: Boolean, default: false }
   },
   computed: {
     overview() {
@@ -88,6 +112,11 @@ export default {
     },
     mostRecentNote() {
       return this.$store.getters['carePlan/mostRecentCarePlanNote']?.(this.patientId)
+    },
+    carePlans() {
+      return (this.$store.getters['carePlan/carePlansForPatient']?.(this.patientId) || [])
+        .slice()
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     }
   },
   methods: {
@@ -95,6 +124,9 @@ export default {
       if (!date) return '-'
       const d = new Date(date)
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    },
+    statusClass(status) {
+      return ['completed', 'resolved'].includes(String(status || '').toLowerCase()) ? 'completed' : 'active'
     }
   }
 }
@@ -128,6 +160,18 @@ export default {
   font-weight: 800;
   text-transform: uppercase;
 }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.section-heading h3 { margin: 0; }
+.plan-list { display: grid; border: 1px solid #d7e0df; }
+.plan-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-bottom: 1px solid #e2e8f0; background: #fff; color: #334155; text-align: left; cursor: pointer; }
+.plan-row:last-child { border-bottom: 0; }
+.plan-row:hover { background: #f0fdfa; }
+.plan-row > span { display: grid; gap: 2px; min-width: 0; }
+.plan-row strong { overflow: hidden; color: #134e4a; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.plan-row small { color: #64748b; font-size: 10px; }
+.plan-meta { justify-items: end; }
+.plan-meta b { padding: 2px 6px; background: #dcfce7; color: #166534; font-size: 9px; text-transform: uppercase; }
+.plan-meta b.completed { background: #e2e8f0; color: #475569; }
 
 .summary-stats {
   display: flex;
