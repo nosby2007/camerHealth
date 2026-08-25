@@ -4,6 +4,7 @@ const { z } = require('zod')
 const prisma = require('../lib/prisma')
 const { authenticate } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
+const { requirePatientForFacility } = require('../lib/tenant')
 
 const router = Router()
 
@@ -48,6 +49,7 @@ router.get('/', authenticate, async (req, res, next) => {
 // POST /api/appointments
 router.post('/', authenticate, validate(appointmentSchema), async (req, res, next) => {
   try {
+    await requirePatientForFacility(req.body.patientId, req.user.facilityId, { select: { id: true } })
     const appointment = await prisma.appointment.create({
       data: {
         patientId: req.body.patientId,

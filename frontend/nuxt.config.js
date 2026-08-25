@@ -251,15 +251,9 @@ export default {
     },
     // ─── Workbox (Service Worker) ──────────────────────────────────────────────
     workbox: {
-      // Cache les assets statiques (JS, CSS, fonts) pour le mode hors-ligne
-      // IMPORTANT : les données de patients ne sont jamais mises en cache
-      runtimeCaching: [
-        {
-          urlPattern: 'https://fonts.googleapis.com/.*',
-          handler: 'cacheFirst',
-          strategyOptions: { cacheName: 'google-fonts', cacheExpiration: { maxAgeSeconds: 60 * 60 * 24 * 30 } }
-        }
-      ]
+      // Clinical pages and PHI must not enter a shared browser cache. Secure,
+      // facility-scoped offline sync will be enabled as a separate feature.
+      enabled: false
     }
   },
   /*

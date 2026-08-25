@@ -117,8 +117,8 @@
 
     <NavigatorStrip
       ref="navigatorStrip"
-      v-if="activePatient"
-      :patient-id="activePatient.id"
+      v-if="activePatient && activePatientId"
+      :patient-id="activePatientId"
       :patient-name="activePatient.name"
       :patient-meta="`${activePatient.age}y • ${activePatient.admissionStatus || 'Active'}`"
       :current-state="isPatientDischarged ? 'discharge' : currentWorkflowState"
@@ -2392,6 +2392,7 @@ import TimedCareDocumentationDialog from '~/components/clinical/patient360/flows
 import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
 import Patient360ContextForms from '~/components/clinical/patient360/dialogs/Patient360ContextForms.vue'
 import NavigatorStrip from '~/components/clinical/patient360/NavigatorStrip.vue'
+import FlowSection from '~/components/clinical/patient360/FlowSection.vue'
 import maleFrontAvatar from '~/assets/images/clinical/avatar/male-front.jpg'
 import maleBackAvatar from '~/assets/images/clinical/avatar/male-back.jpg'
 import femaleFrontAvatar from '~/assets/images/clinical/avatar/female-front.png'
@@ -2419,46 +2420,6 @@ function chartEventStatus(value) {
   if (/pending|draft|requested|due|review|watch|moderate|held/.test(normalized)) return 'warning'
   if (/normal|stable|complete|completed|signed|final|resolved|healed|administered|filed|negative/.test(normalized)) return 'good'
   return 'neutral'
-}
-
-const FlowSection = {
-  name: 'FlowSection',
-  props: {
-    title: { type: String, required: true },
-    columns: { type: Array, default: () => [] },
-    rows: { type: Array, default: () => [] },
-    required: { type: Boolean, default: false },
-    action: { type: String, default: '' }
-  },
-  template: `
-    <article class="flow-section">
-      <header>
-        <div>
-          <v-icon x-small color="#0f766e">mdi-table</v-icon>
-          <strong>{{ title }}</strong>
-          <span v-if="required" class="required-dot">Required Documentation</span>
-        </div>
-        <button v-if="action" type="button" class="flow-action" @click="$emit('action', action)">
-          <v-icon x-small>mdi-pencil-outline</v-icon>Open form
-        </button>
-      </header>
-      <div class="flow-grid" :style="{ gridTemplateColumns: gridTemplate }">
-        <div class="flow-cell label-cell"></div>
-        <div v-for="column in columns" :key="column" class="flow-cell column-cell">{{ column }}</div>
-        <template v-for="row in rows">
-          <div :key="row.label + '-label'" class="flow-cell row-label">{{ row.label }}</div>
-          <div v-for="column in columns" :key="row.label + column" class="flow-cell value-cell">
-            {{ row.values && row.values[column] !== undefined ? row.values[column] : row.value || '-' }}
-          </div>
-        </template>
-      </div>
-    </article>
-  `,
-  computed: {
-    gridTemplate() {
-      return `minmax(220px, 1.1fr) repeat(${this.columns.length}, minmax(120px, 1fr))`
-    }
-  }
 }
 
 const ALL_CLINICAL_TABS = [
@@ -2567,7 +2528,8 @@ export default {
   components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360RoleCoordinationTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
   props: {
     patientId: { type: String, default: '' },
-    patientScoped: { type: Boolean, default: false }
+    patientScoped: { type: Boolean, default: false },
+    patientRecord: { type: Object, default: null }
   },
   data() {
     return {
@@ -5760,6 +5722,7 @@ export default {
       const patient = this.findPatientRecord(this.activePatientId)
       if (!patient) {
         return {
+          id: this.activePatientId,
           initials: 'SH',
           name: this.patientScoped ? 'Patient not found' : 'Sheria A. Howington',
           gender: 'Female',
@@ -5781,6 +5744,7 @@ export default {
       }
       const name = patient.displayName || patient.name || `${patient.firstName || ''} ${patient.lastName || ''}`.trim()
       return {
+        id: patient.id || this.activePatientId,
         initials: initialsFor(name),
         name,
         gender: patient.gender || patient.sex || 'Sex N/A',
@@ -7576,6 +7540,7 @@ export default {
       }
     },
     findPatientRecord(id) {
+      if (this.patientRecord && this.patientRecord.id === id) return this.patientRecord
       const all = this.$store.getters['clinical/patientDirectoryAll'] || []
       const directory = this.$store.getters['clinical/patientDirectory'] || []
       const patients = this.$store.getters['clinical/getPatients'] || []

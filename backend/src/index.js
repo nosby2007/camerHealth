@@ -144,25 +144,6 @@ async function main() {
       console.warn('[SUPABASE] SUPABASE_STORAGE_BUCKET is not configured; image upload may fail.')
     }
 
-    // One-time cleanup: delete all existing lab/imaging orders and their charges
-    const deleted = await prisma.$transaction([
-      prisma.charge.deleteMany({ where: { sourceType: { in: ['lab_order', 'imaging_order'] } } }),
-      prisma.labOrder.deleteMany({}),
-      prisma.imagingOrder.deleteMany({})
-    ])
-    console.log(`[CLEANUP] Deleted lab/imaging orders and charges:`, deleted.map(r => r.count))
-    // Recalc all invoice statuses and close Open charges on fully-paid invoices
-    const allInvoices = await prisma.invoice.findMany({ include: { charges: true, payments: true } })
-    for (const inv of allInvoices) {
-      const totalCharges = inv.charges.filter(c => c.status === 'Open').reduce((s, c) => s + c.total, 0)
-      const totalPaid = inv.payments.reduce((s, p) => s + p.amount, 0)
-      const isFullyPaid = totalPaid > 0 && totalPaid >= totalCharges
-      if (isFullyPaid) {
-        await prisma.invoice.update({ where: { id: inv.id }, data: { status: 'Paid' } })
-        await prisma.charge.updateMany({ where: { invoiceId: inv.id, status: 'Open' }, data: { status: 'Waived' } })
-      }
-    }
-    console.log('[BILLING] Invoice status reconciliation complete')
   } catch (err) {
     console.warn('[DB] Connection warning:', err.message)
   }

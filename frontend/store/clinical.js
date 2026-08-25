@@ -3,6 +3,11 @@ import { patientApi, clinicalApi, appointmentApi, inpatientApi } from '~/service
 
 export const namespaced = true
 
+function belongsToAuthenticatedFacility(record, rootState) {
+  if (record.facilityId) return record.facilityId === rootState.auth.facilityId
+  return Boolean(record.institution && record.institution === rootState.auth.institution)
+}
+
 export const state = () => ({
   patients: [],
   visits: [],
@@ -36,11 +41,15 @@ export const state = () => ({
 export const mutations = {
   SET_PATIENTS(state, patients) { state.patients = patients },
   ADD_PATIENT(state, patient) { state.patients.push(patient) },
+  UPSERT_PATIENT(state, patient) {
+    const idx = state.patients.findIndex(item => item.id === patient.id)
+    if (idx === -1) state.patients.push(patient)
+    else state.patients.splice(idx, 1, patient)
+  },
   UPDATE_PATIENT(state, patient) {
     const idx = state.patients.findIndex(item => item.id === patient.id)
     if (idx !== -1) {
       state.patients.splice(idx, 1, patient)
-      saveToLocalStorage('patients', state.patients)
     }
   },
   UPDATE_PATIENT_ADMISSION_FLAG(state, payload) {
@@ -96,7 +105,10 @@ export const mutations = {
     if (idx !== -1) { state.invoices.splice(idx, 1, invoice); saveToLocalStorage('invoices', state.invoices) }
   },
   LOAD_FROM_STORAGE(state) {
-    state.patients = loadFromLocalStorage('patients') || []
+    // Patient identity is server-authoritative. The former global cache could
+    // survive a facility switch and must never repopulate another tenant.
+    state.patients = []
+    if (process.client) localStorage.removeItem('camero_health_patients')
     state.visits = loadFromLocalStorage('visits') || []
     state.fieldReports = loadFromLocalStorage('fieldReports') || []
     state.inpatients = loadFromLocalStorage('inpatients') || []
@@ -1113,95 +1125,94 @@ export const actions = {
 }
 
 export const getters = {
-  patientDirectoryAll: state => state.patients,
-  patientById: state => id => state.patients.find(p => p.id === id),
-  getPatient: state => id => state.patients.find(p => p.id === id) || null,
-  patientsByDepartment: state => dept =>
-    state.patients.filter(p => p.currentDepartment === dept || p.departmentRouting === dept),
+  patientDirectoryAll: (state, getters, rootState) => state.patients.filter(p => belongsToAuthenticatedFacility(p, rootState)),
+  patientById: (state, getters, rootState) => id => state.patients.find(p =>
+    p.id === id && belongsToAuthenticatedFacility(p, rootState)
+  ),
+  getPatient: (state, getters) => id => getters.patientById(id) || null,
+  patientsByDepartment: (state, getters) => dept =>
+    getters.patientDirectoryAll.filter(p => p.currentDepartment === dept || p.departmentRouting === dept),
   loading: state => state.loading,
   error: state => state.error,
 
   // FILTERED DATA
-  getPatients: (state, getters, rootState) => {
-    if (getters.isClinical) {
-      return state.patients.filter(p => !p.institution || p.institution === rootState.auth.institution || p.facilityId === rootState.auth.facilityId)
-    }
-    return state.patients
-  },
+  getPatients: (state, getters) => getters.patientDirectoryAll,
 
   getVisits: (state, getters, rootState) => {
     if (getters.isClinical) {
-      return state.visits.filter(v => !v.institution || v.institution === rootState.auth.institution || v.facilityId === rootState.auth.facilityId)
+      return state.visits.filter(v => belongsToAuthenticatedFacility(v, rootState))
     }
     return state.visits
   },
 
   getFieldReports: state => state.fieldReports,
   getInpatients: (state, getters, rootState) => {
-    if (getters.isClinical) return state.inpatients.filter(i => !i.institution || i.institution === rootState.auth.institution || i.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.inpatients.filter(i => belongsToAuthenticatedFacility(i, rootState))
     return state.inpatients
   },
   getAppointments: (state, getters, rootState) => {
-    if (getters.isClinical) return state.appointments.filter(a => !a.institution || a.institution === rootState.auth.institution || a.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.appointments.filter(a => belongsToAuthenticatedFacility(a, rootState))
     return state.appointments
   },
   getMedications: (state, getters, rootState) => {
-    if (getters.isClinical) return state.medications.filter(m => !m.institution || m.institution === rootState.auth.institution || m.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.medications.filter(m => belongsToAuthenticatedFacility(m, rootState))
     return state.medications
   },
   getLabOrders: (state, getters, rootState) => {
-    if (getters.isClinical) return state.labOrders.filter(l => !l.institution || l.institution === rootState.auth.institution || l.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.labOrders.filter(l => belongsToAuthenticatedFacility(l, rootState))
     return state.labOrders
   },
   getImagingOrders: (state, getters, rootState) => {
-    if (getters.isClinical) return state.imagingOrders.filter(i => !i.institution || i.institution === rootState.auth.institution || i.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.imagingOrders.filter(i => belongsToAuthenticatedFacility(i, rootState))
     return state.imagingOrders
   },
   getInvoices: (state, getters, rootState) => {
-    if (getters.isClinical) return state.invoices.filter(i => !i.institution || i.institution === rootState.auth.institution || i.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.invoices.filter(i => belongsToAuthenticatedFacility(i, rootState))
     return state.invoices
   },
   getVitalSigns: (state, getters, rootState) => {
-    if (getters.isClinical) return state.vitalSigns.filter(v => !v.institution || v.institution === rootState.auth.institution || v.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.vitalSigns.filter(v => belongsToAuthenticatedFacility(v, rootState))
     return state.vitalSigns
   },
   getNursingNotes: (state, getters, rootState) => {
-    if (getters.isClinical) return state.nursingNotes.filter(n => !n.institution || n.institution === rootState.auth.institution || n.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.nursingNotes.filter(n => belongsToAuthenticatedFacility(n, rootState))
     return state.nursingNotes
   },
   getMedicalNotes: (state, getters, rootState) => {
-    if (getters.isClinical) return state.medicalNotes.filter(n => !n.institution || n.institution === rootState.auth.institution || n.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.medicalNotes.filter(n => belongsToAuthenticatedFacility(n, rootState))
     return state.medicalNotes
   },
   getTasks: (state, getters, rootState) => {
-    if (getters.isClinical) return state.tasks.filter(t => !t.institution || t.institution === rootState.auth.institution || t.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.tasks.filter(t => belongsToAuthenticatedFacility(t, rootState))
     return state.tasks
   },
   patientCareTeam: state => patientId => state.careTeamMembers.filter(item => item.patientId === patientId),
   patientSocialAssessments: state => patientId => state.socialAssessments.filter(item => item.patientId === patientId),
   getDocuments: (state, getters, rootState) => {
-    if (getters.isClinical) return state.documents.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.documents.filter(item => belongsToAuthenticatedFacility(item, rootState))
     return state.documents
   },
   getInsuranceClaims: (state, getters, rootState) => {
-    if (getters.isClinical) return state.insuranceClaims.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.insuranceClaims.filter(item => belongsToAuthenticatedFacility(item, rootState))
     return state.insuranceClaims
   },
   getReferrals: (state, getters, rootState) => {
-    if (getters.isClinical) return state.referrals.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.referrals.filter(item => belongsToAuthenticatedFacility(item, rootState))
     return state.referrals
   },
   getMedicalTemplates: (state, getters, rootState) => {
     const templates = state.medicalTemplates && state.medicalTemplates.length ? state.medicalTemplates : defaultMedicalTemplates()
-    if (getters.isClinical) return templates.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return templates.filter(item =>
+      (!item.facilityId && !item.institution) || belongsToAuthenticatedFacility(item, rootState)
+    )
     return templates
   },
   getPortalMessages: (state, getters, rootState) => {
-    if (getters.isClinical) return state.portalMessages.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.portalMessages.filter(item => belongsToAuthenticatedFacility(item, rootState))
     return state.portalMessages
   },
   getVoiceDrafts: (state, getters, rootState) => {
-    if (getters.isClinical) return state.voiceDrafts.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
+    if (getters.isClinical) return state.voiceDrafts.filter(item => belongsToAuthenticatedFacility(item, rootState))
     return state.voiceDrafts
   },
   patientDirectory: (state, getters) => {

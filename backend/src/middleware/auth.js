@@ -81,16 +81,11 @@ function authorize(...roles) {
 }
 
 /**
- * Ensure the request is scoped to the user's facility.
- * Compares X-Facility-ID header or req.params.facilityId to req.user.facilityId.
+ * Reject any caller-supplied facility that differs from the authenticated
+ * staff profile. Route queries must still use req.user.facilityId.
  */
 function facilityScoped(req, res, next) {
   const requestFacilityId = req.headers['x-facility-id'] || req.params.facilityId || req.body?.facilityId
-
-  // ADMIN users can access any facility
-  if (req.user.role === 'ADMIN' || req.user.role === 'PUBLIC_HEALTH_OFFICER') {
-    return next()
-  }
 
   if (requestFacilityId && requestFacilityId !== req.user.facilityId) {
     return res.status(403).json({ error: 'Cross-facility access is not permitted.' })

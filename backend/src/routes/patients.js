@@ -4,6 +4,7 @@ const { z } = require('zod')
 const prisma = require('../lib/prisma')
 const { authenticate } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
+const { requireFacilityId, patientIdentifierWhere } = require('../lib/tenant')
 
 const router = Router()
 
@@ -80,6 +81,7 @@ function formatPatient(p) {
   return {
     id: p.id,
     mrn: p.mrn,
+    facilityId: p.facilityId,
     name: `${p.firstName} ${p.lastName}`,
     displayName: `${p.firstName} ${p.lastName}`,
     firstName: p.firstName,
@@ -144,13 +146,8 @@ router.get('/', authenticate, async (req, res, next) => {
     const search = req.query.search || ''
     const skip = (page - 1) * limit
 
-    const where = {}
-    if (req.user && req.user.facilityId && req.user.role !== 'ADMIN') {
-      where.OR = [
-        { facilityId: req.user.facilityId },
-        { facilityId: null }
-      ]
-    }
+    const facilityId = requireFacilityId(req)
+    const where = { facilityId }
 
     if (search) {
       const searchFilter = [
@@ -159,15 +156,7 @@ router.get('/', authenticate, async (req, res, next) => {
         { mrn: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search } }
       ]
-      if (where.OR) {
-        where.AND = [
-          { OR: where.OR },
-          { OR: searchFilter }
-        ]
-        delete where.OR
-      } else {
-        where.OR = searchFilter
-      }
+      where.OR = searchFilter
     }
 
     const [rawPatients, total] = await Promise.all([
@@ -194,21 +183,16 @@ router.get('/', authenticate, async (req, res, next) => {
 // ─── GET /api/patients/:id ─────────────────────────────────────────────────
 router.get('/:id', authenticate, async (req, res, next) => {
   try {
+    const facilityId = requireFacilityId(req)
     const patient = await prisma.patient.findFirst({
-      where: {
-        OR: [
-          { id: req.params.id },
-          { mrn: req.params.id },
-          { externalId: req.params.id }
-        ]
-      },
+      where: patientIdentifierWhere(req.params.id, facilityId),
       include: {
-        visits: { orderBy: { createdAt: 'desc' }, take: 10 },
-        labOrders: { orderBy: { createdAt: 'desc' }, take: 10 },
-        imagingOrders: { orderBy: { createdAt: 'desc' }, take: 10 },
-        medications: { orderBy: { createdAt: 'desc' }, take: 10 },
-        appointments: { orderBy: { date: 'desc' }, take: 5 },
-        invoices: { orderBy: { createdAt: 'desc' }, take: 5 }
+        visits: { where: { facilityId }, orderBy: { createdAt: 'desc' }, take: 10 },
+        labOrders: { where: { facilityId }, orderBy: { createdAt: 'desc' }, take: 10 },
+        imagingOrders: { where: { facilityId }, orderBy: { createdAt: 'desc' }, take: 10 },
+        medications: { where: { facilityId }, orderBy: { createdAt: 'desc' }, take: 10 },
+        appointments: { where: { facilityId }, orderBy: { date: 'desc' }, take: 5 },
+        invoices: { where: { facilityId }, orderBy: { createdAt: 'desc' }, take: 5 }
       }
     })
     if (!patient) {
@@ -236,8 +220,10 @@ router.get('/:id', authenticate, async (req, res, next) => {
 router.post('/', authenticate, validate(patientSchema), async (req, res, next) => {
   try {
     const b = req.body
-    const facility = await prisma.facility.findUnique({ where: { id: req.user.facilityId } })
-    const mrn = await generateMRN(req.user.facilityId, facility.code)
+    const facilityId = requireFacilityId(req)
+    const facility = await prisma.facility.findUnique({ where: { id: facilityId } })
+    if (!facility) return res.status(403).json({ error: 'Assigned facility not found' })
+    const mrn = await generateMRN(facilityId, facility.code)
 
     const dobString = b.dateOfBirth || b.dob || null
     let validDob
@@ -295,14 +281,14 @@ router.post('/', authenticate, validate(patientSchema), async (req, res, next) =
           referredDate: b.referredDate || '',
           age: b.age || null
         },
-        facilityId: req.user.facilityId,
+        facilityId,
         createdById: req.user.id
       }
     })
 
     await prisma.auditLog.create({
       data: {
-        facilityId: req.user.facilityId,
+        facilityId,
         action: 'PATIENT_REGISTERED',
         actorId: req.user.id,
         targetId: patient.id,

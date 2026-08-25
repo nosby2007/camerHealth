@@ -88,7 +88,7 @@
           <span>{{ item.gender }}</span>
         </template>
         <template v-slot:item.riskLevel="{ item }">
-          <v-chip x-small label dark :color="riskColor(item.riskLevel)" class="font-weight-black">{{ item.riskLevel.toUpperCase() }}</v-chip>
+          <v-chip x-small label dark :color="riskColor(item.riskLevel || 'low')" class="font-weight-black">{{ (item.riskLevel || 'low').toUpperCase() }}</v-chip>
         </template>
         <template v-slot:item.currentDepartment="{ item }">
           <div class="d-flex align-center flex-wrap" style="gap:4px">
@@ -101,7 +101,7 @@
             <div v-if="item.pendingAdmission" class="d-flex align-center admit-pending-row">
               <v-chip x-small label color="#C0392B" dark class="font-weight-black">
                 <v-icon x-small left>mdi-bed</v-icon>
-                ADMISSION PENDING: {{ item.pendingAdmission.toUpperCase() }}
+                ADMISSION PENDING: {{ String(item.pendingAdmission || '').toUpperCase() }}
               </v-chip>
               <v-btn
                 x-small
