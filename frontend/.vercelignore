@@ -1,0 +1,9 @@
+# Ignore backend from Vercel frontend builds
+backend/
+
+# Ignore node_modules & local build artifacts
+node_modules/
+.nuxt/
+dist/
+.env
+.env.*
