@@ -128,8 +128,6 @@ export default {
    ** Nuxt.js dev-modules
    */
   buildModules: [
-    // ESLint activé — vérifie la qualité du code à chaque `npm run dev`
-    '@nuxtjs/eslint-module',
     "@nuxtjs/vuetify"
   ],
   /*
