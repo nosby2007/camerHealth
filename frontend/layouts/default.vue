@@ -141,6 +141,7 @@ export default {
         { icon: 'mdi-bed',               titleKey: 'Inpatient',         to: '/clinical/inpatient',    roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },
         { icon: 'mdi-calendar-clock',   titleKey: 'Appointments',      to: '/clinical/appointments', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },
         { icon: 'mdi-pill',             titleKey: 'Medications',       to: '/clinical/medications',  roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'PHARMACY'] },
+        { icon: 'mdi-printer-check',    titleKey: 'Report Center',     to: '/clinical/report-center', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS'] },
         { icon: 'mdi-file-export',      titleKey: 'menu.field_input',  to: '/clinical/reports',      roles: ['ADMIN'] },
         // ── Lab & Imaging ──
         { icon: 'mdi-flask',            titleKey: 'Laboratory',        to: '/clinical/lab',          roles: ['LAB', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] },

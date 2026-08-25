@@ -302,11 +302,10 @@ export const actions = {
   }
 }
 
-function scoped(items, rootState, rootGetters) {
-  const isClinical = rootGetters['clinical/isClinical']
-  if (!isClinical) return items
-  const facilityId = rootState.auth.facilityId
-  return items.filter(item => !item.facilityId || item.facilityId === facilityId)
+function scoped(items, rootState) {
+  const facilityId = rootState.auth && rootState.auth.facilityId
+  if (!facilityId) return []
+  return items.filter(item => item && item.facilityId === facilityId)
 }
 
 function assertPatientWritable(rootState, patientId) {
@@ -381,12 +380,26 @@ function makeId(prefix) {
 }
 
 function save(key, value) {
-  if (process.client) localStorage.setItem(PREFIX + key, JSON.stringify(value))
+  if (!process.client) return
+  const facilityId = sessionStorage.getItem('camero_facility_id')
+  if (!facilityId) return
+  const scopedValue = Array.isArray(value) ? value.filter(item => item && item.facilityId === facilityId) : value
+  localStorage.setItem(`${PREFIX}${facilityId}_${key}`, JSON.stringify(scopedValue))
 }
 
 function load(key) {
   if (!process.client) return null
-  try { return JSON.parse(localStorage.getItem(PREFIX + key)) } catch (_) { return null }
+  const facilityId = sessionStorage.getItem('camero_facility_id')
+  localStorage.removeItem(PREFIX + key)
+  if (!facilityId) return null
+  const storageKey = `${PREFIX}${facilityId}_${key}`
+  try {
+    const parsed = JSON.parse(localStorage.getItem(storageKey))
+    return Array.isArray(parsed) ? parsed.filter(item => item && item.facilityId === facilityId) : parsed
+  } catch (_) {
+    localStorage.removeItem(storageKey)
+    return null
+  }
 }
 
 function mapSnakeTask(task) {

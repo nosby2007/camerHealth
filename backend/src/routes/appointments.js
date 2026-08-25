@@ -17,6 +17,15 @@ const appointmentSchema = z.object({
   providerId: z.string().optional()
 })
 
+const appointmentUpdateSchema = z.object({
+  status: z.enum(['Scheduled', 'Completed', 'Cancelled', 'No-Show']).optional(),
+  date: z.string().min(1).optional(),
+  time: z.string().nullable().optional(),
+  type: z.string().min(1).optional(),
+  notes: z.string().nullable().optional(),
+  providerId: z.string().uuid().nullable().optional()
+})
+
 // GET /api/appointments
 router.get('/', authenticate, async (req, res, next) => {
   try {
@@ -80,9 +89,9 @@ router.post('/', authenticate, validate(appointmentSchema), async (req, res, nex
 })
 
 // PATCH /api/appointments/:id
-router.patch('/:id', authenticate, async (req, res, next) => {
+router.patch('/:id', authenticate, validate(appointmentUpdateSchema), async (req, res, next) => {
   try {
-    const { status, date, time, notes, providerId } = req.body
+    const { status, date, time, type, notes, providerId } = req.body
     const existing = await prisma.appointment.findFirst({
       where: { id: req.params.id, facilityId: req.user.facilityId }
     })
@@ -94,6 +103,7 @@ router.patch('/:id', authenticate, async (req, res, next) => {
         ...(status && { status }),
         ...(date && { date: new Date(date) }),
         ...(time !== undefined && { time }),
+        ...(type !== undefined && { type }),
         ...(notes !== undefined && { notes }),
         ...(providerId !== undefined && { providerId })
       }

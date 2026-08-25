@@ -9,12 +9,8 @@ function assertCarePlanWritable(rootState, patientId) {
 const scoped = (arr, rootState, rootGetters) => {
   if (!arr) return []
   const facility = rootState.auth?.facilityId
-  const institution = rootState.auth?.institution
-  return arr.filter(item => {
-    if (facility && item.facilityId && item.facilityId !== facility) return false
-    if (institution && item.institution && item.institution !== institution) return false
-    return true
-  })
+  if (!facility) return []
+  return arr.filter(item => item && item.facilityId === facility)
 }
 
 const DEFAULT_CARE_PLAN_TEMPLATES = [

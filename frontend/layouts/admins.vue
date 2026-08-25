@@ -138,6 +138,7 @@ export default {
 				{ icon: 'mdi-pill', titleKey: 'Prescribe Rx', to: '/clinical/medications', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE'] },
 				{ icon: 'mdi-pharmacy', titleKey: 'Pharmacy', to: '/clinical/pharmacy', roles: ['ADMIN', 'PHARMACY', 'DOCTOR', 'NURSE', 'NP'] },
 				{ icon: 'mdi-file-document-multiple', titleKey: 'Documents', to: '/clinical/documents', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'RECORDS'] },
+				{ icon: 'mdi-printer-check', titleKey: 'Report Center', to: '/clinical/report-center', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS'] },
 				{ icon: 'mdi-text-box-check', titleKey: 'Templates', to: '/clinical/templates', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] },
 				{ icon: 'mdi-account-arrow-right', titleKey: 'Referrals', to: '/clinical/referrals', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'SOCIAL_WORKER'] },
 				{ icon: 'mdi-shield-check', titleKey: 'Claims', to: '/clinical/insurance', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },

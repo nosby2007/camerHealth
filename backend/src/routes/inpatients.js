@@ -24,9 +24,9 @@ const admitSchema = z.object({
 router.get('/', authenticate, async (req, res, next) => {
   try {
     const where = { facilityId: req.user.facilityId }
-    if (req.query.status) {
+    if (req.query.status && req.query.status !== 'all') {
       where.status = req.query.status
-    } else {
+    } else if (req.query.status !== 'all') {
       where.status = { not: 'Discharged' }
     }
 

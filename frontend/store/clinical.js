@@ -4,8 +4,15 @@ import { patientApi, clinicalApi, appointmentApi, inpatientApi } from '~/service
 export const namespaced = true
 
 function belongsToAuthenticatedFacility(record, rootState) {
-  if (record.facilityId) return record.facilityId === rootState.auth.facilityId
-  return Boolean(record.institution && record.institution === rootState.auth.institution)
+  const facilityId = rootState.auth && rootState.auth.facilityId
+  return Boolean(facilityId && record && record.facilityId === facilityId)
+}
+
+function tenantFields(rootState) {
+  return {
+    facilityId: rootState.auth.facilityId,
+    institution: rootState.auth.institution
+  }
 }
 
 export const state = () => ({
@@ -112,7 +119,10 @@ export const mutations = {
     state.visits = loadFromLocalStorage('visits') || []
     state.fieldReports = loadFromLocalStorage('fieldReports') || []
     state.inpatients = loadFromLocalStorage('inpatients') || []
-    state.appointments = loadFromLocalStorage('appointments') || []
+    // Appointments are server-authoritative. Legacy APT-* demo records cannot
+    // be patched by the UUID-based API and may also survive a facility switch.
+    state.appointments = []
+    if (process.client) localStorage.removeItem('camero_health_appointments')
     state.medications = loadFromLocalStorage('medications') || []
     state.labOrders = loadFromLocalStorage('labOrders') || []
     state.imagingOrders = loadFromLocalStorage('imagingOrders') || []
@@ -235,7 +245,7 @@ export const actions = {
       id,
       mrn,
       barcode,
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       region: patient.region || rootState.auth.region,
       createdAt: new Date().toISOString()
     }
@@ -325,9 +335,12 @@ export const actions = {
     const institution = rootState.auth.institution || 'CameroHealth Demo Hospital'
     const region = rootState.auth.region || 'Littoral'
     const now = new Date().toISOString()
-    const patientId = 'PAT-WF360-DEMO'
+    const facilityId = rootState.auth.facilityId
+    if (!facilityId) throw new Error('A facility-scoped session is required')
+    const tenant = tenantFields(rootState)
+    const patientId = `PAT-WF360-${facilityId.slice(0, 8).toUpperCase()}`
 
-    if (state.patients.some(patient => patient.id === patientId && patient.institution === institution)) {
+    if (state.patients.some(patient => patient.id === patientId && patient.facilityId === facilityId)) {
       return patientId
     }
 
@@ -349,7 +362,7 @@ export const actions = {
       patientStatus: 'Admitted',
       patientClass: 'Inpatient',
       clinicSite: institution,
-      institution,
+      ...tenant,
       allergies: 'Penicillin',
       medicalHistory: 'Hypertension, chronic lower limb wound',
       surgicalHistory: 'None reported',
@@ -362,7 +375,7 @@ export const actions = {
     commit('ADD_INPATIENT', {
       id: 'INP-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       region,
       ward: 'Medecine interne',
       bedNumber: 'MI-12',
@@ -373,7 +386,7 @@ export const actions = {
     commit('ADD_VITAL_SIGNS', {
       id: 'VIT-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       region,
       recordedBy: rootState.auth.fullName || 'Nurse Demo',
       recordedAt: now,
@@ -392,7 +405,7 @@ export const actions = {
     commit('ADD_VISIT', {
       id: 'VIS-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       region,
       encounterType: 'INFIRMIER',
       chiefComplaint: 'Follow-up wound dressing and pain review',
@@ -410,7 +423,7 @@ export const actions = {
     commit('ADD_MEDICATION', {
       id: 'MED-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       drug: 'Amlodipine',
       dose: '5 mg',
       frequency: 'Daily',
@@ -421,7 +434,7 @@ export const actions = {
     commit('ADD_LAB_ORDER', {
       id: 'LAB-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       test: 'CBC with differential',
       priority: 'Routine',
       status: 'Requested',
@@ -431,7 +444,7 @@ export const actions = {
     commit('ADD_IMAGING_ORDER', {
       id: 'IMG-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       exam: 'Lower limb ultrasound',
       priority: 'Today',
       status: 'Requested',
@@ -441,7 +454,7 @@ export const actions = {
     commit('ADD_TASK', {
       id: 'TSK-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       title: 'Wound dressing and photo documentation',
       assignedToRole: 'NURSE',
       priority: 'Today',
@@ -457,7 +470,7 @@ export const actions = {
     commit('ADD_NURSING_NOTE', {
       id: 'NNT-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       recordedBy: rootState.auth.fullName || 'Nurse Demo',
       recordedAt: now,
       observation: 'Patient stable. Wound dressing clean, pain controlled after repositioning.',
@@ -475,7 +488,7 @@ export const actions = {
     commit('ADD_VISIT', {
       ...visit,
       id: Date.now(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       region: rootState.auth.region,
       createdAt: new Date().toISOString()
     })
@@ -484,7 +497,7 @@ export const actions = {
     commit('ADD_FIELD_REPORT', {
       ...report,
       id: Date.now(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       createdAt: new Date().toISOString()
     })
   },
@@ -524,7 +537,7 @@ export const actions = {
     commit('ADD_INPATIENT', {
       ...record,
       id: 'INP-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Admitted',
       admittedAt: new Date().toISOString()
     })
@@ -538,7 +551,7 @@ export const actions = {
     commit('ADD_APPOINTMENT', {
       ...appt,
       id: 'APT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Scheduled',
       createdAt: new Date().toISOString()
     })
@@ -551,7 +564,7 @@ export const actions = {
     const medicationRecord = {
       ...med,
       id: 'MED-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Active',
       prescribedAt: new Date().toISOString()
     }
@@ -568,7 +581,7 @@ export const actions = {
     const labOrderRecord = {
       ...order,
       id: 'LAB-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Requested',
       requestedAt: new Date().toISOString()
     }
@@ -585,7 +598,7 @@ export const actions = {
     const imagingOrderRecord = {
       ...order,
       id: 'IMG-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Requested',
       requestedAt: new Date().toISOString()
     }
@@ -601,7 +614,7 @@ export const actions = {
     commit('ADD_INVOICE', {
       ...invoice,
       id: 'INV-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Unpaid',
       createdAt: new Date().toISOString()
     })
@@ -614,7 +627,7 @@ export const actions = {
     commit('ADD_VITAL_SIGNS', {
       ...vitals,
       id: 'VIT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution
+      ...tenantFields(rootState)
     })
   },
   addNursingNote({ state, commit, rootState }, note) {
@@ -624,7 +637,7 @@ export const actions = {
     commit('ADD_NURSING_NOTE', {
       ...note,
       id: 'NNT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       createdBy: actor,
       createdAt: now,
       updatedBy: actor,
@@ -648,7 +661,7 @@ export const actions = {
     commit('ADD_MEDICAL_NOTE', {
       ...note,
       id: 'MNT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       createdBy: actor,
       createdAt: now,
       updatedBy: actor,
@@ -724,7 +737,7 @@ export const actions = {
     const record = {
       ...task,
       id: 'TSK-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'pending',
       createdAt: now,
       createdBy: actor,
@@ -750,7 +763,7 @@ export const actions = {
     const record = {
       ...member,
       id: 'CTM-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       addedAt: new Date().toISOString(),
       addedBy: rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
     }
@@ -762,7 +775,7 @@ export const actions = {
     const record = {
       ...assessment,
       id: 'SDH-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       assessedAt: new Date().toISOString(),
       assessedBy: rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
     }
@@ -802,7 +815,7 @@ export const actions = {
     const record = {
       ...document,
       id: 'DOC-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: document.status || 'Filed',
       createdAt: new Date().toISOString(),
       createdBy: rootState.auth.fullName || 'Unknown user'
@@ -819,7 +832,7 @@ export const actions = {
     commit('ADD_INSURANCE_CLAIM', {
       ...claim,
       id: 'CLM-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: claim.status || 'Draft',
       createdAt: new Date().toISOString()
     })
@@ -831,7 +844,7 @@ export const actions = {
     commit('ADD_REFERRAL', {
       ...referral,
       id: 'REF-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: referral.status || 'Open',
       createdAt: new Date().toISOString(),
       createdBy: rootState.auth.fullName || 'Unknown user'
@@ -844,7 +857,7 @@ export const actions = {
     commit('ADD_MEDICAL_TEMPLATE', {
       ...template,
       id: 'TPL-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       createdAt: new Date().toISOString()
     })
   },
@@ -855,7 +868,7 @@ export const actions = {
     commit('ADD_PORTAL_MESSAGE', {
       ...message,
       id: 'MSG-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: message.status || 'Unread',
       createdAt: new Date().toISOString()
     })
@@ -867,7 +880,7 @@ export const actions = {
     commit('ADD_VOICE_DRAFT', {
       ...draft,
       id: 'VOC-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: draft.status || 'Draft',
       createdAt: new Date().toISOString(),
       createdBy: rootState.auth.fullName || 'Unknown user'
@@ -1116,6 +1129,40 @@ export const actions = {
       throw err
     }
   },
+  async transferPatient({ state, dispatch, rootState }, { patientId, targetDepartment, reason }) {
+    const admission = state.inpatients.find(item =>
+      item.patientId === patientId &&
+      belongsToAuthenticatedFacility(item, rootState) &&
+      String(item.status || '').toLowerCase() !== 'discharged'
+    )
+    if (!admission) throw new Error('Active inpatient admission not found')
+
+    const previousDepartment = admission.ward || 'Unspecified unit'
+    const transferredAt = new Date().toISOString()
+    const updated = await dispatch('updateInpatient', {
+      id: admission.id,
+      ward: targetDepartment,
+      status: 'Admitted'
+    })
+    await dispatch('updatePatient', {
+      patientId,
+      updates: { departmentRouting: targetDepartment, currentDepartment: targetDepartment }
+    })
+    const document = await dispatch('createDocument', {
+      patientId,
+      title: `Transfer - ${previousDepartment} to ${targetDepartment}`,
+      category: 'Transfer',
+      status: 'Filed',
+      content: [
+        `Transferred: ${transferredAt}`,
+        `From: ${previousDepartment}`,
+        `To: ${targetDepartment}`,
+        `Reason: ${reason || 'Clinical transfer'}`,
+        `Prepared by: ${rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'}`
+      ].join('\n')
+    })
+    return { inpatient: updated.inpatient || updated, document }
+  },
   async provisionPatientWorkflowDemo({ dispatch, state }) {
     await dispatch('fetchPatients')
     const first = state.patients[0]
@@ -1138,83 +1185,35 @@ export const getters = {
   // FILTERED DATA
   getPatients: (state, getters) => getters.patientDirectoryAll,
 
-  getVisits: (state, getters, rootState) => {
-    if (getters.isClinical) {
-      return state.visits.filter(v => belongsToAuthenticatedFacility(v, rootState))
-    }
-    return state.visits
-  },
-
-  getFieldReports: state => state.fieldReports,
-  getInpatients: (state, getters, rootState) => {
-    if (getters.isClinical) return state.inpatients.filter(i => belongsToAuthenticatedFacility(i, rootState))
-    return state.inpatients
-  },
-  getAppointments: (state, getters, rootState) => {
-    if (getters.isClinical) return state.appointments.filter(a => belongsToAuthenticatedFacility(a, rootState))
-    return state.appointments
-  },
-  getMedications: (state, getters, rootState) => {
-    if (getters.isClinical) return state.medications.filter(m => belongsToAuthenticatedFacility(m, rootState))
-    return state.medications
-  },
-  getLabOrders: (state, getters, rootState) => {
-    if (getters.isClinical) return state.labOrders.filter(l => belongsToAuthenticatedFacility(l, rootState))
-    return state.labOrders
-  },
-  getImagingOrders: (state, getters, rootState) => {
-    if (getters.isClinical) return state.imagingOrders.filter(i => belongsToAuthenticatedFacility(i, rootState))
-    return state.imagingOrders
-  },
-  getInvoices: (state, getters, rootState) => {
-    if (getters.isClinical) return state.invoices.filter(i => belongsToAuthenticatedFacility(i, rootState))
-    return state.invoices
-  },
-  getVitalSigns: (state, getters, rootState) => {
-    if (getters.isClinical) return state.vitalSigns.filter(v => belongsToAuthenticatedFacility(v, rootState))
-    return state.vitalSigns
-  },
-  getNursingNotes: (state, getters, rootState) => {
-    if (getters.isClinical) return state.nursingNotes.filter(n => belongsToAuthenticatedFacility(n, rootState))
-    return state.nursingNotes
-  },
-  getMedicalNotes: (state, getters, rootState) => {
-    if (getters.isClinical) return state.medicalNotes.filter(n => belongsToAuthenticatedFacility(n, rootState))
-    return state.medicalNotes
-  },
-  getTasks: (state, getters, rootState) => {
-    if (getters.isClinical) return state.tasks.filter(t => belongsToAuthenticatedFacility(t, rootState))
-    return state.tasks
-  },
-  patientCareTeam: state => patientId => state.careTeamMembers.filter(item => item.patientId === patientId),
-  patientSocialAssessments: state => patientId => state.socialAssessments.filter(item => item.patientId === patientId),
-  getDocuments: (state, getters, rootState) => {
-    if (getters.isClinical) return state.documents.filter(item => belongsToAuthenticatedFacility(item, rootState))
-    return state.documents
-  },
-  getInsuranceClaims: (state, getters, rootState) => {
-    if (getters.isClinical) return state.insuranceClaims.filter(item => belongsToAuthenticatedFacility(item, rootState))
-    return state.insuranceClaims
-  },
-  getReferrals: (state, getters, rootState) => {
-    if (getters.isClinical) return state.referrals.filter(item => belongsToAuthenticatedFacility(item, rootState))
-    return state.referrals
-  },
+  getVisits: (state, getters, rootState) => state.visits.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getFieldReports: (state, getters, rootState) => state.fieldReports.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getInpatients: (state, getters, rootState) => state.inpatients.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getAppointments: (state, getters, rootState) => state.appointments.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getMedications: (state, getters, rootState) => state.medications.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getLabOrders: (state, getters, rootState) => state.labOrders.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getImagingOrders: (state, getters, rootState) => state.imagingOrders.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getInvoices: (state, getters, rootState) => state.invoices.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getVitalSigns: (state, getters, rootState) => state.vitalSigns.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getNursingNotes: (state, getters, rootState) => state.nursingNotes.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getMedicalNotes: (state, getters, rootState) => state.medicalNotes.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getTasks: (state, getters, rootState) => state.tasks.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  patientCareTeam: (state, getters, rootState) => patientId => state.careTeamMembers.filter(item =>
+    item.patientId === patientId && belongsToAuthenticatedFacility(item, rootState)
+  ),
+  patientSocialAssessments: (state, getters, rootState) => patientId => state.socialAssessments.filter(item =>
+    item.patientId === patientId && belongsToAuthenticatedFacility(item, rootState)
+  ),
+  getDocuments: (state, getters, rootState) => state.documents.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getInsuranceClaims: (state, getters, rootState) => state.insuranceClaims.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getReferrals: (state, getters, rootState) => state.referrals.filter(item => belongsToAuthenticatedFacility(item, rootState)),
   getMedicalTemplates: (state, getters, rootState) => {
     const templates = state.medicalTemplates && state.medicalTemplates.length ? state.medicalTemplates : defaultMedicalTemplates()
-    if (getters.isClinical) return templates.filter(item =>
+    return templates.filter(item =>
       (!item.facilityId && !item.institution) || belongsToAuthenticatedFacility(item, rootState)
     )
-    return templates
   },
-  getPortalMessages: (state, getters, rootState) => {
-    if (getters.isClinical) return state.portalMessages.filter(item => belongsToAuthenticatedFacility(item, rootState))
-    return state.portalMessages
-  },
-  getVoiceDrafts: (state, getters, rootState) => {
-    if (getters.isClinical) return state.voiceDrafts.filter(item => belongsToAuthenticatedFacility(item, rootState))
-    return state.voiceDrafts
-  },
+  getPortalMessages: (state, getters, rootState) => state.portalMessages.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getVoiceDrafts: (state, getters, rootState) => state.voiceDrafts.filter(item => belongsToAuthenticatedFacility(item, rootState)),
   patientDirectory: (state, getters) => {
     const patients = getters.getPatients || []
     const visits = getters.getVisits || []
@@ -1391,17 +1390,31 @@ export const getters = {
 }
 
 function saveToLocalStorage(key, data) {
-  if (process.client) {
-    localStorage.setItem('camero_health_' + key, JSON.stringify(data))
-  }
+  if (!process.client) return
+  const facilityId = sessionStorage.getItem('camero_facility_id')
+  if (!facilityId) return
+  const scopedData = key === 'medicalTemplates' || !Array.isArray(data)
+    ? data
+    : data.filter(item => item && item.facilityId === facilityId)
+  localStorage.setItem(`camero_health_${facilityId}_${key}`, JSON.stringify(scopedData))
 }
 
 function loadFromLocalStorage(key) {
-  if (process.client) {
-    const data = localStorage.getItem('camero_health_' + key)
-    return data ? JSON.parse(data) : null
+  if (!process.client) return null
+  const facilityId = sessionStorage.getItem('camero_facility_id')
+  const legacyKey = 'camero_health_' + key
+  localStorage.removeItem(legacyKey)
+  if (!facilityId) return null
+  const data = localStorage.getItem(`camero_health_${facilityId}_${key}`)
+  if (!data) return null
+  try {
+    const parsed = JSON.parse(data)
+    if (key === 'medicalTemplates' || !Array.isArray(parsed)) return parsed
+    return parsed.filter(item => item && item.facilityId === facilityId)
+  } catch {
+    localStorage.removeItem(`camero_health_${facilityId}_${key}`)
+    return null
   }
-  return null
 }
 
 function getChangedFields(previous, updates) {

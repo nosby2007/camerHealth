@@ -87,6 +87,8 @@ function formatPatient(p) {
     firstName: p.firstName,
     middleName: p.middleName || '',
     lastName: p.lastName,
+    dateOfBirth: p.dateOfBirth,
+    dob: p.dateOfBirth,
     gender: p.gender,
     age,
     phone: p.phone || '',
@@ -95,6 +97,9 @@ function formatPatient(p) {
     country: p.country || 'Cameroon',
     bloodType: p.bloodType || '',
     allergies: p.allergies || '',
+    medicalHistory: p.medicalHistory || '',
+    surgicalHistory: p.surgicalHistory || '',
+    familyHistory: p.familyHistory || '',
     status: p.status,
 
     // Clinical routing

@@ -54,7 +54,9 @@
             </option>
           </select>
         </label>
-        <v-btn x-small text color="#0f766e" class="font-weight-black">Print</v-btn>
+        <v-btn v-if="patientScoped && activePatientId" x-small text color="#0f766e" class="font-weight-black" @click="openReportCenter">
+          <v-icon x-small left>mdi-printer</v-icon>Print
+        </v-btn>
         <v-btn x-small text color="#0f766e" class="font-weight-black">Chart correction</v-btn>
         <v-btn v-if="patientScoped && activePatientRecord" x-small tile depressed color="#D97706" dark class="font-weight-black ml-1" @click="openTransferModal">
           <v-icon x-small left>mdi-swap-horizontal</v-icon>Transfer Patient
@@ -5866,6 +5868,10 @@ export default {
       }
       this.transferForm.reason = ''
       this.showTransferDialog = true
+    },
+    openReportCenter() {
+      if (!this.activePatientId) return
+      this.$router.push({ path: '/clinical/report-center', query: { patientId: this.activePatientId } })
     },
     async submitTransfer() {
       if (!this.transferForm.targetDepartment) {
