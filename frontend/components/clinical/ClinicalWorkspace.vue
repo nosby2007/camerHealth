@@ -3080,7 +3080,7 @@ export default {
         results.push({ key: `tab-${tab}`, type: 'tab', tab, title: tab, meta: 'Open chart workspace', group: 'Tab', icon: 'mdi-tab' })
       })
       this.visibleNavigatorTabs.forEach(navigator => {
-        const section = (navigator.sections || []).find(item => normalizeSearchValue(`${item.label} ${item.group}`).includes(query))
+        const section = (navigator.sections || []).map(item => (typeof item === 'string' ? { key: item, label: item, group: '' } : item)).find(item => normalizeSearchValue(`${item.label} ${item.group}`).includes(query))
         if (normalizeSearchValue(navigator.label).includes(query) || section) {
           results.push({
             key: `navigator-${navigator.key}-${section ? section.key : 'root'}`,
