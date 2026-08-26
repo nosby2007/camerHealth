@@ -37,10 +37,12 @@ if ($projectId -notin $accessibleProjects) {
 $requiredVariables = @(
   'API_URL',
   'VUE_APP_GOOGLE_MAPS_API_KEY',
-  'SUPABASE_URL',
-  'SUPABASE_KEY',
   'CLIENT_ID'
 )
+$supabaseAuthEnabled = [Environment]::GetEnvironmentVariable('ENABLE_SUPABASE_AUTH') -match '^(1|true|yes|on)$'
+if ($supabaseAuthEnabled) {
+  $requiredVariables += @('SUPABASE_URL', 'SUPABASE_KEY')
+}
 $missingVariables = $requiredVariables | Where-Object { -not [Environment]::GetEnvironmentVariable($_) }
 if ($missingVariables.Count -gt 0) {
   throw "Missing frontend build variables: $($missingVariables -join ', ')."

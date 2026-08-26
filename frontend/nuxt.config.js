@@ -5,13 +5,18 @@ require("./config");
 // ─── Validation des variables d'environnement obligatoires ────────────────────
 // L'application refuse de démarrer si une variable critique est absente.
 // Ajoutez ici toute variable indispensable.
+const supabaseAuthEnabled = ['1', 'true', 'yes', 'on'].includes(
+  String(process.env.ENABLE_SUPABASE_AUTH || '').trim().toLowerCase()
+)
+
 const REQUIRED_ENV = [
   'API_URL',
   'VUE_APP_GOOGLE_MAPS_API_KEY',
-  'SUPABASE_URL',
-  'SUPABASE_KEY',
   'CLIENT_ID'
 ]
+if (supabaseAuthEnabled) {
+  REQUIRED_ENV.push('SUPABASE_URL', 'SUPABASE_KEY')
+}
 const missingVars = REQUIRED_ENV.filter(k => !process.env[k])
 if (missingVars.length > 0) {
   throw new Error(

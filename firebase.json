@@ -64,7 +64,7 @@
   },
   "functions": {
     "source": "backend",
-    "runtime": "nodejs20",
+    "runtime": "nodejs22",
     "ignore": [
       ".env",
       ".env.*",
