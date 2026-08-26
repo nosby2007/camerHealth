@@ -6,13 +6,14 @@
     </v-container>
 
     <ClinicalWorkspace
-      v-else-if="patientId"
+      v-else-if="patient"
       :patient-id="resolvedPatientId"
+      :patient-record="patient"
       patient-scoped
     />
 
     <v-alert v-else type="error" tile dense class="ma-4">
-      No patient ID specified.
+      {{ patientId ? 'Patient chart not found or unavailable.' : 'No patient ID specified.' }}
       <nuxt-link to="/clinical/patients" class="white--text font-weight-black ml-2">Back to patient list</nuxt-link>
     </v-alert>
   </div>
@@ -29,7 +30,8 @@ export default {
   data() {
     return {
       ready: false,
-      loading: true
+      loading: true,
+      loadedPatient: null
     }
   },
   computed: {
@@ -37,13 +39,21 @@ export default {
       return this.$route.params.id
     },
     allPatients() {
-      const dir = this.$store.getters['clinical/patientDirectory'] || []
-      const raw = (this.$store.state.clinical && this.$store.state.clinical.patients) || []
-      return [...dir, ...raw]
+      const directory = this.$store.getters['clinical/patientDirectory'] || []
+      const scopedPatients = this.$store.getters['clinical/patientDirectoryAll'] || []
+      return Array.from(new Map(
+        [...directory, ...scopedPatients]
+          .filter(patient => patient && patient.id)
+          .map(patient => [patient.id, patient])
+      ).values())
     },
     patient() {
       if (!this.patientId) return null
       const q = String(this.patientId).trim().toLowerCase()
+      if (this.loadedPatient && [this.loadedPatient.id, this.loadedPatient.mrn, this.loadedPatient.externalId]
+        .some(value => String(value || '').toLowerCase() === q)) {
+        return this.loadedPatient
+      }
       return this.allPatients.find(p =>
         String(p.id || '').toLowerCase() === q ||
         String(p.mrn || '').toLowerCase() === q ||
@@ -55,39 +65,21 @@ export default {
     }
   },
   async mounted() {
-    this.$store.commit('clinical/LOAD_FROM_STORAGE')
     this.$store.commit('facility/RELOAD_FROM_STORAGE')
     if (this.$store.hasModule && this.$store.hasModule('nursing')) {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
     }
 
-    try {
-      await this.$store.dispatch('clinical/fetchPatients')
-    } catch (e) {
-      console.warn('Could not fetch patient registry, using local state:', e)
-    }
-
-    if (!this.patient && this.patientId) {
+    if (this.patientId) {
       try {
         const { data } = await patientApi.get(this.patientId)
         if (data) {
           const rec = data.patient || data
-          this.$store.commit('clinical/ADD_PATIENT', rec)
+          this.loadedPatient = rec
+          this.$store.commit('clinical/UPSERT_PATIENT', rec)
         }
       } catch (err) {
-        console.warn('Direct API lookup failed, initializing local chart state for ID:', this.patientId)
-        const fallbackPatient = {
-          id: this.patientId,
-          firstName: 'Patient',
-          lastName: this.patientId.slice(0, 8),
-          displayName: `Patient (${this.patientId.slice(0, 8)})`,
-          mrn: `MRN-${this.patientId.slice(0, 6).toUpperCase()}`,
-          gender: 'Unknown',
-          riskLevel: 'low',
-          lifecycleStatus: 'active',
-          currentDepartment: 'Registry'
-        }
-        this.$store.commit('clinical/ADD_PATIENT', fallbackPatient)
+        console.warn('Direct API lookup failed for patient chart:', this.patientId, err)
       }
     }
 
@@ -103,4 +95,3 @@ export default {
   background: #dbe8e5;
 }
 </style>
-

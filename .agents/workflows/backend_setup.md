@@ -61,7 +61,7 @@ supabase migration new init_schema
 #      dob date,
 #      created_at timestamp with time zone default now()
 #    );
-#    
+#
 #    create table clinical_reports (
 #      id uuid primary key default uuid_generate_v4(),
 #      patient_id uuid references patients(id),

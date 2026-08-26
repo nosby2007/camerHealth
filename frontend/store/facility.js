@@ -439,8 +439,8 @@ export const getters = {
             status: w.status,
             queueKey: 'inpatient'
           }))
-          const specialties = d.specialties && d.specialties.length > 0 
-            ? d.specialties 
+          const specialties = d.specialties && d.specialties.length > 0
+            ? d.specialties
             : (deptSpecialtiesMap[d.code] || [d.name])
 
           return {

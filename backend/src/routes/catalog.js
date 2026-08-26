@@ -3,6 +3,7 @@ const { Router } = require('express')
 const { z } = require('zod')
 const prisma = require('../lib/prisma')
 const { authenticate, authorize } = require('../middleware/auth')
+const { verifyToken } = require('../lib/jwt')
 const { validate } = require('../middleware/validate')
 
 const router = Router()
@@ -28,8 +29,7 @@ router.get('/', async (req, res, next) => {
     if (req.headers.authorization) {
       try {
         const token = req.headers.authorization.split(' ')[1]
-        const jwt = require('jsonwebtoken')
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'camerohealth_secret_key_2026_dev')
+        const decoded = verifyToken(token)
         facilityId = decoded.facilityId
       } catch (e) {}
     }

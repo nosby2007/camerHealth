@@ -3,12 +3,8 @@ import { withBase } from '~/util/nursing-workflow.cjs'
 const scoped = (arr, rootState) => {
   if (!arr) return []
   const facility = rootState.auth?.facilityId
-  const institution = rootState.auth?.institution
-  return arr.filter(item => {
-    if (facility && item.facilityId && item.facilityId !== facility) return false
-    if (institution && item.institution && item.institution !== institution) return false
-    return true
-  })
+  if (!facility) return []
+  return arr.filter(item => item && item.facilityId === facility)
 }
 
 export const state = () => ({
@@ -129,15 +125,16 @@ export const actions = {
 }
 
 export const getters = {
-  patientDischargeOverview: (state) => (patientId) => {
-    const milestones = state.dischargeMilestones.filter(item => item.patientId === patientId)
-    const readiness = state.dischargeReadiness.filter(item => item.patientId === patientId)
-    const followUpOrders = state.followUpOrders.filter(item => item.patientId === patientId)
-    const tasks = state.dischargeTasks.filter(item => item.patientId === patientId)
-    const notes = state.dischargeNotes.filter(item => item.patientId === patientId)
-    const meds = state.dischargeMedications.filter(item => item.patientId === patientId)
-    const precautions = state.returnPrecautions.filter(item => item.patientId === patientId)
-    const appointments = state.appointments.filter(item => item.patientId === patientId)
+  patientDischargeOverview: (state, getters, rootState) => (patientId) => {
+    const forPatient = records => scoped(records, rootState).filter(item => item.patientId === patientId)
+    const milestones = forPatient(state.dischargeMilestones)
+    const readiness = forPatient(state.dischargeReadiness)
+    const followUpOrders = forPatient(state.followUpOrders)
+    const tasks = forPatient(state.dischargeTasks)
+    const notes = forPatient(state.dischargeNotes)
+    const meds = forPatient(state.dischargeMedications)
+    const precautions = forPatient(state.returnPrecautions)
+    const appointments = forPatient(state.appointments)
     const openItems = [...milestones, ...readiness, ...followUpOrders, ...tasks].filter(item => !['completed', 'closed', 'done', 'resolved'].includes(String(item.status || '').toLowerCase()))
     return {
       milestoneCount: milestones.length,

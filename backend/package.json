@@ -4,10 +4,15 @@
   "description": "CameroHealth REST API — Express + Prisma + Supabase PostgreSQL",
   "private": true,
   "type": "commonjs",
-  "main": "src/index.js",
+  "main": "firebase.js",
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "test:db": "node test-db.js",
+    "test:tenant": "node scripts/verify-tenant-isolation.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -18,16 +23,18 @@
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
+    "@supabase/supabase-js": "^2.39.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.1",
+    "firebase-functions": "^7.3.2",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "uuid": "^10.0.0",
+    "uuid": "^11.1.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

@@ -158,10 +158,10 @@
             <v-select v-model="draftDepartment.type" :items="typeOptions" label="Department Type" dense outlined tile class="mb-2"></v-select>
             <v-text-field v-model="draftDepartment.leadRole" label="Department Head (Chef de Service)" dense outlined tile class="mb-2"></v-text-field>
             <v-text-field v-model="draftDepartment.headNurseRole" label="Nurse Manager (Major de Service)" dense outlined tile class="mb-2"></v-text-field>
-            
+
             <v-textarea v-model="wardUnitsText" label="Wards / Units (one per line)" dense outlined tile rows="3"
               hint="Inpatient wards assigned to this department" persistent-hint class="mb-3"></v-textarea>
-            
+
             <v-textarea v-model="specialtiesText" label="Specialties (one per line)" dense outlined tile rows="3"
               hint="Medical & clinical specialties" persistent-hint class="mb-3"></v-textarea>
 
@@ -197,10 +197,10 @@
           <v-select v-model="newDept.type" :items="typeOptions" label="Department Type *" dense outlined tile class="mb-2"></v-select>
           <v-text-field v-model="newDept.leadRole" label="Department Head Title" dense outlined tile class="mb-2" placeholder="e.g. Head of Cardiology"></v-text-field>
           <v-text-field v-model="newDept.headNurseRole" label="Nurse Manager Title" dense outlined tile class="mb-2" placeholder="e.g. Cardiology Nurse Manager"></v-text-field>
-          
+
           <v-textarea v-model="newWardsText" label="Wards / Units (one per line)" dense outlined tile rows="2"
             placeholder="e.g. Cardiac Care Ward, ICU Unit" class="mb-2" hint="Creates inpatient units for patient admission" persistent-hint></v-textarea>
-          
+
           <v-textarea v-model="newSpecialtiesText" label="Specialties (one per line)" dense outlined tile rows="2"
             placeholder="e.g. Cardiology, Electrophysiology" class="mb-2"></v-textarea>
 
@@ -312,7 +312,7 @@ export default {
     typeColor(type) {
       return { clinical: '#0B3D2E', diagnostic: '#D97706', support: '#6D28D9', administrative: '#003366' }[type] || '#6B7280'
     },
-    
+
     /** Filter inpatient ward/unit services for a department */
     wardUnits(department) {
       return department.wards || department.services || []
@@ -328,7 +328,7 @@ export default {
 
     async updateDepartment() {
       if (!this.draftDepartment) return
-      
+
       try {
         await this.$store.dispatch('facility/updateDepartment', {
           id: this.draftDepartment.id,

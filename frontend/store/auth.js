@@ -178,7 +178,7 @@ export const actions = {
     }
   },
 
-  load({ commit }) {
+  async load({ commit }) {
     const session = loadSession()
     if (session && session.staffId) {
       commit('RESTORE_SESSION')
@@ -187,6 +187,26 @@ export const actions = {
       if (token) {
         const { setAuthToken } = require('~/services/api')
         setAuthToken(token)
+        try {
+          const { data } = await authApi.me()
+          const staff = data.staff || {}
+          const facility = data.facility || {}
+          const refreshedSession = {
+            ...session,
+            user: { staffId: staff.staffCode || session.staffId, role: staff.role || session.role },
+            role: staff.role || session.role,
+            staffId: staff.staffCode || session.staffId,
+            fullName: staff.fullName || session.fullName,
+            email: staff.email || session.email,
+            institution: facility.name || session.institution,
+            facilityId: facility.id || staff.facilityId || session.facilityId,
+            permissions: session.permissions || []
+          }
+          persistSession(refreshedSession)
+          commit('SET_SESSION', refreshedSession)
+        } catch (error) {
+          commit('CLEAR_SESSION')
+        }
       }
     }
   },

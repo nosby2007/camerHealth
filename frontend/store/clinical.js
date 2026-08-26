@@ -1,6 +1,19 @@
+const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
 import { patientApi, clinicalApi, appointmentApi, inpatientApi } from '~/services/api'
 
 export const namespaced = true
+
+function belongsToAuthenticatedFacility(record, rootState) {
+  const facilityId = rootState.auth && rootState.auth.facilityId
+  return Boolean(facilityId && record && record.facilityId === facilityId)
+}
+
+function tenantFields(rootState) {
+  return {
+    facilityId: rootState.auth.facilityId,
+    institution: rootState.auth.institution
+  }
+}
 
 export const state = () => ({
   patients: [],
@@ -35,15 +48,15 @@ export const state = () => ({
 export const mutations = {
   SET_PATIENTS(state, patients) { state.patients = patients },
   ADD_PATIENT(state, patient) { state.patients.push(patient) },
-  UPDATE_PATIENT(state, patient) {
-    const idx = state.patients.findIndex(p => p.id === patient.id)
-    if (idx !== -1) state.patients.splice(idx, 1, patient)
+  UPSERT_PATIENT(state, patient) {
+    const idx = state.patients.findIndex(item => item.id === patient.id)
+    if (idx === -1) state.patients.push(patient)
+    else state.patients.splice(idx, 1, patient)
   },
   UPDATE_PATIENT(state, patient) {
     const idx = state.patients.findIndex(item => item.id === patient.id)
     if (idx !== -1) {
       state.patients.splice(idx, 1, patient)
-      saveToLocalStorage('patients', state.patients)
     }
   },
   UPDATE_PATIENT_ADMISSION_FLAG(state, payload) {
@@ -99,11 +112,17 @@ export const mutations = {
     if (idx !== -1) { state.invoices.splice(idx, 1, invoice); saveToLocalStorage('invoices', state.invoices) }
   },
   LOAD_FROM_STORAGE(state) {
-    state.patients = loadFromLocalStorage('patients') || []
+    // Patient identity is server-authoritative. The former global cache could
+    // survive a facility switch and must never repopulate another tenant.
+    state.patients = []
+    if (process.client) localStorage.removeItem('camero_health_patients')
     state.visits = loadFromLocalStorage('visits') || []
     state.fieldReports = loadFromLocalStorage('fieldReports') || []
     state.inpatients = loadFromLocalStorage('inpatients') || []
-    state.appointments = loadFromLocalStorage('appointments') || []
+    // Appointments are server-authoritative. Legacy APT-* demo records cannot
+    // be patched by the UUID-based API and may also survive a facility switch.
+    state.appointments = []
+    if (process.client) localStorage.removeItem('camero_health_appointments')
     state.medications = loadFromLocalStorage('medications') || []
     state.labOrders = loadFromLocalStorage('labOrders') || []
     state.imagingOrders = loadFromLocalStorage('imagingOrders') || []
@@ -217,21 +236,23 @@ export const mutations = {
 }
 
 export const actions = {
-  registerPatient({ commit, rootState }, patient) {
+  registerPatientLocal({ commit, rootState }, patient) {
     const id = 'PAT-' + Math.random().toString(36).substr(2, 9).toUpperCase()
     const mrn = patient.mrn || `MRN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
     const barcode = patient.barcode || `BR-${id.replace(/^PAT-/, '')}-${Date.now().toString().slice(-6)}`
-    commit('ADD_PATIENT', {
+    const record = {
       ...patient,
       id,
       mrn,
       barcode,
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       region: patient.region || rootState.auth.region,
       createdAt: new Date().toISOString()
-    })
+    }
+    commit('ADD_PATIENT', record)
+    return record
   },
-  updatePatient({ state, commit, rootState }, { patientId, updates }) {
+  updatePatientLocal({ state, commit, rootState }, { patientId, updates }) {
     const existing = state.patients.find(item => item.id === patientId)
     if (!existing) return null
     const record = {
@@ -248,7 +269,6 @@ export const actions = {
     const existing = state.patients.find(item => item.id === patientId)
     if (!existing) throw new Error('Patient record not found')
     if (String(existing.patientStatus || '').toLowerCase() === 'discharged') return existing
-
     const requestedDischargeAt = payload.dischargedAt || payload.dischargeDateTime
     const parsedDischargeAt = requestedDischargeAt ? new Date(requestedDischargeAt) : new Date()
     const dischargedAt = isNaN(parsedDischargeAt.getTime()) ? new Date().toISOString() : parsedDischargeAt.toISOString()
@@ -311,13 +331,16 @@ export const actions = {
 
     return dischargeRecord
   },
-  provisionPatientWorkflowDemo({ state, commit, rootState }) {
+  provisionPatientWorkflowDemoLocal({ state, commit, rootState }) {
     const institution = rootState.auth.institution || 'CameroHealth Demo Hospital'
     const region = rootState.auth.region || 'Littoral'
     const now = new Date().toISOString()
-    const patientId = 'PAT-WF360-DEMO'
+    const facilityId = rootState.auth.facilityId
+    if (!facilityId) throw new Error('A facility-scoped session is required')
+    const tenant = tenantFields(rootState)
+    const patientId = `PAT-WF360-${facilityId.slice(0, 8).toUpperCase()}`
 
-    if (state.patients.some(patient => patient.id === patientId && patient.institution === institution)) {
+    if (state.patients.some(patient => patient.id === patientId && patient.facilityId === facilityId)) {
       return patientId
     }
 
@@ -339,7 +362,7 @@ export const actions = {
       patientStatus: 'Admitted',
       patientClass: 'Inpatient',
       clinicSite: institution,
-      institution,
+      ...tenant,
       allergies: 'Penicillin',
       medicalHistory: 'Hypertension, chronic lower limb wound',
       surgicalHistory: 'None reported',
@@ -352,7 +375,7 @@ export const actions = {
     commit('ADD_INPATIENT', {
       id: 'INP-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       region,
       ward: 'Medecine interne',
       bedNumber: 'MI-12',
@@ -363,7 +386,7 @@ export const actions = {
     commit('ADD_VITAL_SIGNS', {
       id: 'VIT-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       region,
       recordedBy: rootState.auth.fullName || 'Nurse Demo',
       recordedAt: now,
@@ -382,7 +405,7 @@ export const actions = {
     commit('ADD_VISIT', {
       id: 'VIS-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       region,
       encounterType: 'INFIRMIER',
       chiefComplaint: 'Follow-up wound dressing and pain review',
@@ -400,7 +423,7 @@ export const actions = {
     commit('ADD_MEDICATION', {
       id: 'MED-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       drug: 'Amlodipine',
       dose: '5 mg',
       frequency: 'Daily',
@@ -411,7 +434,7 @@ export const actions = {
     commit('ADD_LAB_ORDER', {
       id: 'LAB-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       test: 'CBC with differential',
       priority: 'Routine',
       status: 'Requested',
@@ -421,7 +444,7 @@ export const actions = {
     commit('ADD_IMAGING_ORDER', {
       id: 'IMG-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       exam: 'Lower limb ultrasound',
       priority: 'Today',
       status: 'Requested',
@@ -431,7 +454,7 @@ export const actions = {
     commit('ADD_TASK', {
       id: 'TSK-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       title: 'Wound dressing and photo documentation',
       assignedToRole: 'NURSE',
       priority: 'Today',
@@ -447,7 +470,7 @@ export const actions = {
     commit('ADD_NURSING_NOTE', {
       id: 'NNT-WF360-DEMO',
       patientId,
-      institution,
+      ...tenant,
       recordedBy: rootState.auth.fullName || 'Nurse Demo',
       recordedAt: now,
       observation: 'Patient stable. Wound dressing clean, pain controlled after repositioning.',
@@ -460,12 +483,12 @@ export const actions = {
 
     return patientId
   },
-  async logVisit({ state, commit, rootState, dispatch }, visit) {
+  async logVisitLocal({ state, commit, rootState, dispatch }, visit) {
     assertPatientWritable(state, visit.patientId)
     commit('ADD_VISIT', {
       ...visit,
       id: Date.now(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       region: rootState.auth.region,
       createdAt: new Date().toISOString()
     })
@@ -474,7 +497,7 @@ export const actions = {
     commit('ADD_FIELD_REPORT', {
       ...report,
       id: Date.now(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       createdAt: new Date().toISOString()
     })
   },
@@ -509,81 +532,89 @@ export const actions = {
     commit('SET_LAST_SYNC', new Date().toISOString())
     return new Promise(resolve => setTimeout(resolve, 1500))
   },
-  admitPatient({ state, commit, rootState }, record) {
+  admitPatientLocal({ state, commit, rootState }, record) {
     assertPatientWritable(state, record.patientId)
     commit('ADD_INPATIENT', {
       ...record,
       id: 'INP-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Admitted',
       admittedAt: new Date().toISOString()
     })
   },
-  updateInpatient({ commit }, record) {
+  updateInpatientLocal({ state, commit }, record) {
+    const existing = state.inpatients.find(item => item.id === record.id)
+    assertPatientWritable(state, record.patientId || (existing && existing.patientId))
     commit('UPDATE_INPATIENT', record)
   },
-  scheduleAppointment({ commit, rootState }, appt) {
+  scheduleAppointmentLocal({ commit, rootState }, appt) {
     commit('ADD_APPOINTMENT', {
       ...appt,
       id: 'APT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Scheduled',
       createdAt: new Date().toISOString()
     })
   },
-  updateAppointment({ commit }, appt) {
+  updateAppointmentLocal({ commit }, appt) {
     commit('UPDATE_APPOINTMENT', appt)
   },
-  prescribeMedication({ state, commit, rootState }, med) {
+  prescribeMedicationLocal({ state, commit, rootState }, med) {
     assertPatientWritable(state, med.patientId)
     const medicationRecord = {
       ...med,
       id: 'MED-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Active',
       prescribedAt: new Date().toISOString()
     }
     commit('ADD_MEDICATION', medicationRecord)
     return medicationRecord
   },
-  updateMedication({ commit }, med) {
+  updateMedicationLocal({ state, commit }, med) {
+    const existing = state.medications.find(item => item.id === med.id)
+    assertPatientWritable(state, med.patientId || (existing && existing.patientId))
     commit('UPDATE_MEDICATION', med)
   },
-  orderLab({ state, commit, rootState }, order) {
+  orderLabLocal({ state, commit, rootState }, order) {
     assertPatientWritable(state, order.patientId)
     const labOrderRecord = {
       ...order,
       id: 'LAB-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Requested',
       requestedAt: new Date().toISOString()
     }
     commit('ADD_LAB_ORDER', labOrderRecord)
     return labOrderRecord
   },
-  updateLabOrder({ commit }, order) {
+  updateLabOrderLocal({ state, commit }, order) {
+    const existing = state.labOrders.find(item => item.id === order.id)
+    assertPatientWritable(state, order.patientId || (existing && existing.patientId))
     commit('UPDATE_LAB_ORDER', order)
   },
-  orderImaging({ state, commit, rootState }, order) {
+  orderImagingLocal({ state, commit, rootState }, order) {
     assertPatientWritable(state, order.patientId)
     const imagingOrderRecord = {
       ...order,
       id: 'IMG-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Requested',
       requestedAt: new Date().toISOString()
     }
     commit('ADD_IMAGING_ORDER', imagingOrderRecord)
     return imagingOrderRecord
   },
-  updateImagingOrder({ commit }, order) {
+  updateImagingOrderLocal({ state, commit }, order) {
+    const existing = state.imagingOrders.find(item => item.id === order.id)
+    assertPatientWritable(state, order.patientId || (existing && existing.patientId))
     commit('UPDATE_IMAGING_ORDER', order)
   },
   createInvoice({ commit, rootState }, invoice) {
     commit('ADD_INVOICE', {
       ...invoice,
       id: 'INV-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'Unpaid',
       createdAt: new Date().toISOString()
     })
@@ -596,7 +627,7 @@ export const actions = {
     commit('ADD_VITAL_SIGNS', {
       ...vitals,
       id: 'VIT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution
+      ...tenantFields(rootState)
     })
   },
   addNursingNote({ state, commit, rootState }, note) {
@@ -606,7 +637,7 @@ export const actions = {
     commit('ADD_NURSING_NOTE', {
       ...note,
       id: 'NNT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       createdBy: actor,
       createdAt: now,
       updatedBy: actor,
@@ -630,7 +661,7 @@ export const actions = {
     commit('ADD_MEDICAL_NOTE', {
       ...note,
       id: 'MNT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       createdBy: actor,
       createdAt: now,
       updatedBy: actor,
@@ -706,7 +737,7 @@ export const actions = {
     const record = {
       ...task,
       id: 'TSK-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: 'pending',
       createdAt: now,
       createdBy: actor,
@@ -732,7 +763,7 @@ export const actions = {
     const record = {
       ...member,
       id: 'CTM-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       addedAt: new Date().toISOString(),
       addedBy: rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
     }
@@ -744,7 +775,7 @@ export const actions = {
     const record = {
       ...assessment,
       id: 'SDH-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       assessedAt: new Date().toISOString(),
       assessedBy: rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
     }
@@ -754,6 +785,7 @@ export const actions = {
   updateTaskStatus({ state, commit, rootState }, payload) {
     const task = state.tasks.find(t => t.id === payload.id)
     if (!task) return
+    assertPatientWritable(state, task.patientId)
     if (!['done', 'hold', 'cancel'].includes(payload.status)) return
     const now = new Date().toISOString()
     const actor = payload.updatedBy || rootState.auth.fullName || 'Unknown user'
@@ -778,24 +810,29 @@ export const actions = {
     }
     commit('UPDATE_TASK', next)
   },
-  createDocument({ commit, rootState }, document) {
-    commit('ADD_DOCUMENT', {
+  createDocument({ state, commit, rootState }, document) {
+    assertPatientWritable(state, document.patientId)
+    const record = {
       ...document,
       id: 'DOC-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: document.status || 'Filed',
       createdAt: new Date().toISOString(),
       createdBy: rootState.auth.fullName || 'Unknown user'
-    })
+    }
+    commit('ADD_DOCUMENT', record)
+    return record
   },
-  updateDocument({ commit }, document) {
+  updateDocument({ state, commit }, document) {
+    const existing = state.documents.find(item => item.id === document.id)
+    assertPatientWritable(state, document.patientId || (existing && existing.patientId))
     commit('UPDATE_DOCUMENT', document)
   },
   createInsuranceClaim({ commit, rootState }, claim) {
     commit('ADD_INSURANCE_CLAIM', {
       ...claim,
       id: 'CLM-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: claim.status || 'Draft',
       createdAt: new Date().toISOString()
     })
@@ -807,7 +844,7 @@ export const actions = {
     commit('ADD_REFERRAL', {
       ...referral,
       id: 'REF-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: referral.status || 'Open',
       createdAt: new Date().toISOString(),
       createdBy: rootState.auth.fullName || 'Unknown user'
@@ -820,7 +857,7 @@ export const actions = {
     commit('ADD_MEDICAL_TEMPLATE', {
       ...template,
       id: 'TPL-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       createdAt: new Date().toISOString()
     })
   },
@@ -831,7 +868,7 @@ export const actions = {
     commit('ADD_PORTAL_MESSAGE', {
       ...message,
       id: 'MSG-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: message.status || 'Unread',
       createdAt: new Date().toISOString()
     })
@@ -843,14 +880,17 @@ export const actions = {
     commit('ADD_VOICE_DRAFT', {
       ...draft,
       id: 'VOC-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      institution: rootState.auth.institution,
+      ...tenantFields(rootState),
       status: draft.status || 'Draft',
       createdAt: new Date().toISOString(),
       createdBy: rootState.auth.fullName || 'Unknown user'
     })
   },
+  updateVoiceDraft({ commit }, draft) {
+    commit('UPDATE_VOICE_DRAFT', draft)
+  },
   // ─── API Async Actions ────────────────────────────────────────────────────────
-  async fetchPatients({ commit }, params = {}) {
+  async fetchPatients({ state, commit }, params = {}) {
     commit('SET_LOADING', true)
     try {
       const { data } = await patientApi.list(params)
@@ -858,6 +898,7 @@ export const actions = {
       return data
     } catch (err) {
       commit('SET_ERROR', err.response?.data?.error || err.message)
+      if (!err.response) return { patients: state.patients, offline: true }
       throw err
     } finally {
       commit('SET_LOADING', false)
@@ -948,10 +989,25 @@ export const actions = {
     }
   },
   async registerPatient({ dispatch }, patientData) {
-    return await dispatch('registerPatientApi', patientData)
+    try {
+      return await dispatch('registerPatientApi', patientData)
+    } catch (err) {
+      if (err.response) throw err
+      return dispatch('registerPatientLocal', patientData)
+    }
   },
   async updatePatient({ dispatch }, payload) {
-    return await dispatch('updatePatientApi', payload)
+    const patientId = payload.id || payload.patientId
+    const updates = payload.updates || Object.keys(payload).reduce((record, key) => {
+      if (!['id', 'patientId'].includes(key)) record[key] = payload[key]
+      return record
+    }, {})
+    try {
+      return await dispatch('updatePatientApi', { id: patientId, ...updates })
+    } catch (err) {
+      if (err.response) throw err
+      return dispatch('updatePatientLocal', { patientId, updates })
+    }
   },
   async logVisit({ commit }, visitData) {
     try {
@@ -1073,105 +1129,91 @@ export const actions = {
       throw err
     }
   },
+  async transferPatient({ state, dispatch, rootState }, { patientId, targetDepartment, reason }) {
+    const admission = state.inpatients.find(item =>
+      item.patientId === patientId &&
+      belongsToAuthenticatedFacility(item, rootState) &&
+      String(item.status || '').toLowerCase() !== 'discharged'
+    )
+    if (!admission) throw new Error('Active inpatient admission not found')
+
+    const previousDepartment = admission.ward || 'Unspecified unit'
+    const transferredAt = new Date().toISOString()
+    const updated = await dispatch('updateInpatient', {
+      id: admission.id,
+      ward: targetDepartment,
+      status: 'Admitted'
+    })
+    await dispatch('updatePatient', {
+      patientId,
+      updates: { departmentRouting: targetDepartment, currentDepartment: targetDepartment }
+    })
+    const document = await dispatch('createDocument', {
+      patientId,
+      title: `Transfer - ${previousDepartment} to ${targetDepartment}`,
+      category: 'Transfer',
+      status: 'Filed',
+      content: [
+        `Transferred: ${transferredAt}`,
+        `From: ${previousDepartment}`,
+        `To: ${targetDepartment}`,
+        `Reason: ${reason || 'Clinical transfer'}`,
+        `Prepared by: ${rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'}`
+      ].join('\n')
+    })
+    return { inpatient: updated.inpatient || updated, document }
+  },
   async provisionPatientWorkflowDemo({ dispatch, state }) {
     await dispatch('fetchPatients')
     const first = state.patients[0]
-    return first ? first.id : null
+    if (first) return first.id
+    return dispatch('provisionPatientWorkflowDemoLocal')
   }
 }
 
 export const getters = {
-  patientDirectoryAll: state => state.patients,
-  patientById: state => id => state.patients.find(p => p.id === id),
-  getPatient: state => id => state.patients.find(p => p.id === id) || null,
-  patientsByDepartment: state => dept =>
-    state.patients.filter(p => p.currentDepartment === dept || p.departmentRouting === dept),
+  patientDirectoryAll: (state, getters, rootState) => state.patients.filter(p => belongsToAuthenticatedFacility(p, rootState)),
+  patientById: (state, getters, rootState) => id => state.patients.find(p =>
+    p.id === id && belongsToAuthenticatedFacility(p, rootState)
+  ),
+  getPatient: (state, getters) => id => getters.patientById(id) || null,
+  patientsByDepartment: (state, getters) => dept =>
+    getters.patientDirectoryAll.filter(p => p.currentDepartment === dept || p.departmentRouting === dept),
   loading: state => state.loading,
   error: state => state.error,
 
   // FILTERED DATA
-  getPatients: (state, getters, rootState) => {
-    if (getters.isClinical) {
-      return state.patients.filter(p => !p.institution || p.institution === rootState.auth.institution || p.facilityId === rootState.auth.facilityId)
-    }
-    return state.patients
-  },
+  getPatients: (state, getters) => getters.patientDirectoryAll,
 
-  getVisits: (state, getters, rootState) => {
-    if (getters.isClinical) {
-      return state.visits.filter(v => !v.institution || v.institution === rootState.auth.institution || v.facilityId === rootState.auth.facilityId)
-    }
-    return state.visits
-  },
-
-  getFieldReports: state => state.fieldReports,
-  getInpatients: (state, getters, rootState) => {
-    if (getters.isClinical) return state.inpatients.filter(i => !i.institution || i.institution === rootState.auth.institution || i.facilityId === rootState.auth.facilityId)
-    return state.inpatients
-  },
-  getAppointments: (state, getters, rootState) => {
-    if (getters.isClinical) return state.appointments.filter(a => !a.institution || a.institution === rootState.auth.institution || a.facilityId === rootState.auth.facilityId)
-    return state.appointments
-  },
-  getMedications: (state, getters, rootState) => {
-    if (getters.isClinical) return state.medications.filter(m => !m.institution || m.institution === rootState.auth.institution || m.facilityId === rootState.auth.facilityId)
-    return state.medications
-  },
-  getLabOrders: (state, getters, rootState) => {
-    if (getters.isClinical) return state.labOrders.filter(l => !l.institution || l.institution === rootState.auth.institution || l.facilityId === rootState.auth.facilityId)
-    return state.labOrders
-  },
-  getImagingOrders: (state, getters, rootState) => {
-    if (getters.isClinical) return state.imagingOrders.filter(i => !i.institution || i.institution === rootState.auth.institution || i.facilityId === rootState.auth.facilityId)
-    return state.imagingOrders
-  },
-  getInvoices: (state, getters, rootState) => {
-    if (getters.isClinical) return state.invoices.filter(i => !i.institution || i.institution === rootState.auth.institution || i.facilityId === rootState.auth.facilityId)
-    return state.invoices
-  },
-  getVitalSigns: (state, getters, rootState) => {
-    if (getters.isClinical) return state.vitalSigns.filter(v => !v.institution || v.institution === rootState.auth.institution || v.facilityId === rootState.auth.facilityId)
-    return state.vitalSigns
-  },
-  getNursingNotes: (state, getters, rootState) => {
-    if (getters.isClinical) return state.nursingNotes.filter(n => !n.institution || n.institution === rootState.auth.institution || n.facilityId === rootState.auth.facilityId)
-    return state.nursingNotes
-  },
-  getMedicalNotes: (state, getters, rootState) => {
-    if (getters.isClinical) return state.medicalNotes.filter(n => !n.institution || n.institution === rootState.auth.institution || n.facilityId === rootState.auth.facilityId)
-    return state.medicalNotes
-  },
-  getTasks: (state, getters, rootState) => {
-    if (getters.isClinical) return state.tasks.filter(t => !t.institution || t.institution === rootState.auth.institution || t.facilityId === rootState.auth.facilityId)
-    return state.tasks
-  },
-  patientCareTeam: state => patientId => state.careTeamMembers.filter(item => item.patientId === patientId),
-  patientSocialAssessments: state => patientId => state.socialAssessments.filter(item => item.patientId === patientId),
-  getDocuments: (state, getters, rootState) => {
-    if (getters.isClinical) return state.documents.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
-    return state.documents
-  },
-  getInsuranceClaims: (state, getters, rootState) => {
-    if (getters.isClinical) return state.insuranceClaims.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
-    return state.insuranceClaims
-  },
-  getReferrals: (state, getters, rootState) => {
-    if (getters.isClinical) return state.referrals.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
-    return state.referrals
-  },
+  getVisits: (state, getters, rootState) => state.visits.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getFieldReports: (state, getters, rootState) => state.fieldReports.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getInpatients: (state, getters, rootState) => state.inpatients.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getAppointments: (state, getters, rootState) => state.appointments.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getMedications: (state, getters, rootState) => state.medications.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getLabOrders: (state, getters, rootState) => state.labOrders.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getImagingOrders: (state, getters, rootState) => state.imagingOrders.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getInvoices: (state, getters, rootState) => state.invoices.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getVitalSigns: (state, getters, rootState) => state.vitalSigns.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getNursingNotes: (state, getters, rootState) => state.nursingNotes.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getMedicalNotes: (state, getters, rootState) => state.medicalNotes.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getTasks: (state, getters, rootState) => state.tasks.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  patientCareTeam: (state, getters, rootState) => patientId => state.careTeamMembers.filter(item =>
+    item.patientId === patientId && belongsToAuthenticatedFacility(item, rootState)
+  ),
+  patientSocialAssessments: (state, getters, rootState) => patientId => state.socialAssessments.filter(item =>
+    item.patientId === patientId && belongsToAuthenticatedFacility(item, rootState)
+  ),
+  getDocuments: (state, getters, rootState) => state.documents.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getInsuranceClaims: (state, getters, rootState) => state.insuranceClaims.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getReferrals: (state, getters, rootState) => state.referrals.filter(item => belongsToAuthenticatedFacility(item, rootState)),
   getMedicalTemplates: (state, getters, rootState) => {
     const templates = state.medicalTemplates && state.medicalTemplates.length ? state.medicalTemplates : defaultMedicalTemplates()
-    if (getters.isClinical) return templates.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
-    return templates
+    return templates.filter(item =>
+      (!item.facilityId && !item.institution) || belongsToAuthenticatedFacility(item, rootState)
+    )
   },
-  getPortalMessages: (state, getters, rootState) => {
-    if (getters.isClinical) return state.portalMessages.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
-    return state.portalMessages
-  },
-  getVoiceDrafts: (state, getters, rootState) => {
-    if (getters.isClinical) return state.voiceDrafts.filter(item => !item.institution || item.institution === rootState.auth.institution || item.facilityId === rootState.auth.facilityId)
-    return state.voiceDrafts
-  },
+  getPortalMessages: (state, getters, rootState) => state.portalMessages.filter(item => belongsToAuthenticatedFacility(item, rootState)),
+  getVoiceDrafts: (state, getters, rootState) => state.voiceDrafts.filter(item => belongsToAuthenticatedFacility(item, rootState)),
   patientDirectory: (state, getters) => {
     const patients = getters.getPatients || []
     const visits = getters.getVisits || []
@@ -1211,7 +1253,9 @@ export const getters = {
       return {
         ...patient,
         displayName: patient.name || `${patient.firstName || ''} ${patient.lastName || ''}`.trim(),
-        mrn: patient.externalId || patient.id,
+        mrn: patient.mrn || patient.externalId || patient.id,
+        externalId: patient.externalId || patient.mrn || patient.id,
+        barcode: patient.barcode || '',
         currentDepartment: isDischarged ? 'Inactive / Discharged' : resolveCurrentDepartment({ patient, activeInpatient, openOrders, latestVisit, nextAppointment }),
         lifecycleStatus: isDischarged ? 'inactive' : ((!latestVisit && !activeInpatient) || patient.pendingAdmission || ['waiting', 'waitlisted', 'registered', 'pending'].includes(String(patient.patientStatus || '').toLowerCase()) ? 'waiting' : 'active'),
         isDischarged,
@@ -1346,17 +1390,31 @@ export const getters = {
 }
 
 function saveToLocalStorage(key, data) {
-  if (process.client) {
-    localStorage.setItem('camero_health_' + key, JSON.stringify(data))
-  }
+  if (!process.client) return
+  const facilityId = sessionStorage.getItem('camero_facility_id')
+  if (!facilityId) return
+  const scopedData = key === 'medicalTemplates' || !Array.isArray(data)
+    ? data
+    : data.filter(item => item && item.facilityId === facilityId)
+  localStorage.setItem(`camero_health_${facilityId}_${key}`, JSON.stringify(scopedData))
 }
 
 function loadFromLocalStorage(key) {
-  if (process.client) {
-    const data = localStorage.getItem('camero_health_' + key)
-    return data ? JSON.parse(data) : null
+  if (!process.client) return null
+  const facilityId = sessionStorage.getItem('camero_facility_id')
+  const legacyKey = 'camero_health_' + key
+  localStorage.removeItem(legacyKey)
+  if (!facilityId) return null
+  const data = localStorage.getItem(`camero_health_${facilityId}_${key}`)
+  if (!data) return null
+  try {
+    const parsed = JSON.parse(data)
+    if (key === 'medicalTemplates' || !Array.isArray(parsed)) return parsed
+    return parsed.filter(item => item && item.facilityId === facilityId)
+  } catch {
+    localStorage.removeItem(`camero_health_${facilityId}_${key}`)
+    return null
   }
-  return null
 }
 
 function getChangedFields(previous, updates) {
@@ -1371,11 +1429,7 @@ function assertPatientWritable(state, patientId) {
   if (!patientId) return
   const patient = state.patients.find(item => item.id === patientId)
   if (!patient) return
-  const status = String(patient.patientStatus || patient.admissionStatus || '').toLowerCase()
-  const inactive = String(patient.recordStatus || '').toLowerCase() === 'inactive' || patient.active === false
-  if (status === 'discharged' || inactive) {
-    throw new Error('PATIENT_DISCHARGED_READ_ONLY')
-  }
+  assertWritableRecord(patient)
 }
 
 function latestByDate(records, field) {
@@ -1471,5 +1525,3 @@ function defaultMedicalTemplates() {
     }
   ]
 }
-
-

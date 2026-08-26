@@ -8,9 +8,36 @@
         <strong>CameroHealth Chart</strong>
         <span class="environment">Clinical Workflow</span>
       </div>
-      <div class="search-box">
+      <div class="search-box" role="combobox" :aria-expanded="String(globalSearchOpen)" aria-haspopup="listbox">
         <v-icon small color="#64748b">mdi-magnify</v-icon>
-        <span>Search chart, order, patient, navigator</span>
+        <input
+          v-model="globalSearchQuery"
+          type="search"
+          aria-label="Search patient chart"
+          placeholder="Search patient, MRN, order, tab"
+          @focus="globalSearchOpen = true"
+          @blur="scheduleGlobalSearchClose"
+          @keydown.enter.prevent="submitGlobalSearch"
+          @keydown.esc.prevent="clearGlobalSearch"
+        >
+        <button v-if="globalSearchQuery" type="button" class="search-clear" title="Clear search" @mousedown.prevent @click="clearGlobalSearch">
+          <v-icon x-small>mdi-close</v-icon>
+        </button>
+        <div v-if="globalSearchOpen && globalSearchQuery" class="global-search-results" role="listbox">
+          <button
+            v-for="result in globalSearchResults"
+            :key="result.key"
+            type="button"
+            role="option"
+            @mousedown.prevent
+            @click="selectGlobalSearchResult(result)"
+          >
+            <v-icon small :color="result.color || '#0f766e'">{{ result.icon }}</v-icon>
+            <span><strong>{{ result.title }}</strong><small>{{ result.meta }}</small></span>
+            <b>{{ result.group }}</b>
+          </button>
+          <div v-if="!globalSearchResults.length" class="search-empty">No matching patient, MRN, order or chart section.</div>
+        </div>
       </div>
       <div class="topbar-actions">
         <v-btn v-if="patientScoped" x-small text color="#0f766e" class="font-weight-black" to="/clinical/patients">
@@ -19,15 +46,17 @@
         <v-btn x-small text color="#0f766e" class="font-weight-black" @click="dialogs.scan = true">
           <v-icon x-small left>mdi-barcode-scan</v-icon>Scan bracelet
         </v-btn>
-        <label class="role-switcher">
-          <span>Role</span>
+        <label v-if="canPreviewRole" class="role-switcher">
+          <span>Preview role</span>
           <select v-model="previewRole">
             <option v-for="role in roleOptions" :key="role.value" :value="role.value">
               {{ role.short }}
             </option>
           </select>
         </label>
-        <v-btn x-small text color="#0f766e" class="font-weight-black">Print</v-btn>
+        <v-btn v-if="patientScoped && activePatientId" x-small text color="#0f766e" class="font-weight-black" @click="openReportCenter">
+          <v-icon x-small left>mdi-printer</v-icon>Print
+        </v-btn>
         <v-btn x-small text color="#0f766e" class="font-weight-black">Chart correction</v-btn>
         <v-btn v-if="patientScoped && activePatientRecord" x-small tile depressed color="#D97706" dark class="font-weight-black ml-1" @click="openTransferModal">
           <v-icon x-small left>mdi-swap-horizontal</v-icon>Transfer Patient
@@ -90,8 +119,8 @@
 
     <NavigatorStrip
       ref="navigatorStrip"
-      v-if="activePatient"
-      :patient-id="activePatient.id"
+      v-if="activePatient && activePatientId"
+      :patient-id="activePatientId"
       :patient-name="activePatient.name"
       :patient-meta="`${activePatient.age}y • ${activePatient.admissionStatus || 'Active'}`"
       :current-state="isPatientDischarged ? 'discharge' : currentWorkflowState"
@@ -1241,6 +1270,8 @@
               :admission-id="currentAdmissionId"
               :role="currentRole"
               :read-only="isPatientDischarged"
+              @saved="toastSuccess('Care plan created and added to the patient chart.')"
+              @error="toastError($event)"
             />
 
             <Patient360EducationTab
@@ -1268,6 +1299,21 @@
               :read-only="isPatientDischarged"
               @new-task="openContextForm('task')"
               @update-status="updateWorkListTask"
+            />
+
+            <Patient360RoleCoordinationTab
+              v-else-if="['Social Services', 'Unit Management', 'Nursing Supervision'].includes(selectedChartTab)"
+              :patient-id="activePatientId"
+              :patient="findPatientRecord(activePatientId) || activePatient"
+              :role="currentRole"
+              :workspace-tab="selectedChartTab"
+              :tasks="patientTasks"
+              :documents="patientDocuments"
+              :members="visibleCareTeamRows"
+              :read-only="isPatientDischarged"
+              @open-tab="selectChartTab"
+              @saved="toastSuccess"
+              @error="toastError"
             />
 
             <Patient360ImmunizationsTab
@@ -2337,6 +2383,7 @@ import Patient360LabResultsTab from '~/components/clinical/patient360/labs/Patie
 import Patient360MedicationTab from '~/components/clinical/patient360/medications/Patient360MedicationTab.vue'
 import Patient360WorkListTab from '~/components/clinical/patient360/work-list/Patient360WorkListTab.vue'
 import Patient360CareTeamTab from '~/components/clinical/patient360/care-team/Patient360CareTeamTab.vue'
+import Patient360RoleCoordinationTab from '~/components/clinical/patient360/coordination/Patient360RoleCoordinationTab.vue'
 import Patient360ImmunizationsTab from '~/components/clinical/patient360/immunizations/Patient360ImmunizationsTab.vue'
 import Patient360HandoffTab from '~/components/clinical/patient360/handoff/Patient360HandoffTab.vue'
 import Patient360DocumentsTab from '~/components/clinical/patient360/documents/Patient360DocumentsTab.vue'
@@ -2347,6 +2394,7 @@ import TimedCareDocumentationDialog from '~/components/clinical/patient360/flows
 import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
 import Patient360ContextForms from '~/components/clinical/patient360/dialogs/Patient360ContextForms.vue'
 import NavigatorStrip from '~/components/clinical/patient360/NavigatorStrip.vue'
+import FlowSection from '~/components/clinical/patient360/FlowSection.vue'
 import maleFrontAvatar from '~/assets/images/clinical/avatar/male-front.jpg'
 import maleBackAvatar from '~/assets/images/clinical/avatar/male-back.jpg'
 import femaleFrontAvatar from '~/assets/images/clinical/avatar/female-front.png'
@@ -2357,6 +2405,8 @@ const {
   statusOptionsForAvatarType
 } = require('~/util/avatar-workflow.cjs')
 const { findMedicationCatalogItem } = require('~/util/medication-catalog.cjs')
+const { canPreviewRole: rolePreviewAllowed } = require('~/util/patient-360-policy.cjs')
+const { normalizeSearchValue, matchesPatientQuery, exactPatientIdentifierMatch } = require('~/util/patient-search.cjs')
 
 function firstFiledValue(record, keys, fallback = '') {
   for (const key of keys) {
@@ -2372,46 +2422,6 @@ function chartEventStatus(value) {
   if (/pending|draft|requested|due|review|watch|moderate|held/.test(normalized)) return 'warning'
   if (/normal|stable|complete|completed|signed|final|resolved|healed|administered|filed|negative/.test(normalized)) return 'good'
   return 'neutral'
-}
-
-const FlowSection = {
-  name: 'FlowSection',
-  props: {
-    title: { type: String, required: true },
-    columns: { type: Array, default: () => [] },
-    rows: { type: Array, default: () => [] },
-    required: { type: Boolean, default: false },
-    action: { type: String, default: '' }
-  },
-  template: `
-    <article class="flow-section">
-      <header>
-        <div>
-          <v-icon x-small color="#0f766e">mdi-table</v-icon>
-          <strong>{{ title }}</strong>
-          <span v-if="required" class="required-dot">Required Documentation</span>
-        </div>
-        <button v-if="action" type="button" class="flow-action" @click="$emit('action', action)">
-          <v-icon x-small>mdi-pencil-outline</v-icon>Open form
-        </button>
-      </header>
-      <div class="flow-grid" :style="{ gridTemplateColumns: gridTemplate }">
-        <div class="flow-cell label-cell"></div>
-        <div v-for="column in columns" :key="column" class="flow-cell column-cell">{{ column }}</div>
-        <template v-for="row in rows">
-          <div :key="row.label + '-label'" class="flow-cell row-label">{{ row.label }}</div>
-          <div v-for="column in columns" :key="row.label + column" class="flow-cell value-cell">
-            {{ row.values && row.values[column] !== undefined ? row.values[column] : row.value || '-' }}
-          </div>
-        </template>
-      </div>
-    </article>
-  `,
-  computed: {
-    gridTemplate() {
-      return `minmax(220px, 1.1fr) repeat(${this.columns.length}, minmax(120px, 1fr))`
-    }
-  }
 }
 
 const ALL_CLINICAL_TABS = [
@@ -2436,25 +2446,36 @@ const ALL_CLINICAL_TABS = [
   'Care Teams',
   'Handoff',
   'Documents',
-  'Registration'
+  'Registration',
+  'Social Services',
+  'Unit Management',
+  'Nursing Supervision'
 ]
 
 // Tabs shown directly in the tab bar; everything else in visibleChartTabs collapses into the More menu.
 const PRIMARY_TAB_ORDER = ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Chart Review', 'Orders', 'MAR', 'Flowsheets', 'Notes', 'Care Plan']
 
+const ROLE_PRIMARY_TABS = {
+  SOCIAL_WORKER: ['Summary', 'Social Services', 'Notes', 'Care Plan', 'Work List', 'Care Teams', 'Education', 'Documents'],
+  MAJOR_SERVICE: ['Summary', 'Unit Management', 'Nurse Command Center', 'Work List', 'Care Teams', 'Notes', 'Handoff', 'Care Plan', 'Documents'],
+  NURSING_SUPERVISOR: ['Summary', 'Nursing Supervision', 'Nurse Command Center', 'Work List', 'Care Teams', 'Notes', 'Handoff', 'Documents']
+}
+
 const RIGHT_PANEL_DEFAULT_COLLAPSED_TABS = ['Notes', 'Flowsheets', 'MAR', 'Orders']
 const CHART_TAB_LAYOUT_KEY = 'camero_health_patient360Tabs'
 
 const ADMIN_LIKE_ROLES = ['ADMIN', 'RECORDS', 'BILLING', 'FRONT_DESK']
+const ROLE_COORDINATION_TABS = ['Social Services', 'Unit Management', 'Nursing Supervision']
+const GENERAL_CLINICAL_TABS = ALL_CLINICAL_TABS.filter(tab => !ROLE_COORDINATION_TABS.includes(tab))
 
 const TAB_ACCESS = {
   ADMIN: ALL_CLINICAL_TABS,
-  DOCTOR: ALL_CLINICAL_TABS,
-  NP: ALL_CLINICAL_TABS,
-  NURSE: ALL_CLINICAL_TABS,
-  MIDWIFE: ALL_CLINICAL_TABS.filter(tab => !['Sedation/Procedure Documentation'].includes(tab)),
-  MAJOR_SERVICE: ALL_CLINICAL_TABS,
-  NURSING_SUPERVISOR: ALL_CLINICAL_TABS,
+  DOCTOR: GENERAL_CLINICAL_TABS,
+  NP: GENERAL_CLINICAL_TABS,
+  NURSE: GENERAL_CLINICAL_TABS,
+  MIDWIFE: GENERAL_CLINICAL_TABS.filter(tab => tab !== 'Sedation/Procedure Documentation'),
+  MAJOR_SERVICE: [...GENERAL_CLINICAL_TABS, 'Unit Management'],
+  NURSING_SUPERVISOR: [...GENERAL_CLINICAL_TABS, 'Nursing Supervision'],
   CNA: ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Navigators', 'Flowsheets', 'Work List', 'Care Plan', 'Education', 'Handoff'],
   LAB: ['Summary', 'EMR Command Center', 'Chart Review', 'Navigators', 'Orders', 'Lab Results', 'Work List'],
   IMAGING: ['Summary', 'EMR Command Center', 'Chart Review', 'Navigators', 'Orders', 'Work List', 'Documents'],
@@ -2462,7 +2483,7 @@ const TAB_ACCESS = {
   FRONT_DESK: ['Summary', 'EMR Command Center', 'Registration', 'Documents', 'Care Teams'],
   RECORDS: ['Summary', 'EMR Command Center', 'Chart Review', 'Documents', 'Registration', 'Care Teams'],
   BILLING: ['Summary', 'EMR Command Center', 'Registration', 'Documents'],
-  SOCIAL_WORKER: ['Summary', 'EMR Command Center', 'Navigators', 'Notes', 'Care Plan', 'Education'],
+  SOCIAL_WORKER: ['Summary', 'Social Services', 'EMR Command Center', 'Navigators', 'Notes', 'Care Plan', 'Education', 'Work List', 'Care Teams', 'Handoff', 'Documents'],
   PHYSIOTHERAPIST: ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Navigators', 'Flowsheets', 'Care Plan', 'Work List', 'Notes']
 }
 
@@ -2506,10 +2527,11 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360RoleCoordinationTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
   props: {
     patientId: { type: String, default: '' },
-    patientScoped: { type: Boolean, default: false }
+    patientScoped: { type: Boolean, default: false },
+    patientRecord: { type: Object, default: null }
   },
   data() {
     return {
@@ -2522,6 +2544,8 @@ export default {
       activeChartId: this.patientId || 'demo-1',
       previewRole: this.$store.state.auth.role || 'NURSE',
       selectedChartTab: 'Summary',
+      globalSearchQuery: '',
+      globalSearchOpen: false,
       leftPanelCollapsed: false,
       rightPanelOverride: null,
       isNarrowRight: false,
@@ -2905,7 +2929,13 @@ export default {
       return this.patientId || this.activeChartId || (this.$route.params && this.$route.params.id) || ''
     },
     currentRole() {
-      return this.previewRole || this.$store.state.auth.role || 'NURSE'
+      return this.canPreviewRole ? this.previewRole : this.actualRole
+    },
+    actualRole() {
+      return this.$store.state.auth.role || 'NURSE'
+    },
+    canPreviewRole() {
+      return rolePreviewAllowed(this.actualRole, process.env.NODE_ENV)
     },
     canLaunchMedical() {
       return ['ADMIN', 'DOCTOR', 'NP'].includes(this.currentRole)
@@ -2923,6 +2953,15 @@ export default {
       }
       if (role === 'DOCTOR') {
         options.push({ key: 'progress', label: 'Progress Note', icon: 'mdi-stethoscope', kind: 'note', noteType: 'progress_note', dialogTitle: 'Progress Note' })
+      }
+      if (role === 'SOCIAL_WORKER') {
+        options.push({ key: 'social', label: 'Social Work Note', icon: 'mdi-hand-heart-outline', kind: 'note', noteType: 'social_coordination_note', dialogTitle: 'Social Work Note' })
+      }
+      if (role === 'MAJOR_SERVICE') {
+        options.push({ key: 'unit-management', label: 'Unit Management Note', icon: 'mdi-clipboard-account-outline', kind: 'note', noteType: 'unit_coordination_note', dialogTitle: 'Unit Management Note' })
+      }
+      if (role === 'NURSING_SUPERVISOR') {
+        options.push({ key: 'nursing-supervision', label: 'Nursing Supervision Note', icon: 'mdi-account-supervisor-outline', kind: 'note', noteType: 'supervision_coordination_note', dialogTitle: 'Nursing Supervision Note' })
       }
       return options
     },
@@ -2954,10 +2993,11 @@ export default {
       return this.rightPanelCollapsed || this.isNarrowRight
     },
     primaryTabs() {
-      return PRIMARY_TAB_ORDER.filter(tab => this.visibleChartTabs.includes(tab))
+      const order = ROLE_PRIMARY_TABS[this.currentRole] || PRIMARY_TAB_ORDER
+      return order.filter(tab => this.visibleChartTabs.includes(tab))
     },
     overflowTabs() {
-      return this.visibleChartTabs.filter(tab => !PRIMARY_TAB_ORDER.includes(tab))
+      return this.visibleChartTabs.filter(tab => !this.primaryTabs.includes(tab))
     },
     fallRiskEntry() {
       const patient = this.findPatientRecord(this.activePatientId)
@@ -3019,6 +3059,51 @@ export default {
     visibleNavigatorTabs() {
       const allowed = NAV_ACCESS[this.currentRole] || NAV_ACCESS.NURSE
       return this.navigatorTabs.filter(item => allowed.includes(item.key))
+    },
+    globalSearchResults() {
+      const query = normalizeSearchValue(this.globalSearchQuery)
+      if (!query) return []
+      const results = []
+      const directory = this.$store.getters['clinical/patientDirectory'] || []
+      directory.filter(patient => matchesPatientQuery(patient, query)).slice(0, 5).forEach(patient => {
+        results.push({
+          key: `patient-${patient.id}`,
+          type: 'patient',
+          patient,
+          title: patient.displayName || patient.name || patient.id,
+          meta: [patient.mrn, patient.currentDepartment].filter(Boolean).join(' · '),
+          group: 'Patient',
+          icon: 'mdi-account-box-outline'
+        })
+      })
+      this.visibleChartTabs.filter(tab => normalizeSearchValue(tab).includes(query)).slice(0, 4).forEach(tab => {
+        results.push({ key: `tab-${tab}`, type: 'tab', tab, title: tab, meta: 'Open chart workspace', group: 'Tab', icon: 'mdi-tab' })
+      })
+      this.visibleNavigatorTabs.forEach(navigator => {
+        const section = (navigator.sections || []).find(item => normalizeSearchValue(`${item.label} ${item.group}`).includes(query))
+        if (normalizeSearchValue(navigator.label).includes(query) || section) {
+          results.push({
+            key: `navigator-${navigator.key}-${section ? section.key : 'root'}`,
+            type: 'navigator',
+            navigator,
+            section,
+            title: section ? section.label : navigator.label,
+            meta: `${navigator.label} navigator${section && section.group ? ` · ${section.group}` : ''}`,
+            group: 'Navigator',
+            icon: navigator.icon || 'mdi-compass-outline'
+          })
+        }
+      })
+      const activities = [
+        ...this.patientLabOrders.map(item => ({ item, tab: 'Lab Results', label: item.testName || item.test || item.name || 'Lab order', icon: 'mdi-flask-outline' })),
+        ...this.patientImagingOrders.map(item => ({ item, tab: 'Lab Results', label: item.modality || item.exam || item.name || 'Imaging order', icon: 'mdi-radiology-box-outline' })),
+        ...this.patientTasks.map(item => ({ item, tab: 'Work List', label: item.title || item.task || 'Care task', icon: 'mdi-clipboard-check-outline' })),
+        ...this.patientMedications.map(item => ({ item, tab: 'Medications', label: item.medication || item.name || 'Medication', icon: 'mdi-pill' }))
+      ]
+      activities.filter(activity => normalizeSearchValue(`${activity.label} ${activity.item.status || ''}`).includes(query)).slice(0, 4).forEach((activity, index) => {
+        results.push({ key: `activity-${activity.tab}-${activity.item.id || index}`, type: 'activity', ...activity, title: activity.label, meta: activity.item.status || 'Open record', group: 'Chart', icon: activity.icon })
+      })
+      return results.slice(0, 12)
     },
     activeNavigator() {
       return this.visibleNavigatorTabs.find(item => item.key === this.selectedNavigator) || this.visibleNavigatorTabs[0] || this.navigatorTabs[0]
@@ -5639,6 +5724,7 @@ export default {
       const patient = this.findPatientRecord(this.activePatientId)
       if (!patient) {
         return {
+          id: this.activePatientId,
           initials: 'SH',
           name: this.patientScoped ? 'Patient not found' : 'Sheria A. Howington',
           gender: 'Female',
@@ -5660,6 +5746,7 @@ export default {
       }
       const name = patient.displayName || patient.name || `${patient.firstName || ''} ${patient.lastName || ''}`.trim()
       return {
+        id: patient.id || this.activePatientId,
         initials: initialsFor(name),
         name,
         gender: patient.gender || patient.sex || 'Sex N/A',
@@ -5743,6 +5830,37 @@ export default {
     if (process.client) window.removeEventListener('resize', this.updateViewportBreakpoints)
   },
   methods: {
+    submitGlobalSearch() {
+      const directory = this.$store.getters['clinical/patientDirectory'] || []
+      const exactPatient = directory.find(patient => exactPatientIdentifierMatch(patient, this.globalSearchQuery))
+      if (exactPatient) {
+        this.selectGlobalSearchResult({ type: 'patient', patient: exactPatient })
+        return
+      }
+      if (this.globalSearchResults.length) this.selectGlobalSearchResult(this.globalSearchResults[0])
+    },
+    selectGlobalSearchResult(result) {
+      if (!result) return
+      if (result.type === 'patient' && result.patient) {
+        this.$router.push(`/clinical/patients/${result.patient.id}`)
+      } else if (result.type === 'tab') {
+        this.selectChartTab(result.tab)
+      } else if (result.type === 'navigator') {
+        this.selectNavigator(result.navigator.key)
+        if (result.section) this.selectNavigatorSection(result.section.key)
+      } else if (result.type === 'activity') {
+        const targetTab = this.visibleChartTabs.includes(result.tab) ? result.tab : 'Chart Review'
+        this.selectChartTab(targetTab)
+      }
+      this.clearGlobalSearch()
+    },
+    scheduleGlobalSearchClose() {
+      setTimeout(() => { this.globalSearchOpen = false }, 120)
+    },
+    clearGlobalSearch() {
+      this.globalSearchQuery = ''
+      this.globalSearchOpen = false
+    },
     openTransferModal() {
       const rec = this.activePatientRecord
       if (rec) {
@@ -5750,6 +5868,10 @@ export default {
       }
       this.transferForm.reason = ''
       this.showTransferDialog = true
+    },
+    openReportCenter() {
+      if (!this.activePatientId) return
+      this.$router.push({ path: '/clinical/report-center', query: { patientId: this.activePatientId } })
     },
     async submitTransfer() {
       if (!this.transferForm.targetDepartment) {
@@ -6945,7 +7067,10 @@ export default {
         progress_note: 'Progress Note',
         incident_note: 'Incident Note',
         provider_notification: 'Provider Notification',
-        discharge_note: 'Discharge Note'
+        discharge_note: 'Discharge Note',
+        social_coordination_note: 'Social Work Note',
+        unit_coordination_note: 'Unit Management Note',
+        supervision_coordination_note: 'Nursing Supervision Note'
       }
       return map[type] || 'Clinical Note'
     },
@@ -7405,6 +7530,9 @@ export default {
         'Care Plan': 'discharge',
         Education: 'discharge',
         'Work List': 'worklist',
+        'Social Services': 'sdoh',
+        'Unit Management': 'worklist',
+        'Nursing Supervision': 'worklist',
         Immunizations: 'admission',
         'Sedation/Procedure Documentation': 'transfer',
         'Care Teams': 'careteam',
@@ -7418,6 +7546,7 @@ export default {
       }
     },
     findPatientRecord(id) {
+      if (this.patientRecord && this.patientRecord.id === id) return this.patientRecord
       const all = this.$store.getters['clinical/patientDirectoryAll'] || []
       const directory = this.$store.getters['clinical/patientDirectory'] || []
       const patients = this.$store.getters['clinical/getPatients'] || []
@@ -7704,7 +7833,53 @@ function latestByDate(items, field) {
   gap: 8px;
   color: #64748b;
   justify-content: center;
+  position: relative;
+  z-index: 40;
 }
+.search-box input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.search-box input::placeholder { color: #64748b; opacity: 1; }
+.search-clear { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 0; background: transparent; color: #475569; }
+.global-search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid #94a3b8;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .18);
+}
+.global-search-results > button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.global-search-results > button:hover,
+.global-search-results > button:focus { background: #f0fdfa; outline: 2px solid #0f766e; outline-offset: -2px; }
+.global-search-results > button > span { display: grid; min-width: 0; }
+.global-search-results strong { overflow: hidden; color: #0f172a; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.global-search-results small { overflow: hidden; color: #64748b; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.global-search-results b { color: #0f766e; font-size: 8px; text-transform: uppercase; }
+.search-empty { padding: 14px; color: #64748b; font-size: 10px; text-align: center; }
 .topbar-actions {
   justify-content: flex-end;
   gap: 8px;

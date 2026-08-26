@@ -4,10 +4,11 @@
 
 import axios from 'axios'
 
-let API_BASE = process.env.API_URL || 'http://127.0.0.1:4000/api'
-if (!API_BASE || API_BASE.includes('minsante.gov.cm') || API_BASE.includes('localhost/4000')) {
+let API_BASE = process.env.BACKEND_API_URL || ''
+if (!API_BASE) {
   API_BASE = 'http://127.0.0.1:4000/api'
 }
+API_BASE = API_BASE.replace(/\/$/, '')
 
 const api = axios.create({
   baseURL: API_BASE,

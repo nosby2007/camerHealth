@@ -15,7 +15,7 @@
         </div>
       </v-col>
     </v-row>
-    
+
     <v-row class="no-gutters no-print">
       <!-- Site-Level Logging Form -->
       <v-col cols="12" lg="4">
@@ -511,7 +511,7 @@ export default {
           return
         }
       }
-      
+
       const diseaseStr = this.form.disease || this.form.diagnosis || 'General Visit';
       const diseaseKey = diseaseStr.toLowerCase().replace(/\s+/g, '_');
       const info = diseaseInfo[diseaseKey] || {};
@@ -545,8 +545,8 @@ export default {
       await this.$store.dispatch('clinical/fetchVisits')
 
       if (this.form.conclusion === 'Admitted') {
-        this.$store.commit('clinical/UPDATE_PATIENT_ADMISSION_FLAG', { 
-          patientId: this.form.patientId, 
+        this.$store.commit('clinical/UPDATE_PATIENT_ADMISSION_FLAG', {
+          patientId: this.form.patientId,
           ward: this.form.admissionWard || 'General Ward',
           admissionReason: this.form.admissionReason || '',
           status: 'Needs Admission'

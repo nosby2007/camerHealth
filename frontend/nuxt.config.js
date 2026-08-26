@@ -5,13 +5,18 @@ require("./config");
 // ─── Validation des variables d'environnement obligatoires ────────────────────
 // L'application refuse de démarrer si une variable critique est absente.
 // Ajoutez ici toute variable indispensable.
+const supabaseAuthEnabled = ['1', 'true', 'yes', 'on'].includes(
+  String(process.env.ENABLE_SUPABASE_AUTH || '').trim().toLowerCase()
+)
+
 const REQUIRED_ENV = [
   'API_URL',
   'VUE_APP_GOOGLE_MAPS_API_KEY',
-  'SUPABASE_URL',
-  'SUPABASE_KEY',
   'CLIENT_ID'
 ]
+if (supabaseAuthEnabled) {
+  REQUIRED_ENV.push('SUPABASE_URL', 'SUPABASE_KEY')
+}
 const missingVars = REQUIRED_ENV.filter(k => !process.env[k])
 if (missingVars.length > 0) {
   throw new Error(
@@ -32,6 +37,7 @@ export default {
   //     dans le bundle JavaScript envoyé au navigateur.
   env: {
     API_URL: process.env.API_URL,
+    BACKEND_API_URL: process.env.BACKEND_API_URL,
     GOOGLE_MAPS_API_KEY: process.env.VUE_APP_GOOGLE_MAPS_API_KEY,
     AUTH_URL: process.env.AUTH_URL,
     CLIENT_ID: process.env.CLIENT_ID,
@@ -52,6 +58,7 @@ export default {
   // ─── Variables publiques runtime (non compilées dans le bundle) ──────────────
   publicRuntimeConfig: {
     API_URL: process.env.API_URL,
+    BACKEND_API_URL: process.env.BACKEND_API_URL,
     SUPABASE_URL: process.env.SUPABASE_URL,
     SUPABASE_KEY: process.env.SUPABASE_KEY,
     SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || '',
@@ -126,8 +133,6 @@ export default {
    ** Nuxt.js dev-modules
    */
   buildModules: [
-    // ESLint activé — vérifie la qualité du code à chaque `npm run dev`
-    '@nuxtjs/eslint-module',
     "@nuxtjs/vuetify"
   ],
   /*
@@ -251,15 +256,9 @@ export default {
     },
     // ─── Workbox (Service Worker) ──────────────────────────────────────────────
     workbox: {
-      // Cache les assets statiques (JS, CSS, fonts) pour le mode hors-ligne
-      // IMPORTANT : les données de patients ne sont jamais mises en cache
-      runtimeCaching: [
-        {
-          urlPattern: 'https://fonts.googleapis.com/.*',
-          handler: 'cacheFirst',
-          strategyOptions: { cacheName: 'google-fonts', cacheExpiration: { maxAgeSeconds: 60 * 60 * 24 * 30 } }
-        }
-      ]
+      // Clinical pages and PHI must not enter a shared browser cache. Secure,
+      // facility-scoped offline sync will be enabled as a separate feature.
+      enabled: false
     }
   },
   /*

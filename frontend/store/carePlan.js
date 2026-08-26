@@ -1,14 +1,16 @@
 import { makeId, withBase } from '~/util/nursing-workflow.cjs'
+const { assertPatientWritable } = require('~/util/patient-360-policy.cjs')
+
+function assertCarePlanWritable(rootState, patientId) {
+  const patients = (rootState.clinical && rootState.clinical.patients) || []
+  assertPatientWritable(patients.find(patient => patient.id === patientId))
+}
 
 const scoped = (arr, rootState, rootGetters) => {
   if (!arr) return []
   const facility = rootState.auth?.facilityId
-  const institution = rootState.auth?.institution
-  return arr.filter(item => {
-    if (facility && item.facilityId && item.facilityId !== facility) return false
-    if (institution && item.institution && item.institution !== institution) return false
-    return true
-  })
+  if (!facility) return []
+  return arr.filter(item => item && item.facilityId === facility)
 }
 
 const DEFAULT_CARE_PLAN_TEMPLATES = [
@@ -212,15 +214,72 @@ export const actions = {
   },
 
   addCarePlan({ commit, dispatch, rootState }, carePlan) {
+    assertCarePlanWritable(rootState, carePlan.patientId)
     const record = withBase(rootState, { status: 'active', ...carePlan }, 'CPL')
     commit('ADD_CARE_PLAN', record)
     dispatch('audit', { action: 'CARE_PLAN_ADDED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
+  async createCarePlan({ dispatch, rootState }, carePlan) {
+    assertCarePlanWritable(rootState, carePlan.patientId)
+    const problems = (carePlan.problems || []).map(item => String(item || '').trim()).filter(Boolean)
+    const goals = (carePlan.goals || []).filter(item => item && String(item.description || '').trim())
+    const interventions = (carePlan.interventions || []).filter(item => item && String(item.action || '').trim())
+    const plan = await dispatch('addCarePlan', {
+      ...carePlan,
+      name: carePlan.title || carePlan.name || carePlan.diagnosis || 'Patient care plan',
+      title: carePlan.title || carePlan.name || '',
+      status: String(carePlan.status || 'active').toLowerCase(),
+      problems: undefined,
+      goals: undefined,
+      interventions,
+      education: {
+        topics: carePlan.educationTopics || [],
+        completed: !!carePlan.educationCompleted,
+        understanding: carePlan.patientUnderstanding || '',
+        notes: carePlan.educationNotes || '',
+        familyInvolved: !!carePlan.familyInvolved
+      }
+    })
+
+    const problemRecords = []
+    for (let index = 0; index < problems.length; index += 1) {
+      problemRecords.push(await dispatch('addProblem', {
+        patientId: carePlan.patientId,
+        encounterId: carePlan.encounterId,
+        admissionId: carePlan.admissionId,
+        carePlanId: plan.id,
+        label: problems[index],
+        diagnosis: carePlan.diagnosis || '',
+        sortOrder: index
+      }))
+    }
+
+    for (let index = 0; index < goals.length; index += 1) {
+      const goal = goals[index]
+      await dispatch('addGoal', {
+        patientId: carePlan.patientId,
+        encounterId: carePlan.encounterId,
+        admissionId: carePlan.admissionId,
+        carePlanId: plan.id,
+        problemId: problemRecords[0] ? problemRecords[0].id : null,
+        label: String(goal.description).trim(),
+        description: interventions.map(item => `${item.action}${item.frequency ? ` (${item.frequency})` : ''}`).join('; '),
+        expectedEndDate: carePlan.targetDate || null,
+        achieved: !!goal.achieved,
+        timeline: goal.timeline || '',
+        sortOrder: index
+      })
+    }
+
+    return plan
+  },
+
   updateCarePlan({ state, commit, dispatch, rootState }, carePlan) {
     const existing = state.carePlans.find(item => item.id === carePlan.id)
     if (!existing) return null
+    assertCarePlanWritable(rootState, carePlan.patientId || existing.patientId)
     const record = { ...existing, ...carePlan }
     commit('UPDATE_CARE_PLAN', record)
     dispatch('audit', { action: 'CARE_PLAN_UPDATED', targetId: record.id, patientId: record.patientId })
@@ -228,6 +287,7 @@ export const actions = {
   },
 
   addProblem({ commit, dispatch, rootState }, problem) {
+    assertCarePlanWritable(rootState, problem.patientId)
     const record = withBase(rootState, { status: 'active', ...problem }, 'PBL')
     commit('ADD_PROBLEM', record)
     dispatch('audit', { action: 'PROBLEM_ADDED', targetId: record.id, patientId: record.patientId })
@@ -237,6 +297,7 @@ export const actions = {
   updateProblem({ state, commit, dispatch, rootState }, problem) {
     const existing = state.carePlanProblems.find(item => item.id === problem.id)
     if (!existing) return null
+    assertCarePlanWritable(rootState, problem.patientId || existing.patientId)
     const record = { ...existing, ...problem }
     commit('UPDATE_PROBLEM', record)
     dispatch('audit', { action: 'PROBLEM_UPDATED', targetId: record.id, patientId: record.patientId })
@@ -244,6 +305,7 @@ export const actions = {
   },
 
   addGoal({ commit, dispatch, rootState }, goal) {
+    assertCarePlanWritable(rootState, goal.patientId)
     const record = withBase(rootState, { status: 'active', ...goal }, 'GOL')
     commit('ADD_GOAL', record)
     dispatch('audit', { action: 'GOAL_ADDED', targetId: record.id, patientId: record.patientId })
@@ -253,6 +315,7 @@ export const actions = {
   updateGoal({ state, commit, dispatch, rootState }, goal) {
     const existing = state.carePlanGoals.find(item => item.id === goal.id)
     if (!existing) return null
+    assertCarePlanWritable(rootState, goal.patientId || existing.patientId)
     const record = { ...existing, ...goal }
     commit('UPDATE_GOAL', record)
     dispatch('audit', { action: 'GOAL_UPDATED', targetId: record.id, patientId: record.patientId })
@@ -260,6 +323,7 @@ export const actions = {
   },
 
   addOutcome({ commit, dispatch, rootState }, outcome) {
+    assertCarePlanWritable(rootState, outcome.patientId)
     const record = withBase(rootState, { status: 'active', ...outcome }, 'OTC')
     commit('ADD_OUTCOME', record)
     dispatch('audit', { action: 'OUTCOME_ADDED', targetId: record.id, patientId: record.patientId })
@@ -269,6 +333,7 @@ export const actions = {
   updateOutcome({ state, commit, dispatch, rootState }, outcome) {
     const existing = state.carePlanOutcomes.find(item => item.id === outcome.id)
     if (!existing) return null
+    assertCarePlanWritable(rootState, outcome.patientId || existing.patientId)
     const record = { ...existing, ...outcome }
     commit('UPDATE_OUTCOME', record)
     dispatch('audit', { action: 'OUTCOME_UPDATED', targetId: record.id, patientId: record.patientId })
@@ -276,6 +341,7 @@ export const actions = {
   },
 
   documentProgress({ commit, dispatch, rootState }, { carePlanId, problemId, goalId, outcomeId, patientId, encounterId, progressStatus, comment }) {
+    assertCarePlanWritable(rootState, patientId)
     const entry = withBase(rootState, {
       carePlanId,
       problemId,
@@ -311,6 +377,7 @@ export const actions = {
   },
 
   applyProgressToAllUndocumented({ state, commit, dispatch, rootState }, { carePlanId, progressStatus, patientId, encounterId }) {
+    assertCarePlanWritable(rootState, patientId)
     const undocumented = state.carePlanGoals.filter(g =>
       g.carePlanId === carePlanId &&
       g.patientId === patientId &&
@@ -332,6 +399,7 @@ export const actions = {
   },
 
   resolveGoal({ state, commit, dispatch, rootState }, { goalId, patientId, status }) {
+    assertCarePlanWritable(rootState, patientId)
     const goal = state.carePlanGoals.find(g => g.id === goalId)
     if (goal) {
       commit('UPDATE_GOAL', { ...goal, status, statusReason: 'resolved' })
@@ -340,6 +408,7 @@ export const actions = {
   },
 
   resolveOutcome({ state, commit, dispatch, rootState }, { outcomeId, patientId, status }) {
+    assertCarePlanWritable(rootState, patientId)
     const outcome = state.carePlanOutcomes.find(o => o.id === outcomeId)
     if (outcome) {
       commit('UPDATE_OUTCOME', { ...outcome, status, statusReason: 'resolved' })
@@ -348,6 +417,7 @@ export const actions = {
   },
 
   resolveAllActive({ state, commit, dispatch, rootState }, { carePlanId, patientId, status }) {
+    assertCarePlanWritable(rootState, patientId)
     state.carePlanGoals
       .filter(g => g.carePlanId === carePlanId && g.patientId === patientId && g.status === 'active')
       .forEach(goal => {
@@ -357,6 +427,7 @@ export const actions = {
   },
 
   markCarePlanReviewed({ commit, dispatch, rootState }, { carePlanId, patientId, encounterId, comment }) {
+    assertCarePlanWritable(rootState, patientId)
     const review = withBase(rootState, {
       carePlanId,
       patientId,
@@ -402,6 +473,7 @@ export const actions = {
   },
 
   createOrUpdateCarePlanNoteDraft({ state, commit, dispatch, rootState }, { patientId, encounterId, admissionId, includedProgressEntryIds, includedGoalIds, includedOutcomeIds, body }) {
+    assertCarePlanWritable(rootState, patientId)
     let draft = state.carePlanNoteDrafts.find(d => d.patientId === patientId && d.encounterId === encounterId && d.status === 'draft')
 
     if (draft) {
@@ -428,6 +500,7 @@ export const actions = {
   },
 
   signCarePlanNote({ rootState, dispatch }, { patientId, encounterId, admissionId, body, linkedCarePlanProgressEntryIds }) {
+    assertCarePlanWritable(rootState, patientId)
     return dispatch('nursing/createClinicalNote', {
       patientId,
       encounterId,

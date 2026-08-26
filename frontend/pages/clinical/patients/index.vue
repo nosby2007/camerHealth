@@ -36,7 +36,7 @@
         </v-btn-toggle>
         <v-text-field
           v-model="search"
-          placeholder="Search name, MRN, phone, department"
+          placeholder="Search name, MRN, barcode, phone, department"
           single-line
           hide-details
           flat
@@ -44,6 +44,9 @@
           dense
           class="bg-white max-400 rounded-sm"
           style="border-color: #ccc;"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          @keydown.enter="openExactPatient"
         ></v-text-field>
         <v-select
           v-model="riskFilter"
@@ -72,7 +75,6 @@
       <v-data-table
         :headers="headers"
         :items="filteredPatients"
-        :search="search"
         class="hospital-table elevation-0"
         :items-per-page="12"
         @click:row="openPatient"
@@ -80,12 +82,13 @@
         <template v-slot:item.name="{ item }">
           <nuxt-link :to="'/clinical/patients/' + item.id" class="patient-link">{{ item.displayName }}</nuxt-link>
           <div class="text-caption grey--text font-weight-bold">{{ item.mrn }}</div>
+          <div v-if="item.barcode" class="barcode-reference">{{ item.barcode }}</div>
         </template>
         <template v-slot:item.sex="{ item }">
           <span>{{ item.gender }}</span>
         </template>
         <template v-slot:item.riskLevel="{ item }">
-          <v-chip x-small label dark :color="riskColor(item.riskLevel)" class="font-weight-black">{{ item.riskLevel.toUpperCase() }}</v-chip>
+          <v-chip x-small label dark :color="riskColor(item.riskLevel || 'low')" class="font-weight-black">{{ (item.riskLevel || 'low').toUpperCase() }}</v-chip>
         </template>
         <template v-slot:item.currentDepartment="{ item }">
           <div class="d-flex align-center flex-wrap" style="gap:4px">
@@ -98,7 +101,7 @@
             <div v-if="item.pendingAdmission" class="d-flex align-center admit-pending-row">
               <v-chip x-small label color="#C0392B" dark class="font-weight-black">
                 <v-icon x-small left>mdi-bed</v-icon>
-                ADMISSION PENDING: {{ item.pendingAdmission.toUpperCase() }}
+                ADMISSION PENDING: {{ String(item.pendingAdmission || '').toUpperCase() }}
               </v-chip>
               <v-btn
                 x-small
@@ -148,6 +151,8 @@
 </template>
 
 <script>
+const { matchesPatientQuery, exactPatientIdentifierMatch } = require('~/util/patient-search.cjs')
+
 export default {
   data() {
     return {
@@ -217,7 +222,8 @@ export default {
         const statusMatches = this.statusFilter === 'all' || patient.lifecycleStatus === this.statusFilter
         const riskMatches = !this.riskFilter || patient.riskLevel === this.riskFilter
         const departmentMatches = !this.departmentFilter || this.departmentFilter === 'All departments' || patient.currentDepartment === this.departmentFilter
-        return statusMatches && riskMatches && departmentMatches
+        const searchMatches = matchesPatientQuery(patient, this.search)
+        return statusMatches && riskMatches && departmentMatches && searchMatches
       })
     }
   },
@@ -225,6 +231,10 @@ export default {
     await this.loadPatients()
   },
   methods: {
+    openExactPatient() {
+      const exact = this.patients.find(patient => exactPatientIdentifierMatch(patient, this.search))
+      if (exact) this.openPatient(exact)
+    },
     async loadPatients() {
       try {
         await this.$store.dispatch('clinical/fetchPatients')
@@ -288,6 +298,7 @@ export default {
 .patient-status-filter .v-btn--active span span { background: rgba(255,255,255,.2); color: #fff; }
 .patient-link { color: #20B2AA; text-decoration: none; font-weight: 700; }
 .patient-link:hover { text-decoration: underline; }
+.barcode-reference { color: #64748b; font-size: 9px; font-weight: 700; letter-spacing: 0; }
 .empty-state {
   background-color: #FCF8E3;
   color: #8A6D3B;

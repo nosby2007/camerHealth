@@ -80,7 +80,7 @@
 
               <v-row dense>
                 <v-col :cols="editingId ? 8 : 12">
-                  <v-btn color="#00A99D" dark block height="48" tile depressed :disabled="!valid" @click="save" class="font-weight-black text-caption ls-1">
+                  <v-btn color="#00A99D" dark block height="48" tile depressed :disabled="!valid || saving" :loading="saving" @click="save" class="font-weight-black text-caption ls-1">
                     {{ editingId ? 'UPDATE' : 'SCHEDULE' }}
                     <v-icon right small>mdi-calendar-check</v-icon>
                   </v-btn>
@@ -123,19 +123,19 @@
             tile elevation="0"
           >
             <template v-slot:item.patientName="{ item }">
-              <span class="text-body-2 font-weight-black gov-text-primary">{{ item.patientName.toUpperCase() }}</span>
+              <span class="text-body-2 font-weight-black gov-text-primary">{{ String(item.patientName || 'Unknown').toUpperCase() }}</span>
             </template>
             <template v-slot:item.status="{ item }">
-              <v-chip x-small dark label :color="statusColor(item.status)" class="font-weight-black">{{ item.status.toUpperCase() }}</v-chip>
+              <v-chip x-small dark label :color="statusColor(item.status)" class="font-weight-black">{{ String(item.status || 'Scheduled').toUpperCase() }}</v-chip>
             </template>
             <template v-slot:item.actions="{ item }">
-              <v-btn icon x-small @click="editAppointment(item)" class="mr-1">
+              <v-btn icon x-small :disabled="saving" @click="editAppointment(item)" class="mr-1">
                 <v-icon small color="#003366">mdi-pencil</v-icon>
               </v-btn>
-              <v-btn icon x-small @click="markStatus(item, 'Completed')" :disabled="item.status === 'Completed'">
+              <v-btn icon x-small @click="markStatus(item, 'Completed')" :disabled="saving || item.status === 'Completed'">
                 <v-icon small color="#00A99D">mdi-check-circle</v-icon>
               </v-btn>
-              <v-btn icon x-small @click="markStatus(item, 'Cancelled')" :disabled="item.status === 'Cancelled'">
+              <v-btn icon x-small @click="markStatus(item, 'Cancelled')" :disabled="saving || item.status === 'Cancelled'">
                 <v-icon small color="#C0392B">mdi-close-circle</v-icon>
               </v-btn>
             </template>
@@ -155,6 +155,7 @@ export default {
       search: '',
       statusFilter: '',
       editingId: null,
+      saving: false,
       form: { patientId: '', type: '', date: '', time: '', provider: '', reason: '' },
       appointmentTypes: ['General Consultation', 'Follow-Up', 'Vaccination', 'Antenatal Care', 'Lab Review', 'Specialist Referral', 'Emergency'],
       providers: ['Dr. Kamga', 'Dr. Nkeng', 'Dr. Biya', 'Nurse Fouda', 'Nurse Mbarga'],
@@ -179,7 +180,13 @@ export default {
     appointments() {
       return this.$store.getters['clinical/getAppointments'].map(a => {
         const p = this.patients.find(pt => pt.id === a.patientId)
-        return { ...a, patientName: p ? p.name : 'Unknown' }
+        return {
+          ...a,
+          patientName: (a.patient && `${a.patient.firstName || ''} ${a.patient.lastName || ''}`.trim()) || (p && p.name) || 'Unknown',
+          provider: (a.provider && a.provider.fullName) || a.providerName || '-',
+          reason: a.notes || '',
+          date: a.date ? String(a.date).slice(0, 10) : ''
+        }
       }).reverse()
     },
     filteredAppointments() {
@@ -187,17 +194,42 @@ export default {
       return this.appointments.filter(a => a.status === this.statusFilter)
     }
   },
+  async mounted() {
+    try {
+      await Promise.all([
+        this.$store.dispatch('clinical/fetchPatients'),
+        this.$store.dispatch('clinical/fetchAppointments')
+      ])
+    } catch (error) {
+      this.$toast.error(error.response?.data?.error || 'Unable to load appointments.')
+    }
+  },
   methods: {
-    save() {
+    async save() {
       if (!this.$refs.form.validate()) return
-      if (this.editingId) {
-        this.$store.dispatch('clinical/updateAppointment', { ...this.form, id: this.editingId })
-        this.$toast.success('Appointment updated.')
-        this.cancelEdit()
-      } else {
-        this.$store.dispatch('clinical/scheduleAppointment', this.form)
-        this.$toast.success('Appointment scheduled.')
-        this.$refs.form.reset()
+      this.saving = true
+      const payload = {
+        patientId: this.form.patientId,
+        type: this.form.type,
+        date: this.form.date,
+        time: this.form.time || null,
+        notes: this.form.reason || null
+      }
+      try {
+        if (this.editingId) {
+          await this.$store.dispatch('clinical/updateAppointment', { ...payload, id: this.editingId })
+          this.$toast.success('Appointment updated.')
+          this.cancelEdit()
+        } else {
+          await this.$store.dispatch('clinical/scheduleAppointment', payload)
+          this.$toast.success('Appointment scheduled.')
+          this.$refs.form.reset()
+        }
+      } catch (error) {
+        this.$toast.error(error.response?.data?.error || 'Unable to save appointment.')
+        if (error.response?.status === 404) await this.reloadAppointments()
+      } finally {
+        this.saving = false
       }
     },
     editAppointment(item) {
@@ -208,8 +240,24 @@ export default {
       this.editingId = null
       this.$refs.form.reset()
     },
-    markStatus(item, status) {
-      this.$store.dispatch('clinical/updateAppointment', { ...item, status })
+    async markStatus(item, status) {
+      this.saving = true
+      try {
+        await this.$store.dispatch('clinical/updateAppointment', { id: item.id, status })
+        this.$toast.success(`Appointment marked ${status.toLowerCase()}.`)
+      } catch (error) {
+        this.$toast.error(error.response?.data?.error || 'Unable to update appointment.')
+        if (error.response?.status === 404) await this.reloadAppointments()
+      } finally {
+        this.saving = false
+      }
+    },
+    async reloadAppointments() {
+      try {
+        await this.$store.dispatch('clinical/fetchAppointments')
+      } catch (error) {
+        // The original action already exposes the load error in the store.
+      }
     },
     statusColor(s) {
       return { Scheduled: '#00A99D', Completed: '#003366', Cancelled: '#C0392B', 'No-Show': '#F4A300' }[s] || '#6B7280'

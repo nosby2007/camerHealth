@@ -4,12 +4,13 @@ const { z } = require('zod')
 const prisma = require('../lib/prisma')
 const { authenticate, facilityScoped } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
+const { requireFacilityId, requirePatientForFacility } = require('../lib/tenant')
 
 const router = Router()
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function getFacilityId(req) {
-  return req.headers['x-facility-id'] || req.body?.facilityId || req.params.facilityId || req.user.facilityId
+  return requireFacilityId(req)
 }
 
 async function getOrCreateInvoice(patientId, facilityId, issuedById) {
@@ -187,6 +188,7 @@ router.post('/charges', authenticate, facilityScoped, async (req, res, next) => 
     const { patientId, description, category, unitPrice, quantity = 1,
             departmentSource, sourceType, sourceId } = req.body
     const facilityId = getFacilityId(req)
+    await requirePatientForFacility(patientId, facilityId, { select: { id: true } })
     const invoice = await getOrCreateInvoice(patientId, facilityId, req.user.id)
     const charge = await prisma.charge.create({
       data: {
@@ -224,6 +226,7 @@ router.post('/payments', authenticate, facilityScoped, async (req, res, next) =>
   try {
     const { patientId, amount, method, reference, note, paidChargeIds = [] } = req.body
     const facilityId = getFacilityId(req)
+    await requirePatientForFacility(patientId, facilityId, { select: { id: true } })
     const invoice = await getOrCreateInvoice(patientId, facilityId, req.user.id)
     const cashier = req.user.fullName || req.user.staffCode || 'Cashier'
     const count = await prisma.payment.count({ where: { facilityId } })
@@ -297,6 +300,7 @@ router.post('/clearances', authenticate, facilityScoped, async (req, res, next) 
   try {
     const { patientId, serviceType, department, amount, method } = req.body
     const facilityId = getFacilityId(req)
+    await requirePatientForFacility(patientId, facilityId, { select: { id: true } })
     const issuedBy = req.user.fullName || req.user.staffCode || 'Cash Office'
     const ts = Date.now().toString(36).toUpperCase()
     const clearanceCode = `CLR-${ts}-${Math.random().toString(36).slice(2,5).toUpperCase()}`
