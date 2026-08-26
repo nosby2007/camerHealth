@@ -80,6 +80,22 @@ export function createSupabaseAuthCompat(options) {
   const key = options.supabaseKey
   const enabled = parseBooleanFlag(options.enableSupabaseAuth, false)
 
+  if (!enabled) {
+    const disabled = async () => {
+      throw authError('SUPABASE_AUTH_DISABLED', 'Supabase Auth compatibility is disabled by feature flag.')
+    }
+
+    return {
+      isEnabled() {
+        return false
+      },
+      signInWithPassword: disabled,
+      getCurrentAuthUser: disabled,
+      resolveAuthContext: disabled,
+      signOut: disabled
+    }
+  }
+
   if (!url || !key) {
     throw authError('SUPABASE_CONFIG_MISSING', 'Supabase auth compatibility requires SUPABASE_URL and SUPABASE_KEY.')
   }
