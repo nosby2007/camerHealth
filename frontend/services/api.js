@@ -217,7 +217,10 @@ export const organizationApi = {
 
 // ─── Platform operations endpoints (Super Admin only) ───────────────────────
 export const platformApi = {
-  overview: () => api.get('/platform/overview')
+  overview: () => api.get('/platform/overview'),
+  listTeam: () => api.get('/platform/team'),
+  inviteTeamMember: (data) => api.post('/platform/team', data),
+  setTeamMemberStatus: (staffProfileId, status) => api.patch(`/platform/team/${staffProfileId}/status`, { status })
 }
 
 // ─── Commercial pipeline endpoints (Super Admin only) ───────────────────────

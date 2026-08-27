@@ -20,6 +20,17 @@ const MINISTRY_ROLES  = ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST']
 // Phase 13 org hierarchy — MINSANTE / Regional Delegation / District tier,
 // distinct from facility-level ADMIN. See docs/security/multi-tenant-superadmin-architecture.md.
 const SUPER_ADMIN_ROLES = ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN']
+// Internal vendor team (sales/support) — platform-scoped like SUPER_ADMIN,
+// but restricted to their own corner of /super-admin (no org hierarchy, no
+// RMA, no team management). See backend/src/routes/platform.js "team" routes.
+const PLATFORM_TEAM_ROLES = ['SALES', 'SUPPORT']
+// Feature sub-paths beyond the bare /super-admin home (checked separately
+// below since a naive prefix match on '/super-admin' itself would swallow
+// every sub-route, including ones team roles must NOT reach).
+const PLATFORM_TEAM_PERMITTED = {
+  SALES:   ['/super-admin/pipeline'],
+  SUPPORT: []
+}
 const CLINICAL_ROLES  = [
   'ADMIN',
   'DOCTOR',
@@ -70,7 +81,9 @@ const SUPER_ADMIN_HOME = {
   SUPER_ADMIN:     '/super-admin',
   ORG_ADMIN:       '/super-admin',
   REGIONAL_ADMIN:  '/super-admin',
-  DISTRICT_ADMIN:  '/super-admin'
+  DISTRICT_ADMIN:  '/super-admin',
+  SALES:           '/super-admin',
+  SUPPORT:         '/super-admin'
 }
 
 const CLINICAL_PERMITTED = {
@@ -135,8 +148,13 @@ export default function ({ store, redirect, route }) {
 
   // ── 4. Super Admin routes (Phase 13 org hierarchy — not facility ADMIN) ──────
   if (path.startsWith('/super-admin')) {
-    if (!SUPER_ADMIN_ROLES.includes(role)) return redirect(CLINICAL_HOME[role] || MINISTRY_HOME[role] || '/')
-    return
+    if (SUPER_ADMIN_ROLES.includes(role)) return // full access to every /super-admin sub-route
+    if (PLATFORM_TEAM_ROLES.includes(role)) {
+      const permitted = PLATFORM_TEAM_PERMITTED[role] || []
+      const allowed = path === '/super-admin' || permitted.some(p => path.startsWith(p))
+      if (allowed) return
+    }
+    return redirect(CLINICAL_HOME[role] || MINISTRY_HOME[role] || '/')
   }
 
   // ── 4. Clinical / Admin routes ───────────────────────────────────────────────

@@ -9,14 +9,17 @@
         </p>
       </div>
       <div class="header-actions">
-        <v-btn tile depressed color="#0f766e" dark class="font-weight-black text-caption" to="/super-admin/pipeline">
+        <v-btn v-if="canSeePipeline" tile depressed color="#0f766e" dark class="font-weight-black text-caption" to="/super-admin/pipeline">
           <v-icon left small>mdi-account-plus</v-icon>Sales Pipeline
         </v-btn>
-        <v-btn tile depressed color="#003366" dark class="font-weight-black text-caption" to="/super-admin/organizations">
+        <v-btn v-if="isHierarchyAdmin" tile depressed color="#003366" dark class="font-weight-black text-caption" to="/super-admin/organizations">
           <v-icon left small>mdi-sitemap</v-icon>Organizations
         </v-btn>
-        <v-btn tile outlined color="#003366" class="font-weight-black text-caption" to="/super-admin/reports">
+        <v-btn v-if="isHierarchyAdmin" tile outlined color="#003366" class="font-weight-black text-caption" to="/super-admin/reports">
           <v-icon left small>mdi-file-chart-check</v-icon>RMA Reports
+        </v-btn>
+        <v-btn v-if="isSuperAdmin" tile outlined color="#003366" class="font-weight-black text-caption" to="/super-admin/team">
+          <v-icon left small>mdi-account-supervisor-circle</v-icon>Team
         </v-btn>
       </div>
     </header>
@@ -91,6 +94,10 @@ export default {
     return { overview: null, loading: true }
   },
   computed: {
+    userRole() { return this.$store.state.auth.role },
+    isSuperAdmin() { return this.userRole === 'SUPER_ADMIN' },
+    isHierarchyAdmin() { return ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN'].includes(this.userRole) },
+    canSeePipeline() { return ['SUPER_ADMIN', 'SALES'].includes(this.userRole) },
     metrics() {
       const c = this.overview ? this.overview.counts : null
       return [
