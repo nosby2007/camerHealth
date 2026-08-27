@@ -215,6 +215,11 @@ export const organizationApi = {
   revokeStaffAssignment: (assignmentId) => api.patch(`/organizations/staff-assignments/${assignmentId}/revoke`)
 }
 
+// ─── Platform operations endpoints (Super Admin only) ───────────────────────
+export const platformApi = {
+  overview: () => api.get('/platform/overview')
+}
+
 // ─── RMA (Rapport Mensuel d'Activité) endpoints ─────────────────────────────
 export const reportsApi = {
   submit: (data) => api.post('/rma', data),

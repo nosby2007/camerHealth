@@ -32,6 +32,7 @@ const flowsheetRoutes = require('./routes/flowsheets')
 const clinicalNotesRoutes = require('./routes/clinical-notes')
 const organizationRoutes = require('./routes/organizations')
 const reportsRoutes = require('./routes/reports')
+const platformRoutes = require('./routes/platform')
 
 const app = express()
 
@@ -225,6 +226,7 @@ app.use('/api/flowsheets', flowsheetRoutes)
 app.use('/api', clinicalNotesRoutes) // exposes /api/vitals and /api/clinical-notes
 app.use('/api/organizations', organizationRoutes)
 app.use('/api', reportsRoutes) // exposes /api/rma/*
+app.use('/api/platform', platformRoutes)
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 
