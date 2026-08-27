@@ -136,7 +136,8 @@ export default {
         { icon: 'mdi-account-multiple', titleKey: 'Staff Accounts',    to: '/admin/staff',           roles: ['ADMIN'] },
         { icon: 'mdi-history',          titleKey: 'Audit Log',         to: '/admin/audit',           roles: ['ADMIN'] },
         { icon: 'mdi-shield-crown',     titleKey: 'Super Admin',       to: '/super-admin',           roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN'] },
-        { icon: 'mdi-account-plus',     titleKey: 'Sales Pipeline',    to: '/super-admin/pipeline',  roles: ['SUPER_ADMIN'] },
+        { icon: 'mdi-account-plus',     titleKey: 'Sales Pipeline',    to: '/super-admin/pipeline',  roles: ['SUPER_ADMIN', 'SALES'] },
+        { icon: 'mdi-account-supervisor-circle', titleKey: 'Team Access', to: '/super-admin/team',   roles: ['SUPER_ADMIN'] },
         { icon: 'mdi-file-chart-check', titleKey: 'Submit RMA',        to: '/admin/rma',              roles: ['ADMIN'] },
         { icon: 'mdi-monitor-dashboard', titleKey: 'EMR Command Center', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
         // ── Patient Modules ──

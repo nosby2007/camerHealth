@@ -1,4 +1,4 @@
-// ─── CameroHealth — Commercial Pipeline Routes (Super Admin only) ───────────
+// ─── CameroHealth — Commercial Pipeline Routes (Super Admin + Sales team) ───
 // The vendor's own sales CRM: track a health facility from prospect to
 // signed customer. Not a clinical or MINSANTE concept — kept fully separate
 // from organizations.js (public-health hierarchy) and facilityScoped routes.
@@ -63,7 +63,7 @@ const convertSchema = z.object({
 })
 
 // ─── GET / — list leads, optionally filtered by stage ────────────────────────
-router.get('/', authenticate, authorize('SUPER_ADMIN'), async (req, res, next) => {
+router.get('/', authenticate, authorize('SUPER_ADMIN', 'SALES'), async (req, res, next) => {
   try {
     const { stage } = req.query
     const leads = await prisma.lead.findMany({
@@ -77,7 +77,7 @@ router.get('/', authenticate, authorize('SUPER_ADMIN'), async (req, res, next) =
 })
 
 // ─── POST / — create a lead ───────────────────────────────────────────────────
-router.post('/', authenticate, authorize('SUPER_ADMIN'), validate(leadSchema), async (req, res, next) => {
+router.post('/', authenticate, authorize('SUPER_ADMIN', 'SALES'), validate(leadSchema), async (req, res, next) => {
   try {
     const lead = await prisma.lead.create({
       data: { ...req.body, createdById: req.user.id }
@@ -92,7 +92,7 @@ router.post('/', authenticate, authorize('SUPER_ADMIN'), validate(leadSchema), a
 })
 
 // ─── GET /:id — lead detail + activity timeline ───────────────────────────────
-router.get('/:id', authenticate, authorize('SUPER_ADMIN'), async (req, res, next) => {
+router.get('/:id', authenticate, authorize('SUPER_ADMIN', 'SALES'), async (req, res, next) => {
   try {
     const lead = await prisma.lead.findUnique({
       where: { id: req.params.id },
@@ -106,7 +106,7 @@ router.get('/:id', authenticate, authorize('SUPER_ADMIN'), async (req, res, next
 })
 
 // ─── PATCH /:id — update lead fields (contact info, quote, contract) ─────────
-router.patch('/:id', authenticate, authorize('SUPER_ADMIN'), validate(leadUpdateSchema), async (req, res, next) => {
+router.patch('/:id', authenticate, authorize('SUPER_ADMIN', 'SALES'), validate(leadUpdateSchema), async (req, res, next) => {
   try {
     const data = { ...req.body }
     for (const dateField of ['quoteSentAt', 'contractSignedAt', 'renewalDate']) {
@@ -120,7 +120,7 @@ router.patch('/:id', authenticate, authorize('SUPER_ADMIN'), validate(leadUpdate
 })
 
 // ─── PATCH /:id/stage — move a lead through the pipeline ─────────────────────
-router.patch('/:id/stage', authenticate, authorize('SUPER_ADMIN'), validate(stageChangeSchema), async (req, res, next) => {
+router.patch('/:id/stage', authenticate, authorize('SUPER_ADMIN', 'SALES'), validate(stageChangeSchema), async (req, res, next) => {
   try {
     const existing = await prisma.lead.findUnique({ where: { id: req.params.id } })
     if (!existing) return res.status(404).json({ error: 'Lead not found' })
@@ -152,7 +152,7 @@ router.patch('/:id/stage', authenticate, authorize('SUPER_ADMIN'), validate(stag
 })
 
 // ─── POST /:id/activities — log a note/call/email/meeting ───────────────────
-router.post('/:id/activities', authenticate, authorize('SUPER_ADMIN'), validate(activitySchema), async (req, res, next) => {
+router.post('/:id/activities', authenticate, authorize('SUPER_ADMIN', 'SALES'), validate(activitySchema), async (req, res, next) => {
   try {
     const activity = await prisma.leadActivity.create({
       data: { leadId: req.params.id, type: req.body.type, body: req.body.body, createdById: req.user.id }
