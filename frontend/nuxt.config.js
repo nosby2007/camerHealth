@@ -85,8 +85,6 @@ export default {
         name: "description",
         content: "Système intégré de surveillance des maladies et de gestion clinique — Ministère de la Santé Publique du Cameroun (MINSANTE)"
       },
-      // Sécurité : empêche les moteurs de recherche d'indexer un système de santé gouvernemental
-      { name: "robots", content: "noindex, nofollow" },
       // PWA theme color (barre navigateur sur mobile)
       { name: "theme-color", content: "#003366" },
       // Pas de cache pour les pages contenant des données de santé
