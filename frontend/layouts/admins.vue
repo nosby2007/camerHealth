@@ -112,6 +112,9 @@
 import { mapActions } from "vuex"
 
 export default {
+	head() {
+		return { meta: [{ hid: 'robots', name: 'robots', content: 'noindex, nofollow' }] }
+	},
 	data() {
 		return {
 			drawer: true,
@@ -125,7 +128,9 @@ export default {
 				{ icon: 'mdi-hospital-building', titleKey: 'Hospital Model', to: '/admin/hospital', roles: ['ADMIN'] },
 				{ icon: 'mdi-account-multiple', titleKey: 'Staff Accounts', to: '/admin/staff', roles: ['ADMIN'] },
 				{ icon: 'mdi-history', titleKey: 'Audit Log', to: '/admin/audit', roles: ['ADMIN'] },
-				{ icon: 'mdi-shield-crown', titleKey: 'Super Admin', to: '/super-admin', roles: ['ADMIN'] },
+				{ icon: 'mdi-shield-crown', titleKey: 'Super Admin', to: '/super-admin', roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN'] },
+				{ icon: 'mdi-account-plus', titleKey: 'Sales Pipeline', to: '/super-admin/pipeline', roles: ['SUPER_ADMIN'] },
+				{ icon: 'mdi-file-chart-check', titleKey: 'Submit RMA', to: '/admin/rma', roles: ['ADMIN'] },
 				{ icon: 'mdi-view-dashboard', titleKey: 'EMR Command Center', to: '/clinical/dashboard', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'BILLING', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
 				{ icon: 'mdi-monitor-dashboard', titleKey: 'EMR Command Center', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
 				{ icon: 'mdi-medical-bag', titleKey: 'Doctor Worklist', to: '/clinical/doctor', roles: ['ADMIN', 'DOCTOR', 'NP'] },

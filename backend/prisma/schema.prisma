@@ -1130,3 +1130,59 @@ model MonthlyActivityReport {
   @@index([status])
   @@map("monthly_activity_reports")
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Commercial pipeline — vendor's own sales CRM, not a clinical/MINSANTE
+// concept. Tracks a health facility from prospect to signed customer.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// stage: NEW -> CONTACTED -> DEMO_SCHEDULED -> DEMO_DONE -> PROPOSAL_SENT ->
+//        NEGOTIATION -> SIGNED (terminal) or LOST (terminal, any point)
+model Lead {
+  id                  String    @id @default(uuid())
+  organizationName    String    @map("organization_name")
+  contactName         String    @map("contact_name")
+  contactEmail        String?   @map("contact_email")
+  contactPhone        String?   @map("contact_phone")
+  facilityType        String?   @map("facility_type") // Hospital / CMA / Health Center / Private Clinic...
+  region              String?
+  city                String?
+  stage               String    @default("NEW")
+  source              String? // referral, website, cold outreach, MINSANTE introduction...
+  estimatedValue      Float?    @map("estimated_value")
+  currency            String    @default("XAF")
+  quoteAmount         Float?    @map("quote_amount")
+  quoteSentAt         DateTime? @map("quote_sent_at")
+  contractValue       Float?    @map("contract_value")
+  contractSignedAt    DateTime? @map("contract_signed_at")
+  renewalDate         DateTime? @map("renewal_date")
+  lostReason          String?   @map("lost_reason")
+  assignedToStaffId   String?   @map("assigned_to_staff_id")
+  convertedFacilityId String?   @map("converted_facility_id")
+  createdById         String    @map("created_by_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  activities LeadActivity[]
+
+  @@index([stage])
+  @@index([region])
+  @@map("leads")
+}
+
+// type: 'note' | 'stage_change' | 'call' | 'email' | 'meeting'
+model LeadActivity {
+  id          String   @id @default(uuid())
+  leadId      String   @map("lead_id")
+  type        String
+  body        String?
+  fromStage   String?  @map("from_stage")
+  toStage     String?  @map("to_stage")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("lead_activities")
+}
