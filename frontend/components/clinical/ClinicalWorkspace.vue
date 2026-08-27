@@ -1170,6 +1170,7 @@
               v-else-if="selectedChartTab === 'Wound Management'"
               :wounds="patientWounds"
               :assessments="woundAssessmentMap"
+              :photos="patientWoundPhotos"
               :read-only="isPatientDischarged"
               @open-wound="openWoundDialog"
             />
@@ -3493,6 +3494,10 @@ export default {
         map[wound.id] = this.woundAssessmentsFor(wound.id)
         return map
       }, {})
+    },
+    patientWoundPhotos() {
+      const all = this.$store.getters['nursing/getWoundPhotos'] || []
+      return all.filter(item => item.patientId === this.activePatientId)
     },
     hasWoundAreaWarning() {
       return this.patientWounds.some(wound => this.woundAssessmentsFor(wound.id).some(item => item.warningAreaIncreased))
