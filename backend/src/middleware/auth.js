@@ -3,7 +3,8 @@ const { verifyToken } = require('../lib/jwt')
 const prisma = require('../lib/prisma')
 const {
   resolveFacilityIdsForUnit,
-  resolveFacilityIdsForOrganization
+  resolveFacilityIdsForOrganization,
+  resolveEffectiveRole
 } = require('../lib/orgHierarchy')
 
 /**
@@ -44,12 +45,16 @@ async function authenticate(req, res, next) {
       return res.status(403).json({ error: 'Staff account is inactive. Contact an administrator.' })
     }
 
+    // A Phase 13 hierarchy assignment (regional/district/org/platform admin)
+    // overrides the facility-scoped StaffProfile.role as the acting role.
+    const effectiveRole = await resolveEffectiveRole(staff.id, staff.role)
+
     req.user = {
       id: staff.id,
       staffCode: staff.staffCode,
       fullName: staff.fullName,
       email: staff.email,
-      role: staff.role,
+      role: effectiveRole,
       facilityId: staff.facilityId,
       department: staff.department,
       service: staff.service

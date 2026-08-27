@@ -64,9 +64,26 @@ async function resolveFacilityIdsForOrganization(organizationId) {
   return facilities.map(f => f.id)
 }
 
+/**
+ * A staff member normally acts under their StaffProfile.role. If they hold an
+ * active Phase 13 StaffAssignment (regional/district/org/platform admin —
+ * roles that don't belong to a single facility), that assignment's role
+ * takes over as their effective/acting role application-wide: it's how
+ * `authorize()` on hierarchy routes and the frontend's role-based routing
+ * recognize them, since neither reads StaffAssignment directly.
+ */
+async function resolveEffectiveRole(staffProfileId, fallbackRole) {
+  const assignment = await prisma.staffAssignment.findFirst({
+    where: { staffProfileId, status: 'active' },
+    orderBy: { createdAt: 'desc' }
+  })
+  return assignment ? assignment.assignmentRole : fallbackRole
+}
+
 module.exports = {
   loadUnitTree,
   collectDescendantUnitIds,
   resolveFacilityIdsForUnit,
-  resolveFacilityIdsForOrganization
+  resolveFacilityIdsForOrganization,
+  resolveEffectiveRole
 }
