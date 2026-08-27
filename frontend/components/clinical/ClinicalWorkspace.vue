@@ -712,10 +712,23 @@
                     <button :class="{ active: avatarView === 'front' }" type="button" @click="avatarView = 'front'">Front</button>
                     <button :class="{ active: avatarView === 'back' }" type="button" @click="avatarView = 'back'">Back</button>
                   </div>
+                  <div class="avatar-zoom-toggle">
+                    <button type="button" :disabled="avatarZoom <= AVATAR_ZOOM_MIN" aria-label="Zoom out" @click="zoomAvatar(-1)">
+                      <v-icon x-small>mdi-magnify-minus-outline</v-icon>
+                    </button>
+                    <span>{{ Math.round(avatarZoom * 100) }}%</span>
+                    <button type="button" :disabled="avatarZoom >= AVATAR_ZOOM_MAX" aria-label="Zoom in" @click="zoomAvatar(1)">
+                      <v-icon x-small>mdi-magnify-plus-outline</v-icon>
+                    </button>
+                    <button v-if="avatarZoom !== 1" type="button" aria-label="Reset zoom" @click="resetAvatarZoom">
+                      <v-icon x-small>mdi-backup-restore</v-icon>
+                    </button>
+                  </div>
                   <div class="body-canvas">
                     <div
                       ref="avatarBodyFigure"
                       :class="['body-figure', avatarView, avatarAnatomy, { 'with-image': avatarImageSrc, placing: selectedAvatarTool }]"
+                      :style="{ transform: `scale(${avatarZoom})` }"
                       @click="handleAvatarCanvasClick"
                       @dragover.prevent
                       @drop.prevent="handleAvatarDrop"
@@ -726,16 +739,6 @@
                         :src="avatarImageSrc"
                         :alt="`${avatarAnatomyLabel} ${avatarView} body avatar`"
                       >
-                      <button
-                        v-for="zone in visibleAvatarZones"
-                        :key="zone.key"
-                        :class="['body-zone', zone.key, zone.status, { selected: activeAvatarZone === zone.key }]"
-                        type="button"
-                        @click.stop="activeAvatarZone = zone.key"
-                      >
-                        <v-icon x-small>{{ zone.icon }}</v-icon>
-                        <span>{{ zone.short }}</span>
-                      </button>
                       <button
                         v-for="item in visibleAvatarPlacements"
                         :key="item.id"
@@ -2556,6 +2559,9 @@ export default {
       activeSdoh: 'food',
       activeAvatarZone: 'cardiac',
       avatarView: 'front',
+      avatarZoom: 1,
+      AVATAR_ZOOM_MIN: 0.6,
+      AVATAR_ZOOM_MAX: 2,
       selectedAvatarTool: '',
       avatarPlacementSequence: 0,
       avatarPlacements: [],
@@ -5387,9 +5393,6 @@ export default {
         }
       ]
     },
-    visibleAvatarZones() {
-      return this.avatarZones.filter(zone => zone.view === this.avatarView || ['pain', 'meds'].includes(zone.key))
-    },
     avatarNarrative() {
       const riskCount = this.avatarZones.filter(zone => zone.status === 'risk').length
       const activeCount = this.avatarZones.filter(zone => zone.status === 'active').length
@@ -5949,10 +5952,18 @@ export default {
       const key = event && event.dataTransfer ? event.dataTransfer.getData('text/plain') : this.selectedAvatarTool
       this.placeAvatarItemFromEvent(event, key)
     },
+    zoomAvatar(direction) {
+      const step = 0.2
+      const next = Math.round((this.avatarZoom + direction * step) * 100) / 100
+      this.avatarZoom = Math.min(this.AVATAR_ZOOM_MAX, Math.max(this.AVATAR_ZOOM_MIN, next))
+    },
+    resetAvatarZoom() {
+      this.avatarZoom = 1
+    },
     handleAvatarCanvasClick(event) {
       if (this.isPatientDischarged) return
       if (!this.selectedAvatarTool) return
-      const blocked = event.target && event.target.closest && event.target.closest('.body-zone, .avatar-sticker')
+      const blocked = event.target && event.target.closest && event.target.closest('.avatar-sticker')
       if (blocked) return
       this.placeAvatarItemFromEvent(event, this.selectedAvatarTool)
     },
@@ -9013,6 +9024,37 @@ function latestByDate(items, field) {
   border-color: #0f766e;
   color: #fff;
 }
+.avatar-zoom-toggle {
+  background: #fff;
+  border-bottom: 1px solid #d7e0df;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 9px;
+}
+.avatar-zoom-toggle button {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  min-width: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-zoom-toggle button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.avatar-zoom-toggle span {
+  font-size: 11px;
+  font-weight: 900;
+  color: #334155;
+  min-width: 38px;
+  text-align: center;
+}
 .body-canvas {
   min-height: 430px;
   display: flex;
@@ -9028,6 +9070,8 @@ function latestByDate(items, field) {
   position: relative;
   width: 260px;
   height: 390px;
+  transition: transform 0.15s ease;
+  transform-origin: center top;
 }
 .body-figure.placing {
   cursor: crosshair;
@@ -9259,48 +9303,6 @@ function latestByDate(items, field) {
   right: 76px;
   transform: rotate(8deg);
 }
-.body-zone {
-  position: absolute;
-  z-index: 3;
-  min-width: 54px;
-  min-height: 34px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #0f172a;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 5px 7px;
-  font-size: 10px;
-  font-weight: 900;
-  cursor: pointer;
-}
-.body-zone.risk {
-  border-color: #be123c;
-  background: #fff1f2;
-}
-.body-zone.active {
-  border-color: #0f766e;
-  background: #ecfdf5;
-}
-.body-zone.stable {
-  border-color: #64748b;
-  background: #f8fafc;
-}
-.body-zone.selected {
-  outline: 3px solid #99f6e4;
-  z-index: 3;
-}
-.body-zone.neuro { left: 103px; top: 0; }
-.body-zone.resp { left: 146px; top: 105px; }
-.body-zone.breast { left: 103px; top: 148px; }
-.body-zone.cardiac { left: 54px; top: 116px; }
-.body-zone.iv { left: 0; top: 166px; }
-.body-zone.skin { left: 103px; top: 170px; }
-.body-zone.pain { right: 0; top: 166px; }
-.body-zone.mobility { left: 34px; top: 302px; }
-.body-zone.meds { right: 34px; top: 302px; }
 .avatar-sticker {
   align-items: center;
   background: rgba(255, 255, 255, 0.94);

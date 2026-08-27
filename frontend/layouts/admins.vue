@@ -189,6 +189,7 @@ export default {
 
 <style lang="scss">
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap');
+html { font-size: 17px !important; }
 html, body { font-family: 'Inter', sans-serif !important; background: #F5F7F6 !important; }
 .gov-sidebar {
 	border-right: none !important;
