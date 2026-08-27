@@ -109,6 +109,7 @@
 
 <script>
 import { mapState, mapActions } from 'vuex'
+import { facilityApi } from '~/services/api'
 
 export default {
   name: 'SuperAdminOrganizations',
@@ -122,6 +123,7 @@ export default {
       attaching: false,
       attachFacilityId: null,
       attachUnitId: null,
+      facilities: [],
       orgForm: { name: '', organizationType: 'PUBLIC_HEALTH_AUTHORITY', organizationCode: '' },
       unitForm: { id: null, name: '', unitType: 'DISTRICT', parentUnitId: null, region: '' },
       orgTypes: ['MINISTRY', 'PUBLIC_HEALTH_AUTHORITY', 'PRIVATE_NETWORK', 'NGO_NETWORK', 'OTHER'],
@@ -137,13 +139,18 @@ export default {
       return [...this.units].sort((a, b) => (a.hierarchyLevel || 0) - (b.hierarchyLevel || 0) || a.name.localeCompare(b.name))
     },
     facilityOptions() {
-      const staffFacility = this.$store.state.facility && this.$store.state.facility.facility
-      return staffFacility ? [{ id: staffFacility.id, label: `${staffFacility.name} (${staffFacility.code})` }] : []
+      return this.facilities.map(f => ({ id: f.id, label: `${f.name} (${f.code})` }))
     }
   },
   async mounted() {
     await this.fetchOrganizations()
     if (this.organizations.length) this.selectOrganization(this.organizations[0].id)
+    try {
+      const { data } = await facilityApi.list()
+      this.facilities = data || []
+    } catch (err) {
+      this.$toast.error(err.response?.data?.error || err.message)
+    }
   },
   methods: {
     ...mapActions('organizations', [

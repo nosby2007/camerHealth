@@ -89,6 +89,7 @@ export const authApi = {
 
 // ─── Facility endpoints ─────────────────────────────────────────────────────
 export const facilityApi = {
+  list: () => api.get('/facilities'),
   get: (id) => api.get(`/facilities/${id}`),
   update: (id, data) => api.patch(`/facilities/${id}`, data)
 }
