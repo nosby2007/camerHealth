@@ -186,4 +186,42 @@ export const catalogApi = {
   remove: (id) => api.delete(`/catalog/${id}`)
 }
 
+// ─── Vitals endpoints ───────────────────────────────────────────────────────
+export const vitalsApi = {
+  list: (patientId) => api.get('/vitals', { params: { patientId } }),
+  record: (data) => api.post('/vitals', data)
+}
+
+// ─── Clinical notes endpoints ───────────────────────────────────────────────
+export const clinicalNotesApi = {
+  list: (patientId, noteType) => api.get('/clinical-notes', { params: { patientId, noteType } }),
+  create: (data) => api.post('/clinical-notes', data),
+  update: (id, data) => api.patch(`/clinical-notes/${id}`, data),
+  sign: (id) => api.patch(`/clinical-notes/${id}/sign`)
+}
+
+// ─── Phase 13: Organization hierarchy endpoints ─────────────────────────────
+export const organizationApi = {
+  list: () => api.get('/organizations'),
+  create: (data) => api.post('/organizations', data),
+  update: (id, data) => api.patch(`/organizations/${id}`, data),
+  remove: (id) => api.delete(`/organizations/${id}`),
+  listUnits: (orgId) => api.get(`/organizations/${orgId}/units`),
+  createUnit: (orgId, data) => api.post(`/organizations/${orgId}/units`, data),
+  updateUnit: (orgId, unitId, data) => api.patch(`/organizations/${orgId}/units/${unitId}`, data),
+  removeUnit: (orgId, unitId) => api.delete(`/organizations/${orgId}/units/${unitId}`),
+  attachFacility: (facilityId, data) => api.patch(`/organizations/facilities/${facilityId}/attach`, data),
+  createStaffAssignment: (orgId, data) => api.post(`/organizations/${orgId}/staff-assignments`, data),
+  revokeStaffAssignment: (assignmentId) => api.patch(`/organizations/staff-assignments/${assignmentId}/revoke`)
+}
+
+// ─── RMA (Rapport Mensuel d'Activité) endpoints ─────────────────────────────
+export const reportsApi = {
+  submit: (data) => api.post('/rma', data),
+  list: (params) => api.get('/rma', { params }),
+  validate: (id, data) => api.patch(`/rma/${id}/validate`, data),
+  reject: (id, data) => api.patch(`/rma/${id}/reject`, data),
+  aggregate: (params) => api.get('/rma/aggregate', { params })
+}
+
 export default api

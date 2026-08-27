@@ -28,6 +28,10 @@ const billingRoutes = require('./routes/billing')
 const auditRoutes = require('./routes/audit')
 const departmentRoutes = require('./routes/departments')
 const catalogRoutes = require('./routes/catalog')
+const flowsheetRoutes = require('./routes/flowsheets')
+const clinicalNotesRoutes = require('./routes/clinical-notes')
+const organizationRoutes = require('./routes/organizations')
+const reportsRoutes = require('./routes/reports')
 
 const app = express()
 
@@ -217,6 +221,10 @@ app.use('/api/billing', billingRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/departments', departmentRoutes)
 app.use('/api/catalog', catalogRoutes)
+app.use('/api/flowsheets', flowsheetRoutes)
+app.use('/api', clinicalNotesRoutes) // exposes /api/vitals and /api/clinical-notes
+app.use('/api/organizations', organizationRoutes)
+app.use('/api', reportsRoutes) // exposes /api/rma/*
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 

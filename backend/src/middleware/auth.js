@@ -1,6 +1,10 @@
 // ─── CameroHealth — JWT Authentication Middleware ───────────────────────────
 const { verifyToken } = require('../lib/jwt')
 const prisma = require('../lib/prisma')
+const {
+  resolveFacilityIdsForUnit,
+  resolveFacilityIdsForOrganization
+} = require('../lib/orgHierarchy')
 
 /**
  * Authenticate a request via JWT Bearer token.
@@ -94,8 +98,58 @@ function facilityScoped(req, res, next) {
   next()
 }
 
+/**
+ * Resolve which facility ids the authenticated staff member may see beyond
+ * their own facilityId, based on an active StaffAssignment (Phase 13 org
+ * hierarchy). Must run AFTER `authenticate`.
+ *
+ * - Ordinary facility staff (no StaffAssignment): unchanged, single facility.
+ * - platform scope (SUPER_ADMIN): sees every facility.
+ * - organization scope (ORG_ADMIN): sees every facility under that organization.
+ * - organization_unit scope (REGIONAL_ADMIN / DISTRICT_ADMIN): sees every
+ *   facility under that unit's subtree.
+ * - facility scope: behaves like ordinary staff, restricted to that facility.
+ *
+ * Attaches `req.scopedFacilityIds` (null means "no hierarchy scope beyond own
+ * facility") and `req.staffAssignment` (the active assignment row, if any).
+ */
+async function hierarchyScoped(req, res, next) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required.' })
+    }
+
+    const assignment = await prisma.staffAssignment.findFirst({
+      where: { staffProfileId: req.user.id, status: 'active' },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    req.staffAssignment = assignment || null
+    req.scopedFacilityIds = null
+
+    if (!assignment) {
+      return next()
+    }
+
+    if (assignment.assignmentScope === 'platform') {
+      req.scopedFacilityIds = 'ALL'
+    } else if (assignment.assignmentScope === 'organization' && assignment.organizationId) {
+      req.scopedFacilityIds = await resolveFacilityIdsForOrganization(assignment.organizationId)
+    } else if (assignment.assignmentScope === 'organization_unit' && assignment.organizationUnitId) {
+      req.scopedFacilityIds = await resolveFacilityIdsForUnit(assignment.organizationUnitId)
+    } else if (assignment.assignmentScope === 'facility' && assignment.facilityId) {
+      req.scopedFacilityIds = [assignment.facilityId]
+    }
+
+    next()
+  } catch (error) {
+    next(error)
+  }
+}
+
 module.exports = {
   authenticate,
   authorize,
-  facilityScoped
+  facilityScoped,
+  hierarchyScoped
 }

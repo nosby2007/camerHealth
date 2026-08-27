@@ -17,6 +17,9 @@
  */
 
 const MINISTRY_ROLES  = ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST']
+// Phase 13 org hierarchy — MINSANTE / Regional Delegation / District tier,
+// distinct from facility-level ADMIN. See docs/security/multi-tenant-superadmin-architecture.md.
+const SUPER_ADMIN_ROLES = ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN']
 const CLINICAL_ROLES  = [
   'ADMIN',
   'DOCTOR',
@@ -37,7 +40,7 @@ const CLINICAL_ROLES  = [
 ]
 
 // Fully public — no auth needed
-const OPEN_ROUTES = ['/', '/about', '/contact', '/login', '/register', '/ministry-login']
+const OPEN_ROUTES = ['/', '/about', '/implementation', '/security', '/contact', '/login', '/register', '/ministry-login']
 
 const CLINICAL_HOME = {
   ADMIN:   '/admin',
@@ -63,8 +66,15 @@ const MINISTRY_HOME = {
   EPIDEMIOLOGIST:        '/ministry'
 }
 
+const SUPER_ADMIN_HOME = {
+  SUPER_ADMIN:     '/super-admin',
+  ORG_ADMIN:       '/super-admin',
+  REGIONAL_ADMIN:  '/super-admin',
+  DISTRICT_ADMIN:  '/super-admin'
+}
+
 const CLINICAL_PERMITTED = {
-  ADMIN:   ['/admin', '/clinical'],
+  ADMIN:   ['/admin', '/admin/rma', '/clinical'],
   DOCTOR:  ['/clinical'],
   NP:      ['/clinical'],
   NURSE:   ['/clinical'],
@@ -101,7 +111,7 @@ export default function ({ store, redirect, route }) {
     // / is always the entry point — never auto-redirect away from it
     if (path !== '/') {
       if (isAuthenticated && role) {
-        const home = CLINICAL_HOME[role] || MINISTRY_HOME[role]
+        const home = CLINICAL_HOME[role] || MINISTRY_HOME[role] || SUPER_ADMIN_HOME[role]
         if (home) return redirect(home)
       }
     }
@@ -123,9 +133,9 @@ export default function ({ store, redirect, route }) {
     return
   }
 
-  // ── 4. Super Admin routes ─────────────────────────────────────────────────
+  // ── 4. Super Admin routes (Phase 13 org hierarchy — not facility ADMIN) ──────
   if (path.startsWith('/super-admin')) {
-    if (role !== 'ADMIN') return redirect(CLINICAL_HOME[role] || MINISTRY_HOME[role] || '/')
+    if (!SUPER_ADMIN_ROLES.includes(role)) return redirect(CLINICAL_HOME[role] || MINISTRY_HOME[role] || '/')
     return
   }
 

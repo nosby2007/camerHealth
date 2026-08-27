@@ -1,5 +1,5 @@
 const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
-import { patientApi, clinicalApi, appointmentApi, inpatientApi } from '~/services/api'
+import { patientApi, clinicalApi, appointmentApi, inpatientApi, vitalsApi, clinicalNotesApi } from '~/services/api'
 
 export const namespaced = true
 
@@ -622,19 +622,26 @@ export const actions = {
   updateInvoice({ commit }, invoice) {
     commit('UPDATE_INVOICE', invoice)
   },
-  recordVitalSigns({ state, commit, rootState }, vitals) {
+  async recordVitalSigns({ state, commit, rootState }, vitals) {
     assertPatientWritable(state, vitals.patientId)
-    commit('ADD_VITAL_SIGNS', {
+    const local = {
       ...vitals,
       id: 'VIT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       ...tenantFields(rootState)
-    })
+    }
+    try {
+      const { data } = await vitalsApi.record(vitals)
+      local.id = (data.vitalSigns && data.vitalSigns.id) || local.id
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+    commit('ADD_VITAL_SIGNS', local)
   },
-  addNursingNote({ state, commit, rootState }, note) {
+  async addNursingNote({ state, commit, rootState }, note) {
     assertPatientWritable(state, note.patientId)
     const now = new Date().toISOString()
     const actor = note.recordedBy || rootState.auth.fullName || 'Unknown user'
-    commit('ADD_NURSING_NOTE', {
+    const local = {
       ...note,
       id: 'NNT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       ...tenantFields(rootState),
@@ -652,13 +659,26 @@ export const actions = {
           changedFields: []
         }
       ]
-    })
+    }
+    try {
+      const { data } = await clinicalNotesApi.create({
+        patientId: note.patientId,
+        encounterId: note.encounterId,
+        noteType: 'nursing',
+        title: note.title,
+        body: note.body || note.note || note.text || ''
+      })
+      local.id = (data.note && data.note.id) || local.id
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+    commit('ADD_NURSING_NOTE', local)
   },
-  addMedicalNote({ state, commit, rootState }, note) {
+  async addMedicalNote({ state, commit, rootState }, note) {
     assertPatientWritable(state, note.patientId)
     const now = new Date().toISOString()
     const actor = note.recordedBy || rootState.auth.fullName || 'Unknown user'
-    commit('ADD_MEDICAL_NOTE', {
+    const local = {
       ...note,
       id: 'MNT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       ...tenantFields(rootState),
@@ -676,9 +696,22 @@ export const actions = {
           changedFields: []
         }
       ]
-    })
+    }
+    try {
+      const { data } = await clinicalNotesApi.create({
+        patientId: note.patientId,
+        encounterId: note.encounterId,
+        noteType: 'medical',
+        title: note.title,
+        body: note.body || note.note || note.text || ''
+      })
+      local.id = (data.note && data.note.id) || local.id
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+    commit('ADD_MEDICAL_NOTE', local)
   },
-  updateNursingNote({ state, commit, rootState }, payload) {
+  async updateNursingNote({ state, commit, rootState }, payload) {
     const existing = state.nursingNotes.find(n => n.id === payload.id)
     if (!existing) return
     assertPatientWritable(state, existing.patientId)
@@ -702,9 +735,14 @@ export const actions = {
         }
       ]
     }
+    try {
+      await clinicalNotesApi.update(existing.id, { body: next.body, title: next.title })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('UPDATE_NURSING_NOTE', next)
   },
-  updateMedicalNote({ state, commit, rootState }, payload) {
+  async updateMedicalNote({ state, commit, rootState }, payload) {
     const existing = state.medicalNotes.find(n => n.id === payload.id)
     if (!existing) return
     assertPatientWritable(state, existing.patientId)
@@ -727,6 +765,11 @@ export const actions = {
           changedFields: getChangedFields(existing, updates)
         }
       ]
+    }
+    try {
+      await clinicalNotesApi.update(existing.id, { body: next.body, title: next.title })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
     }
     commit('UPDATE_MEDICAL_NOTE', next)
   },

@@ -132,6 +132,18 @@ export default {
           title: 'Audit Review',
           text: 'Review sensitive activity and staff access events for governance follow-up.',
           to: '/admin/audit'
+        },
+        {
+          icon: 'mdi-sitemap',
+          title: 'Organizations & Hierarchy',
+          text: 'Manage MINSANTE, regional delegations, districts, and the facilities beneath them.',
+          to: '/super-admin/organizations'
+        },
+        {
+          icon: 'mdi-file-chart-check',
+          title: 'RMA Reports',
+          text: 'Review, validate, and aggregate monthly activity reports across your scope.',
+          to: '/super-admin/reports'
         }
       ]
     },
