@@ -48,7 +48,8 @@ export default {
     SUPABASE_KEY: process.env.SUPABASE_KEY,
     SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || '',
     ENABLE_SUPABASE_AUTH: process.env.ENABLE_SUPABASE_AUTH || 'false',
-    STAFF_INVITE_ENDPOINT: process.env.STAFF_INVITE_ENDPOINT || ''
+    STAFF_INVITE_ENDPOINT: process.env.STAFF_INVITE_ENDPOINT || '',
+    SESSION_IDLE_TIMEOUT_MS: process.env.SESSION_IDLE_TIMEOUT_MS || '900000'
   },
   // ─── Variables privées : jamais exposées au client ───────────────────────────
   // Accessibles uniquement via `this.$config` dans les contextes server-side.
@@ -63,7 +64,8 @@ export default {
     SUPABASE_KEY: process.env.SUPABASE_KEY,
     SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || '',
     ENABLE_SUPABASE_AUTH: parseBooleanFlag(process.env.ENABLE_SUPABASE_AUTH, false),
-    STAFF_INVITE_ENDPOINT: process.env.STAFF_INVITE_ENDPOINT || ''
+    STAFF_INVITE_ENDPOINT: process.env.STAFF_INVITE_ENDPOINT || '',
+    SESSION_IDLE_TIMEOUT_MS: Number(process.env.SESSION_IDLE_TIMEOUT_MS) || 900000
   },
   serverMiddleware: [
     { path: '/api/clinical/ai-care-plan', handler: '~/api/clinical/ai-care-plan.js' }
@@ -112,7 +114,9 @@ export default {
   /*
    ** Global CSS
    */
-  css: [],
+  css: [
+    '@mdi/font/css/materialdesignicons.css'
+  ],
   /*
    ** Plugins to load before mounting the App
    */
@@ -126,7 +130,8 @@ export default {
     { src: "~/plugins/supabase-auth-compat.js" },
     { src: "~/plugins/amplify.js", ssr: false },
     { src: "~/plugins/amplify.auth.js", mode: "client" },
-    { src: "~/plugins/vue-json-to-csv.js" }
+    { src: "~/plugins/vue-json-to-csv.js" },
+    { src: "~/plugins/session-timeout.client.js", mode: "client" }
   ],
 
   /*

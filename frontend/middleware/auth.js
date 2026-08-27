@@ -111,8 +111,10 @@ export default function ({ store, redirect, route }) {
 
   // ── 2. Must be authenticated beyond this point ───────────────────────────────
   if (!isAuthenticated || !role) {
-    // Send to the right entry point
-    return redirect('/')
+    // Keep the two authentication layers separate and never leave a protected
+    // route visible after a session expires.
+    if (MINISTRY_PERMITTED.some(p => path.startsWith(p))) return redirect('/ministry-login')
+    return redirect('/login')
   }
 
   // ── 3. Ministry routes ───────────────────────────────────────────────────────

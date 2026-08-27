@@ -15,6 +15,7 @@
     "test:patient360": "node --test tests/patient-360-policy.test.cjs tests/patient-search.test.cjs tests/clinical-workflow.test.js"
   },
   "dependencies": {
+    "@mdi/font": "^7.4.47",
     "@nuxtjs/axios": "^5.9.5",
     "@nuxtjs/pwa": "^3.0.0-beta.20",
     "@nuxtjs/toast": "^3.3.0",

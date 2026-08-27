@@ -45,7 +45,11 @@ api.interceptors.response.use(
         if (process.client) {
           sessionStorage.removeItem('camero_api_token')
           sessionStorage.removeItem('camero_session')
-          window.location.href = '/login'
+          sessionStorage.removeItem('camero_facility_id')
+          sessionStorage.removeItem('camero_health_openPatientTabs')
+          if (window.location.pathname !== '/login') {
+            window.location.replace('/login?reason=expired')
+          }
         }
       }
       // Enhance error with server message and validation details
