@@ -19,25 +19,28 @@ const organizationSchema = z.object({
   metadata: z.record(z.any()).optional()
 })
 
+// Vuetify's clearable v-select emits `null` (not `undefined`) when a
+// dropdown is left empty — plain .optional() rejects that, so every
+// optional foreign-key-ish field here must also be .nullable().
 const organizationUnitSchema = z.object({
-  parentUnitId: z.string().uuid().optional(),
-  unitCode: z.string().optional(),
+  parentUnitId: z.string().uuid().nullable().optional(),
+  unitCode: z.string().nullable().optional(),
   name: z.string().min(1),
   unitType: z.enum(['NATIONAL', 'REGIONAL_DELEGATION', 'DISTRICT', 'CITY_CLUSTER', 'OTHER']),
-  hierarchyLevel: z.number().optional(),
-  region: z.string().optional(),
-  city: z.string().optional(),
-  status: z.string().optional()
+  hierarchyLevel: z.number().nullable().optional(),
+  region: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  status: z.string().nullable().optional()
 })
 
 const staffAssignmentSchema = z.object({
   staffProfileId: z.string().uuid(),
   assignmentRole: z.enum(['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN']),
   assignmentScope: z.enum(['platform', 'organization', 'organization_unit', 'facility']),
-  organizationId: z.string().uuid().optional(),
-  organizationUnitId: z.string().uuid().optional(),
-  facilityId: z.string().uuid().optional(),
-  assignedReason: z.string().optional()
+  organizationId: z.string().uuid().nullable().optional(),
+  organizationUnitId: z.string().uuid().nullable().optional(),
+  facilityId: z.string().uuid().nullable().optional(),
+  assignedReason: z.string().nullable().optional()
 })
 
 function validateScopeBinding(scope, { organizationId, organizationUnitId, facilityId }) {

@@ -13,37 +13,40 @@ const router = Router()
 const STAGES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_DONE', 'PROPOSAL_SENT', 'NEGOTIATION', 'SIGNED', 'LOST']
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
+// Every optional field is also .nullable(): Vuetify's clearable v-select
+// (facilityType, source in the New Lead form) emits `null`, not `undefined`,
+// when left empty — plain .optional() rejects that with a 400.
 const leadSchema = z.object({
   organizationName: z.string().min(1),
   contactName: z.string().min(1),
-  contactEmail: z.string().email().optional(),
-  contactPhone: z.string().optional(),
-  facilityType: z.string().optional(),
-  region: z.string().optional(),
-  city: z.string().optional(),
-  source: z.string().optional(),
-  estimatedValue: z.number().nonnegative().optional(),
-  currency: z.string().optional(),
-  assignedToStaffId: z.string().uuid().optional()
+  contactEmail: z.string().email().nullable().optional(),
+  contactPhone: z.string().nullable().optional(),
+  facilityType: z.string().nullable().optional(),
+  region: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  estimatedValue: z.number().nonnegative().nullable().optional(),
+  currency: z.string().nullable().optional(),
+  assignedToStaffId: z.string().uuid().nullable().optional()
 })
 
 const leadUpdateSchema = z.object({
   organizationName: z.string().min(1).optional(),
   contactName: z.string().min(1).optional(),
-  contactEmail: z.string().email().optional(),
-  contactPhone: z.string().optional(),
-  facilityType: z.string().optional(),
-  region: z.string().optional(),
-  city: z.string().optional(),
-  source: z.string().optional(),
-  estimatedValue: z.number().nonnegative().optional(),
-  currency: z.string().optional(),
-  quoteAmount: z.number().nonnegative().optional(),
-  quoteSentAt: z.string().optional(),
-  contractValue: z.number().nonnegative().optional(),
-  contractSignedAt: z.string().optional(),
-  renewalDate: z.string().optional(),
-  assignedToStaffId: z.string().uuid().optional()
+  contactEmail: z.string().email().nullable().optional(),
+  contactPhone: z.string().nullable().optional(),
+  facilityType: z.string().nullable().optional(),
+  region: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  estimatedValue: z.number().nonnegative().nullable().optional(),
+  currency: z.string().nullable().optional(),
+  quoteAmount: z.number().nonnegative().nullable().optional(),
+  quoteSentAt: z.string().nullable().optional(),
+  contractValue: z.number().nonnegative().nullable().optional(),
+  contractSignedAt: z.string().nullable().optional(),
+  renewalDate: z.string().nullable().optional(),
+  assignedToStaffId: z.string().uuid().nullable().optional()
 })
 
 const stageChangeSchema = z.object({
