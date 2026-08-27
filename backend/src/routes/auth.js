@@ -6,6 +6,7 @@ const prisma = require('../lib/prisma')
 const { signToken } = require('../lib/jwt')
 const { validate } = require('../middleware/validate')
 const { authenticate } = require('../middleware/auth')
+const { resolveEffectiveRole } = require('../lib/orgHierarchy')
 
 const router = Router()
 
@@ -194,10 +195,12 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
       }
     })
 
+    const effectiveRole = await resolveEffectiveRole(staff.id, staff.role)
+
     const token = signToken({
       id: staff.id,
       staffCode: staff.staffCode,
-      role: staff.role,
+      role: effectiveRole,
       facilityId: staff.facilityId
     })
 
@@ -209,7 +212,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
         staffCode: staff.staffCode,
         fullName: staff.fullName,
         email: staff.email,
-        role: staff.role,
+        role: effectiveRole,
         facilityId: staff.facilityId,
         department: staff.department,
         service: staff.service
@@ -252,7 +255,10 @@ router.get('/me', authenticate, async (req, res, next) => {
       }
     })
 
-    res.json({ staff, facility })
+    // req.user.role is already the effective role (authenticate middleware
+    // resolves any active StaffAssignment) — reflect that here too, since
+    // `staff.role` alone would only show the raw StaffProfile column.
+    res.json({ staff: { ...staff, role: req.user.role }, facility })
   } catch (error) {
     next(error)
   }
