@@ -143,14 +143,14 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
     }
 
     const isEmail = identifier.includes('@')
+    // Exact match only. A previous `staffCode: { endsWith }` fallback let a
+    // short suffix like "ADM001" or "NUR001" match the first staff row with
+    // that suffix in ANY facility (staffCode is `<FACILITY_CODE>-<ROLE>001`,
+    // so every facility's admin ends in "-ADM001") — a real cross-facility
+    // and cross-role authentication bypass, not just a UX shortcut.
     const whereFilter = isEmail
       ? { email: identifier.toLowerCase() }
-      : {
-          OR: [
-            { staffCode: identifier.toUpperCase() },
-            { staffCode: { endsWith: identifier.toUpperCase() } }
-          ]
-        }
+      : { staffCode: identifier.toUpperCase() }
 
     const staff = await prisma.staffProfile.findFirst({
       where: whereFilter,
