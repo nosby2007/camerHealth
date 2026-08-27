@@ -220,6 +220,17 @@ export const platformApi = {
   overview: () => api.get('/platform/overview')
 }
 
+// ─── Commercial pipeline endpoints (Super Admin only) ───────────────────────
+export const leadsApi = {
+  list: (stage) => api.get('/leads', { params: stage ? { stage } : undefined }),
+  get: (id) => api.get(`/leads/${id}`),
+  create: (data) => api.post('/leads', data),
+  update: (id, data) => api.patch(`/leads/${id}`, data),
+  changeStage: (id, data) => api.patch(`/leads/${id}/stage`, data),
+  addActivity: (id, data) => api.post(`/leads/${id}/activities`, data),
+  convert: (id, data) => api.post(`/leads/${id}/convert`, data)
+}
+
 // ─── RMA (Rapport Mensuel d'Activité) endpoints ─────────────────────────────
 export const reportsApi = {
   submit: (data) => api.post('/rma', data),

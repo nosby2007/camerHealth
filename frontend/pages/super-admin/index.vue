@@ -9,6 +9,9 @@
         </p>
       </div>
       <div class="header-actions">
+        <v-btn tile depressed color="#0f766e" dark class="font-weight-black text-caption" to="/super-admin/pipeline">
+          <v-icon left small>mdi-account-plus</v-icon>Sales Pipeline
+        </v-btn>
         <v-btn tile depressed color="#003366" dark class="font-weight-black text-caption" to="/super-admin/organizations">
           <v-icon left small>mdi-sitemap</v-icon>Organizations
         </v-btn>
@@ -70,9 +73,8 @@
       <article class="readiness-panel">
         <h2>Coming next</h2>
         <ul class="action-list">
-          <li>Commercial pipeline — leads, demos, quotes, contracts, signed customers.</li>
           <li>Team access for sales/support staff, separate from clinical roles.</li>
-          <li>Per-organization subscription/contract status.</li>
+          <li>Per-organization subscription/contract status and renewals dashboard.</li>
         </ul>
       </article>
     </section>
