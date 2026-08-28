@@ -7,6 +7,8 @@ const prisma = require('../lib/prisma')
 const { authenticate, authorize, facilityScoped, hierarchyScoped } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { resolveFacilityIdsForUnit } = require('../lib/orgHierarchy')
+const { encrypt } = require('../lib/crypto')
+const { buildDataValueSet, postDataValueSet } = require('../lib/dhis2')
 
 const router = Router()
 
@@ -208,6 +210,144 @@ router.get('/rma/aggregate', authenticate, authorize(...HIERARCHY_ROLES), async 
       reportedCount: reports.length,
       totals: sumIndicators(reports),
       reports
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// ─── POST /rma/:id/sync-dhis2 — push one RMA to the org's DHIS2 instance ────
+router.post('/rma/:id/sync-dhis2', authenticate, authorize(...HIERARCHY_ROLES), async (req, res, next) => {
+  try {
+    const report = await prisma.monthlyActivityReport.findUnique({
+      where: { id: req.params.id },
+      include: { facility: { select: { organizationId: true } } }
+    })
+    if (!report) return res.status(404).json({ error: 'RMA not found' })
+    if (!report.facility?.organizationId) {
+      return res.status(400).json({ error: 'This facility is not linked to an organization, so there is no DHIS2 configuration to use.' })
+    }
+
+    const organization = await prisma.organization.findUnique({
+      where: { id: report.facility.organizationId },
+      include: { dhisIndicatorMappings: true }
+    })
+    if (!organization.dhisOrgUnitId) {
+      return res.status(400).json({ error: 'This organization has no DHIS2 org unit configured yet.' })
+    }
+    if (organization.dhisIndicatorMappings.length === 0) {
+      return res.status(400).json({ error: 'This organization has no indicator mapping configured yet — set it up in the DHIS2 mapping screen first.' })
+    }
+
+    const dataValueSet = buildDataValueSet({
+      organization,
+      orgUnitId: organization.dhisOrgUnitId,
+      month: report.reportMonth,
+      year: report.reportYear,
+      indicators: report.indicators || {},
+      mappings: organization.dhisIndicatorMappings
+    })
+
+    try {
+      const result = await postDataValueSet(organization, dataValueSet)
+      const updated = await prisma.monthlyActivityReport.update({
+        where: { id: report.id },
+        data: {
+          dhisSyncedAt: new Date(),
+          dhisSyncStatus: 'success',
+          dhisSyncDetail: JSON.stringify(result?.importCount || result || {})
+        }
+      })
+      res.json({ report: updated, dhisResponse: result })
+    } catch (syncError) {
+      const updated = await prisma.monthlyActivityReport.update({
+        where: { id: report.id },
+        data: { dhisSyncedAt: new Date(), dhisSyncStatus: 'failed', dhisSyncDetail: syncError.message }
+      })
+      res.status(syncError.status || 502).json({ error: syncError.message, report: updated })
+    }
+  } catch (error) {
+    next(error)
+  }
+})
+
+// ─── DHIS2 mapping management (Super Admin / Org Admin) ─────────────────────
+const dhisConfigSchema = z.object({
+  dhisBaseUrl: z.string().url().nullable().optional(),
+  dhisUsername: z.string().nullable().optional(),
+  dhisPassword: z.string().nullable().optional(),
+  dhisOrgUnitId: z.string().nullable().optional(),
+  mappings: z.array(z.object({
+    indicatorKey: z.string().min(1),
+    dhisDataElementId: z.string().min(1),
+    dhisCategoryOptionComboId: z.string().nullable().optional()
+  })).optional()
+})
+
+router.get('/organizations/:id/dhis2-mapping', authenticate, authorize(...HIERARCHY_ROLES), async (req, res, next) => {
+  try {
+    const organization = await prisma.organization.findUnique({
+      where: { id: req.params.id },
+      include: { dhisIndicatorMappings: true }
+    })
+    if (!organization) return res.status(404).json({ error: 'Organization not found' })
+    res.json({
+      dhisBaseUrl: organization.dhisBaseUrl,
+      dhisUsername: organization.dhisUsername,
+      dhisOrgUnitId: organization.dhisOrgUnitId,
+      hasPassword: Boolean(organization.dhisPasswordEncrypted),
+      mappings: organization.dhisIndicatorMappings
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.put('/organizations/:id/dhis2-mapping', authenticate, authorize(...HIERARCHY_ROLES), validate(dhisConfigSchema), async (req, res, next) => {
+  try {
+    const organization = await prisma.organization.findUnique({ where: { id: req.params.id } })
+    if (!organization) return res.status(404).json({ error: 'Organization not found' })
+
+    const { dhisBaseUrl, dhisUsername, dhisPassword, dhisOrgUnitId, mappings } = req.body
+
+    await prisma.organization.update({
+      where: { id: req.params.id },
+      data: {
+        ...(dhisBaseUrl !== undefined && { dhisBaseUrl }),
+        ...(dhisUsername !== undefined && { dhisUsername }),
+        ...(dhisOrgUnitId !== undefined && { dhisOrgUnitId }),
+        ...(dhisPassword && { dhisPasswordEncrypted: encrypt(dhisPassword) })
+      }
+    })
+
+    if (Array.isArray(mappings)) {
+      await prisma.$transaction(
+        mappings.map(mapping => prisma.dhisIndicatorMapping.upsert({
+          where: { organizationId_indicatorKey: { organizationId: req.params.id, indicatorKey: mapping.indicatorKey } },
+          update: {
+            dhisDataElementId: mapping.dhisDataElementId,
+            dhisCategoryOptionComboId: mapping.dhisCategoryOptionComboId || null
+          },
+          create: {
+            organizationId: req.params.id,
+            indicatorKey: mapping.indicatorKey,
+            dhisDataElementId: mapping.dhisDataElementId,
+            dhisCategoryOptionComboId: mapping.dhisCategoryOptionComboId || null
+          }
+        }))
+      )
+    }
+
+    const updated = await prisma.organization.findUnique({
+      where: { id: req.params.id },
+      include: { dhisIndicatorMappings: true }
+    })
+    res.json({
+      dhisBaseUrl: updated.dhisBaseUrl,
+      dhisUsername: updated.dhisUsername,
+      dhisOrgUnitId: updated.dhisOrgUnitId,
+      hasPassword: Boolean(updated.dhisPasswordEncrypted),
+      mappings: updated.dhisIndicatorMappings
     })
   } catch (error) {
     next(error)

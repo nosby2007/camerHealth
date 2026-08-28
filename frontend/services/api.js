@@ -245,7 +245,10 @@ export const reportsApi = {
   list: (params) => api.get('/rma', { params }),
   validate: (id, data) => api.patch(`/rma/${id}/validate`, data),
   reject: (id, data) => api.patch(`/rma/${id}/reject`, data),
-  aggregate: (params) => api.get('/rma/aggregate', { params })
+  aggregate: (params) => api.get('/rma/aggregate', { params }),
+  syncDhis2: (id) => api.post(`/rma/${id}/sync-dhis2`),
+  getDhis2Mapping: (orgId) => api.get(`/organizations/${orgId}/dhis2-mapping`),
+  updateDhis2Mapping: (orgId, data) => api.put(`/organizations/${orgId}/dhis2-mapping`, data)
 }
 
 // ─── Wound care endpoints ────────────────────────────────────────────────────
