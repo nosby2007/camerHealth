@@ -128,6 +128,8 @@ import DeviceDataDialog from './DeviceDataDialog.vue'
 import ChartCorrectionDialog from './ChartCorrectionDialog.vue'
 import FlowsheetHistoryDialog from './FlowsheetHistoryDialog.vue'
 import TimedCareDocumentationDialog from './TimedCareDocumentationDialog.vue'
+import apiClient from '~/services/api'
+import { createFlowsheetApi } from '~/services/flowsheetApi'
 
 export default {
   name: 'Patient360FlowsheetsTab',
@@ -294,8 +296,7 @@ export default {
     initializeApi() {
       if (!this.$store.$flowsheetApi && !window.$flowsheetApi) {
         try {
-          const { createFlowsheetApi } = require('~/services/flowsheetApi')
-          const api = createFlowsheetApi(this.$axios)
+          const api = createFlowsheetApi(apiClient)
           this.$store.$flowsheetApi = api
           window.$flowsheetApi = api
         } catch (error) {
