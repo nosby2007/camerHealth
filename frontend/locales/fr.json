@@ -145,6 +145,7 @@
     "tabs": {
       "summary": "Résumé",
       "emr_command": "Centre de commande DME",
+      "doctor_command": "Centre de commande médecin",
       "nurse_command": "Centre de commande infirmier",
       "chart_review": "Revue du dossier",
       "navigators": "Parcours clinique",
