@@ -3,7 +3,7 @@
     <div class="contact-intro">
       <p class="eyebrow">{{ copy.eyebrow }}</p><h1>{{ copy.title }}</h1><p>{{ copy.lead }}</p>
       <div class="contact-details">
-        <p><v-icon>mdi-email-outline</v-icon><span><small>Email</small><a href="mailto:support@perryhomewoundcare.network">support@perryhomewoundcare.network</a></span></p>
+        <p><v-icon>mdi-email-outline</v-icon><span><small>Email</small><a href="mailto:support@camerohealth.cm">support@camerohealth.cm</a></span></p>
         <p><v-icon>mdi-map-marker-outline</v-icon><span><small>{{ copy.region }}</small><strong>Cameroun</strong></span></p>
         <p><v-icon>mdi-clock-outline</v-icon><span><small>{{ copy.response }}</small><strong>{{ copy.responseValue }}</strong></span></p>
       </div>
@@ -36,7 +36,7 @@ export default {
     roles(){return this.isFrench?['Direction hospitalière','Direction médicale','Direction des soins','Informatique / SI','Qualité','Partenaire de mise en œuvre','Autre']:['Hospital leadership','Medical leadership','Nursing leadership','IT / information systems','Quality','Implementation partner','Other']},
     sizes(){return this.isFrench?['Moins de 50 lits','50 à 149 lits','150 à 299 lits','300 lits et plus','Centre ambulatoire']:['Fewer than 50 beds','50–149 beds','150–299 beds','300+ beds','Outpatient center']}
   },
-  methods:{submitRequest(){const subject=encodeURIComponent(`CameroHealth demo - ${this.form.facility}`);const body=encodeURIComponent(`Name: ${this.form.name}\nEmail: ${this.form.email}\nFacility: ${this.form.facility}\nCity: ${this.form.city}\nRole: ${this.form.role}\nCapacity: ${this.form.size}\n\nPriorities:\n${this.form.message}`);window.location.href=`mailto:support@perryhomewoundcare.network?subject=${subject}&body=${body}`}}
+  methods:{submitRequest(){const subject=encodeURIComponent(`CameroHealth demo - ${this.form.facility}`);const body=encodeURIComponent(`Name: ${this.form.name}\nEmail: ${this.form.email}\nFacility: ${this.form.facility}\nCity: ${this.form.city}\nRole: ${this.form.role}\nCapacity: ${this.form.size}\n\nPriorities:\n${this.form.message}`);window.location.href=`mailto:support@camerohealth.cm?subject=${subject}&body=${body}`}}
 }
 </script>
 <style scoped>

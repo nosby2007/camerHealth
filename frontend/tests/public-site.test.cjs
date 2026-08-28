@@ -35,5 +35,5 @@ test('contact form warns against patient data', () => {
   const contact = read('pages/contact.vue')
   assert.match(contact, /Aucune donnée patient/)
   assert.match(contact, /Do not enter any patient information/)
-  assert.match(contact, /mailto:support@perryhomewoundcare\.network/)
+  assert.match(contact, /mailto:support@camerohealth\.cm/)
 })
