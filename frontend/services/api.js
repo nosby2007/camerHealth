@@ -236,7 +236,9 @@ export const leadsApi = {
   update: (id, data) => api.patch(`/leads/${id}`, data),
   changeStage: (id, data) => api.patch(`/leads/${id}/stage`, data),
   addActivity: (id, data) => api.post(`/leads/${id}/activities`, data),
-  convert: (id, data) => api.post(`/leads/${id}/convert`, data)
+  convert: (id, data) => api.post(`/leads/${id}/convert`, data),
+  // Public — no auth required, called from the marketing site's contact form.
+  submitPublicRequest: (data) => api.post('/leads/public', data)
 }
 
 // ─── RMA (Rapport Mensuel d'Activité) endpoints ─────────────────────────────
