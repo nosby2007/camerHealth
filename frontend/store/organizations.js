@@ -12,6 +12,7 @@ export const state = () => ({
   organizations: [],
   units: [],
   facilities: [],
+  admins: [],
   overview: null,
   loading: false,
   error: null
@@ -21,6 +22,7 @@ export const mutations = {
   SET_ORGANIZATIONS(state, organizations) { state.organizations = organizations },
   SET_UNITS(state, units) { state.units = units },
   SET_FACILITIES(state, facilities) { state.facilities = facilities },
+  SET_ADMINS(state, admins) { state.admins = admins },
   SET_OVERVIEW(state, overview) { state.overview = overview },
   SET_LOADING(state, loading) { state.loading = loading },
   SET_ERROR(state, error) { state.error = error }
@@ -86,6 +88,25 @@ export const actions = {
     } finally {
       commit('SET_LOADING', false)
     }
+  },
+
+  async fetchAdmins({ commit }, organizationId) {
+    commit('SET_LOADING', true)
+    try {
+      const { data } = await organizationApi.listAdmins(organizationId)
+      commit('SET_ADMINS', data.admins || [])
+      return data.admins
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    } finally {
+      commit('SET_LOADING', false)
+    }
+  },
+
+  async createAdmin({ dispatch }, { organizationId, ...payload }) {
+    const { data } = await organizationApi.createAdmin(organizationId, payload)
+    await dispatch('fetchAdmins', organizationId)
+    return data
   },
 
   async fetchOverview({ commit }) {
