@@ -4,6 +4,7 @@
  */
 
 import { reportsApi } from '~/services/api'
+import { enqueue, isNetworkError } from '~/util/offline-queue'
 
 export const namespaced = true
 
@@ -22,9 +23,19 @@ export const mutations = {
 }
 
 export const actions = {
-  async submitRma(_ctx, { reportMonth, reportYear, indicators }) {
-    const { data } = await reportsApi.submit({ reportMonth, reportYear, indicators })
-    return data.report
+  async submitRma({ rootState, dispatch }, { reportMonth, reportYear, indicators }) {
+    const payload = { reportMonth, reportYear, indicators }
+    try {
+      const { data } = await reportsApi.submit(payload)
+      return data.report
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await enqueue(rootState.auth?.facilityId, 'rma-submit', payload)
+        await dispatch('offlineQueue/refreshPendingCount', null, { root: true })
+        return { queued: true, ...payload }
+      }
+      throw err
+    }
   },
 
   async fetchReports({ commit }, params = {}) {

@@ -1,5 +1,6 @@
 const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
 import { patientApi, clinicalApi, appointmentApi, inpatientApi, vitalsApi, clinicalNotesApi } from '~/services/api'
+import { enqueue, isNetworkError } from '~/util/offline-queue'
 
 export const namespaced = true
 
@@ -622,18 +623,25 @@ export const actions = {
   updateInvoice({ commit }, invoice) {
     commit('UPDATE_INVOICE', invoice)
   },
-  async recordVitalSigns({ state, commit, rootState }, vitals) {
+  async recordVitalSigns({ state, commit, dispatch, rootState }, vitals) {
     assertPatientWritable(state, vitals.patientId)
     const local = {
       ...vitals,
       id: 'VIT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-      ...tenantFields(rootState)
+      ...tenantFields(rootState),
+      pendingSync: false
     }
     try {
       const { data } = await vitalsApi.record(vitals)
       local.id = (data.vitalSigns && data.vitalSigns.id) || local.id
     } catch (err) {
-      commit('SET_ERROR', err.response?.data?.error || err.message)
+      if (isNetworkError(err)) {
+        await enqueue(rootState.auth?.facilityId, 'vitals-record', vitals)
+        await dispatch('offlineQueue/refreshPendingCount', null, { root: true })
+        local.pendingSync = true
+      } else {
+        commit('SET_ERROR', err.response?.data?.error || err.message)
+      }
     }
     commit('ADD_VITAL_SIGNS', local)
   },

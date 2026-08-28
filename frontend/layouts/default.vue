@@ -50,6 +50,11 @@
       
       <v-spacer />
 
+      <v-chip v-if="pendingSyncCount > 0" small label color="warning" text-color="white" class="mr-4 font-weight-bold">
+        <v-icon left small>mdi-cloud-sync-outline</v-icon>
+        Offline — {{ pendingSyncCount }} pending sync
+      </v-chip>
+
       <!-- Language Selector (CRITICAL UPDATE) -->
       <v-menu offset-y transition="slide-y-transition" tile>
         <template v-slot:activator="{ on }">
@@ -163,6 +168,7 @@ export default {
     if (savedLocale === 'en' || savedLocale === 'fr') this.setLang(savedLocale, false)
     this.$store.commit('clinical/LOAD_FROM_STORAGE');
     this.$store.commit('facility/RELOAD_FROM_STORAGE');
+    this.$store.dispatch('offlineQueue/initOfflineSync');
     if (this.isMinistry) {
       setTimeout(() => {
         const infectious = this.$store.getters['clinical/infectiousAlerts'];
@@ -183,6 +189,7 @@ export default {
   },
   computed: {
     admin() { return this.$store.state.auth.user; },
+    pendingSyncCount() { return this.$store.state.offlineQueue?.pendingCount || 0; },
     displayName() { return this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Authorized User'; },
     userRole() { return this.$store.state.auth.role || 'GUEST'; },
     institution() { return this.$store.state.auth.institution; },

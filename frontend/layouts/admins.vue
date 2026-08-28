@@ -47,6 +47,11 @@
 
 			<v-spacer />
 
+			<v-chip v-if="pendingSyncCount > 0" small label color="warning" text-color="white" class="mr-4 font-weight-bold">
+				<v-icon left small>mdi-cloud-sync-outline</v-icon>
+				Offline — {{ pendingSyncCount }} pending sync
+			</v-chip>
+
 			<v-menu offset-y transition="slide-y-transition" tile>
 				<template v-slot:activator="{ on }">
 					<v-btn text class="mr-4 px-4 font-weight-black text-caption ls-1 gov-primary--text" v-on="on">
@@ -162,6 +167,7 @@ export default {
 		this.$store.commit('clinical/LOAD_FROM_STORAGE')
 		if (this.$store._modulesNamespaceMap['nursing/']) this.$store.commit('nursing/LOAD_FROM_STORAGE')
 		this.$store.commit('facility/RELOAD_FROM_STORAGE')
+		this.$store.dispatch('offlineQueue/initOfflineSync')
 		if (this.isMinistry) {
 			setTimeout(() => {
 				const infectious = this.$store.getters['clinical/infectiousAlerts']
@@ -182,6 +188,7 @@ export default {
 	},
 	computed: {
 		admin() { return this.$store.state.auth.user },
+		pendingSyncCount() { return this.$store.state.offlineQueue?.pendingCount || 0 },
 		displayName() { return this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Authorized User' },
 		userRole() { return this.$store.state.auth.role || 'GUEST' },
 		institution() { return this.$store.state.auth.institution },
