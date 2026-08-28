@@ -93,6 +93,59 @@
       </div>
     </section>
 
+    <!-- Login credentials for this organization's admins -->
+    <section v-if="selectedOrgId" class="panel mt-4">
+      <div class="panel-head">
+        <h2>Admins — {{ selectedOrg ? selectedOrg.name : '' }}</h2>
+        <v-btn x-small tile depressed color="#003366" dark class="font-weight-black" @click="openAdminDialog">
+          <v-icon left x-small>mdi-account-key</v-icon>Create admin credentials
+        </v-btn>
+      </div>
+      <p class="hint">Every account that can sign in and manage this organization or one of its units.</p>
+      <div v-if="!orgAdmins.length" class="empty">No admin account yet — this organization cannot be managed by anyone but you.</div>
+      <div v-else class="tbl-scroll">
+        <table class="facility-table">
+          <thead>
+            <tr><th>Name</th><th>Email</th><th>Role</th><th>Unit</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="a in orgAdmins" :key="a.assignmentId">
+              <td><strong>{{ a.staff.fullName }}</strong></td>
+              <td>{{ a.staff.email }}</td>
+              <td><v-chip x-small label color="#003366" dark class="font-weight-black">{{ a.role }}</v-chip></td>
+              <td>{{ a.unitName || '—' }}</td>
+              <td><v-chip x-small label :color="a.staff.status === 'active' ? '#0f766e' : '#94a3b8'" dark class="font-weight-black">{{ a.staff.status }}</v-chip></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Create admin dialog -->
+    <v-dialog v-model="adminDialog" max-width="440">
+      <v-card tile>
+        <v-card-title class="font-weight-black">Create admin credentials</v-card-title>
+        <v-card-text>
+          <p class="hint">Creates a login for this organization (or one of its units) — separate from your own Super Admin account.</p>
+          <v-text-field v-model="adminForm.fullName" outlined dense label="Full name"></v-text-field>
+          <v-text-field v-model="adminForm.email" outlined dense label="Email"></v-text-field>
+          <v-select v-model="adminForm.assignmentRole" :items="orgAdminRoles" outlined dense label="Role"></v-select>
+          <v-select
+            v-if="adminForm.assignmentRole !== 'ORG_ADMIN'"
+            v-model="adminForm.organizationUnitId"
+            :items="units" item-text="name" item-value="id"
+            outlined dense label="Unit (required for this role)"
+          ></v-select>
+          <v-text-field v-model="adminForm.password" outlined dense label="Temporary password" :type="showAdminPwd ? 'text' : 'password'" :append-icon="showAdminPwd ? 'mdi-eye-off' : 'mdi-eye'" @click:append="showAdminPwd = !showAdminPwd"></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="adminDialog = false">Cancel</v-btn>
+          <v-btn color="#003366" dark depressed :loading="savingAdmin" @click="saveAdmin">Create</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Organization dialog -->
     <v-dialog v-model="orgDialog" max-width="480">
       <v-card tile>
@@ -147,6 +200,11 @@ export default {
       attachFacilityId: null,
       attachUnitId: null,
       facilities: [],
+      adminDialog: false,
+      savingAdmin: false,
+      showAdminPwd: false,
+      adminForm: { fullName: '', email: '', assignmentRole: 'ORG_ADMIN', organizationUnitId: null, password: '' },
+      orgAdminRoles: ['ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN'],
       orgForm: { name: '', organizationType: 'PUBLIC_HEALTH_AUTHORITY', organizationCode: '' },
       unitForm: { id: null, name: '', unitType: 'DISTRICT', parentUnitId: null, region: '' },
       orgTypes: ['MINISTRY', 'PUBLIC_HEALTH_AUTHORITY', 'PRIVATE_NETWORK', 'NGO_NETWORK', 'OTHER'],
@@ -156,6 +214,7 @@ export default {
   computed: {
     ...mapState('organizations', ['organizations', 'units']),
     orgFacilities() { return this.$store.state.organizations.facilities },
+    orgAdmins() { return this.$store.state.organizations.admins },
     selectedOrg() {
       return this.organizations.find(o => o.id === this.selectedOrgId) || null
     },
@@ -178,11 +237,27 @@ export default {
   },
   methods: {
     ...mapActions('organizations', [
-      'fetchOrganizations', 'createOrganization', 'fetchUnits', 'fetchFacilities', 'createUnit', 'updateUnit', 'removeUnit', 'attachFacility'
+      'fetchOrganizations', 'createOrganization', 'fetchUnits', 'fetchFacilities', 'fetchAdmins', 'createAdmin', 'createUnit', 'updateUnit', 'removeUnit', 'attachFacility'
     ]),
     async selectOrganization(id) {
       this.selectedOrgId = id
-      await Promise.all([this.fetchUnits(id), this.fetchFacilities(id)])
+      await Promise.all([this.fetchUnits(id), this.fetchFacilities(id), this.fetchAdmins(id)])
+    },
+    openAdminDialog() {
+      this.adminForm = { fullName: '', email: '', assignmentRole: 'ORG_ADMIN', organizationUnitId: null, password: '' }
+      this.adminDialog = true
+    },
+    async saveAdmin() {
+      this.savingAdmin = true
+      try {
+        await this.createAdmin({ organizationId: this.selectedOrgId, ...this.adminForm })
+        this.adminDialog = false
+        this.$toast.success('Admin credentials created')
+      } catch (err) {
+        this.$toast.error(err.response?.data?.error || err.message)
+      } finally {
+        this.savingAdmin = false
+      }
     },
     openOrgDialog() {
       this.orgForm = { name: '', organizationType: 'PUBLIC_HEALTH_AUTHORITY', organizationCode: '' }

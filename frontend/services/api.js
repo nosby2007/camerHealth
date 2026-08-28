@@ -214,6 +214,8 @@ export const organizationApi = {
   updateUnit: (orgId, unitId, data) => api.patch(`/organizations/${orgId}/units/${unitId}`, data),
   removeUnit: (orgId, unitId) => api.delete(`/organizations/${orgId}/units/${unitId}`),
   attachFacility: (facilityId, data) => api.patch(`/organizations/facilities/${facilityId}/attach`, data),
+  listAdmins: (orgId) => api.get(`/organizations/${orgId}/admins`),
+  createAdmin: (orgId, data) => api.post(`/organizations/${orgId}/admins`, data),
   createStaffAssignment: (orgId, data) => api.post(`/organizations/${orgId}/staff-assignments`, data),
   revokeStaffAssignment: (assignmentId) => api.patch(`/organizations/staff-assignments/${assignmentId}/revoke`)
 }

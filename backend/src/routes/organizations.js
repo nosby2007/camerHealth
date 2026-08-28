@@ -1,6 +1,7 @@
 // ─── CameroHealth — Organization / Organization Unit Routes (Phase 13) ──────
 // MINSANTE / Regional Delegation / District hierarchy above facility scope.
 const { Router } = require('express')
+const bcrypt = require('bcryptjs')
 const { z } = require('zod')
 const prisma = require('../lib/prisma')
 const { authenticate, authorize, hierarchyScoped } = require('../middleware/auth')
@@ -9,6 +10,29 @@ const { validate } = require('../middleware/validate')
 const router = Router()
 
 const HIERARCHY_ROLES = ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN']
+const ORG_ADMIN_ROLES = ['ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN']
+
+// Org-hierarchy admins (MINSANTE's ORG_ADMIN, a REGIONAL_ADMIN, a
+// DISTRICT_ADMIN...) don't belong to a single clinical facility — same
+// bootstrap problem as the vendor's own SALES/SUPPORT team in platform.js.
+// Each organization gets one placeholder facility to park these
+// StaffProfile rows under; their real access comes entirely from their
+// StaffAssignment, never from this facility.
+async function ensureOrgAdminFacility(org) {
+  const code = `${(org.organizationCode || org.id.slice(0, 8)).toUpperCase()}-ADMIN`
+  const existing = await prisma.facility.findUnique({ where: { code } })
+  if (existing) return existing
+  return prisma.facility.create({
+    data: {
+      code,
+      name: `${org.name} (Administration)`,
+      region: 'N/A',
+      city: 'N/A',
+      email: `admin-${org.id}@camerohealth.internal`,
+      status: 'active'
+    }
+  })
+}
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 const organizationSchema = z.object({
@@ -31,6 +55,14 @@ const organizationUnitSchema = z.object({
   region: z.string().nullable().optional(),
   city: z.string().nullable().optional(),
   status: z.string().nullable().optional()
+})
+
+const orgAdminSchema = z.object({
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(8),
+  assignmentRole: z.enum(ORG_ADMIN_ROLES),
+  organizationUnitId: z.string().uuid().nullable().optional()
 })
 
 const staffAssignmentSchema = z.object({
@@ -273,6 +305,104 @@ router.patch('/facilities/:facilityId/attach', authenticate, authorize('SUPER_AD
 })
 
 // ─── Staff assignments ─────────────────────────────────────────────────────────
+
+// POST /api/organizations/:id/admins — create login credentials for a NEW
+// org-hierarchy admin in one step (StaffProfile + StaffAssignment). Fixes
+// the gap where creating an Organization gave no way to actually create the
+// account that logs into it.
+router.post('/:id/admins', authenticate, authorize('SUPER_ADMIN', 'ORG_ADMIN'), validate(orgAdminSchema), async (req, res, next) => {
+  try {
+    const org = await prisma.organization.findUnique({ where: { id: req.params.id } })
+    if (!org) return res.status(404).json({ error: 'Organization not found' })
+
+    const { fullName, email, password, assignmentRole, organizationUnitId } = req.body
+    const assignmentScope = assignmentRole === 'ORG_ADMIN' ? 'organization' : 'organization_unit'
+    if (!validateScopeBinding(assignmentScope, { organizationId: org.id, organizationUnitId })) {
+      return res.status(400).json({ error: `${assignmentRole} requires an organization unit.` })
+    }
+
+    const hqFacility = await ensureOrgAdminFacility(org)
+    const count = await prisma.staffProfile.count({ where: { facilityId: hqFacility.id } })
+    const staffCode = `${hqFacility.code}-${assignmentRole.substring(0, 3)}${String(count + 1).padStart(3, '0')}`
+
+    const salt = await bcrypt.genSalt(12)
+    const passwordHash = await bcrypt.hash(password, salt)
+
+    const staff = await prisma.staffProfile.create({
+      data: {
+        staffCode,
+        fullName,
+        email: email.toLowerCase(),
+        role: assignmentRole,
+        passwordHash,
+        facilityId: hqFacility.id,
+        status: 'active'
+      }
+    })
+
+    const assignment = await prisma.staffAssignment.create({
+      data: {
+        staffProfileId: staff.id,
+        assignmentRole,
+        assignmentScope,
+        organizationId: org.id,
+        organizationUnitId: assignmentScope === 'organization_unit' ? organizationUnitId : null,
+        assignedByStaffId: req.user.id,
+        assignedReason: `Organization admin created by ${req.user.staffCode}`
+      }
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        organizationId: org.id,
+        organizationUnitId: assignment.organizationUnitId,
+        action: 'ORG_ADMIN_CREATED',
+        actorId: req.user.id,
+        targetId: staff.id,
+        detail: `${fullName} (${staffCode}) created as ${assignmentRole} for ${org.name}`
+      }
+    })
+
+    res.status(201).json({
+      staff: { id: staff.id, staffCode: staff.staffCode, fullName: staff.fullName, email: staff.email, role: assignmentRole },
+      assignment
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// GET /api/organizations/:id/admins — list this organization's admin accounts
+router.get('/:id/admins', authenticate, authorize(...HIERARCHY_ROLES), async (req, res, next) => {
+  try {
+    const assignments = await prisma.staffAssignment.findMany({
+      where: { organizationId: req.params.id, assignmentRole: { in: ORG_ADMIN_ROLES }, status: 'active' },
+      orderBy: { createdAt: 'desc' }
+    })
+    const staffIds = assignments.map(a => a.staffProfileId)
+    const staff = await prisma.staffProfile.findMany({
+      where: { id: { in: staffIds } },
+      select: { id: true, fullName: true, email: true, status: true, lastLogin: true }
+    })
+    const units = await prisma.organizationUnit.findMany({
+      where: { organizationId: req.params.id },
+      select: { id: true, name: true }
+    })
+    const staffById = new Map(staff.map(s => [s.id, s]))
+    const unitNameById = new Map(units.map(u => [u.id, u.name]))
+    const admins = assignments
+      .map(a => ({
+        assignmentId: a.id,
+        role: a.assignmentRole,
+        unitName: a.organizationUnitId ? unitNameById.get(a.organizationUnitId) || null : null,
+        staff: staffById.get(a.staffProfileId)
+      }))
+      .filter(a => a.staff)
+    res.json({ admins })
+  } catch (error) {
+    next(error)
+  }
+})
 
 // POST /api/organizations/:id/staff-assignments — assign a staff member a scoped role
 router.post('/:id/staff-assignments', authenticate, authorize('SUPER_ADMIN', 'ORG_ADMIN'), validate(staffAssignmentSchema), async (req, res, next) => {
