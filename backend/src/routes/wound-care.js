@@ -156,34 +156,23 @@ router.post('/wounds/:id/photos', authenticate, validate(photoSchema), async (re
     const wound = await prisma.wound.findFirst({ where: { id: req.params.id, facilityId: req.user.facilityId } })
     if (!wound) return res.status(404).json({ error: 'Wound not found' })
 
-    const bucket = process.env.SUPABASE_STORAGE_BUCKET
-    if (!bucket) {
-      return res.status(500).json({ error: 'SUPABASE_STORAGE_BUCKET is not configured' })
-    }
-    const { getSupabaseAdminClient, ensureStorageBucket } = require('../lib/supabase')
-    await ensureStorageBucket(bucket)
+    const storageService = require('../lib/storage')
+    await storageService.ensureReady()
 
     const { photoData, imageMimeType, imageName, timestamp } = req.body
     const base64Payload = photoData.includes(',') ? photoData.split(',')[1] : photoData
     const finalName = imageName || 'wound-photo.jpg'
     const uploadPath = `wounds/${wound.id}/${Date.now()}_${finalName}`
 
-    const supabase = getSupabaseAdminClient()
-    const { error: uploadError } = await supabase.storage.from(bucket).upload(uploadPath, Buffer.from(base64Payload, 'base64'), {
-      contentType: imageMimeType || 'image/jpeg',
-      upsert: false
-    })
-    if (uploadError) throw uploadError
-
-    const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(uploadPath, 60 * 60 * 24 * 30)
-    if (signedError) throw signedError
+    await storageService.upload(uploadPath, Buffer.from(base64Payload, 'base64'), imageMimeType || 'image/jpeg')
+    const signedUrl = await storageService.getSignedUrl(uploadPath, 60 * 60 * 24 * 30)
 
     const photo = await prisma.woundPhoto.create({
       data: {
         woundId: wound.id,
         patientId: wound.patientId,
         facilityId: req.user.facilityId,
-        imageUrl: signedData?.signedURL || signedData?.signedUrl || '',
+        imageUrl: signedUrl,
         imagePath: uploadPath,
         takenAt: timestamp ? new Date(timestamp) : new Date(),
         uploadedById: req.user.id

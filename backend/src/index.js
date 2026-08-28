@@ -301,34 +301,16 @@ async function main() {
       '[DB] Connected to PostgreSQL (Supabase)'
     )
 
-    // ─── Supabase Storage ──────────────────────────────────────────────────
+    // ─── File Storage (Supabase in cloud mode, MinIO in on-prem mode) ───────
 
-    const {
-      ensureStorageBucket
-    } = require('./lib/supabase')
+    const storageService = require('./lib/storage')
+    const { STORAGE_PROVIDER } = require('./config')
 
-    const storageBucket =
-      process.env.SUPABASE_STORAGE_BUCKET
-
-    if (storageBucket) {
-      try {
-        await ensureStorageBucket(
-          storageBucket
-        )
-
-        console.log(
-          `[SUPABASE] Ensured storage bucket exists: ${storageBucket}`
-        )
-      } catch (bucketErr) {
-        console.warn(
-          '[SUPABASE] Could not ensure storage bucket:',
-          bucketErr.message
-        )
-      }
-    } else {
-      console.warn(
-        '[SUPABASE] SUPABASE_STORAGE_BUCKET is not configured; image upload may fail.'
-      )
+    try {
+      await storageService.ensureReady()
+      console.log(`[STORAGE] Ready (provider: ${STORAGE_PROVIDER})`)
+    } catch (storageErr) {
+      console.warn(`[STORAGE] Could not initialize ${STORAGE_PROVIDER} storage:`, storageErr.message)
     }
 
     // ─── Start HTTP Server ─────────────────────────────────────────────────
