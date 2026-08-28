@@ -204,7 +204,7 @@
           Current admission
         </v-chip>
             <v-btn
-              v-if="activePatientId && !isPatientDischarged"
+              v-if="activePatientId && canLaunchNurse && !isPatientDischarged"
               x-small
               depressed
               color="#003366"
@@ -225,7 +225,7 @@
             >
               <v-icon x-small left>mdi-medical-bag</v-icon>Medical
             </v-btn>
-            <v-btn v-if="!isPatientDischarged" x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('nurse')">
+            <v-btn v-if="canLaunchNurse && !isPatientDischarged" x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('nurse')">
               <v-icon x-small left>mdi-plus</v-icon>New Reading
                 </v-btn>
               </div>
@@ -1038,7 +1038,7 @@
                   <v-btn x-small depressed color="#0f766e" dark @click="openMarQuickScan">
                     <v-icon x-small left>mdi-barcode-scan</v-icon>Scan med
                   </v-btn>
-                  <v-btn x-small depressed color="#7c3aed" dark @click="openChartDialog('medication')">
+                  <v-btn v-if="canLaunchPrescription" x-small depressed color="#7c3aed" dark @click="openChartDialog('medication')">
                     <v-icon x-small left>mdi-pill-plus</v-icon>Medication order
                   </v-btn>
                 </div>
@@ -1527,7 +1527,7 @@
                   <strong>Shift Navigator</strong>
                   <span>{{ activePatient.name }} - active nursing shift</span>
                 </div>
-                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
+                <v-btn v-if="canLaunchNurse" x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
                   <v-icon x-small left>mdi-plus</v-icon>New Reading
                 </v-btn>
               </div>
@@ -2976,6 +2976,12 @@ export default {
     },
     canLaunchMedical() {
       return ['ADMIN', 'DOCTOR', 'NP'].includes(this.currentRole)
+    },
+    canLaunchNurse() {
+      return ['NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'].includes(this.currentRole)
+    },
+    canLaunchPrescription() {
+      return ['ADMIN', 'DOCTOR', 'NP', 'NURSE'].includes(this.currentRole)
     },
     noteMenuOptions() {
       const role = this.currentRole
@@ -7059,6 +7065,18 @@ export default {
     openChartDialog(kind) {
       if (!this.activePatientId) return
       if (kind !== 'scan' && !this.ensurePatientWritable()) return
+      if (kind === 'nurse' && !this.canLaunchNurse) {
+        this.$toast.error('Your role does not have access to nursing charting.')
+        return
+      }
+      if (kind === 'medical' && !this.canLaunchMedical) {
+        this.$toast.error('Your role does not have access to medical charting.')
+        return
+      }
+      if (kind === 'medication' && !this.canLaunchPrescription) {
+        this.$toast.error('Your role does not have access to prescribe or modify medication orders.')
+        return
+      }
       if (['lab', 'imaging', 'medication'].includes(kind)) {
         const next = defaultDialogForms().order
         if (kind === 'lab') {
