@@ -9,10 +9,15 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# BACKEND_API_URL/API_URL are baked into the client bundle at build time —
-# Nuxt has no server to read them from at runtime in SPA mode.
+# Baked into the client bundle at build time — Nuxt has no server to read
+# them from at runtime in SPA mode. Two names because two different HTTP
+# clients exist in this codebase and read different env vars:
+# services/api.js (most Vuex stores) reads BACKEND_API_URL; the few
+# components using Nuxt's own $axios (nuxt.config.js `axios.baseURL`)
+# read API_URL. Both must point at the same place.
 ARG API_URL=http://localhost:4000/api
 ENV API_URL=${API_URL}
+ENV BACKEND_API_URL=${API_URL}
 ENV NODE_ENV=production
 
 COPY package.json package-lock.json ./
