@@ -68,6 +68,26 @@
           </div>
           <v-textarea v-model="assessment.treatmentPlan" label="Treatment plan" rows="3" dense outlined />
 
+          <p class="section-label mt-4">Discharge continuity</p>
+          <div class="dialog-grid two">
+            <v-text-field v-model="assessment.followUpOwner" label="Follow-up clinician or service" dense outlined />
+            <v-text-field v-model="assessment.followUpDate" type="date" label="Follow-up date" dense outlined />
+          </div>
+          <v-textarea
+            v-model="assessment.supplyPlan"
+            label="Dressing supplies and quantities"
+            rows="2"
+            dense
+            outlined
+          />
+          <v-textarea
+            v-model="assessment.dischargeInstructions"
+            label="Patient/family instructions and warning signs"
+            rows="3"
+            dense
+            outlined
+          />
+
           <!-- Photo Section - NEW -->
           <p class="section-label mt-4">Wound Photos (Assessment ID: {{ assessmentId }})</p>
           <div class="photo-section">
@@ -172,6 +192,10 @@ function defaultAssessment() {
     drainageAmount: 'none',
     dressingType: '',
     treatmentPlan: '',
+    followUpOwner: '',
+    followUpDate: '',
+    supplyPlan: '',
+    dischargeInstructions: '',
     painScore: 0,
     woundStatus: 'active',
     photos: []

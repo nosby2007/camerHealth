@@ -5,8 +5,8 @@ const { authenticate, authorize, facilityScoped } = require('../middleware/auth'
 
 const router = Router()
 
-// GET /api/facilities — List facilities (public health officers)
-router.get('/', authenticate, authorize('ADMIN', 'PUBLIC_HEALTH_OFFICER'), async (req, res, next) => {
+// GET /api/facilities — List facilities (public health officers, platform admin)
+router.get('/', authenticate, authorize('ADMIN', 'PUBLIC_HEALTH_OFFICER', 'SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN'), async (req, res, next) => {
   try {
     const facilities = await prisma.facility.findMany({
       select: {

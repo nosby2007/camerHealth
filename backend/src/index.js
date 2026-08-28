@@ -28,6 +28,15 @@ const billingRoutes = require('./routes/billing')
 const auditRoutes = require('./routes/audit')
 const departmentRoutes = require('./routes/departments')
 const catalogRoutes = require('./routes/catalog')
+const flowsheetRoutes = require('./routes/flowsheets')
+const clinicalNotesRoutes = require('./routes/clinical-notes')
+const organizationRoutes = require('./routes/organizations')
+const reportsRoutes = require('./routes/reports')
+const platformRoutes = require('./routes/platform')
+const leadRoutes = require('./routes/leads')
+const woundCareRoutes = require('./routes/wound-care')
+const carePlanRoutes = require('./routes/care-plans')
+const mobileMoneyRoutes = require('./routes/mobile-money')
 
 const app = express()
 
@@ -217,6 +226,15 @@ app.use('/api/billing', billingRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/departments', departmentRoutes)
 app.use('/api/catalog', catalogRoutes)
+app.use('/api/flowsheets', flowsheetRoutes)
+app.use('/api', clinicalNotesRoutes) // exposes /api/vitals and /api/clinical-notes
+app.use('/api/organizations', organizationRoutes)
+app.use('/api', reportsRoutes) // exposes /api/rma/*
+app.use('/api/platform', platformRoutes)
+app.use('/api/leads', leadRoutes)
+app.use('/api', woundCareRoutes) // exposes /api/patients/:patientId/wounds and /api/wounds/*
+app.use('/api', carePlanRoutes) // exposes /api/care-plans/* and /api/care-plan-*
+app.use('/api/mobile-money', mobileMoneyRoutes)
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 

@@ -45,7 +45,11 @@ api.interceptors.response.use(
         if (process.client) {
           sessionStorage.removeItem('camero_api_token')
           sessionStorage.removeItem('camero_session')
-          window.location.href = '/login'
+          sessionStorage.removeItem('camero_facility_id')
+          sessionStorage.removeItem('camero_health_openPatientTabs')
+          if (window.location.pathname !== '/login') {
+            window.location.replace('/login?reason=expired')
+          }
         }
       }
       // Enhance error with server message and validation details
@@ -85,6 +89,7 @@ export const authApi = {
 
 // ─── Facility endpoints ─────────────────────────────────────────────────────
 export const facilityApi = {
+  list: () => api.get('/facilities'),
   get: (id) => api.get(`/facilities/${id}`),
   update: (id, data) => api.patch(`/facilities/${id}`, data)
 }
@@ -180,6 +185,101 @@ export const catalogApi = {
   create: (data) => api.post('/catalog', data),
   update: (id, data) => api.patch(`/catalog/${id}`, data),
   remove: (id) => api.delete(`/catalog/${id}`)
+}
+
+// ─── Vitals endpoints ───────────────────────────────────────────────────────
+export const vitalsApi = {
+  list: (patientId) => api.get('/vitals', { params: { patientId } }),
+  record: (data) => api.post('/vitals', data)
+}
+
+// ─── Clinical notes endpoints ───────────────────────────────────────────────
+export const clinicalNotesApi = {
+  list: (patientId, noteType) => api.get('/clinical-notes', { params: { patientId, noteType } }),
+  create: (data) => api.post('/clinical-notes', data),
+  update: (id, data) => api.patch(`/clinical-notes/${id}`, data),
+  sign: (id) => api.patch(`/clinical-notes/${id}/sign`)
+}
+
+// ─── Phase 13: Organization hierarchy endpoints ─────────────────────────────
+export const organizationApi = {
+  overview: () => api.get('/organizations/overview'),
+  list: () => api.get('/organizations'),
+  listFacilities: (orgId) => api.get(`/organizations/${orgId}/facilities`),
+  create: (data) => api.post('/organizations', data),
+  update: (id, data) => api.patch(`/organizations/${id}`, data),
+  remove: (id) => api.delete(`/organizations/${id}`),
+  listUnits: (orgId) => api.get(`/organizations/${orgId}/units`),
+  createUnit: (orgId, data) => api.post(`/organizations/${orgId}/units`, data),
+  updateUnit: (orgId, unitId, data) => api.patch(`/organizations/${orgId}/units/${unitId}`, data),
+  removeUnit: (orgId, unitId) => api.delete(`/organizations/${orgId}/units/${unitId}`),
+  attachFacility: (facilityId, data) => api.patch(`/organizations/facilities/${facilityId}/attach`, data),
+  listAdmins: (orgId) => api.get(`/organizations/${orgId}/admins`),
+  createAdmin: (orgId, data) => api.post(`/organizations/${orgId}/admins`, data),
+  createStaffAssignment: (orgId, data) => api.post(`/organizations/${orgId}/staff-assignments`, data),
+  revokeStaffAssignment: (assignmentId) => api.patch(`/organizations/staff-assignments/${assignmentId}/revoke`)
+}
+
+// ─── Platform operations endpoints (Super Admin only) ───────────────────────
+export const platformApi = {
+  overview: () => api.get('/platform/overview'),
+  listTeam: () => api.get('/platform/team'),
+  inviteTeamMember: (data) => api.post('/platform/team', data),
+  setTeamMemberStatus: (staffProfileId, status) => api.patch(`/platform/team/${staffProfileId}/status`, { status })
+}
+
+// ─── Commercial pipeline endpoints (Super Admin only) ───────────────────────
+export const leadsApi = {
+  list: (stage) => api.get('/leads', { params: stage ? { stage } : undefined }),
+  get: (id) => api.get(`/leads/${id}`),
+  create: (data) => api.post('/leads', data),
+  update: (id, data) => api.patch(`/leads/${id}`, data),
+  changeStage: (id, data) => api.patch(`/leads/${id}/stage`, data),
+  addActivity: (id, data) => api.post(`/leads/${id}/activities`, data),
+  convert: (id, data) => api.post(`/leads/${id}/convert`, data)
+}
+
+// ─── RMA (Rapport Mensuel d'Activité) endpoints ─────────────────────────────
+export const reportsApi = {
+  submit: (data) => api.post('/rma', data),
+  list: (params) => api.get('/rma', { params }),
+  validate: (id, data) => api.patch(`/rma/${id}/validate`, data),
+  reject: (id, data) => api.patch(`/rma/${id}/reject`, data),
+  aggregate: (params) => api.get('/rma/aggregate', { params }),
+  syncDhis2: (id) => api.post(`/rma/${id}/sync-dhis2`),
+  getDhis2Mapping: (orgId) => api.get(`/organizations/${orgId}/dhis2-mapping`),
+  updateDhis2Mapping: (orgId, data) => api.put(`/organizations/${orgId}/dhis2-mapping`, data)
+}
+
+// ─── Wound care endpoints ────────────────────────────────────────────────────
+export const woundCareApi = {
+  listForPatient: (patientId) => api.get(`/patients/${patientId}/wounds`),
+  create: (data) => api.post('/wounds', data),
+  update: (id, data) => api.patch(`/wounds/${id}`, data),
+  addAssessment: (id, data) => api.post(`/wounds/${id}/assessments`, data),
+  addPhoto: (id, data) => api.post(`/wounds/${id}/photos`, data)
+}
+
+// ─── Care plan endpoints ──────────────────────────────────────────────────────
+export const carePlanApi = {
+  listForPatient: (patientId) => api.get(`/patients/${patientId}/care-plans`),
+  create: (data) => api.post('/care-plans', data),
+  update: (id, data) => api.patch(`/care-plans/${id}`, data),
+  review: (id, data) => api.post(`/care-plans/${id}/review`, data),
+  addProblem: (data) => api.post('/care-plan-problems', data),
+  updateProblem: (id, data) => api.patch(`/care-plan-problems/${id}`, data),
+  addGoal: (data) => api.post('/care-plan-goals', data),
+  updateGoal: (id, data) => api.patch(`/care-plan-goals/${id}`, data),
+  addOutcome: (data) => api.post('/care-plan-outcomes', data),
+  updateOutcome: (id, data) => api.patch(`/care-plan-outcomes/${id}`, data),
+  addProgressEntry: (data) => api.post('/care-plan-progress-entries', data),
+  listProgressEntries: (patientId) => api.get(`/patients/${patientId}/care-plan-progress-entries`)
+}
+
+// ─── Mobile money endpoints ───────────────────────────────────────────────────
+export const mobileMoneyApi = {
+  request: (data) => api.post('/mobile-money/request', data),
+  status: (id) => api.get(`/mobile-money/${id}/status`)
 }
 
 export default api

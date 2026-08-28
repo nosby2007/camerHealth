@@ -37,8 +37,8 @@
 
     <!-- Hospital-Grade App Bar -->
     <v-app-bar flat fixed app color="white" height="72" class="gov-navbar b-bottom">
-      <v-btn icon @click.stop="drawer = !drawer" class="mr-2">
-         <v-icon color="#003366">mdi-menu-open</v-icon>
+      <v-btn icon aria-label="Toggle navigation" title="Toggle navigation" @click.stop="drawer = !drawer" class="gov-nav-toggle mr-2">
+         <v-icon class="gov-navbar-icon">mdi-menu-open</v-icon>
       </v-btn>
 
       <div class="ml-4 d-none d-md-flex flex-column">
@@ -49,6 +49,11 @@
       </div>
       
       <v-spacer />
+
+      <v-chip v-if="pendingSyncCount > 0" small label color="warning" text-color="white" class="mr-4 font-weight-bold">
+        <v-icon left small>mdi-cloud-sync-outline</v-icon>
+        Offline — {{ pendingSyncCount }} pending sync
+      </v-chip>
 
       <!-- Language Selector (CRITICAL UPDATE) -->
       <v-menu offset-y transition="slide-y-transition" tile>
@@ -72,13 +77,13 @@
 
       <v-menu offset-y transition="slide-y-transition">
         <template v-slot:activator="{ on }">
-          <v-btn text class="pa-2 h-100" v-on="on">
+          <v-btn text class="gov-session-trigger pa-2" v-on="on">
             <div class="text-right mr-3 d-none d-sm-block">
               <div class="text-caption font-weight-black grey--text mb-n1 uppercase">SESSION: {{ isClinical ? 'STAFF' : 'OFFICER' }}</div>
-              <div class="text-body-2 font-weight-black gov-primary--text">{{ admin ? admin.first_name : 'Authorized User' }}</div>
+              <div class="text-body-2 font-weight-black gov-primary--text">{{ displayName }}</div>
             </div>
-            <v-avatar size="40" color="#F5F7F6" class="b-1">
-              <v-icon color="#003366">mdi-account-circle</v-icon>
+            <v-avatar size="40" color="#F5F7F6" class="b-1 gov-session-avatar">
+              <v-icon class="gov-navbar-icon">mdi-account-circle</v-icon>
             </v-avatar>
           </v-btn>
         </template>
@@ -118,6 +123,9 @@
 import { mapActions } from "vuex";
 
 export default {
+  head() {
+    return { meta: [{ hid: 'robots', name: 'robots', content: 'noindex, nofollow' }] }
+  },
   data() {
     return {
       drawer: true,
@@ -132,7 +140,10 @@ export default {
         { icon: 'mdi-shield-account',   titleKey: 'Admin Dashboard',   to: '/admin',                 roles: ['ADMIN'] },
         { icon: 'mdi-account-multiple', titleKey: 'Staff Accounts',    to: '/admin/staff',           roles: ['ADMIN'] },
         { icon: 'mdi-history',          titleKey: 'Audit Log',         to: '/admin/audit',           roles: ['ADMIN'] },
-        { icon: 'mdi-shield-crown',     titleKey: 'Super Admin',       to: '/super-admin',           roles: ['ADMIN'] },
+        { icon: 'mdi-shield-crown',     titleKey: 'Super Admin',       to: '/super-admin',           roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN'] },
+        { icon: 'mdi-account-plus',     titleKey: 'Sales Pipeline',    to: '/super-admin/pipeline',  roles: ['SUPER_ADMIN', 'SALES'] },
+        { icon: 'mdi-account-supervisor-circle', titleKey: 'Team Access', to: '/super-admin/team',   roles: ['SUPER_ADMIN'] },
+        { icon: 'mdi-file-chart-check', titleKey: 'Submit RMA',        to: '/admin/rma',              roles: ['ADMIN'] },
         { icon: 'mdi-monitor-dashboard', titleKey: 'EMR Command Center', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
         // ── Patient Modules ──
         { icon: 'mdi-account-group',    titleKey: 'Patient Listing',   to: '/clinical/patients',     roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS', 'FRONT_DESK'] },
@@ -157,6 +168,7 @@ export default {
     if (savedLocale === 'en' || savedLocale === 'fr') this.setLang(savedLocale, false)
     this.$store.commit('clinical/LOAD_FROM_STORAGE');
     this.$store.commit('facility/RELOAD_FROM_STORAGE');
+    this.$store.dispatch('offlineQueue/initOfflineSync');
     if (this.isMinistry) {
       setTimeout(() => {
         const infectious = this.$store.getters['clinical/infectiousAlerts'];
@@ -177,6 +189,8 @@ export default {
   },
   computed: {
     admin() { return this.$store.state.auth.user; },
+    pendingSyncCount() { return this.$store.state.offlineQueue?.pendingCount || 0; },
+    displayName() { return this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Authorized User'; },
     userRole() { return this.$store.state.auth.role || 'GUEST'; },
     institution() { return this.$store.state.auth.institution; },
     userDepartment() {
@@ -203,6 +217,7 @@ export default {
 
 <style lang="scss">
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap');
+html { font-size: 17px !important; }
 html, body { font-family: 'Inter', sans-serif !important; background: #F5F7F6 !important; }
 .gov-sidebar {
   border-right: none !important;
@@ -210,6 +225,11 @@ html, body { font-family: 'Inter', sans-serif !important; background: #F5F7F6 !i
   .v-list-item { margin: 4px 12px; border-radius: 4px !important; }
 }
 .gov-navbar { box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; z-index: 100; }
+.gov-navbar .v-toolbar__content { align-items: center; padding: 0 16px !important; }
+.gov-nav-toggle { width: 44px !important; height: 44px !important; flex: 0 0 44px; }
+.gov-session-trigger { min-height: 52px !important; height: 52px !important; }
+.gov-session-avatar { flex: 0 0 40px; }
+.gov-navbar-icon { color: #003366 !important; opacity: 1 !important; }
 .gov-main-bg { background-color: #F5F7F6 !important; }
 .gov-content-wrapper { padding: 0; min-height: calc(100vh - 72px); }
 .gov-primary--text { color: #003366 !important; }

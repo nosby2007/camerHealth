@@ -579,6 +579,22 @@
               />
             </section>
 
+            <Patient360DoctorCommandCenter
+              v-else-if="selectedChartTab === 'Doctor Command Center'"
+              :patient="activePatient"
+              :latest-vitals="latestVitals"
+              :medical-notes="patientMedicalNotes"
+              :lab-orders="patientLabOrders"
+              :imaging-orders="patientImagingOrders"
+              :medications="patientMedications"
+              :tasks="patientTasks"
+              :care-plans="patientCarePlans"
+              :read-only="isPatientDischarged"
+              @open-tab="selectChartTab"
+              @new-note="openChartDialog('medical')"
+              @new-order="selectChartTab('Orders')"
+            />
+
             <section v-else-if="selectedChartTab === 'Nurse Command Center'" class="nurse-command-center">
               <div class="command-brief nurse">
                 <div>
@@ -712,10 +728,23 @@
                     <button :class="{ active: avatarView === 'front' }" type="button" @click="avatarView = 'front'">Front</button>
                     <button :class="{ active: avatarView === 'back' }" type="button" @click="avatarView = 'back'">Back</button>
                   </div>
+                  <div class="avatar-zoom-toggle">
+                    <button type="button" :disabled="avatarZoom <= AVATAR_ZOOM_MIN" aria-label="Zoom out" @click="zoomAvatar(-1)">
+                      <v-icon x-small>mdi-magnify-minus-outline</v-icon>
+                    </button>
+                    <span>{{ Math.round(avatarZoom * 100) }}%</span>
+                    <button type="button" :disabled="avatarZoom >= AVATAR_ZOOM_MAX" aria-label="Zoom in" @click="zoomAvatar(1)">
+                      <v-icon x-small>mdi-magnify-plus-outline</v-icon>
+                    </button>
+                    <button v-if="avatarZoom !== 1" type="button" aria-label="Reset zoom" @click="resetAvatarZoom">
+                      <v-icon x-small>mdi-backup-restore</v-icon>
+                    </button>
+                  </div>
                   <div class="body-canvas">
                     <div
                       ref="avatarBodyFigure"
                       :class="['body-figure', avatarView, avatarAnatomy, { 'with-image': avatarImageSrc, placing: selectedAvatarTool }]"
+                      :style="{ transform: `scale(${avatarZoom})` }"
                       @click="handleAvatarCanvasClick"
                       @dragover.prevent
                       @drop.prevent="handleAvatarDrop"
@@ -726,16 +755,6 @@
                         :src="avatarImageSrc"
                         :alt="`${avatarAnatomyLabel} ${avatarView} body avatar`"
                       >
-                      <button
-                        v-for="zone in visibleAvatarZones"
-                        :key="zone.key"
-                        :class="['body-zone', zone.key, zone.status, { selected: activeAvatarZone === zone.key }]"
-                        type="button"
-                        @click.stop="activeAvatarZone = zone.key"
-                      >
-                        <v-icon x-small>{{ zone.icon }}</v-icon>
-                        <span>{{ zone.short }}</span>
-                      </button>
                       <button
                         v-for="item in visibleAvatarPlacements"
                         :key="item.id"
@@ -1078,6 +1097,10 @@
                         <span>{{ med.frequency }}</span>
                         <span>{{ med.dispense }}</span>
                       </div>
+                      <div class="emar-admin-instructions">
+                        <v-icon x-small>mdi-clipboard-text-outline</v-icon>
+                        <span>{{ med.administrationInstructions }}</span>
+                      </div>
                       <small v-if="marShowEducation">{{ med.education }}</small>
                     </div>
 
@@ -1167,6 +1190,7 @@
               v-else-if="selectedChartTab === 'Wound Management'"
               :wounds="patientWounds"
               :assessments="woundAssessmentMap"
+              :photos="patientWoundPhotos"
               :read-only="isPatientDischarged"
               @open-wound="openWoundDialog"
             />
@@ -2017,9 +2041,9 @@
           <v-form ref="medicationFormRef" v-model="forms.orderValid">
             <div class="dialog-grid two">
               <v-text-field v-model="forms.order.medication.medication" label="Medication" dense outlined :rules="[requiredRule]" />
-              <v-text-field v-model="forms.order.medication.dosage" label="Dose" dense outlined />
-              <v-select v-model="forms.order.medication.route" :items="medicationRoutes" label="Route" dense outlined />
-              <v-text-field v-model="forms.order.medication.frequency" label="Frequency" dense outlined />
+              <v-text-field v-model="forms.order.medication.dosage" label="Dose" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.order.medication.route" :items="medicationRoutes" label="Route" dense outlined :rules="[requiredRule]" />
+              <v-text-field v-model="forms.order.medication.frequency" label="Frequency" dense outlined :rules="[requiredRule]" />
               <v-text-field v-model="forms.order.medication.medicationClass" label="Medication class" dense outlined readonly />
               <v-text-field v-model="forms.order.medication.indication" label="Clinical indication / need" dense outlined />
             </div>
@@ -2061,6 +2085,10 @@
               <v-text-field v-model="forms.mar.dose" label="Dose administered" dense outlined />
               <v-text-field v-model="forms.mar.site" label="Site / line" dense outlined />
             </div>
+            <v-alert v-if="selectedMarMedication" dense text color="#0f766e" class="mb-3">
+              <strong>Administration instructions:</strong>
+              {{ selectedMarMedication.administrationInstructions }}
+            </v-alert>
             <v-textarea v-model="forms.mar.comment" label="Clinical comment / reason" rows="2" dense outlined />
             <v-textarea v-model="forms.mar.patientResponse" label="Patient response / education" rows="2" dense outlined />
           </v-form>
@@ -2390,6 +2418,7 @@ import Patient360DocumentsTab from '~/components/clinical/patient360/documents/P
 import Patient360RegistrationTab from '~/components/clinical/patient360/registration/Patient360RegistrationTab.vue'
 import Patient360WoundManagementTab from '~/components/clinical/patient360/wounds/Patient360WoundManagementTab.vue'
 import Patient360ProcedureTab from '~/components/clinical/patient360/procedure/Patient360ProcedureTab.vue'
+import Patient360DoctorCommandCenter from '~/components/clinical/patient360/doctor/Patient360DoctorCommandCenter.vue'
 import TimedCareDocumentationDialog from '~/components/clinical/patient360/flowsheets/TimedCareDocumentationDialog.vue'
 import BodyAssessmentDialog from '~/components/clinical/patient360/assessment/BodyAssessmentDialog.vue'
 import Patient360ContextForms from '~/components/clinical/patient360/dialogs/Patient360ContextForms.vue'
@@ -2405,6 +2434,8 @@ const {
   statusOptionsForAvatarType
 } = require('~/util/avatar-workflow.cjs')
 const { findMedicationCatalogItem } = require('~/util/medication-catalog.cjs')
+const { isMedicationOrderForMar, resolveAdministrationInstructions } = require('~/util/medication-workflow.cjs')
+const { formatClinicalDate, formatVitalsSummary, resolveDisplayAccount } = require('~/util/patient-display.cjs')
 const { canPreviewRole: rolePreviewAllowed } = require('~/util/patient-360-policy.cjs')
 const { normalizeSearchValue, matchesPatientQuery, exactPatientIdentifierMatch } = require('~/util/patient-search.cjs')
 
@@ -2427,6 +2458,7 @@ function chartEventStatus(value) {
 const ALL_CLINICAL_TABS = [
   'Summary',
   'EMR Command Center',
+  'Doctor Command Center',
   'Nurse Command Center',
   'Chart Review',
   'Navigators',
@@ -2456,6 +2488,8 @@ const ALL_CLINICAL_TABS = [
 const PRIMARY_TAB_ORDER = ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Chart Review', 'Orders', 'MAR', 'Flowsheets', 'Notes', 'Care Plan']
 
 const ROLE_PRIMARY_TABS = {
+  DOCTOR: ['Summary', 'Doctor Command Center', 'Chart Review', 'Orders', 'Lab Results', 'Medications', 'Notes', 'Care Plan', 'Handoff'],
+  NP: ['Summary', 'Doctor Command Center', 'Chart Review', 'Orders', 'Lab Results', 'Medications', 'Notes', 'Care Plan', 'Handoff'],
   SOCIAL_WORKER: ['Summary', 'Social Services', 'Notes', 'Care Plan', 'Work List', 'Care Teams', 'Education', 'Documents'],
   MAJOR_SERVICE: ['Summary', 'Unit Management', 'Nurse Command Center', 'Work List', 'Care Teams', 'Notes', 'Handoff', 'Care Plan', 'Documents'],
   NURSING_SUPERVISOR: ['Summary', 'Nursing Supervision', 'Nurse Command Center', 'Work List', 'Care Teams', 'Notes', 'Handoff', 'Documents']
@@ -2466,12 +2500,12 @@ const CHART_TAB_LAYOUT_KEY = 'camero_health_patient360Tabs'
 
 const ADMIN_LIKE_ROLES = ['ADMIN', 'RECORDS', 'BILLING', 'FRONT_DESK']
 const ROLE_COORDINATION_TABS = ['Social Services', 'Unit Management', 'Nursing Supervision']
-const GENERAL_CLINICAL_TABS = ALL_CLINICAL_TABS.filter(tab => !ROLE_COORDINATION_TABS.includes(tab))
+const GENERAL_CLINICAL_TABS = ALL_CLINICAL_TABS.filter(tab => !ROLE_COORDINATION_TABS.includes(tab) && tab !== 'Doctor Command Center')
 
 const TAB_ACCESS = {
   ADMIN: ALL_CLINICAL_TABS,
-  DOCTOR: GENERAL_CLINICAL_TABS,
-  NP: GENERAL_CLINICAL_TABS,
+  DOCTOR: [...GENERAL_CLINICAL_TABS, 'Doctor Command Center'],
+  NP: [...GENERAL_CLINICAL_TABS, 'Doctor Command Center'],
   NURSE: GENERAL_CLINICAL_TABS,
   MIDWIFE: GENERAL_CLINICAL_TABS.filter(tab => tab !== 'Sedation/Procedure Documentation'),
   MAJOR_SERVICE: [...GENERAL_CLINICAL_TABS, 'Unit Management'],
@@ -2527,7 +2561,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360RoleCoordinationTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360RoleCoordinationTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, Patient360DoctorCommandCenter, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false },
@@ -2556,6 +2590,9 @@ export default {
       activeSdoh: 'food',
       activeAvatarZone: 'cardiac',
       avatarView: 'front',
+      avatarZoom: 1,
+      AVATAR_ZOOM_MIN: 0.6,
+      AVATAR_ZOOM_MAX: 2,
       selectedAvatarTool: '',
       avatarPlacementSequence: 0,
       avatarPlacements: [],
@@ -3080,7 +3117,7 @@ export default {
         results.push({ key: `tab-${tab}`, type: 'tab', tab, title: tab, meta: 'Open chart workspace', group: 'Tab', icon: 'mdi-tab' })
       })
       this.visibleNavigatorTabs.forEach(navigator => {
-        const section = (navigator.sections || []).find(item => normalizeSearchValue(`${item.label} ${item.group}`).includes(query))
+        const section = (navigator.sections || []).map(item => (typeof item === 'string' ? { key: item, label: item, group: '' } : item)).find(item => normalizeSearchValue(`${item.label} ${item.group}`).includes(query))
         if (normalizeSearchValue(navigator.label).includes(query) || section) {
           results.push({
             key: `navigator-${navigator.key}-${section ? section.key : 'root'}`,
@@ -3353,6 +3390,7 @@ export default {
       const map = {
         Summary: 'Patient 360 Summary',
         'EMR Command Center': 'EMR Command Center',
+        'Doctor Command Center': 'Medical Decision and Follow-up Center',
         'Nurse Command Center': 'Nurse Command Center',
         'Chart Review': 'Longitudinal Chart Review',
         Flowsheets: 'Care Schedule Flowsheets',
@@ -3487,6 +3525,10 @@ export default {
         map[wound.id] = this.woundAssessmentsFor(wound.id)
         return map
       }, {})
+    },
+    patientWoundPhotos() {
+      const all = this.$store.getters['nursing/getWoundPhotos'] || []
+      return all.filter(item => item.patientId === this.activePatientId)
     },
     hasWoundAreaWarning() {
       return this.patientWounds.some(wound => this.woundAssessmentsFor(wound.id).some(item => item.warningAreaIncreased))
@@ -4921,15 +4963,13 @@ export default {
         values: {
           Status: med.status || 'Active',
           Route: med.route || med.dispenseAt || '-',
-          Instructions: med.instructions || med.frequency || med.dose || med.prescriptionText || '-'
+          Instructions: med.administrationInstructions || med.instructions || med.notes || med.frequency || med.dose || med.prescriptionText || '-'
         }
       }))
     },
     emarMedicationRows() {
-      const medications = this.patientMedications.length
-        ? this.patientMedications
-        : this.marRows.map((row, index) => ({ id: `demo-mar-${index}`, drug: row.label, status: 'Active', frequency: Object.values(row.values).includes('Due') ? 'Scheduled' : 'PRN', dose: '', route: '', demoValues: row.values }))
-      return medications.map((med, index) => {
+      const medications = this.patientMedications.filter(isMedicationOrderForMar)
+      return medications.map((med) => {
         const name = med.drug || med.medication || med.name || med.label || 'Medication'
         const catalogItem = findMedicationCatalogItem(name)
         const route = med.route || (/(iv|infusion)/i.test(name) ? 'IV' : 'Oral')
@@ -4938,10 +4978,10 @@ export default {
         const isInfusion = /infusion|ivpb|continuous|running/i.test(`${name} ${route} ${frequency}`)
         const status = med.status || 'Active'
         const statusClass = this.orderStatusClass(status)
-        const adminTime = med.lastAdminTime || med.administeredAt || med.schedule || (isPrn ? '' : this.marTimeColumns[index % this.marTimeColumns.length])
+        const adminTime = med.scheduledTime || med.schedule || med.dueTime || ''
         return {
-          id: med.id || `emar-med-${index}`,
-          raw: med.id && !String(med.id).startsWith('demo-mar') ? med : null,
+          id: med.id,
+          raw: med,
           orderItem: {
             type: 'medication',
             raw: med,
@@ -4956,6 +4996,7 @@ export default {
           medicationClass: med.medicationClass || (catalogItem && catalogItem.medicationClass) || '',
           sideEffects: med.sideEffects || (catalogItem && catalogItem.sideEffects) || '',
           education: med.education || (catalogItem && catalogItem.education) || `Educate patient on ${name}, indication, expected effect and side effects.`,
+          administrationInstructions: resolveAdministrationInstructions(med, catalogItem),
           status,
           statusClass,
           scheduleType: isInfusion ? 'infusion' : isPrn ? 'prn' : 'scheduled',
@@ -4963,12 +5004,11 @@ export default {
           icon: isInfusion ? 'mdi-iv-bag' : isPrn ? 'mdi-pill-multiple' : 'mdi-pill',
           lastAdmin: med.lastAdminTime || med.administeredAt || med.lastAdmin || 'Not filed',
           timeline: this.marTimeColumns.map(time => {
-            const demoValue = med.demoValues && med.demoValues[time]
-            const isDue = !isPrn && (time === adminTime || (!adminTime && time === '1800'))
-            const isGiven = demoValue === 'Given' || String(status).toLowerCase() === 'given' || String(med.administrationStatus || '').toLowerCase() === 'given'
-            const isHeld = demoValue === 'Held' || /hold|held/i.test(status)
-            const isRunning = demoValue === 'Running' || (isInfusion && ['1600', '1700', '1800'].includes(time))
-            const text = demoValue || (isGiven && time === adminTime ? 'Given' : isHeld && time === adminTime ? 'Held' : isRunning ? 'Running' : isDue ? 'Due' : isPrn ? 'PRN' : '')
+            const isDue = !isPrn && Boolean(adminTime) && time === adminTime
+            const isGiven = String(status).toLowerCase() === 'given' || String(med.administrationStatus || '').toLowerCase() === 'given'
+            const isHeld = /hold|held/i.test(status)
+            const isRunning = isInfusion && ['1600', '1700', '1800'].includes(time)
+            const text = isGiven && time === adminTime ? 'Given' : isHeld && time === adminTime ? 'Held' : isRunning ? 'Running' : isDue ? 'Due' : isPrn ? 'PRN' : ''
             return {
               time,
               text,
@@ -5387,9 +5427,6 @@ export default {
         }
       ]
     },
-    visibleAvatarZones() {
-      return this.avatarZones.filter(zone => zone.view === this.avatarView || ['pain', 'meds'].includes(zone.key))
-    },
     avatarNarrative() {
       const riskCount = this.avatarZones.filter(zone => zone.status === 'risk').length
       const activeCount = this.avatarZones.filter(zone => zone.status === 'active').length
@@ -5751,28 +5788,23 @@ export default {
         name,
         gender: patient.gender || patient.sex || 'Sex N/A',
         age: patient.age || ageFromDob(patient.dob) || 'N/A',
-        dob: patient.dob || 'DOB N/A',
+        dob: formatClinicalDate(patient.dob, this.$i18n && this.$i18n.locale === 'fr' ? 'fr-CM' : 'en-CA'),
         mrn: patient.mrn || patient.externalId || patient.id,
-        account: patient.account || patient.id,
+        account: resolveDisplayAccount(patient),
         bed: patient.bed || patient.currentDepartment || 'Ambulatory',
         codeStatus: this.maskClinical(patient.codeStatus || patient.code || 'Full Resuscitation'),
         precautions: this.maskClinical(patient.precautions || 'Standard'),
         infectionStatus: this.maskClinical(patient.infectionStatus || 'No isolation'),
         attending: patient.attending || patient.provider || patient.referredBy || 'Provider not assigned',
         allergies: this.maskMedication(patient.allergies || 'No known allergies'),
-        admitted: patient.admittedAt || patient.createdAt || 'N/A',
+        admitted: formatClinicalDate(patient.admittedAt || patient.createdAt, this.$i18n && this.$i18n.locale === 'fr' ? 'fr-CM' : 'en-CA'),
         patientClass: patient.patientClass || patient.patientStatus || 'Outpatient',
-        vitals: this.maskClinical(this.latestVitalsSummary || patient.vitals || 'No current vitals'),
+        vitals: this.maskClinical(formatVitalsSummary(this.latestVitals || patient.vitals)),
         bmi: this.maskClinical(this.latestBmi || patient.bmi || 'N/A')
       }
     },
     latestVitalsSummary() {
-      if (!this.latestVitals) return ''
-      const parts = []
-      if (this.latestVitals.bp) parts.push(`BP ${this.latestVitals.bp}`)
-      if (this.latestVitals.hr) parts.push(`HR ${this.latestVitals.hr}`)
-      if (this.latestVitals.temp) parts.push(`${this.latestVitals.temp} C`)
-      return parts.join(' · ')
+      return this.latestVitals ? formatVitalsSummary(this.latestVitals) : ''
     },
     latestBmi() {
       const v = this.latestVitals
@@ -5809,6 +5841,10 @@ export default {
     }
   },
   mounted() {
+    // Needed so a prescription written from here can be billed at the exact
+    // DB catalog price, same as the standalone medications.vue flow —
+    // otherwise Cash Office never sees a charge for it (no price to bill at).
+    this.$store.dispatch('billing/fetchCatalog')
     this.$store.commit('clinical/LOAD_FROM_STORAGE')
     if (this.$store.hasModule && this.$store.hasModule('nursing')) {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
@@ -5949,10 +5985,18 @@ export default {
       const key = event && event.dataTransfer ? event.dataTransfer.getData('text/plain') : this.selectedAvatarTool
       this.placeAvatarItemFromEvent(event, key)
     },
+    zoomAvatar(direction) {
+      const step = 0.2
+      const next = Math.round((this.avatarZoom + direction * step) * 100) / 100
+      this.avatarZoom = Math.min(this.AVATAR_ZOOM_MAX, Math.max(this.AVATAR_ZOOM_MIN, next))
+    },
+    resetAvatarZoom() {
+      this.avatarZoom = 1
+    },
     handleAvatarCanvasClick(event) {
       if (this.isPatientDischarged) return
       if (!this.selectedAvatarTool) return
-      const blocked = event.target && event.target.closest && event.target.closest('.body-zone, .avatar-sticker')
+      const blocked = event.target && event.target.closest && event.target.closest('.avatar-sticker')
       if (blocked) return
       this.placeAvatarItemFromEvent(event, this.selectedAvatarTool)
     },
@@ -6262,6 +6306,10 @@ export default {
       const adminLike = ADMIN_LIKE_ROLES.includes(this.currentRole)
       if (adminLike && this.selectedChartTab === 'Summary' && this.visibleChartTabs.includes('Chart Review')) {
         this.selectChartTab('Chart Review')
+        return
+      }
+      if (['DOCTOR', 'NP'].includes(this.currentRole) && this.selectedChartTab === 'Summary' && this.visibleChartTabs.includes('Doctor Command Center')) {
+        this.selectChartTab('Doctor Command Center')
       }
     },
     loadLayoutPreferences() {
@@ -6860,7 +6908,7 @@ export default {
           this.forms.order.medication.sideEffects = order.raw.sideEffects || (catalogItem && catalogItem.sideEffects) || ''
           this.forms.order.medication.education = order.raw.education || (catalogItem && catalogItem.education) || ''
           this.forms.order.medication.safetyWarnings = order.raw.safetyWarnings || (catalogItem && catalogItem.warnings) || ''
-          this.forms.order.instructions = order.raw.instructions || order.detail || ''
+          this.forms.order.instructions = order.raw.administrationInstructions || order.raw.instructions || order.raw.notes || order.detail || ''
         }
         return
       }
@@ -7399,6 +7447,7 @@ export default {
           education: this.forms.order.medication.education || (catalogItem && catalogItem.education) || '',
           safetyWarnings: this.forms.order.medication.safetyWarnings || (catalogItem && catalogItem.warnings) || '',
           instructions: this.forms.order.instructions,
+          notes: this.forms.order.instructions,
           prescribedBy: recordedBy
         })
         await this.$store.dispatch('clinical/createTask', {
@@ -7410,6 +7459,25 @@ export default {
           priority: 'routine',
           actionReason: this.forms.order.instructions || 'Created from Patient 360'
         })
+
+        // Bill the Cash Office at the exact DB price catalog rate — without
+        // this, a prescription written here never reaches Cash Office at all
+        // (chargeForMedication was only ever called from medications.vue).
+        const drugCatalog = (this.$store.getters['billing/catalog'] || {}).drugs || []
+        const drugName = this.forms.order.medication.medication
+        const catalogPriceItem = drugCatalog.find(d => d.name.toLowerCase() === (drugName || '').toLowerCase())
+        if (catalogPriceItem && catalogPriceItem.unitPrice !== undefined) {
+          await this.$store.dispatch('billing/chargeForMedication', {
+            patientId,
+            medicationId: record.id,
+            drugName,
+            unitPrice: Number(catalogPriceItem.unitPrice),
+            quantity: 1
+          })
+        } else {
+          this.toastError('Drug not found in official price catalog — patient not billed. Add it to the price catalog first.')
+        }
+
         this.selectedChartTab = 'Medications'
         this.closeChartDialog('medication')
         this.toastSuccess('Medication order placed from Patient 360.')
@@ -9013,6 +9081,37 @@ function latestByDate(items, field) {
   border-color: #0f766e;
   color: #fff;
 }
+.avatar-zoom-toggle {
+  background: #fff;
+  border-bottom: 1px solid #d7e0df;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 9px;
+}
+.avatar-zoom-toggle button {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  min-width: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-zoom-toggle button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.avatar-zoom-toggle span {
+  font-size: 11px;
+  font-weight: 900;
+  color: #334155;
+  min-width: 38px;
+  text-align: center;
+}
 .body-canvas {
   min-height: 430px;
   display: flex;
@@ -9028,6 +9127,8 @@ function latestByDate(items, field) {
   position: relative;
   width: 260px;
   height: 390px;
+  transition: transform 0.15s ease;
+  transform-origin: center top;
 }
 .body-figure.placing {
   cursor: crosshair;
@@ -9259,48 +9360,6 @@ function latestByDate(items, field) {
   right: 76px;
   transform: rotate(8deg);
 }
-.body-zone {
-  position: absolute;
-  z-index: 3;
-  min-width: 54px;
-  min-height: 34px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #0f172a;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 5px 7px;
-  font-size: 10px;
-  font-weight: 900;
-  cursor: pointer;
-}
-.body-zone.risk {
-  border-color: #be123c;
-  background: #fff1f2;
-}
-.body-zone.active {
-  border-color: #0f766e;
-  background: #ecfdf5;
-}
-.body-zone.stable {
-  border-color: #64748b;
-  background: #f8fafc;
-}
-.body-zone.selected {
-  outline: 3px solid #99f6e4;
-  z-index: 3;
-}
-.body-zone.neuro { left: 103px; top: 0; }
-.body-zone.resp { left: 146px; top: 105px; }
-.body-zone.breast { left: 103px; top: 148px; }
-.body-zone.cardiac { left: 54px; top: 116px; }
-.body-zone.iv { left: 0; top: 166px; }
-.body-zone.skin { left: 103px; top: 170px; }
-.body-zone.pain { right: 0; top: 166px; }
-.body-zone.mobility { left: 34px; top: 302px; }
-.body-zone.meds { right: 34px; top: 302px; }
 .avatar-sticker {
   align-items: center;
   background: rgba(255, 255, 255, 0.94);
@@ -10476,6 +10535,19 @@ function latestByDate(items, field) {
   padding: 2px 5px;
   font-size: 10px;
   font-weight: 900;
+}
+.emar-admin-instructions {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 5px !important;
+  margin-top: 2px;
+  padding: 6px;
+  border-left: 3px solid #0f766e;
+  background: #ecfdf5;
+  color: #134e4a;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 .emar-time-cell {
   min-height: 42px;

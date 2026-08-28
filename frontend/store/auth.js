@@ -23,6 +23,7 @@ function clearSession() {
   if (process.client) {
     sessionStorage.removeItem(SESSION_KEY)
     sessionStorage.removeItem('camero_facility_id')
+    sessionStorage.removeItem('camero_health_openPatientTabs')
   }
 }
 
@@ -211,9 +212,16 @@ export const actions = {
     }
   },
 
-  logout({ commit }) {
+  logout({ commit }, options = {}) {
     clearAuthToken()
     commit('CLEAR_SESSION')
+    if (process.client) {
+      const reason = options && options.reason === 'inactive' ? '?reason=inactive' : ''
+      const target = `/login${reason}`
+      if (`${window.location.pathname}${window.location.search}` !== target) {
+        window.location.replace(target)
+      }
+    }
   },
 
   async fetchProfile({ commit }) {

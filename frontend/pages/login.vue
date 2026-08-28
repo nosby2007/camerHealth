@@ -22,53 +22,6 @@
 
         <v-form ref="form" v-model="valid" @submit.prevent="login">
 
-          <!-- Role selector -->
-          <div v-if="!useSupabaseCompatLogin" class="text-caption font-weight-black grey--text mb-3 uppercase ls-1">Select Your Role</div>
-          <v-row v-if="!useSupabaseCompatLogin" dense class="mb-2">
-            <v-col v-for="r in visibleRoles" :key="r.value" cols="6" sm="4">
-              <v-card
-                flat tile
-                :class="['role-chip pa-3 text-center b-1', form.role === r.value ? 'role-chip--active' : '']"
-                @click="form.role = r.value"
-                style="cursor:pointer"
-              >
-                <v-icon :color="form.role === r.value ? 'white' : '#003366'" small>{{ r.icon }}</v-icon>
-                <div class="text-caption font-weight-black mt-1 uppercase" style="font-size:9px; letter-spacing:0.5px">{{ r.label }}</div>
-              </v-card>
-            </v-col>
-          </v-row>
-
-          <div
-            v-if="!useSupabaseCompatLogin && rolePageCount > 1"
-            class="role-pagination mb-6"
-          >
-            <v-btn
-              text small
-              color="#003366"
-              class="role-page-btn font-weight-black"
-              :disabled="rolePage === 0"
-              aria-label="Previous roles"
-              @click="previousRolePage"
-            >
-              <v-icon left small>mdi-chevron-left</v-icon>
-              Previous
-            </v-btn>
-            <span class="role-page-status" aria-live="polite">
-              {{ rolePage + 1 }} / {{ rolePageCount }}
-            </span>
-            <v-btn
-              text small
-              color="#003366"
-              class="role-page-btn font-weight-black"
-              :disabled="rolePage >= rolePageCount - 1"
-              aria-label="Next roles"
-              @click="nextRolePage"
-            >
-              Next
-              <v-icon right small>mdi-chevron-right</v-icon>
-            </v-btn>
-          </div>
-
           <v-alert v-if="useSupabaseCompatLogin" dense text type="info" class="mb-4 text-caption font-weight-bold rounded-0">
             Transitional login mode: sign in with your Supabase email and password.
           </v-alert>
@@ -140,27 +93,7 @@ export default {
       valid: false,
       loading: false,
       showPwd: false,
-      rolePage: 0,
-      rolesPerPage: 12,
-      form: { identity: 'ADM001', password: '', role: 'ADMIN' },
-      roles: [
-        { value: 'ADMIN',   label: 'Admin',   icon: 'mdi-shield-account' },
-        { value: 'DOCTOR',  label: 'Doctor',  icon: 'mdi-doctor'          },
-        { value: 'NP',      label: 'NP',      icon: 'mdi-stethoscope'     },
-        { value: 'NURSE',   label: 'Nurse',   icon: 'mdi-medical-bag'     },
-        { value: 'MIDWIFE', label: 'Midwife', icon: 'mdi-baby-face-outline' },
-        { value: 'MAJOR_SERVICE', label: 'Major', icon: 'mdi-account-star' },
-        { value: 'NURSING_SUPERVISOR', label: 'Supervisor', icon: 'mdi-account-supervisor' },
-        { value: 'LAB',     label: 'Lab',     icon: 'mdi-flask'           },
-        { value: 'PHARMACY', label: 'Pharmacy', icon: 'mdi-pill'          },
-        { value: 'FRONT_DESK', label: 'Reception', icon: 'mdi-desk'       },
-        { value: 'IMAGING', label: 'Imaging', icon: 'mdi-radiology-box'   },
-        { value: 'BILLING', label: 'Cash Office', icon: 'mdi-cash-register' },
-        { value: 'CNA', label: 'Care Assistant', icon: 'mdi-account-heart' },
-        { value: 'RECORDS', label: 'Medical Records', icon: 'mdi-archive' },
-        { value: 'SOCIAL_WORKER', label: 'Social Worker', icon: 'mdi-hand-heart' },
-        { value: 'PHYSIOTHERAPIST', label: 'Physio', icon: 'mdi-human-wheelchair' }
-      ]
+      form: { identity: '', password: '' }
     }
   },
   computed: {
@@ -171,19 +104,7 @@ export default {
       if (typeof flag === 'boolean') return flag
       if (typeof flag === 'string') return ['1', 'true', 'yes', 'on'].includes(flag.trim().toLowerCase())
       return false
-    },
-    loginDisabled() {
-      if (this.useSupabaseCompatLogin) return false
-      return !this.form.role
-    },
-    rolePageCount() {
-      return Math.ceil(this.roles.length / this.rolesPerPage)
-    },
-    visibleRoles() {
-      const start = this.rolePage * this.rolesPerPage
-      return this.roles.slice(start, start + this.rolesPerPage)
     }
-
   },
   mounted() {
     this.$store.commit('clinical/LOAD_FROM_STORAGE')
@@ -193,12 +114,6 @@ export default {
     }
   },
   methods: {
-    previousRolePage() {
-      this.rolePage = Math.max(0, this.rolePage - 1)
-    },
-    nextRolePage() {
-      this.rolePage = Math.min(this.rolePageCount - 1, this.rolePage + 1)
-    },
     roleHome(role) {
       return {
         ADMIN: '/admin',
@@ -227,8 +142,7 @@ export default {
         email: this.form.identity,
         staffId: this.form.identity,
         loginInput: this.form.identity,
-        password: this.form.password,
-        role: this.form.role
+        password: this.form.password
       })
 
       this.loading = false
@@ -263,39 +177,5 @@ export default {
   color: #003366;
   border-left: 4px solid #00A99D;
   padding-left: 10px;
-}
-.role-chip {
-  min-height: 74px;
-  background: white !important;
-  border: 1px solid #E2E8F0 !important;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-.role-chip:hover { border-color: #003366 !important; background: #F8FAFC !important; }
-.role-chip--active { background: #003366 !important; border-color: #003366 !important; color: white !important; }
-.role-chip--active:hover { background: #003366 !important; }
-.role-chip--active .text-caption { color: white !important; }
-.role-pagination {
-  min-height: 32px;
-  display: grid;
-  grid-template-columns: minmax(96px, 1fr) auto minmax(96px, 1fr);
-  align-items: center;
-  gap: 8px;
-}
-.role-page-btn {
-  min-width: 96px !important;
-  font-size: 10px !important;
-  letter-spacing: 0.5px;
-}
-.role-page-btn:first-child { justify-self: start; }
-.role-page-btn:last-child { justify-self: end; }
-.role-page-status {
-  color: #64748B;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1px;
 }
 </style>

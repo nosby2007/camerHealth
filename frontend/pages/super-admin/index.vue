@@ -2,18 +2,24 @@
   <v-container fluid class="super-admin-shell">
     <header class="admin-header">
       <div>
-        <p class="eyebrow">Super Admin</p>
-        <h1>Platform Control Center</h1>
+        <p class="eyebrow">Super Admin · Platform</p>
+        <h1>Platform Command Center</h1>
         <p class="header-copy">
-          Facility governance, staff access, audit review, and clinical workflow readiness.
+          Business operations across every organization and facility on CameroHealth — separate from any single facility's clinical workspace.
         </p>
       </div>
       <div class="header-actions">
-        <v-btn tile depressed color="#003366" dark class="font-weight-black text-caption" to="/admin/hospital">
-          <v-icon left small>mdi-hospital-building</v-icon>Facility model
+        <v-btn v-if="canSeePipeline" tile depressed color="#0f766e" dark class="font-weight-black text-caption" to="/super-admin/pipeline">
+          <v-icon left small>mdi-account-plus</v-icon>Sales Pipeline
         </v-btn>
-        <v-btn tile outlined color="#003366" class="font-weight-black text-caption" to="/admin/audit">
-          <v-icon left small>mdi-history</v-icon>Audit log
+        <v-btn v-if="isHierarchyAdmin" tile depressed color="#003366" dark class="font-weight-black text-caption" to="/super-admin/organizations">
+          <v-icon left small>mdi-sitemap</v-icon>Organizations
+        </v-btn>
+        <v-btn v-if="isHierarchyAdmin" tile outlined color="#003366" class="font-weight-black text-caption" to="/super-admin/reports">
+          <v-icon left small>mdi-file-chart-check</v-icon>RMA Reports
+        </v-btn>
+        <v-btn v-if="isSuperAdmin" tile outlined color="#003366" class="font-weight-black text-caption" to="/super-admin/team">
+          <v-icon left small>mdi-account-supervisor-circle</v-icon>Team
         </v-btn>
       </div>
     </header>
@@ -22,40 +28,60 @@
       <article v-for="metric in metrics" :key="metric.label" class="metric-tile">
         <div>
           <span>{{ metric.label }}</span>
-          <strong>{{ metric.value }}</strong>
+          <strong>{{ loading ? '—' : metric.value }}</strong>
         </div>
         <v-icon :color="metric.color" size="30">{{ metric.icon }}</v-icon>
       </article>
     </section>
 
-    <section class="control-grid">
-      <article v-for="module in modules" :key="module.title" class="module-tile">
-        <div class="module-icon">
-          <v-icon color="#003366">{{ module.icon }}</v-icon>
+    <section class="readiness-grid">
+      <article class="readiness-panel">
+        <h2>RMA compliance — this month</h2>
+        <div v-if="overview" class="compliance-row">
+          <div class="compliance-ring" :style="ringStyle">
+            <span>{{ overview.rmaCompliance.rate === null ? '—' : overview.rmaCompliance.rate + '%' }}</span>
+          </div>
+          <div class="compliance-copy">
+            <strong>{{ overview.rmaCompliance.submitted }} / {{ overview.rmaCompliance.expected }}</strong>
+            <span>facilities reported for {{ overview.rmaCompliance.reportMonth }}/{{ overview.rmaCompliance.reportYear }}</span>
+          </div>
         </div>
-        <div class="module-body">
-          <h2>{{ module.title }}</h2>
-          <p>{{ module.text }}</p>
-          <v-btn x-small text color="#003366" class="font-weight-black px-0" :to="module.to">
-            Open <v-icon right x-small>mdi-arrow-right</v-icon>
-          </v-btn>
+        <div v-else class="empty">Loading…</div>
+      </article>
+
+      <article class="readiness-panel">
+        <h2>Recently onboarded facilities</h2>
+        <div v-if="overview && overview.recentFacilities && overview.recentFacilities.length">
+          <div v-for="f in overview.recentFacilities" :key="f.id" class="status-row">
+            <span>{{ f.name }} <em class="muted">({{ f.code }})</em></span>
+            <v-chip x-small label :color="f.status === 'active' ? '#0f766e' : '#94a3b8'" dark class="font-weight-black">{{ f.status }}</v-chip>
+          </div>
         </div>
+        <div v-else-if="isHierarchyAdmin && !isSuperAdmin" class="empty">
+          See every facility your organization coordinates on
+          <nuxt-link to="/super-admin/organizations">Organizations &amp; Hierarchy</nuxt-link>.
+        </div>
+        <div v-else class="empty">No facilities yet.</div>
       </article>
     </section>
 
-    <section class="readiness-grid">
+    <section class="readiness-grid mt-4">
       <article class="readiness-panel">
-        <h2>Release Readiness</h2>
-        <div v-for="item in readiness" :key="item.label" class="status-row">
-          <span>{{ item.label }}</span>
-          <v-chip x-small label :color="item.color" dark class="font-weight-black">{{ item.status }}</v-chip>
+        <h2>Recent platform activity</h2>
+        <div v-if="overview && overview.recentAudit && overview.recentAudit.length">
+          <div v-for="entry in overview.recentAudit" :key="entry.id" class="status-row">
+            <span>{{ entry.action }}<em v-if="entry.detail" class="muted"> — {{ entry.detail }}</em></span>
+            <span class="muted small">{{ formatDate(entry.createdAt) }}</span>
+          </div>
         </div>
+        <div v-else class="empty">No activity recorded yet.</div>
       </article>
 
       <article class="readiness-panel">
-        <h2>Priority Actions</h2>
+        <h2>Coming next</h2>
         <ul class="action-list">
-          <li v-for="item in priorityActions" :key="item">{{ item }}</li>
+          <li>Team access for sales/support staff, separate from clinical roles.</li>
+          <li>Per-organization subscription/contract status and renewals dashboard.</li>
         </ul>
       </article>
     </section>
@@ -63,116 +89,57 @@
 </template>
 
 <script>
+import { platformApi, organizationApi } from '~/services/api'
+
 export default {
   name: 'SuperAdminPage',
-  head: { title: 'Super Admin Control Center' },
+  head: { title: 'Platform Command Center' },
+  data() {
+    return { overview: null, loading: true }
+  },
   computed: {
+    userRole() { return this.$store.state.auth.role },
+    isSuperAdmin() { return this.userRole === 'SUPER_ADMIN' },
+    isHierarchyAdmin() { return ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN'].includes(this.userRole) },
+    canSeePipeline() { return ['SUPER_ADMIN', 'SALES'].includes(this.userRole) },
     metrics() {
-      return [
-        {
-          label: 'Staff profiles',
-          value: this.staffCount,
-          icon: 'mdi-account-multiple',
-          color: '#003366'
-        },
-        {
-          label: 'Patients',
-          value: this.patientCount,
-          icon: 'mdi-account-heart',
-          color: '#0f766e'
-        },
-        {
-          label: 'Open tasks',
-          value: this.openTaskCount,
-          icon: 'mdi-format-list-checks',
-          color: '#d97706'
-        },
-        {
-          label: 'Audit scope',
-          value: this.auditStatus,
-          icon: 'mdi-shield-check',
-          color: '#6d28d9'
-        }
-      ]
+      const c = this.overview ? this.overview.counts : null
+      const tiles = []
+      if (this.isSuperAdmin) {
+        tiles.push({ label: 'Organizations', value: c ? c.organizations : 0, icon: 'mdi-domain', color: '#003366' })
+      }
+      tiles.push(
+        { label: 'Facilities', value: c ? `${c.facilities.active} / ${c.facilities.total}` : 0, icon: 'mdi-hospital-building', color: '#0f766e' },
+        { label: 'Staff accounts', value: c ? `${c.staff.active} / ${c.staff.total}` : 0, icon: 'mdi-account-multiple', color: '#d97706' },
+        { label: this.isHierarchyAdmin && !this.isSuperAdmin ? 'Patients (my org)' : 'Patients (platform)', value: c ? c.patients : 0, icon: 'mdi-account-heart', color: '#6d28d9' }
+      )
+      return tiles
     },
-    modules() {
-      return [
-        {
-          icon: 'mdi-hospital-building',
-          title: 'Facility Model',
-          text: 'Review facility setup, care areas, departments, and operational configuration.',
-          to: '/admin/hospital'
-        },
-        {
-          icon: 'mdi-account-key',
-          title: 'Staff Access',
-          text: 'Manage staff invitations, roles, account status, and least-privilege access.',
-          to: '/admin/staff'
-        },
-        {
-          icon: 'mdi-monitor-dashboard',
-          title: 'Clinical Workspace',
-          text: 'Open the chart workflow shell for navigators, flowsheets, orders, and handoffs.',
-          to: '/clinical'
-        },
-        {
-          icon: 'mdi-file-document-multiple',
-          title: 'Documents',
-          text: 'Review filed clinical documents, forms, and operational records.',
-          to: '/clinical/documents'
-        },
-        {
-          icon: 'mdi-text-box-check',
-          title: 'Templates',
-          text: 'Maintain clinical note templates, structured documentation, and order-support content.',
-          to: '/clinical/templates'
-        },
-        {
-          icon: 'mdi-history',
-          title: 'Audit Review',
-          text: 'Review sensitive activity and staff access events for governance follow-up.',
-          to: '/admin/audit'
-        }
-      ]
-    },
-    readiness() {
-      return [
-        { label: 'Public pages', status: 'Clean', color: '#0f766e' },
-        { label: 'Super admin route', status: 'Protected', color: '#0f766e' },
-        { label: 'Environment variables', status: 'Needs real values', color: '#d97706' },
-        { label: 'Lint configuration', status: 'Needs setup', color: '#d97706' }
-      ]
-    },
-    priorityActions() {
-      return [
-        'Replace prototype local credential flows with Supabase Auth for production users.',
-        'Keep protected account invitation and audit workflows behind backend endpoints.',
-        'Connect the clinical workspace modules to live patient, order, task, and document records.',
-        'Complete environment configuration before release builds.'
-      ]
-    },
-    staffCount() {
-      const staff = this.$store.getters['facility/getAllStaff']
-      return Array.isArray(staff) ? staff.length : 0
-    },
-    patientCount() {
-      const patients = this.$store.getters['clinical/patientDirectory']
-      return Array.isArray(patients) ? patients.length : 0
-    },
-    openTaskCount() {
-      const clinicalTasks = this.$store.getters['clinical/getTasks'] || []
-      const nursingTasks = this.$store.getters['nursing/getTasks'] || []
-      return [...clinicalTasks, ...nursingTasks].filter(task => ['pending', 'in_progress'].includes(task.status)).length
-    },
-    auditStatus() {
-      const audit = this.$store.getters['nursing/getAuditLogs'] || []
-      return audit.length ? audit.length : 'Ready'
+    ringStyle() {
+      const rate = this.overview && this.overview.rmaCompliance.rate !== null ? this.overview.rmaCompliance.rate : 0
+      return { background: `conic-gradient(#0f766e ${rate * 3.6}deg, #e2e8f0 0deg)` }
     }
   },
-  mounted() {
-    this.$store.commit('clinical/LOAD_FROM_STORAGE')
-    this.$store.commit('facility/RELOAD_FROM_STORAGE')
-    if (this.$store._modulesNamespaceMap['nursing/']) this.$store.commit('nursing/LOAD_FROM_STORAGE')
+  async mounted() {
+    try {
+      // Platform business overview (SUPER_ADMIN/SALES/SUPPORT) is
+      // cross-organization vendor data — an org-hierarchy role (MINSANTE's
+      // ORG_ADMIN, a REGIONAL_ADMIN, ...) gets its own scoped view instead,
+      // limited to the facilities it can actually see.
+      const { data } = this.isSuperAdmin || !this.isHierarchyAdmin
+        ? await platformApi.overview()
+        : await organizationApi.overview()
+      this.overview = data
+    } catch (err) {
+      this.$toast.error(err.response?.data?.error || err.message)
+    } finally {
+      this.loading = false
+    }
+  },
+  methods: {
+    formatDate(iso) {
+      return new Date(iso).toLocaleString()
+    }
   }
 }
 </script>
@@ -212,6 +179,7 @@ h1 {
   margin-bottom: 0;
   color: #526b7c;
   font-weight: 700;
+  max-width: 60ch;
 }
 .header-actions {
   display: flex;
@@ -248,44 +216,8 @@ h1 {
   display: block;
   margin-top: 8px;
   color: #0f2537;
-  font-size: 30px;
+  font-size: 26px;
   line-height: 1;
-}
-.control-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.module-tile {
-  min-height: 164px;
-  display: flex;
-  gap: 14px;
-  padding: 18px;
-  background: #ffffff;
-  border: 1px solid #dce6ec;
-  border-radius: 8px;
-}
-.module-icon {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #edf6f4;
-  border-radius: 6px;
-}
-.module-body h2,
-.readiness-panel h2 {
-  margin-bottom: 8px;
-  color: #0f2537;
-  font-size: 18px;
-}
-.module-body p,
-.action-list {
-  color: #526b7c;
-  line-height: 1.55;
 }
 .readiness-grid {
   display: grid;
@@ -297,6 +229,11 @@ h1 {
   background: #ffffff;
   border: 1px solid #dce6ec;
   border-radius: 8px;
+}
+.readiness-panel h2 {
+  margin-bottom: 12px;
+  color: #0f2537;
+  font-size: 15px;
 }
 .status-row {
   display: flex;
@@ -313,16 +250,63 @@ h1 {
   color: #334155;
   font-weight: 800;
 }
+.muted { color: #94a3b8; font-weight: 600; font-style: normal; }
+.small { font-size: 11px; }
+.empty { color: #94a3b8; font-size: 13px; font-weight: 700; padding: 8px 0; }
 .action-list {
   margin: 0;
   padding-left: 18px;
+  color: #526b7c;
+  line-height: 1.6;
 }
 .action-list li {
   margin-bottom: 10px;
 }
+.compliance-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.compliance-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 72px;
+}
+.compliance-ring::before {
+  content: '';
+  position: absolute;
+}
+.compliance-ring span {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: #0f2537;
+  font-size: 14px;
+}
+.compliance-copy {
+  display: flex;
+  flex-direction: column;
+}
+.compliance-copy strong {
+  color: #0f2537;
+  font-size: 20px;
+}
+.compliance-copy span {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+}
 @media (max-width: 1060px) {
-  .metric-grid,
-  .control-grid {
+  .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -335,8 +319,7 @@ h1 {
   .header-actions {
     justify-content: flex-start;
   }
-  .metric-grid,
-  .control-grid {
+  .metric-grid {
     grid-template-columns: 1fr;
   }
 }
