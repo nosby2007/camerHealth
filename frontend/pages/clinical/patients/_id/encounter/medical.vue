@@ -304,7 +304,10 @@
               <div v-for="(row, index) in prescriptionRows" :key="index" class="order-row pa-3 mb-3">
                 <v-row dense>
                   <v-col cols="12" md="4">
-                    <v-combobox v-model="row.medication" :items="commonMedications" label="Medication" outlined tile dense hide-details></v-combobox>
+                    <v-autocomplete v-model="row.medication" :items="drugCatalogSuggestions" item-text="name" item-value="name"
+                      label="Medication" outlined tile dense hide-details
+                      :hint="row.dispenseAt !== 'Hospital pharmacy' && row.dispenseAt !== 'Ward stock' ? '' : (catalogItemFor(row.medication) ? '' : 'Not in the price catalog — will not be billed at the Cash Office')"
+                      :persistent-hint="row.dispenseAt === 'Hospital pharmacy' || row.dispenseAt === 'Ward stock'"></v-autocomplete>
                   </v-col>
                   <v-col cols="6" md="2">
                     <v-text-field v-model="row.dosage" label="Dose" outlined tile dense hide-details></v-text-field>
@@ -482,6 +485,10 @@ export default {
       if (!process.client) return null
       return this.$store.getters['billing/getPaymentClearance'](this.$route.params.id, 'consultation')
     },
+    drugCatalogSuggestions() {
+      const catalog = (this.$store.getters['billing/catalog'] || {}).drugs || []
+      return catalog.filter(d => d.active !== false).map(d => ({ name: d.name, unitPrice: d.unitPrice, dbId: d.id || d.dbId }))
+    },
     isAdminOrDoctor() {
       const role = this.$store.state.auth.role
       return role === 'ADMIN' || role === 'DOCTOR' || role === 'NP'
@@ -534,12 +541,6 @@ export default {
       prescriptionRows: [
         { medication: '', dosage: '', route: 'Oral', frequency: '', duration: '', dispenseAt: 'Hospital pharmacy', instructions: '' }
       ],
-      commonMedications: [
-        'Paracetamol', 'Ibuprofen', 'Amoxicillin', 'Amoxicillin-Clavulanate', 'Ceftriaxone',
-        'Metronidazole', 'Ciprofloxacin', 'Azithromycin', 'Doxycycline', 'Artemether-Lumefantrine',
-        'Quinine', 'ORS', 'Zinc Sulfate', 'Omeprazole', 'Amlodipine', 'Metformin', 'Salbutamol',
-        'Normal Saline', 'Ringer Lactate', 'Iron + Folic Acid'
-      ],
       routes: ['Oral', 'IV', 'IM', 'Topical', 'Inhalation', 'Sublingual', 'Rectal'],
       frequencies: ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'Every 8 hours', 'Every 6 hours', 'As needed (PRN)', 'Single dose'],
       soap: {
@@ -588,6 +589,10 @@ export default {
     removePrescription(index) {
       if (this.prescriptionRows.length > 1) this.prescriptionRows.splice(index, 1)
     },
+    catalogItemFor(medicationName) {
+      if (!medicationName) return null
+      return this.drugCatalogSuggestions.find(d => d.name.toLowerCase() === String(medicationName).toLowerCase()) || null
+    },
     async save() {
       if (!this.$refs.form.validate()) return
       this.saving = true
@@ -631,6 +636,26 @@ export default {
             title: 'Administer ' + rx.medication, assignedToRole: 'NURSE',
             actionReason: 'Medication order ' + medOrder.id
           })
+
+          // Only bill medications actually dispensed by this facility — an
+          // "External pharmacy" / "Patient supplied" row is never ours to
+          // charge for. Only bills when the drug matches the official price
+          // catalog exactly; otherwise it's flagged in the field's hint
+          // above rather than silently charging a guessed price.
+          if (rx.dispenseAt === 'Hospital pharmacy' || rx.dispenseAt === 'Ward stock') {
+            const catalogItem = this.catalogItemFor(rx.medication)
+            if (catalogItem && catalogItem.unitPrice !== undefined) {
+              await this.$store.dispatch('billing/chargeForMedication', {
+                patientId,
+                medicationId: medOrder.id,
+                drugName: rx.medication,
+                unitPrice: Number(catalogItem.unitPrice),
+                quantity: 1
+              })
+            } else {
+              this.$toast.warning(rx.medication + ' is not in the official price catalog — not billed at Cash Office.')
+            }
+          }
         }
 
         if (this.plan.medications && structuredRx.length === 0) {
