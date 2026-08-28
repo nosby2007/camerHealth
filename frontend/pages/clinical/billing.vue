@@ -269,6 +269,35 @@
                 </a>
               </div>
 
+              <template v-if="isMobileMoneyMethod">
+                <v-text-field
+                  v-model="mobileMoneyPhone"
+                  label="Phone number for payment request"
+                  outlined tile dense
+                  placeholder="6XX XXX XXX"
+                  hint="An automatic push will be sent to this number. The patient confirms on their phone."
+                  persistent-hint
+                  class="rounded-0 mb-4"
+                ></v-text-field>
+
+                <v-btn
+                  color="#003366" dark block height="44" tile depressed
+                  :disabled="!payValid || !mobileMoneyPhone || mobileMoneyPolling"
+                  :loading="mobileMoneySending"
+                  @click="sendMobileMoneyRequest"
+                  class="font-weight-black text-caption ls-1 mb-2"
+                >
+                  SEND PAYMENT REQUEST
+                  <v-icon right small>mdi-cellphone-arrow-down</v-icon>
+                </v-btn>
+
+                <v-alert v-if="mobileMoneyStatus" dense tile :type="mobileMoneyAlertType" class="mb-3 text-caption">
+                  {{ mobileMoneyStatusMessage }}
+                </v-alert>
+
+                <div class="text-center text-caption grey--text mb-4">— or record it manually below —</div>
+              </template>
+
               <v-text-field
                 v-model="payForm.reference"
                 label="Reference / Transaction # (optional)"
@@ -537,6 +566,8 @@
 </template>
 
 <script>
+import { mobileMoneyApi } from '~/services/api'
+
 const CATEGORY_GROUPS = [
   { key: 'consultation', label: 'Consultations', icon: 'mdi-doctor', color: '#003366' },
   { key: 'laboratory',   label: 'Laboratory',    icon: 'mdi-flask',  color: '#D97706' },
@@ -562,6 +593,12 @@ export default {
       payValid: false,
       payLoading: false,
       payForm: { amount: null, method: 'Cash', reference: '' },
+      mobileMoneyPhone: '',
+      mobileMoneySending: false,
+      mobileMoneyPolling: false,
+      mobileMoneyRequestId: null,
+      mobileMoneyStatus: null,
+      mobileMoneyPollTimer: null,
       selectedCharges: [],
       selectedMedCharges: [],
       priceSearch: '',
@@ -602,6 +639,19 @@ export default {
   },
   computed: {
     isAdmin()      { return this.$store.state.auth.role === 'ADMIN' },
+    isMobileMoneyMethod() { return this.payForm.method === 'MTN MoMo' || this.payForm.method === 'Orange Money' },
+    mobileMoneyProvider() { return this.payForm.method === 'MTN MoMo' ? 'MTN_MOMO' : 'ORANGE_MONEY' },
+    mobileMoneyAlertType() {
+      if (this.mobileMoneyStatus === 'SUCCESSFUL') return 'success'
+      if (this.mobileMoneyStatus === 'FAILED') return 'error'
+      return 'info'
+    },
+    mobileMoneyStatusMessage() {
+      if (this.mobileMoneyStatus === 'PENDING') return 'Request sent — waiting for the patient to confirm on their phone…'
+      if (this.mobileMoneyStatus === 'SUCCESSFUL') return 'Payment confirmed and recorded.'
+      if (this.mobileMoneyStatus === 'FAILED') return 'Payment request failed or was declined. You can try again or record it manually.'
+      return ''
+    },
     isBilling()    { return this.$store.state.auth.role === 'BILLING' },
     institution()  { return this.$store.state.auth.institution || 'MINSANTE Hospital' },
     allPatients() { return this.$store.getters['clinical/getPatients'] || [] },
@@ -692,11 +742,19 @@ export default {
       this.$toast.error('Cash Office: ' + this.$store.state.billing.error)
     }
   },
+  beforeDestroy() {
+    if (this.mobileMoneyPollTimer) clearInterval(this.mobileMoneyPollTimer)
+  },
   methods: {
     async selectPatient(patientId) {
       this.selectedPatientId = patientId
       this.payForm = { amount: null, method: 'Cash', reference: '' }
       this.selectedCharges = []
+      if (this.mobileMoneyPollTimer) clearInterval(this.mobileMoneyPollTimer)
+      this.mobileMoneyPolling = false
+      this.mobileMoneyPhone = ''
+      this.mobileMoneyStatus = null
+      this.mobileMoneyRequestId = null
       await Promise.all([
         this.$store.dispatch('billing/fetchStatement', patientId),
         this.$store.dispatch('billing/fetchClearances', patientId)
@@ -743,6 +801,51 @@ export default {
     },
     hasClearance(patientId) {
       return !!this.$store.getters['billing/getPaymentClearance'](patientId, 'consultation')
+    },
+    async sendMobileMoneyRequest() {
+      if (!this.payValid || !this.mobileMoneyPhone) return
+      this.mobileMoneySending = true
+      this.mobileMoneyStatus = null
+      try {
+        const paidChargeIds = this.selectedCharges.length > 0 ? this.selectedCharges : []
+        const { data } = await mobileMoneyApi.request({
+          patientId: this.selectedPatientId,
+          provider: this.mobileMoneyProvider,
+          phoneNumber: this.mobileMoneyPhone,
+          amount: this.payForm.amount,
+          paidChargeIds
+        })
+        this.mobileMoneyRequestId = data.request.id
+        this.mobileMoneyStatus = data.request.status
+        this.pollMobileMoneyStatus()
+      } catch (err) {
+        this.mobileMoneyStatus = 'FAILED'
+        this.$toast.error(err.response?.data?.error || 'Unable to send the payment request')
+      } finally {
+        this.mobileMoneySending = false
+      }
+    },
+    pollMobileMoneyStatus() {
+      if (this.mobileMoneyPollTimer) clearInterval(this.mobileMoneyPollTimer)
+      this.mobileMoneyPolling = true
+      this.mobileMoneyPollTimer = setInterval(async () => {
+        try {
+          const { data } = await mobileMoneyApi.status(this.mobileMoneyRequestId)
+          this.mobileMoneyStatus = data.request.status
+          if (data.request.status !== 'PENDING') {
+            clearInterval(this.mobileMoneyPollTimer)
+            this.mobileMoneyPolling = false
+            if (data.request.status === 'SUCCESSFUL') {
+              this.$toast.success('Mobile money payment confirmed')
+              await this.$store.dispatch('billing/fetchStatement', this.selectedPatientId)
+              this.mobileMoneyPhone = ''
+            }
+          }
+        } catch (err) {
+          clearInterval(this.mobileMoneyPollTimer)
+          this.mobileMoneyPolling = false
+        }
+      }, 4000)
     },
     async recordPayment() {
       if (!this.$refs.payForm.validate() || !this.payForm.method) return

@@ -88,12 +88,14 @@ export default {
       this.submitting = true
       this.lastResult = null
       try {
-        await this.submitRma({
+        const result = await this.submitRma({
           reportMonth: this.reportMonth,
           reportYear: this.reportYear,
           indicators: this.indicators
         })
-        this.lastResult = { message: 'RMA submitted successfully.' }
+        this.lastResult = result?.queued
+          ? { message: 'No connection — RMA saved and queued. It will be submitted automatically once you are back online.' }
+          : { message: 'RMA submitted successfully.' }
         await this.fetchReports({})
       } catch (err) {
         this.lastResult = { error: true, message: err.response?.data?.error || err.message }

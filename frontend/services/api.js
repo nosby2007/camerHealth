@@ -273,4 +273,10 @@ export const carePlanApi = {
   listProgressEntries: (patientId) => api.get(`/patients/${patientId}/care-plan-progress-entries`)
 }
 
+// ─── Mobile money endpoints ───────────────────────────────────────────────────
+export const mobileMoneyApi = {
+  request: (data) => api.post('/mobile-money/request', data),
+  status: (id) => api.get(`/mobile-money/${id}/status`)
+}
+
 export default api

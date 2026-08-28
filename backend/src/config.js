@@ -111,5 +111,21 @@ module.exports = {
     config.SUPABASE_SERVICE_KEY || null,
 
   SUPABASE_STORAGE_BUCKET:
-    config.SUPABASE_STORAGE_BUCKET || null
+    config.SUPABASE_STORAGE_BUCKET || null,
+
+  MTN_MOMO_SUBSCRIPTION_KEY:
+    config.MTN_MOMO_SUBSCRIPTION_KEY || null,
+  MTN_MOMO_API_USER:
+    config.MTN_MOMO_API_USER || null,
+  MTN_MOMO_API_KEY:
+    config.MTN_MOMO_API_KEY || null,
+  MTN_MOMO_ENV:
+    config.MTN_MOMO_ENV || 'sandbox',
+  MTN_MOMO_CALLBACK_HOST:
+    config.MTN_MOMO_CALLBACK_HOST || null,
+
+  ORANGE_MONEY_CLIENT_ID:
+    config.ORANGE_MONEY_CLIENT_ID || null,
+  ORANGE_MONEY_CLIENT_SECRET:
+    config.ORANGE_MONEY_CLIENT_SECRET || null
 }
