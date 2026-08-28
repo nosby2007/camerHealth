@@ -79,6 +79,7 @@ export default {
       const keys = {
         Summary: 'summary',
         'EMR Command Center': 'emr_command',
+        'Doctor Command Center': 'doctor_command',
         'Nurse Command Center': 'nurse_command',
         'Chart Review': 'chart_review',
         Navigators: 'navigators',
