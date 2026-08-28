@@ -1,10 +1,8 @@
 const {
-  calculateWoundSurfaceArea,
-  calculateWoundVolume,
-  hasWoundAreaIncreased,
   taskFromProviderOrder
 } = require('../util/nursing-workflow.cjs')
 const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
+import { woundCareApi } from '~/services/api'
 
 const PREFIX = 'camero_health_nursing_'
 
@@ -20,7 +18,8 @@ export const state = () => ({
   tasks: [],
   carePlans: [],
   documents: [],
-  auditLogs: []
+  auditLogs: [],
+  error: null
 })
 
 export const mutations = {
@@ -42,6 +41,9 @@ export const mutations = {
     state.auditLogs.unshift(entry)
     if (state.auditLogs.length > 1000) state.auditLogs.pop()
     save('auditLogs', state.auditLogs)
+  },
+  SET_ERROR(state, error) {
+    state.error = error
   }
 }
 
@@ -62,44 +64,63 @@ export const actions = {
     dispatch('audit', { action: 'BODY_MARKER_UPDATED', targetTable: 'body_map_markers', targetId: record.id, patientId: record.patientId })
     return record
   },
-  createWound({ commit, dispatch, rootState }, wound) {
+  async createWound({ commit, dispatch, rootState }, wound) {
     assertPatientWritable(rootState, wound.patientId)
     const record = withBase(rootState, { status: 'active', ...wound }, 'WND')
+    try {
+      const { data } = await woundCareApi.create(wound)
+      Object.assign(record, data.wound)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('ADD_RECORD', { collection: 'wounds', record })
     dispatch('audit', { action: 'WOUND_CREATED', targetTable: 'wounds', targetId: record.id, patientId: record.patientId })
     return record
   },
-  updateWound({ state, commit, dispatch, rootState }, wound) {
+  async updateWound({ state, commit, dispatch, rootState }, wound) {
     const existing = state.wounds.find(item => item.id === wound.id)
     if (!existing) return null
     assertPatientWritable(rootState, existing.patientId)
     const record = { ...existing, ...wound, updatedAt: new Date().toISOString() }
+    try {
+      const { data } = await woundCareApi.update(existing.id, wound)
+      Object.assign(record, data.wound)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('UPDATE_RECORD', { collection: 'wounds', record })
     dispatch('audit', { action: 'WOUND_UPDATED', targetTable: 'wounds', targetId: record.id, patientId: record.patientId })
     return record
   },
-  createWoundAssessment({ state, commit, dispatch, rootState }, assessment) {
-    assertPatientWritable(rootState, assessment.patientId || state.wounds.find(item => item.id === assessment.woundId)?.patientId)
-    const surfaceArea = calculateWoundSurfaceArea(assessment.lengthCm, assessment.widthCm)
-    const volume = calculateWoundVolume(assessment.lengthCm, assessment.widthCm, assessment.depthCm)
+  async createWoundAssessment({ state, commit, dispatch, rootState }, assessment) {
     const wound = state.wounds.find(item => item.id === assessment.woundId)
-    const previous = [...state.woundAssessments]
-      .filter(item => item.woundId === assessment.woundId)
-      .sort((a, b) => new Date(b.assessedAt || b.createdAt) - new Date(a.assessedAt || a.createdAt))[0]
+    assertPatientWritable(rootState, assessment.patientId || wound?.patientId)
     const record = withBase(rootState, {
       ...assessment,
       patientId: assessment.patientId || (wound && wound.patientId),
-      surfaceArea,
-      volume,
-      warningAreaIncreased: hasWoundAreaIncreased(previous, { surfaceArea })
+      surfaceArea: null,
+      volume: null,
+      warningAreaIncreased: false
     }, 'WAS')
+    try {
+      const { data } = await woundCareApi.addAssessment(assessment.woundId, assessment)
+      Object.assign(record, data.assessment)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('ADD_RECORD', { collection: 'woundAssessments', record })
     dispatch('audit', { action: 'WOUND_ASSESSMENT_CREATED', targetTable: 'wound_assessments', targetId: record.id, patientId: record.patientId })
     return record
   },
-  addWoundPhoto({ commit, dispatch, rootState }, photo) {
+  async addWoundPhoto({ commit, dispatch, rootState }, photo) {
     assertPatientWritable(rootState, photo.patientId)
     const record = withBase(rootState, photo, 'WPH')
+    try {
+      const { data } = await woundCareApi.addPhoto(photo.woundId, photo)
+      Object.assign(record, data.photo)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('ADD_RECORD', { collection: 'woundPhotos', record })
     dispatch('audit', { action: 'WOUND_PHOTO_ADDED', targetTable: 'wound_photos', targetId: record.id, patientId: record.patientId })
     return record

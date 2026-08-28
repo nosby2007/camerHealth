@@ -752,20 +752,24 @@ model CarePlanProblem {
 }
 
 model CarePlanGoal {
-  id              String    @id @default(uuid())
-  problemId       String    @map("problem_id")
-  patientId       String    @map("patient_id")
-  facilityId      String    @map("facility_id")
-  label           String
-  description     String?
-  status          String    @default("active")
-  source          String?
-  sortOrder       Int       @default(0) @map("sort_order")
-  expectedEndDate DateTime? @map("expected_end_date")
-  achieved        Boolean   @default(false)
-  timeline        String?
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id                 String    @id @default(uuid())
+  problemId          String    @map("problem_id")
+  patientId          String    @map("patient_id")
+  facilityId         String    @map("facility_id")
+  label              String
+  description        String?
+  status             String    @default("active")
+  source             String?
+  sortOrder          Int       @default(0) @map("sort_order")
+  expectedEndDate    DateTime? @map("expected_end_date")
+  achieved           Boolean   @default(false)
+  timeline           String?
+  lastProgressStatus String?   @map("last_progress_status")
+  lastDocumentedAt   DateTime? @map("last_documented_at")
+  lastDocumentedById String?   @map("last_documented_by_id")
+  statusReason       String?   @map("status_reason")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   problem  CarePlanProblem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
   outcomes CarePlanOutcome[]
@@ -776,14 +780,16 @@ model CarePlanGoal {
 }
 
 model CarePlanOutcome {
-  id         String   @id @default(uuid())
-  goalId     String   @map("goal_id")
-  patientId  String   @map("patient_id")
-  facilityId String   @map("facility_id")
-  status     String   @default("active")
-  source     String?
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  goalId       String   @map("goal_id")
+  patientId    String   @map("patient_id")
+  facilityId   String   @map("facility_id")
+  label        String?
+  status       String   @default("active")
+  source       String?
+  statusReason String?  @map("status_reason")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   goal CarePlanGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
 
@@ -813,6 +819,20 @@ model CarePlanProgressEntry {
   @@map("care_plan_progress_entries")
 }
 
+model CarePlanReview {
+  id           String   @id @default(uuid())
+  carePlanId   String   @map("care_plan_id")
+  patientId    String   @map("patient_id")
+  facilityId   String   @map("facility_id")
+  reviewedById String   @map("reviewed_by_id")
+  reviewedAt   DateTime @map("reviewed_at")
+  comment      String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([carePlanId])
+  @@map("care_plan_reviews")
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Patient education
 // ═══════════════════════════════════════════════════════════════════════════
@@ -840,20 +860,25 @@ model EducationTitle {
 }
 
 model EducationPoint {
-  id               String   @id @default(uuid())
-  titleId          String   @map("title_id")
-  patientId        String   @map("patient_id")
-  facilityId       String   @map("facility_id")
-  label            String
-  description      String?
-  topic            String?
-  status           String   @default("pending")
-  requiredLearners Json?    @map("required_learners")
-  materialIds      Json?    @map("material_ids")
-  sortOrder        Int      @default(0) @map("sort_order")
-  systemGenerated  Boolean  @default(false) @map("system_generated")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(uuid())
+  titleId             String   @map("title_id")
+  patientId           String   @map("patient_id")
+  facilityId          String   @map("facility_id")
+  encounterId         String?  @map("encounter_id")
+  admissionId         String?  @map("admission_id")
+  label               String
+  description         String?
+  topic               String?
+  status              String   @default("pending")
+  requiredLearners    Json?    @map("required_learners")
+  materialIds         Json?    @map("material_ids")
+  linkedProblemIds    Json?    @map("linked_problem_ids")
+  linkedOrderIds      Json?    @map("linked_order_ids")
+  linkedMedicationIds Json?    @map("linked_medication_ids")
+  sortOrder           Int      @default(0) @map("sort_order")
+  systemGenerated     Boolean  @default(false) @map("system_generated")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   title          EducationTitle           @relation(fields: [titleId], references: [id], onDelete: Cascade)
   documentations EducationDocumentation[]
@@ -864,26 +889,81 @@ model EducationPoint {
 }
 
 model EducationDocumentation {
-  id                String   @id @default(uuid())
-  pointId           String   @map("point_id")
-  patientId         String   @map("patient_id")
-  facilityId        String   @map("facility_id")
+  id                String    @id @default(uuid())
+  pointId           String    @map("point_id")
+  titleId           String?   @map("title_id")
+  patientId         String    @map("patient_id")
+  facilityId        String    @map("facility_id")
   learners          Json?
   readiness         String?
   methods           Json?
+  responses         Json?
   comment           String?
-  teachingCompleted Boolean  @default(false) @map("teaching_completed")
-  taughtById        String   @map("taught_by_id")
-  taughtByRole      String?  @map("taught_by_role")
-  taughtAt          DateTime @map("taught_at")
-  status            String   @default("filed")
-  createdAt         DateTime @default(now()) @map("created_at")
+  teachingCompleted Boolean   @default(false) @map("teaching_completed")
+  familyEducation   Boolean?  @map("family_education")
+  nextReviewAt      DateTime? @map("next_review_at")
+  taughtById        String    @map("taught_by_id")
+  taughtByRole      String?   @map("taught_by_role")
+  taughtAt          DateTime  @map("taught_at")
+  filedAt           DateTime? @map("filed_at")
+  resolvedAt        DateTime? @map("resolved_at")
+  status            String    @default("filed")
+  createdAt         DateTime  @default(now()) @map("created_at")
 
   point EducationPoint @relation(fields: [pointId], references: [id], onDelete: Cascade)
 
   @@index([pointId])
   @@index([patientId])
   @@map("education_documentation")
+}
+
+model PatientMaterial {
+  id           String   @id @default(uuid())
+  patientId    String   @map("patient_id")
+  facilityId   String   @map("facility_id")
+  title        String
+  language     String   @default("French")
+  format       String   @default("Verbal + printed")
+  instructions String?
+  status       String   @default("active")
+  createdById  String   @map("created_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  assignments MaterialAssignment[]
+
+  @@index([patientId])
+  @@map("patient_materials")
+}
+
+model MaterialAssignment {
+  id          String    @id @default(uuid())
+  patientId   String    @map("patient_id")
+  facilityId  String    @map("facility_id")
+  materialId  String    @map("material_id")
+  addedToAvs  Boolean   @default(true) @map("added_to_avs")
+  addedById   String    @map("added_by_id")
+  addedAt     DateTime  @map("added_at")
+  removedAt   DateTime? @map("removed_at")
+  removedById String?   @map("removed_by_id")
+
+  material PatientMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([materialId])
+  @@map("material_assignments")
+}
+
+model EducationComment {
+  id            String   @id @default(uuid())
+  pointId       String   @map("point_id")
+  patientId     String   @map("patient_id")
+  facilityId    String   @map("facility_id")
+  comment       String
+  commentedById String   @map("commented_by_id")
+  commentedAt   DateTime @map("commented_at")
+
+  @@index([pointId])
+  @@map("education_comments")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -927,7 +1007,7 @@ model DischargeMilestone {
 }
 
 // kind: 'note' | 'follow_up_order' | 'medication' | 'return_precaution' | 'appointment'
-// One table for the 4 near-identical "{...payload, status}" sub-types the
+// One table for the 5 near-identical "{...payload, status}" sub-types the
 // frontend store already treats uniformly (see frontend/store/discharge.js).
 model DischargeFollowUp {
   id              String   @id @default(uuid())
@@ -1015,19 +1095,42 @@ model ClinicalNote {
 
 // organizationType: 'MINISTRY' | 'PUBLIC_HEALTH_AUTHORITY' | 'PRIVATE_NETWORK' | 'NGO_NETWORK' | 'OTHER'
 model Organization {
-  id               String   @id @default(uuid())
-  organizationCode String?  @unique @map("organization_code")
-  name             String
-  organizationType String   @map("organization_type")
-  status           String   @default("active")
-  metadata         Json?
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                    String   @id @default(uuid())
+  organizationCode      String?  @unique @map("organization_code")
+  name                  String
+  organizationType      String   @map("organization_type")
+  status                String   @default("active")
+  metadata              Json?
+  // DHIS2 export config — password stored encrypted (see backend/src/lib/crypto.js),
+  // never in plain text. All nullable: an organization with none of these set
+  // simply has no DHIS2 sync available, existing behavior is unaffected.
+  dhisBaseUrl           String?  @map("dhis_base_url")
+  dhisUsername          String?  @map("dhis_username")
+  dhisPasswordEncrypted String?  @map("dhis_password_encrypted")
+  dhisOrgUnitId         String?  @map("dhis_org_unit_id")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
-  organizationUnits OrganizationUnit[]
-  facilities        Facility[]
+  organizationUnits     OrganizationUnit[]
+  facilities            Facility[]
+  dhisIndicatorMappings DhisIndicatorMapping[]
 
   @@map("organizations")
+}
+
+model DhisIndicatorMapping {
+  id                        String   @id @default(uuid())
+  organizationId            String   @map("organization_id")
+  indicatorKey              String   @map("indicator_key") // matches a key in MonthlyActivityReport.indicators, e.g. 'consultationsTotal'
+  dhisDataElementId         String   @map("dhis_data_element_id")
+  dhisCategoryOptionComboId String?  @map("dhis_category_option_combo_id")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, indicatorKey])
+  @@map("dhis_indicator_mappings")
 }
 
 // unitType: 'NATIONAL' | 'REGIONAL_DELEGATION' | 'DISTRICT' | 'CITY_CLUSTER' | 'OTHER'
@@ -1120,6 +1223,9 @@ model MonthlyActivityReport {
   rejectedById       String?   @map("rejected_by_id")
   rejectedAt         DateTime? @map("rejected_at")
   rejectionReason    String?   @map("rejection_reason")
+  dhisSyncedAt       DateTime? @map("dhis_synced_at")
+  dhisSyncStatus     String?   @map("dhis_sync_status") // 'success' | 'failed'
+  dhisSyncDetail     String?   @map("dhis_sync_detail")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
@@ -1185,4 +1291,34 @@ model LeadActivity {
 
   @@index([leadId])
   @@map("lead_activities")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Mobile money — asynchronous payment requests (patient confirms on their own
+// phone), distinct from Payment which represents an already-completed
+// receipt. provider: 'MTN_MOMO' | 'ORANGE_MONEY'. status: 'PENDING' |
+// 'SUCCESSFUL' | 'FAILED' | 'EXPIRED'.
+// ═══════════════════════════════════════════════════════════════════════════
+model MobileMoneyRequest {
+  id                  String   @id @default(uuid())
+  patientId           String   @map("patient_id")
+  facilityId          String   @map("facility_id")
+  invoiceId           String?  @map("invoice_id")
+  provider            String
+  phoneNumber         String   @map("phone_number")
+  amount              Float
+  currency            String   @default("XAF")
+  externalReferenceId String?  @map("external_reference_id")
+  status              String   @default("PENDING")
+  statusDetail        String?  @map("status_detail")
+  paidChargeIds       Json?    @map("paid_charge_ids")
+  completedPaymentId  String?  @map("completed_payment_id")
+  requestedById       String   @map("requested_by_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@index([externalReferenceId])
+  @@map("mobile_money_requests")
 }

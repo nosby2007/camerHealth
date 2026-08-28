@@ -248,4 +248,29 @@ export const reportsApi = {
   aggregate: (params) => api.get('/rma/aggregate', { params })
 }
 
+// ─── Wound care endpoints ────────────────────────────────────────────────────
+export const woundCareApi = {
+  listForPatient: (patientId) => api.get(`/patients/${patientId}/wounds`),
+  create: (data) => api.post('/wounds', data),
+  update: (id, data) => api.patch(`/wounds/${id}`, data),
+  addAssessment: (id, data) => api.post(`/wounds/${id}/assessments`, data),
+  addPhoto: (id, data) => api.post(`/wounds/${id}/photos`, data)
+}
+
+// ─── Care plan endpoints ──────────────────────────────────────────────────────
+export const carePlanApi = {
+  listForPatient: (patientId) => api.get(`/patients/${patientId}/care-plans`),
+  create: (data) => api.post('/care-plans', data),
+  update: (id, data) => api.patch(`/care-plans/${id}`, data),
+  review: (id, data) => api.post(`/care-plans/${id}/review`, data),
+  addProblem: (data) => api.post('/care-plan-problems', data),
+  updateProblem: (id, data) => api.patch(`/care-plan-problems/${id}`, data),
+  addGoal: (data) => api.post('/care-plan-goals', data),
+  updateGoal: (id, data) => api.patch(`/care-plan-goals/${id}`, data),
+  addOutcome: (data) => api.post('/care-plan-outcomes', data),
+  updateOutcome: (id, data) => api.patch(`/care-plan-outcomes/${id}`, data),
+  addProgressEntry: (data) => api.post('/care-plan-progress-entries', data),
+  listProgressEntries: (patientId) => api.get(`/patients/${patientId}/care-plan-progress-entries`)
+}
+
 export default api
