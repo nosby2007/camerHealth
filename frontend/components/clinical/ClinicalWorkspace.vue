@@ -5841,6 +5841,10 @@ export default {
     }
   },
   mounted() {
+    // Needed so a prescription written from here can be billed at the exact
+    // DB catalog price, same as the standalone medications.vue flow —
+    // otherwise Cash Office never sees a charge for it (no price to bill at).
+    this.$store.dispatch('billing/fetchCatalog')
     this.$store.commit('clinical/LOAD_FROM_STORAGE')
     if (this.$store.hasModule && this.$store.hasModule('nursing')) {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
@@ -7455,6 +7459,25 @@ export default {
           priority: 'routine',
           actionReason: this.forms.order.instructions || 'Created from Patient 360'
         })
+
+        // Bill the Cash Office at the exact DB price catalog rate — without
+        // this, a prescription written here never reaches Cash Office at all
+        // (chargeForMedication was only ever called from medications.vue).
+        const drugCatalog = (this.$store.getters['billing/catalog'] || {}).drugs || []
+        const drugName = this.forms.order.medication.medication
+        const catalogPriceItem = drugCatalog.find(d => d.name.toLowerCase() === (drugName || '').toLowerCase())
+        if (catalogPriceItem && catalogPriceItem.unitPrice !== undefined) {
+          await this.$store.dispatch('billing/chargeForMedication', {
+            patientId,
+            medicationId: record.id,
+            drugName,
+            unitPrice: Number(catalogPriceItem.unitPrice),
+            quantity: 1
+          })
+        } else {
+          this.toastError('Drug not found in official price catalog — patient not billed. Add it to the price catalog first.')
+        }
+
         this.selectedChartTab = 'Medications'
         this.closeChartDialog('medication')
         this.toastSuccess('Medication order placed from Patient 360.')
