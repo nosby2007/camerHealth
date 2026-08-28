@@ -63,6 +63,12 @@ export const actions = {
     return data.report
   },
 
+  async syncDhis2({ dispatch }, id) {
+    const { data } = await reportsApi.syncDhis2(id)
+    await dispatch('fetchReports')
+    return data
+  },
+
   async fetchAggregate({ commit }, { unitId, month, year }) {
     commit('SET_LOADING', true)
     try {
