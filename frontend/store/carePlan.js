@@ -1,4 +1,5 @@
 import { makeId, withBase } from '~/util/nursing-workflow.cjs'
+import { carePlanApi } from '~/services/api'
 const { assertPatientWritable } = require('~/util/patient-360-policy.cjs')
 
 function assertCarePlanWritable(rootState, patientId) {
@@ -94,7 +95,9 @@ export const state = () => ({
   selectedProblemId: null,
   selectedGoalId: null,
   activeFilter: true,
-  filterWarnings: []
+  filterWarnings: [],
+  error: null,
+  fetchedPatientIds: []
 })
 
 export const mutations = {
@@ -156,33 +159,65 @@ export const mutations = {
   },
   SET_FILTER_WARNINGS(state, warnings) {
     state.filterWarnings = warnings
+  },
+  SET_ERROR(state, error) {
+    state.error = error
+  },
+  MARK_PATIENT_FETCHED(state, patientId) {
+    if (!state.fetchedPatientIds.includes(patientId)) state.fetchedPatientIds.push(patientId)
   }
 }
 
 export const actions = {
-  initializeCarePlanForPatient({ commit, dispatch, rootState }, { patientId, encounterId, admissionId }) {
+  async initializeCarePlanForPatient({ commit, dispatch, rootState }, { patientId, encounterId, admissionId }) {
+    await dispatch('fetchCarePlans', patientId)
     dispatch('syncCarePlanFromClinicalData', { patientId, encounterId, admissionId })
   },
 
-  syncCarePlanFromClinicalData({ state, commit, dispatch, rootState }, { patientId, encounterId, admissionId }) {
-    // Create default care plans if none exist
+  async fetchCarePlans({ state, commit, rootState }, patientId) {
+    if (state.fetchedPatientIds.includes(patientId)) return
+    try {
+      const { data } = await carePlanApi.listForPatient(patientId)
+      const plans = data.carePlans || []
+      plans.forEach(plan => {
+        const { problems, ...planRecord } = plan
+        commit('ADD_CARE_PLAN', withBase(rootState, planRecord, 'CPL'))
+        ;(problems || []).forEach(problem => {
+          const { goals, ...problemRecord } = problem
+          commit('ADD_PROBLEM', withBase(rootState, problemRecord, 'PBL'))
+          ;(goals || []).forEach(goal => {
+            const { outcomes, ...goalRecord } = goal
+            commit('ADD_GOAL', withBase(rootState, goalRecord, 'GOL'))
+            ;(outcomes || []).forEach(outcome => {
+              commit('ADD_OUTCOME', withBase(rootState, outcome, 'OTC'))
+            })
+          })
+        })
+      })
+      commit('MARK_PATIENT_FETCHED', patientId)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+
+  syncCarePlanFromClinicalData({ state, dispatch, rootState }, { patientId, encounterId, admissionId }) {
+    // Seed default care plans only if this patient has none yet (from the server or locally)
     const existingPlans = state.carePlans.filter(p => p.patientId === patientId && p.encounterId === encounterId)
     if (existingPlans.length === 0) {
-      DEFAULT_CARE_PLAN_TEMPLATES.forEach((template, planIdx) => {
-        const plan = withBase(rootState, {
+      DEFAULT_CARE_PLAN_TEMPLATES.forEach(async template => {
+        const plan = await dispatch('addCarePlan', {
           patientId,
           encounterId,
           admissionId,
           name: template.name,
           type: template.type,
           status: 'active',
-          source: 'system',
-          sortOrder: planIdx
-        }, 'CPL')
-        commit('ADD_CARE_PLAN', plan)
+          source: 'system'
+        })
 
-        template.problems.forEach((problemTemplate, problemIdx) => {
-          const problem = withBase(rootState, {
+        for (let problemIdx = 0; problemIdx < template.problems.length; problemIdx += 1) {
+          const problemTemplate = template.problems[problemIdx]
+          const problem = await dispatch('addProblem', {
             carePlanId: plan.id,
             patientId,
             encounterId,
@@ -191,31 +226,36 @@ export const actions = {
             status: 'active',
             source: 'system',
             sortOrder: problemIdx
-          }, 'PBL')
-          commit('ADD_PROBLEM', problem)
+          })
 
-          problemTemplate.goals.forEach((goalLabel, goalIdx) => {
-            commit('ADD_GOAL', withBase(rootState, {
+          for (let goalIdx = 0; goalIdx < problemTemplate.goals.length; goalIdx += 1) {
+            await dispatch('addGoal', {
               carePlanId: plan.id,
               problemId: problem.id,
               patientId,
               encounterId,
               admissionId,
-              label: goalLabel,
+              label: problemTemplate.goals[goalIdx],
               description: 'Prefilled goal for Cameroon general hospital workflow.',
               status: 'active',
               source: 'system',
               sortOrder: goalIdx
-            }, 'GOL'))
-          })
-        })
+            })
+          }
+        }
       })
     }
   },
 
-  addCarePlan({ commit, dispatch, rootState }, carePlan) {
+  async addCarePlan({ commit, dispatch, rootState }, carePlan) {
     assertCarePlanWritable(rootState, carePlan.patientId)
     const record = withBase(rootState, { status: 'active', ...carePlan }, 'CPL')
+    try {
+      const { data } = await carePlanApi.create(carePlan)
+      Object.assign(record, data.carePlan)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('ADD_CARE_PLAN', record)
     dispatch('audit', { action: 'CARE_PLAN_ADDED', targetId: record.id, patientId: record.patientId })
     return record
@@ -276,71 +316,113 @@ export const actions = {
     return plan
   },
 
-  updateCarePlan({ state, commit, dispatch, rootState }, carePlan) {
+  async updateCarePlan({ state, commit, dispatch, rootState }, carePlan) {
     const existing = state.carePlans.find(item => item.id === carePlan.id)
     if (!existing) return null
     assertCarePlanWritable(rootState, carePlan.patientId || existing.patientId)
     const record = { ...existing, ...carePlan }
+    try {
+      const { data } = await carePlanApi.update(existing.id, carePlan)
+      Object.assign(record, data.carePlan)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('UPDATE_CARE_PLAN', record)
     dispatch('audit', { action: 'CARE_PLAN_UPDATED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
-  addProblem({ commit, dispatch, rootState }, problem) {
+  async addProblem({ commit, dispatch, rootState }, problem) {
     assertCarePlanWritable(rootState, problem.patientId)
     const record = withBase(rootState, { status: 'active', ...problem }, 'PBL')
+    try {
+      const { data } = await carePlanApi.addProblem(problem)
+      Object.assign(record, data.problem)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('ADD_PROBLEM', record)
     dispatch('audit', { action: 'PROBLEM_ADDED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
-  updateProblem({ state, commit, dispatch, rootState }, problem) {
+  async updateProblem({ state, commit, dispatch, rootState }, problem) {
     const existing = state.carePlanProblems.find(item => item.id === problem.id)
     if (!existing) return null
     assertCarePlanWritable(rootState, problem.patientId || existing.patientId)
     const record = { ...existing, ...problem }
+    try {
+      const { data } = await carePlanApi.updateProblem(existing.id, problem)
+      Object.assign(record, data.problem)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('UPDATE_PROBLEM', record)
     dispatch('audit', { action: 'PROBLEM_UPDATED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
-  addGoal({ commit, dispatch, rootState }, goal) {
+  async addGoal({ commit, dispatch, rootState }, goal) {
     assertCarePlanWritable(rootState, goal.patientId)
     const record = withBase(rootState, { status: 'active', ...goal }, 'GOL')
+    try {
+      const { data } = await carePlanApi.addGoal(goal)
+      Object.assign(record, data.goal)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('ADD_GOAL', record)
     dispatch('audit', { action: 'GOAL_ADDED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
-  updateGoal({ state, commit, dispatch, rootState }, goal) {
+  async updateGoal({ state, commit, dispatch, rootState }, goal) {
     const existing = state.carePlanGoals.find(item => item.id === goal.id)
     if (!existing) return null
     assertCarePlanWritable(rootState, goal.patientId || existing.patientId)
     const record = { ...existing, ...goal }
+    try {
+      const { data } = await carePlanApi.updateGoal(existing.id, goal)
+      Object.assign(record, data.goal)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('UPDATE_GOAL', record)
     dispatch('audit', { action: 'GOAL_UPDATED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
-  addOutcome({ commit, dispatch, rootState }, outcome) {
+  async addOutcome({ commit, dispatch, rootState }, outcome) {
     assertCarePlanWritable(rootState, outcome.patientId)
     const record = withBase(rootState, { status: 'active', ...outcome }, 'OTC')
+    try {
+      const { data } = await carePlanApi.addOutcome(outcome)
+      Object.assign(record, data.outcome)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('ADD_OUTCOME', record)
     dispatch('audit', { action: 'OUTCOME_ADDED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
-  updateOutcome({ state, commit, dispatch, rootState }, outcome) {
+  async updateOutcome({ state, commit, dispatch, rootState }, outcome) {
     const existing = state.carePlanOutcomes.find(item => item.id === outcome.id)
     if (!existing) return null
     assertCarePlanWritable(rootState, outcome.patientId || existing.patientId)
     const record = { ...existing, ...outcome }
+    try {
+      const { data } = await carePlanApi.updateOutcome(existing.id, outcome)
+      Object.assign(record, data.outcome)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
     commit('UPDATE_OUTCOME', record)
     dispatch('audit', { action: 'OUTCOME_UPDATED', targetId: record.id, patientId: record.patientId })
     return record
   },
 
-  documentProgress({ commit, dispatch, rootState }, { carePlanId, problemId, goalId, outcomeId, patientId, encounterId, progressStatus, comment }) {
+  async documentProgress({ commit, dispatch, rootState }, { carePlanId, problemId, goalId, outcomeId, patientId, encounterId, progressStatus, comment }) {
     assertCarePlanWritable(rootState, patientId)
     const entry = withBase(rootState, {
       carePlanId,
@@ -356,22 +438,32 @@ export const actions = {
       documentedAt: new Date().toISOString(),
       source: 'manual'
     }, 'PRG')
+
+    try {
+      const { data } = await carePlanApi.addProgressEntry({ carePlanId, problemId, goalId, outcomeId, patientId, progressStatus, comment })
+      Object.assign(entry, data.entry)
+      if (goalId && data.goal) {
+        const goal = rootState.carePlan.carePlanGoals.find(g => g.id === goalId)
+        if (goal) commit('UPDATE_GOAL', { ...goal, ...data.goal })
+      }
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      // Fall back to a local-only progress update so the UI still reflects the change offline.
+      if (goalId) {
+        const goal = rootState.carePlan.carePlanGoals.find(g => g.id === goalId)
+        if (goal) {
+          commit('UPDATE_GOAL', { ...goal, lastProgressStatus: progressStatus, lastDocumentedAt: entry.documentedAt, lastDocumentedBy: entry.documentedBy })
+        }
+      }
+      if (outcomeId) {
+        const outcome = rootState.carePlan.carePlanOutcomes.find(o => o.id === outcomeId)
+        if (outcome) {
+          commit('UPDATE_OUTCOME', { ...outcome, lastProgressStatus: progressStatus, lastDocumentedAt: entry.documentedAt, lastDocumentedBy: entry.documentedBy })
+        }
+      }
+    }
+
     commit('ADD_PROGRESS_ENTRY', entry)
-
-    // Update goal/outcome last progress status
-    if (goalId) {
-      const goal = rootState.carePlan.carePlanGoals.find(g => g.id === goalId)
-      if (goal) {
-        commit('UPDATE_GOAL', { ...goal, lastProgressStatus: progressStatus, lastDocumentedAt: entry.documentedAt, lastDocumentedBy: entry.documentedBy })
-      }
-    }
-    if (outcomeId) {
-      const outcome = rootState.carePlan.carePlanOutcomes.find(o => o.id === outcomeId)
-      if (outcome) {
-        commit('UPDATE_OUTCOME', { ...outcome, lastProgressStatus: progressStatus, lastDocumentedAt: entry.documentedAt, lastDocumentedBy: entry.documentedBy })
-      }
-    }
-
     dispatch('audit', { action: 'PROGRESS_DOCUMENTED', targetId: entry.id, patientId })
     return entry
   },
@@ -398,20 +490,20 @@ export const actions = {
     dispatch('audit', { action: 'APPLY_PROGRESS_ALL', targetId: carePlanId, patientId })
   },
 
-  resolveGoal({ state, commit, dispatch, rootState }, { goalId, patientId, status }) {
+  async resolveGoal({ state, dispatch, rootState }, { goalId, patientId, status }) {
     assertCarePlanWritable(rootState, patientId)
     const goal = state.carePlanGoals.find(g => g.id === goalId)
     if (goal) {
-      commit('UPDATE_GOAL', { ...goal, status, statusReason: 'resolved' })
+      await dispatch('updateGoal', { id: goalId, patientId, status, statusReason: 'resolved' })
       dispatch('audit', { action: 'GOAL_RESOLVED', targetId: goalId, patientId })
     }
   },
 
-  resolveOutcome({ state, commit, dispatch, rootState }, { outcomeId, patientId, status }) {
+  async resolveOutcome({ state, dispatch, rootState }, { outcomeId, patientId, status }) {
     assertCarePlanWritable(rootState, patientId)
     const outcome = state.carePlanOutcomes.find(o => o.id === outcomeId)
     if (outcome) {
-      commit('UPDATE_OUTCOME', { ...outcome, status, statusReason: 'resolved' })
+      await dispatch('updateOutcome', { id: outcomeId, patientId, status, statusReason: 'resolved' })
       dispatch('audit', { action: 'OUTCOME_RESOLVED', targetId: outcomeId, patientId })
     }
   },
@@ -426,7 +518,7 @@ export const actions = {
     dispatch('audit', { action: 'RESOLVE_ALL_ACTIVE', targetId: carePlanId, patientId })
   },
 
-  markCarePlanReviewed({ commit, dispatch, rootState }, { carePlanId, patientId, encounterId, comment }) {
+  async markCarePlanReviewed({ commit, dispatch, rootState }, { carePlanId, patientId, encounterId, comment }) {
     assertCarePlanWritable(rootState, patientId)
     const review = withBase(rootState, {
       carePlanId,
@@ -436,13 +528,19 @@ export const actions = {
       reviewedAt: new Date().toISOString(),
       comment
     }, 'REV')
-    commit('ADD_REVIEW', review)
 
-    const plan = rootState.carePlan.carePlans.find(p => p.id === carePlanId)
-    if (plan) {
-      commit('UPDATE_CARE_PLAN', { ...plan, reviewedAt: review.reviewedAt, reviewedBy: review.reviewedBy })
+    try {
+      const { data } = await carePlanApi.review(carePlanId, { carePlanId, patientId, comment })
+      Object.assign(review, data.review)
+      const plan = rootState.carePlan.carePlans.find(p => p.id === carePlanId)
+      if (plan) commit('UPDATE_CARE_PLAN', { ...plan, ...data.carePlan })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      const plan = rootState.carePlan.carePlans.find(p => p.id === carePlanId)
+      if (plan) commit('UPDATE_CARE_PLAN', { ...plan, reviewedAt: review.reviewedAt, reviewedBy: review.reviewedBy })
     }
 
+    commit('ADD_REVIEW', review)
     dispatch('audit', { action: 'CARE_PLAN_REVIEWED', targetId: carePlanId, patientId })
     return review
   },
