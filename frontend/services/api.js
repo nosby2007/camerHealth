@@ -203,7 +203,9 @@ export const clinicalNotesApi = {
 
 // ─── Phase 13: Organization hierarchy endpoints ─────────────────────────────
 export const organizationApi = {
+  overview: () => api.get('/organizations/overview'),
   list: () => api.get('/organizations'),
+  listFacilities: (orgId) => api.get(`/organizations/${orgId}/facilities`),
   create: (data) => api.post('/organizations', data),
   update: (id, data) => api.patch(`/organizations/${id}`, data),
   remove: (id) => api.delete(`/organizations/${id}`),

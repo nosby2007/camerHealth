@@ -51,11 +51,15 @@
 
       <article class="readiness-panel">
         <h2>Recently onboarded facilities</h2>
-        <div v-if="overview && overview.recentFacilities.length">
+        <div v-if="overview && overview.recentFacilities && overview.recentFacilities.length">
           <div v-for="f in overview.recentFacilities" :key="f.id" class="status-row">
             <span>{{ f.name }} <em class="muted">({{ f.code }})</em></span>
             <v-chip x-small label :color="f.status === 'active' ? '#0f766e' : '#94a3b8'" dark class="font-weight-black">{{ f.status }}</v-chip>
           </div>
+        </div>
+        <div v-else-if="isHierarchyAdmin && !isSuperAdmin" class="empty">
+          See every facility your organization coordinates on
+          <nuxt-link to="/super-admin/organizations">Organizations &amp; Hierarchy</nuxt-link>.
         </div>
         <div v-else class="empty">No facilities yet.</div>
       </article>
@@ -64,7 +68,7 @@
     <section class="readiness-grid mt-4">
       <article class="readiness-panel">
         <h2>Recent platform activity</h2>
-        <div v-if="overview && overview.recentAudit.length">
+        <div v-if="overview && overview.recentAudit && overview.recentAudit.length">
           <div v-for="entry in overview.recentAudit" :key="entry.id" class="status-row">
             <span>{{ entry.action }}<em v-if="entry.detail" class="muted"> — {{ entry.detail }}</em></span>
             <span class="muted small">{{ formatDate(entry.createdAt) }}</span>
@@ -85,7 +89,7 @@
 </template>
 
 <script>
-import { platformApi } from '~/services/api'
+import { platformApi, organizationApi } from '~/services/api'
 
 export default {
   name: 'SuperAdminPage',
@@ -100,12 +104,16 @@ export default {
     canSeePipeline() { return ['SUPER_ADMIN', 'SALES'].includes(this.userRole) },
     metrics() {
       const c = this.overview ? this.overview.counts : null
-      return [
-        { label: 'Organizations', value: c ? c.organizations : 0, icon: 'mdi-domain', color: '#003366' },
+      const tiles = []
+      if (this.isSuperAdmin) {
+        tiles.push({ label: 'Organizations', value: c ? c.organizations : 0, icon: 'mdi-domain', color: '#003366' })
+      }
+      tiles.push(
         { label: 'Facilities', value: c ? `${c.facilities.active} / ${c.facilities.total}` : 0, icon: 'mdi-hospital-building', color: '#0f766e' },
         { label: 'Staff accounts', value: c ? `${c.staff.active} / ${c.staff.total}` : 0, icon: 'mdi-account-multiple', color: '#d97706' },
-        { label: 'Patients (platform)', value: c ? c.patients : 0, icon: 'mdi-account-heart', color: '#6d28d9' }
-      ]
+        { label: this.isHierarchyAdmin && !this.isSuperAdmin ? 'Patients (my org)' : 'Patients (platform)', value: c ? c.patients : 0, icon: 'mdi-account-heart', color: '#6d28d9' }
+      )
+      return tiles
     },
     ringStyle() {
       const rate = this.overview && this.overview.rmaCompliance.rate !== null ? this.overview.rmaCompliance.rate : 0
@@ -114,7 +122,13 @@ export default {
   },
   async mounted() {
     try {
-      const { data } = await platformApi.overview()
+      // Platform business overview (SUPER_ADMIN/SALES/SUPPORT) is
+      // cross-organization vendor data — an org-hierarchy role (MINSANTE's
+      // ORG_ADMIN, a REGIONAL_ADMIN, ...) gets its own scoped view instead,
+      // limited to the facilities it can actually see.
+      const { data } = this.isSuperAdmin || !this.isHierarchyAdmin
+        ? await platformApi.overview()
+        : await organizationApi.overview()
       this.overview = data
     } catch (err) {
       this.$toast.error(err.response?.data?.error || err.message)
