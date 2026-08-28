@@ -66,6 +66,56 @@ router.get('/', authenticate, authorize(...HIERARCHY_ROLES), hierarchyScoped, as
   }
 })
 
+// GET /api/organizations/overview — counts scoped to the caller's hierarchy
+// position (their organization or unit subtree), for the /super-admin home
+// page. Distinct from GET /api/platform/overview, which is the vendor's own
+// cross-organization business view and stays SUPER_ADMIN/SALES/SUPPORT only.
+router.get('/overview', authenticate, authorize(...HIERARCHY_ROLES), hierarchyScoped, async (req, res, next) => {
+  try {
+    const now = new Date()
+    const reportMonth = now.getMonth() + 1
+    const reportYear = now.getFullYear()
+
+    const facilityWhere = req.scopedFacilityIds === 'ALL'
+      ? {}
+      : { id: { in: Array.isArray(req.scopedFacilityIds) ? req.scopedFacilityIds : [] } }
+
+    const [facilityTotal, facilityActive, facilities] = await Promise.all([
+      prisma.facility.count({ where: facilityWhere }),
+      prisma.facility.count({ where: { ...facilityWhere, status: 'active' } }),
+      prisma.facility.findMany({ where: facilityWhere, select: { id: true } })
+    ])
+    const facilityIds = facilities.map(f => f.id)
+
+    const [staffTotal, staffActive, patientCount, rmaSubmitted] = await Promise.all([
+      prisma.staffProfile.count({ where: { facilityId: { in: facilityIds } } }),
+      prisma.staffProfile.count({ where: { facilityId: { in: facilityIds }, status: 'active' } }),
+      prisma.patient.count({ where: { facilityId: { in: facilityIds } } }),
+      prisma.monthlyActivityReport.count({
+        where: { facilityId: { in: facilityIds }, reportMonth, reportYear, status: { in: ['submitted', 'validated'] } }
+      })
+    ])
+
+    res.json({
+      generatedAt: now.toISOString(),
+      counts: {
+        facilities: { total: facilityTotal, active: facilityActive },
+        staff: { total: staffTotal, active: staffActive },
+        patients: patientCount
+      },
+      rmaCompliance: {
+        reportMonth,
+        reportYear,
+        submitted: rmaSubmitted,
+        expected: facilityActive,
+        rate: facilityActive ? Math.round((rmaSubmitted / facilityActive) * 100) : null
+      }
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
 // POST /api/organizations — SUPER_ADMIN only
 router.post('/', authenticate, authorize('SUPER_ADMIN'), validate(organizationSchema), async (req, res, next) => {
   try {
@@ -165,6 +215,32 @@ router.delete('/:orgId/units/:unitId', authenticate, authorize('SUPER_ADMIN', 'O
   try {
     await prisma.organizationUnit.delete({ where: { id: req.params.unitId } })
     res.json({ message: 'Organization unit deleted' })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// GET /api/organizations/:id/facilities — every facility attached to this
+// organization (directly or via one of its units), for "what does MINSANTE
+// actually see beneath it" — not just the attach-a-facility picker.
+router.get('/:id/facilities', authenticate, authorize(...HIERARCHY_ROLES), async (req, res, next) => {
+  try {
+    const facilities = await prisma.facility.findMany({
+      where: { organizationId: req.params.id },
+      select: {
+        id: true, code: true, name: true, region: true, city: true, status: true,
+        organizationUnitId: true, createdAt: true
+      },
+      orderBy: { name: 'asc' }
+    })
+    const units = await prisma.organizationUnit.findMany({
+      where: { organizationId: req.params.id },
+      select: { id: true, name: true }
+    })
+    const unitNameById = new Map(units.map(u => [u.id, u.name]))
+    res.json({
+      facilities: facilities.map(f => ({ ...f, unitName: unitNameById.get(f.organizationUnitId) || null }))
+    })
   } catch (error) {
     next(error)
   }

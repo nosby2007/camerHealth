@@ -70,6 +70,29 @@
       </article>
     </section>
 
+    <!-- Facilities that already belong to the selected organization -->
+    <section v-if="selectedOrgId" class="panel mt-4">
+      <h2>Facilities — {{ selectedOrg ? selectedOrg.name : '' }}</h2>
+      <p class="hint">Every facility this organization can see and coordinate, with the unit it reports through.</p>
+      <div v-if="!orgFacilities.length" class="empty">No facility attached yet — use "Attach a facility" above.</div>
+      <div v-else class="tbl-scroll">
+        <table class="facility-table">
+          <thead>
+            <tr><th>Name</th><th>Code</th><th>Unit</th><th>Region / City</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="f in orgFacilities" :key="f.id">
+              <td><strong>{{ f.name }}</strong></td>
+              <td>{{ f.code }}</td>
+              <td>{{ f.unitName || '—' }}</td>
+              <td>{{ f.region }} · {{ f.city }}</td>
+              <td><v-chip x-small label :color="f.status === 'active' ? '#0f766e' : '#94a3b8'" dark class="font-weight-black">{{ f.status }}</v-chip></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- Organization dialog -->
     <v-dialog v-model="orgDialog" max-width="480">
       <v-card tile>
@@ -132,6 +155,7 @@ export default {
   },
   computed: {
     ...mapState('organizations', ['organizations', 'units']),
+    orgFacilities() { return this.$store.state.organizations.facilities },
     selectedOrg() {
       return this.organizations.find(o => o.id === this.selectedOrgId) || null
     },
@@ -154,11 +178,11 @@ export default {
   },
   methods: {
     ...mapActions('organizations', [
-      'fetchOrganizations', 'createOrganization', 'fetchUnits', 'createUnit', 'updateUnit', 'removeUnit', 'attachFacility'
+      'fetchOrganizations', 'createOrganization', 'fetchUnits', 'fetchFacilities', 'createUnit', 'updateUnit', 'removeUnit', 'attachFacility'
     ]),
     async selectOrganization(id) {
       this.selectedOrgId = id
-      await this.fetchUnits(id)
+      await Promise.all([this.fetchUnits(id), this.fetchFacilities(id)])
     },
     openOrgDialog() {
       this.orgForm = { name: '', organizationType: 'PUBLIC_HEALTH_AUTHORITY', organizationCode: '' }
@@ -213,6 +237,7 @@ export default {
           organizationId: this.selectedOrgId,
           organizationUnitId: this.attachUnitId || null
         })
+        await this.fetchFacilities(this.selectedOrgId)
         this.$toast.success('Facility attached')
       } catch (err) {
         this.$toast.error(err.response?.data?.error || err.message)
@@ -247,5 +272,10 @@ h1 { margin-bottom: 8px; color: #0f2537; font-size: clamp(24px, 3.4vw, 34px); li
 .unit-actions { display: flex; gap: 10px; }
 .unit-actions button { border: 0; background: none; color: #0f766e; font-weight: 800; font-size: 11px; cursor: pointer; text-transform: uppercase; }
 .unit-actions button.danger { color: #be123c; }
+.tbl-scroll { overflow-x: auto; }
+.facility-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.facility-table th { text-align: left; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; color: #94a3b8; font-weight: 800; padding: 8px 10px; border-bottom: 1px solid #dce6ec; }
+.facility-table td { padding: 8px 10px; border-bottom: 1px solid #edf2f5; color: #334155; }
+.facility-table strong { color: #0f2537; }
 @media (max-width: 1100px) { .layout-grid { grid-template-columns: 1fr; } }
 </style>

@@ -11,6 +11,8 @@ export const namespaced = true
 export const state = () => ({
   organizations: [],
   units: [],
+  facilities: [],
+  overview: null,
   loading: false,
   error: null
 })
@@ -18,6 +20,8 @@ export const state = () => ({
 export const mutations = {
   SET_ORGANIZATIONS(state, organizations) { state.organizations = organizations },
   SET_UNITS(state, units) { state.units = units },
+  SET_FACILITIES(state, facilities) { state.facilities = facilities },
+  SET_OVERVIEW(state, overview) { state.overview = overview },
   SET_LOADING(state, loading) { state.loading = loading },
   SET_ERROR(state, error) { state.error = error }
 }
@@ -68,6 +72,29 @@ export const actions = {
       commit('SET_ERROR', err.response?.data?.error || err.message)
     } finally {
       commit('SET_LOADING', false)
+    }
+  },
+
+  async fetchFacilities({ commit }, organizationId) {
+    commit('SET_LOADING', true)
+    try {
+      const { data } = await organizationApi.listFacilities(organizationId)
+      commit('SET_FACILITIES', data.facilities || [])
+      return data.facilities
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    } finally {
+      commit('SET_LOADING', false)
+    }
+  },
+
+  async fetchOverview({ commit }) {
+    try {
+      const { data } = await organizationApi.overview()
+      commit('SET_OVERVIEW', data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
     }
   },
 
