@@ -1,0 +1,7 @@
+# Shell scripts and Docker/on-prem config must always check out with LF —
+# CRLF line endings break the shebang and break the hospital's Linux server.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+*.conf text eol=lf
