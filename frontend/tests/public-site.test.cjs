@@ -35,5 +35,17 @@ test('contact form warns against patient data', () => {
   const contact = read('pages/contact.vue')
   assert.match(contact, /Aucune donnée patient/)
   assert.match(contact, /Do not enter any patient information/)
-  assert.match(contact, /mailto:support@perryhomewoundcare\.network/)
+  assert.match(contact, /mailto:support@camerohealth\.cm/)
+})
+
+test('public site presents CEMAC identity, specialist modules and resilient access', () => {
+  const home = read('pages/index.vue')
+  const product = read('pages/about.vue')
+  assert.match(home, /Interopérabilité CEMAC/)
+  assert.match(home, /CMR-CE-26-004821/)
+  assert.match(home, /mode hors connexion sécurisé/)
+  for (const moduleName of ['LAB', 'GYNÉCO', 'REFERRAL', 'NETWORK']) {
+    assert.match(home, new RegExp(moduleName))
+  }
+  assert.match(product, /Réseau hospitalier/)
 })
