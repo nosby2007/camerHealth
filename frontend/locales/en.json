@@ -65,6 +65,7 @@
     "tabs": {
       "summary": "Summary",
       "emr_command": "EMR Command Center",
+      "doctor_command": "Doctor Command Center",
       "nurse_command": "Nurse Command Center",
       "chart_review": "Chart Review",
       "navigators": "Navigators",
