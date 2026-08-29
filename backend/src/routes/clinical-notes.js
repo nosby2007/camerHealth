@@ -2,8 +2,9 @@
 const { Router } = require('express')
 const { z } = require('zod')
 const prisma = require('../lib/prisma')
-const { authenticate } = require('../middleware/auth')
+const { authenticate, authorize } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
+const { CLINICAL_WRITE_ROLES } = require('../lib/clinicalRoles')
 
 const router = Router()
 
@@ -44,7 +45,7 @@ const noteUpdateSchema = z.object({
 // ─── Vitals ─────────────────────────────────────────────────────────────────
 
 // POST /api/vitals — record a vital signs set
-router.post('/vitals', authenticate, validate(vitalsSchema), async (req, res, next) => {
+router.post('/vitals', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(vitalsSchema), async (req, res, next) => {
   try {
     const { patientId, visitId, recordedAt, ...vitals } = req.body
     const record = await prisma.vitalSigns.create({
@@ -83,7 +84,7 @@ router.get('/vitals', authenticate, async (req, res, next) => {
 // ─── Clinical notes (nursing / medical / plan_of_care) ───────────────────────
 
 // POST /api/clinical-notes — create a note
-router.post('/clinical-notes', authenticate, validate(noteSchema), async (req, res, next) => {
+router.post('/clinical-notes', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(noteSchema), async (req, res, next) => {
   try {
     const { patientId, encounterId, noteType, title, body, authorRole } = req.body
     const note = await prisma.clinicalNote.create({
@@ -136,7 +137,7 @@ router.get('/clinical-notes', authenticate, async (req, res, next) => {
 })
 
 // PATCH /api/clinical-notes/:id — amend an unsigned note
-router.patch('/clinical-notes/:id', authenticate, validate(noteUpdateSchema), async (req, res, next) => {
+router.patch('/clinical-notes/:id', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(noteUpdateSchema), async (req, res, next) => {
   try {
     const existing = await prisma.clinicalNote.findFirst({
       where: { id: req.params.id, facilityId: req.user.facilityId }
@@ -163,7 +164,7 @@ router.patch('/clinical-notes/:id', authenticate, validate(noteUpdateSchema), as
 })
 
 // PATCH /api/clinical-notes/:id/sign — sign a note (immutable afterwards)
-router.patch('/clinical-notes/:id/sign', authenticate, async (req, res, next) => {
+router.patch('/clinical-notes/:id/sign', authenticate, authorize(...CLINICAL_WRITE_ROLES), async (req, res, next) => {
   try {
     const existing = await prisma.clinicalNote.findFirst({
       where: { id: req.params.id, facilityId: req.user.facilityId }

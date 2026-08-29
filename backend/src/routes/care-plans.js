@@ -2,9 +2,10 @@
 const { Router } = require('express')
 const { z } = require('zod')
 const prisma = require('../lib/prisma')
-const { authenticate } = require('../middleware/auth')
+const { authenticate, authorize } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { requirePatientForFacility } = require('../lib/tenant')
+const { CLINICAL_WRITE_ROLES } = require('../lib/clinicalRoles')
 
 const router = Router()
 
@@ -115,7 +116,7 @@ router.get('/patients/:patientId/care-plans', authenticate, async (req, res, nex
   }
 })
 
-router.post('/care-plans', authenticate, validate(carePlanSchema), async (req, res, next) => {
+router.post('/care-plans', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(carePlanSchema), async (req, res, next) => {
   try {
     await requirePatientForFacility(req.body.patientId, req.user.facilityId, { select: { id: true } })
     const carePlan = await prisma.carePlan.create({
@@ -137,7 +138,7 @@ router.post('/care-plans', authenticate, validate(carePlanSchema), async (req, r
   }
 })
 
-router.patch('/care-plans/:id', authenticate, validate(carePlanUpdateSchema), async (req, res, next) => {
+router.patch('/care-plans/:id', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(carePlanUpdateSchema), async (req, res, next) => {
   try {
     const existing = await prisma.carePlan.findFirst({ where: { id: req.params.id, facilityId: req.user.facilityId } })
     if (!existing) return res.status(404).json({ error: 'Care plan not found' })
@@ -149,7 +150,7 @@ router.patch('/care-plans/:id', authenticate, validate(carePlanUpdateSchema), as
 })
 
 // ─── Problems ───────────────────────────────────────────────────────────────
-router.post('/care-plan-problems', authenticate, validate(problemSchema), async (req, res, next) => {
+router.post('/care-plan-problems', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(problemSchema), async (req, res, next) => {
   try {
     const carePlan = await prisma.carePlan.findFirst({ where: { id: req.body.carePlanId, facilityId: req.user.facilityId } })
     if (!carePlan) return res.status(404).json({ error: 'Care plan not found' })
@@ -171,7 +172,7 @@ router.post('/care-plan-problems', authenticate, validate(problemSchema), async 
   }
 })
 
-router.patch('/care-plan-problems/:id', authenticate, validate(problemUpdateSchema), async (req, res, next) => {
+router.patch('/care-plan-problems/:id', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(problemUpdateSchema), async (req, res, next) => {
   try {
     const existing = await prisma.carePlanProblem.findFirst({ where: { id: req.params.id, facilityId: req.user.facilityId } })
     if (!existing) return res.status(404).json({ error: 'Problem not found' })
@@ -183,7 +184,7 @@ router.patch('/care-plan-problems/:id', authenticate, validate(problemUpdateSche
 })
 
 // ─── Goals ──────────────────────────────────────────────────────────────────
-router.post('/care-plan-goals', authenticate, validate(goalSchema), async (req, res, next) => {
+router.post('/care-plan-goals', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(goalSchema), async (req, res, next) => {
   try {
     const problem = await prisma.carePlanProblem.findFirst({ where: { id: req.body.problemId, facilityId: req.user.facilityId } })
     if (!problem) return res.status(404).json({ error: 'Problem not found' })
@@ -208,7 +209,7 @@ router.post('/care-plan-goals', authenticate, validate(goalSchema), async (req, 
   }
 })
 
-router.patch('/care-plan-goals/:id', authenticate, validate(goalUpdateSchema), async (req, res, next) => {
+router.patch('/care-plan-goals/:id', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(goalUpdateSchema), async (req, res, next) => {
   try {
     const existing = await prisma.carePlanGoal.findFirst({ where: { id: req.params.id, facilityId: req.user.facilityId } })
     if (!existing) return res.status(404).json({ error: 'Goal not found' })
@@ -227,7 +228,7 @@ router.patch('/care-plan-goals/:id', authenticate, validate(goalUpdateSchema), a
 })
 
 // ─── Outcomes ───────────────────────────────────────────────────────────────
-router.post('/care-plan-outcomes', authenticate, validate(outcomeSchema), async (req, res, next) => {
+router.post('/care-plan-outcomes', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(outcomeSchema), async (req, res, next) => {
   try {
     const goal = await prisma.carePlanGoal.findFirst({ where: { id: req.body.goalId, facilityId: req.user.facilityId } })
     if (!goal) return res.status(404).json({ error: 'Goal not found' })
@@ -247,7 +248,7 @@ router.post('/care-plan-outcomes', authenticate, validate(outcomeSchema), async 
   }
 })
 
-router.patch('/care-plan-outcomes/:id', authenticate, validate(outcomeUpdateSchema), async (req, res, next) => {
+router.patch('/care-plan-outcomes/:id', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(outcomeUpdateSchema), async (req, res, next) => {
   try {
     const existing = await prisma.carePlanOutcome.findFirst({ where: { id: req.params.id, facilityId: req.user.facilityId } })
     if (!existing) return res.status(404).json({ error: 'Outcome not found' })
@@ -259,7 +260,7 @@ router.patch('/care-plan-outcomes/:id', authenticate, validate(outcomeUpdateSche
 })
 
 // ─── Progress entries — server computes and persists lastProgressStatus ────
-router.post('/care-plan-progress-entries', authenticate, validate(progressEntrySchema), async (req, res, next) => {
+router.post('/care-plan-progress-entries', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(progressEntrySchema), async (req, res, next) => {
   try {
     const carePlan = await prisma.carePlan.findFirst({ where: { id: req.body.carePlanId, facilityId: req.user.facilityId } })
     if (!carePlan) return res.status(404).json({ error: 'Care plan not found' })
@@ -311,7 +312,7 @@ router.get('/patients/:patientId/care-plan-progress-entries', authenticate, asyn
 })
 
 // ─── Reviews ────────────────────────────────────────────────────────────────
-router.post('/care-plans/:id/review', authenticate, validate(reviewSchema), async (req, res, next) => {
+router.post('/care-plans/:id/review', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(reviewSchema), async (req, res, next) => {
   try {
     const carePlan = await prisma.carePlan.findFirst({ where: { id: req.params.id, facilityId: req.user.facilityId } })
     if (!carePlan) return res.status(404).json({ error: 'Care plan not found' })

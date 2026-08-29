@@ -2,9 +2,10 @@
 const { Router } = require('express')
 const { z } = require('zod')
 const prisma = require('../lib/prisma')
-const { authenticate } = require('../middleware/auth')
+const { authenticate, authorize } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { requirePatientForFacility } = require('../lib/tenant')
+const { CLINICAL_WRITE_ROLES, PRESCRIBER_ROLES, LAB_ROLES, IMAGING_ROLES, PHARMACY_ROLES } = require('../lib/clinicalRoles')
 
 const router = Router()
 
@@ -85,7 +86,7 @@ router.get('/visits', authenticate, async (req, res, next) => {
   }
 })
 
-router.post('/visits', authenticate, validate(visitSchema), async (req, res, next) => {
+router.post('/visits', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(visitSchema), async (req, res, next) => {
   try {
     await requirePatientForFacility(req.body.patientId, req.user.facilityId, { select: { id: true } })
     const visit = await prisma.visit.create({
@@ -140,7 +141,7 @@ router.get('/lab-orders', authenticate, async (req, res, next) => {
   }
 })
 
-router.post('/lab-orders', authenticate, validate(labOrderSchema), async (req, res, next) => {
+router.post('/lab-orders', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(labOrderSchema), async (req, res, next) => {
   try {
     await requirePatientForFacility(req.body.patientId, req.user.facilityId, { select: { id: true } })
     const order = await prisma.labOrder.create({
@@ -159,7 +160,7 @@ router.post('/lab-orders', authenticate, validate(labOrderSchema), async (req, r
   }
 })
 
-router.patch('/lab-orders/:id', authenticate, async (req, res, next) => {
+router.patch('/lab-orders/:id', authenticate, authorize(...CLINICAL_WRITE_ROLES, ...LAB_ROLES), async (req, res, next) => {
   try {
     const { status, result } = req.body
     const order = await prisma.labOrder.findFirst({
@@ -198,7 +199,7 @@ router.get('/imaging-orders', authenticate, async (req, res, next) => {
   }
 })
 
-router.post('/imaging-orders', authenticate, validate(imagingOrderSchema), async (req, res, next) => {
+router.post('/imaging-orders', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(imagingOrderSchema), async (req, res, next) => {
   try {
     await requirePatientForFacility(req.body.patientId, req.user.facilityId, { select: { id: true } })
     const order = await prisma.imagingOrder.create({
@@ -217,7 +218,7 @@ router.post('/imaging-orders', authenticate, validate(imagingOrderSchema), async
   }
 })
 
-router.patch('/imaging-orders/:id', authenticate, async (req, res, next) => {
+router.patch('/imaging-orders/:id', authenticate, authorize(...CLINICAL_WRITE_ROLES, ...IMAGING_ROLES), async (req, res, next) => {
   try {
     const {
       status,
@@ -291,7 +292,7 @@ router.get('/medications', authenticate, async (req, res, next) => {
   }
 })
 
-router.post('/medications', authenticate, validate(medicationSchema), async (req, res, next) => {
+router.post('/medications', authenticate, authorize(...PRESCRIBER_ROLES), validate(medicationSchema), async (req, res, next) => {
   try {
     await requirePatientForFacility(req.body.patientId, req.user.facilityId, { select: { id: true } })
     const med = await prisma.medication.create({
@@ -322,7 +323,7 @@ router.post('/medications', authenticate, validate(medicationSchema), async (req
   }
 })
 
-router.patch('/medications/:id', authenticate, async (req, res, next) => {
+router.patch('/medications/:id', authenticate, authorize(...PRESCRIBER_ROLES, ...PHARMACY_ROLES), async (req, res, next) => {
   try {
     const {
       status,

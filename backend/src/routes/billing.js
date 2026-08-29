@@ -217,6 +217,17 @@ router.patch('/charges/:id', authenticate, facilityScoped, async (req, res, next
     if (!charge) return res.status(404).json({ error: 'Charge not found' })
     const updated = await prisma.charge.update({ where: { id: req.params.id }, data: { status } })
     await recalcInvoiceStatus(charge.invoiceId)
+
+    // Same sync as POST /payments — a reopened charge (payment reversed,
+    // waiver undone) must also clear the medication back to Unpaid, or
+    // Pharmacy would keep showing it as payable when it no longer is.
+    if (charge.sourceType === 'medication' && charge.sourceId) {
+      await prisma.medication.updateMany({
+        where: { id: charge.sourceId, facilityId },
+        data: { paymentStatus: status === 'Open' ? 'Unpaid' : 'Paid' }
+      })
+    }
+
     res.json({ charge: updated })
   } catch (err) { next(err) }
 })
@@ -244,7 +255,7 @@ router.post('/payments', authenticate, facilityScoped, async (req, res, next) =>
 
     const openCharges = await prisma.charge.findMany({
       where: { invoiceId: invoice.id, facilityId, status: 'Open' },
-      select: { id: true, total: true }
+      select: { id: true, total: true, sourceType: true, sourceId: true }
     })
 
     const requestedChargeIds = Array.isArray(paidChargeIds)
@@ -267,20 +278,35 @@ router.post('/payments', authenticate, facilityScoped, async (req, res, next) =>
     const candidateOrdered = [...candidateCharges].sort((a, b) => a.total - b.total)
     for (const c of candidateOrdered) {
       if (allocated + c.total <= amount) {
-        toPay.push(c.id)
+        toPay.push(c)
         allocated += c.total
       }
     }
     if (toPay.length > 0) {
       await prisma.charge.updateMany({
         where: {
-          id: { in: toPay },
+          id: { in: toPay.map(c => c.id) },
           invoiceId: invoice.id,
           facilityId,
           status: 'Open'
         },
         data: { status: 'Paid' }
       })
+
+      // Keep Medication.paymentStatus in sync with the charge it's billed
+      // through — without this, Pharmacy's dispense queue only shows the
+      // correct payment state because it separately cross-references the
+      // live Charge record; any other view reading paymentStatus directly
+      // would show a payment as still pending forever.
+      const paidMedicationIds = toPay
+        .filter(c => c.sourceType === 'medication' && c.sourceId)
+        .map(c => c.sourceId)
+      if (paidMedicationIds.length > 0) {
+        await prisma.medication.updateMany({
+          where: { id: { in: paidMedicationIds }, facilityId },
+          data: { paymentStatus: 'Paid' }
+        })
+      }
     }
 
     await recalcInvoiceStatus(invoice.id)

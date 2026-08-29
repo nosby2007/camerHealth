@@ -204,7 +204,7 @@
           Current admission
         </v-chip>
             <v-btn
-              v-if="activePatientId && !isPatientDischarged"
+              v-if="activePatientId && canLaunchNurse && !isPatientDischarged"
               x-small
               depressed
               color="#003366"
@@ -225,7 +225,7 @@
             >
               <v-icon x-small left>mdi-medical-bag</v-icon>Medical
             </v-btn>
-            <v-btn v-if="!isPatientDischarged" x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('nurse')">
+            <v-btn v-if="canLaunchNurse && !isPatientDischarged" x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('nurse')">
               <v-icon x-small left>mdi-plus</v-icon>New Reading
                 </v-btn>
               </div>
@@ -1038,7 +1038,7 @@
                   <v-btn x-small depressed color="#0f766e" dark @click="openMarQuickScan">
                     <v-icon x-small left>mdi-barcode-scan</v-icon>Scan med
                   </v-btn>
-                  <v-btn x-small depressed color="#7c3aed" dark @click="openChartDialog('medication')">
+                  <v-btn v-if="canLaunchPrescription" x-small depressed color="#7c3aed" dark @click="openChartDialog('medication')">
                     <v-icon x-small left>mdi-pill-plus</v-icon>Medication order
                   </v-btn>
                 </div>
@@ -1527,7 +1527,7 @@
                   <strong>Shift Navigator</strong>
                   <span>{{ activePatient.name }} - active nursing shift</span>
                 </div>
-                <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
+                <v-btn v-if="canLaunchNurse" x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
                   <v-icon x-small left>mdi-plus</v-icon>New Reading
                 </v-btn>
               </div>
@@ -2040,7 +2040,10 @@
         <v-card-text>
           <v-form ref="medicationFormRef" v-model="forms.orderValid">
             <div class="dialog-grid two">
-              <v-text-field v-model="forms.order.medication.medication" label="Medication" dense outlined :rules="[requiredRule]" />
+              <v-autocomplete v-model="forms.order.medication.medication" :items="orderDrugSuggestions" item-text="name" item-value="name"
+                label="Medication" dense outlined :disabled="!orderDrugSuggestions.length"
+                :placeholder="orderDrugSuggestions.length ? 'Select from the official price catalog...' : 'No priced drugs in this facility\'s catalog yet'"
+                :rules="[requiredRule, () => !!orderSelectedCatalogItem || 'Must be selected from the official price catalog']" />
               <v-text-field v-model="forms.order.medication.dosage" label="Dose" dense outlined :rules="[requiredRule]" />
               <v-select v-model="forms.order.medication.route" :items="medicationRoutes" label="Route" dense outlined :rules="[requiredRule]" />
               <v-text-field v-model="forms.order.medication.frequency" label="Frequency" dense outlined :rules="[requiredRule]" />
@@ -2058,7 +2061,7 @@
         <v-card-actions class="dialog-actions">
           <v-spacer />
           <v-btn text small @click="closeChartDialog('medication')">Cancel</v-btn>
-          <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveMedicationOrder">
+          <v-btn depressed color="#0f766e" dark small :loading="savingDialog" :disabled="!orderSelectedCatalogItem" @click="saveMedicationOrder">
             <v-icon x-small left>mdi-pill-plus</v-icon>Place medication order
           </v-btn>
         </v-card-actions>
@@ -2976,6 +2979,25 @@ export default {
     },
     canLaunchMedical() {
       return ['ADMIN', 'DOCTOR', 'NP'].includes(this.currentRole)
+    },
+    canLaunchNurse() {
+      return ['NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'].includes(this.currentRole)
+    },
+    canLaunchPrescription() {
+      return ['ADMIN', 'DOCTOR', 'NP', 'NURSE'].includes(this.currentRole)
+    },
+    // Billed drugs must come from the official DB price catalog, not free
+    // text — a typed name that doesn't match a catalog entry exactly (e.g.
+    // "Furosemide" vs the catalog's "Furosemide 40mg") used to fail to bill
+    // silently, leaving Cash Office showing no charge for a real prescription.
+    orderDrugSuggestions() {
+      const catalog = (this.$store.getters['billing/catalog'] || {}).drugs || []
+      return catalog.filter(d => d.active !== false).map(d => ({ name: d.name, unitPrice: d.unitPrice, dbId: d.id || d.dbId }))
+    },
+    orderSelectedCatalogItem() {
+      const name = this.forms.order.medication.medication
+      if (!name) return null
+      return this.orderDrugSuggestions.find(d => d.name.toLowerCase() === String(name).toLowerCase()) || null
     },
     noteMenuOptions() {
       const role = this.currentRole
@@ -7059,6 +7081,18 @@ export default {
     openChartDialog(kind) {
       if (!this.activePatientId) return
       if (kind !== 'scan' && !this.ensurePatientWritable()) return
+      if (kind === 'nurse' && !this.canLaunchNurse) {
+        this.$toast.error('Your role does not have access to nursing charting.')
+        return
+      }
+      if (kind === 'medical' && !this.canLaunchMedical) {
+        this.$toast.error('Your role does not have access to medical charting.')
+        return
+      }
+      if (kind === 'medication' && !this.canLaunchPrescription) {
+        this.$toast.error('Your role does not have access to prescribe or modify medication orders.')
+        return
+      }
       if (['lab', 'imaging', 'medication'].includes(kind)) {
         const next = defaultDialogForms().order
         if (kind === 'lab') {
@@ -7463,9 +7497,11 @@ export default {
         // Bill the Cash Office at the exact DB price catalog rate — without
         // this, a prescription written here never reaches Cash Office at all
         // (chargeForMedication was only ever called from medications.vue).
-        const drugCatalog = (this.$store.getters['billing/catalog'] || {}).drugs || []
+        // orderSelectedCatalogItem is required by the field's own validation
+        // rule and the submit button's :disabled, so this should always be
+        // set here — the else branch is defensive, not the expected path.
         const drugName = this.forms.order.medication.medication
-        const catalogPriceItem = drugCatalog.find(d => d.name.toLowerCase() === (drugName || '').toLowerCase())
+        const catalogPriceItem = this.orderSelectedCatalogItem
         if (catalogPriceItem && catalogPriceItem.unitPrice !== undefined) {
           await this.$store.dispatch('billing/chargeForMedication', {
             patientId,
