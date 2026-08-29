@@ -1,5 +1,4 @@
 const { onRequest } = require('firebase-functions/v2/https')
-const app = require('./src/index')
 
 exports.api = onRequest({
   region: 'europe-west1',
@@ -18,4 +17,9 @@ exports.api = onRequest({
     'SUPABASE_SERVICE_KEY',
     'SUPABASE_STORAGE_BUCKET'
   ]
-}, app)
+}, (request, response) => {
+  // Secret Manager values are available when the function handles a request,
+  // but not while the Firebase CLI is discovering exported functions.
+  const app = require('./src/index')
+  return app(request, response)
+})
