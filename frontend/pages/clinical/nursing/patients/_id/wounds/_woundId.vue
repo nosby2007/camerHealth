@@ -44,7 +44,10 @@ export default {
     wound() { return this.chart.wounds.find(item => item.id === this.woundId) || {} },
     assessments() { return this.$store.getters['nursing/woundTrend'](this.woundId) }
   },
-  mounted() { this.$store.commit('nursing/LOAD_FROM_STORAGE') },
+  mounted() {
+    this.$store.commit('nursing/LOAD_FROM_STORAGE')
+    this.$store.dispatch('nursing/loadPatientChart', this.patientId)
+  },
   methods: { saveAssessment() { this.$store.dispatch('nursing/createWoundAssessment', { ...this.form, woundId: this.woundId, patientId: this.patientId }) } }
 }
 </script>

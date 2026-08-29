@@ -1,6 +1,6 @@
 const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
 const { generateTasksFromOrder, nextTaskFromCompletion } = require('../services/clinical/workflowEngine')
-import { patientApi, clinicalApi, appointmentApi, inpatientApi, vitalsApi, clinicalNotesApi } from '~/services/api'
+import { patientApi, clinicalApi, appointmentApi, inpatientApi, vitalsApi, clinicalNotesApi, taskApi, careTeamApi } from '~/services/api'
 import { enqueue, isNetworkError } from '~/util/offline-queue'
 
 export const namespaced = true
@@ -172,12 +172,33 @@ export const mutations = {
     state.tasks.push(task)
     saveToLocalStorage('tasks', state.tasks)
   },
+  SET_TASKS(state, tasks) {
+    state.tasks = tasks
+    saveToLocalStorage('tasks', state.tasks)
+  },
+  // Upserts one patient's tasks into the shared facility-wide array instead
+  // of replacing it outright — a per-patient chart fetch must not wipe out
+  // every other patient's tasks that the dashboard's facility-wide fetch
+  // already loaded (and vice versa).
+  MERGE_PATIENT_TASKS(state, { patientId, tasks }) {
+    const others = state.tasks.filter(t => t.patientId !== patientId)
+    state.tasks = [...others, ...tasks]
+    saveToLocalStorage('tasks', state.tasks)
+  },
   ADD_CARE_TEAM_MEMBER(state, member) {
     state.careTeamMembers.push(member)
     saveToLocalStorage('careTeamMembers', state.careTeamMembers)
   },
+  SET_CARE_TEAM_MEMBERS(state, members) {
+    state.careTeamMembers = members
+    saveToLocalStorage('careTeamMembers', state.careTeamMembers)
+  },
   ADD_SOCIAL_ASSESSMENT(state, assessment) {
     state.socialAssessments.push(assessment)
+    saveToLocalStorage('socialAssessments', state.socialAssessments)
+  },
+  SET_SOCIAL_ASSESSMENTS(state, assessments) {
+    state.socialAssessments = assessments
     saveToLocalStorage('socialAssessments', state.socialAssessments)
   },
   UPDATE_TASK(state, task) {
@@ -646,7 +667,7 @@ export const actions = {
     }
     commit('ADD_VITAL_SIGNS', local)
   },
-  async addNursingNote({ state, commit, rootState }, note) {
+  async addNursingNote({ state, commit, dispatch, rootState }, note) {
     assertPatientWritable(state, note.patientId)
     const now = new Date().toISOString()
     const actor = note.recordedBy || rootState.auth.fullName || 'Unknown user'
@@ -669,21 +690,39 @@ export const actions = {
         }
       ]
     }
+    // Re-throw real (non-network) errors instead of swallowing them — the
+    // same class of bug found in addMedicalNote: a body-less payload fails
+    // backend validation, and a caller that doesn't see the error shows a
+    // false "saved successfully" toast over a note that was never persisted.
     try {
       const { data } = await clinicalNotesApi.create({
         patientId: note.patientId,
         encounterId: note.encounterId,
         noteType: 'nursing',
         title: note.title,
-        body: note.body || note.note || note.text || ''
+        body: note.body || note.note || note.text || '',
+        structuredData: note.structuredData || undefined
       })
       local.id = (data.note && data.note.id) || local.id
     } catch (err) {
       commit('SET_ERROR', err.response?.data?.error || err.message)
+      if (isNetworkError(err)) {
+        await enqueue(rootState.auth?.facilityId, 'nursing-note-create', {
+          patientId: note.patientId,
+          encounterId: note.encounterId,
+          noteType: 'nursing',
+          title: note.title,
+          body: note.body || note.note || note.text || '',
+          structuredData: note.structuredData || undefined
+        })
+        await dispatch('offlineQueue/refreshPendingCount', null, { root: true })
+      } else {
+        throw err
+      }
     }
     commit('ADD_NURSING_NOTE', local)
   },
-  async addMedicalNote({ state, commit, rootState }, note) {
+  async addMedicalNote({ state, commit, dispatch, rootState }, note) {
     assertPatientWritable(state, note.patientId)
     const now = new Date().toISOString()
     const actor = note.recordedBy || rootState.auth.fullName || 'Unknown user'
@@ -706,19 +745,40 @@ export const actions = {
         }
       ]
     }
+    // Unlike vitals/RMA (routine, high-frequency, safe to retry silently via
+    // the offline queue), a rejected medical note is a real problem the
+    // caller must know about immediately — re-throwing on anything other
+    // than a network blip prevents a "saved successfully" toast over a note
+    // that was actually never persisted (the bug that caused every medical
+    // consultation to silently vanish before body/structuredData existed).
     try {
       const { data } = await clinicalNotesApi.create({
         patientId: note.patientId,
         encounterId: note.encounterId,
         noteType: 'medical',
         title: note.title,
-        body: note.body || note.note || note.text || ''
+        body: note.body || note.note || note.text || '',
+        structuredData: note.structuredData || undefined
       })
       local.id = (data.note && data.note.id) || local.id
     } catch (err) {
       commit('SET_ERROR', err.response?.data?.error || err.message)
+      if (isNetworkError(err)) {
+        await enqueue(rootState.auth?.facilityId, 'medical-note-create', {
+          patientId: note.patientId,
+          encounterId: note.encounterId,
+          noteType: 'medical',
+          title: note.title,
+          body: note.body || note.note || note.text || '',
+          structuredData: note.structuredData || undefined
+        })
+        await dispatch('offlineQueue/refreshPendingCount', null, { root: true })
+      } else {
+        throw err
+      }
     }
     commit('ADD_MEDICAL_NOTE', local)
+    return local
   },
   async updateNursingNote({ state, commit, rootState }, payload) {
     const existing = state.nursingNotes.find(n => n.id === payload.id)
@@ -782,13 +842,41 @@ export const actions = {
     }
     commit('UPDATE_MEDICAL_NOTE', next)
   },
-  createTask({ state, commit, rootState }, task) {
+  async fetchTasks({ commit }, params = {}) {
+    try {
+      const { data } = await taskApi.list(params)
+      if (params.patientId) {
+        commit('MERGE_PATIENT_TASKS', { patientId: params.patientId, tasks: data.tasks || [] })
+      } else {
+        commit('SET_TASKS', data.tasks || [])
+      }
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+  async fetchCareTeam({ commit }, patientId) {
+    try {
+      const { data } = await careTeamApi.list(patientId)
+      commit('SET_CARE_TEAM_MEMBERS', data.members || [])
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+  async fetchSocialAssessments({ commit }, patientId) {
+    try {
+      const { data } = await careTeamApi.listSocialAssessments(patientId)
+      commit('SET_SOCIAL_ASSESSMENTS', data.assessments || [])
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+  async createTask({ state, commit, rootState }, task) {
     assertPatientWritable(state, task.patientId)
     const existing = task.automationKey && state.tasks.find(item => item.automationKey === task.automationKey)
     if (existing) return existing
     const now = new Date().toISOString()
     const actor = rootState.auth.fullName || 'Unknown user'
-    const record = {
+    const local = {
       ...task,
       id: 'TSK-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       ...tenantFields(rootState),
@@ -803,20 +891,17 @@ export const actions = {
       createdBy: actor,
       updatedAt: now,
       updatedBy: actor,
-      actionReason: task.actionReason || 'Task created from clinical order',
-      history: [
-        {
-          id: 'THS-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-          action: 'CREATED',
-          status: 'pending',
-          actor,
-          at: now,
-          reason: task.actionReason || 'Task created from clinical order'
-        }
-      ]
+      actionReason: task.actionReason || 'Task created from clinical order'
     }
-    commit('ADD_TASK', record)
-    return record
+    try {
+      const { data } = await taskApi.create(task)
+      local.id = (data.task && data.task.id) || local.id
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_TASK', local)
+    return local
   },
   createTasksFromClinicalOrder({ dispatch }, { order, patient = {}, encounter = {} }) {
     const generated = generateTasksFromOrder(order, patient, encounter)
@@ -839,31 +924,45 @@ export const actions = {
       actionReason: `Automatically generated from clinical order ${task.source_id}`
     })))
   },
-  addCareTeamMember({ state, commit, rootState }, member) {
+  async addCareTeamMember({ state, commit, rootState }, member) {
     assertPatientWritable(state, member.patientId)
-    const record = {
+    const local = {
       ...member,
       id: 'CTM-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       ...tenantFields(rootState),
       addedAt: new Date().toISOString(),
       addedBy: rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
     }
-    commit('ADD_CARE_TEAM_MEMBER', record)
-    return record
+    try {
+      const { data } = await careTeamApi.addMember(member)
+      local.id = (data.member && data.member.id) || local.id
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_CARE_TEAM_MEMBER', local)
+    return local
   },
-  addSocialAssessment({ state, commit, rootState }, assessment) {
+  async addSocialAssessment({ state, commit, rootState }, assessment) {
     assertPatientWritable(state, assessment.patientId)
-    const record = {
+    const local = {
       ...assessment,
       id: 'SDH-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       ...tenantFields(rootState),
       assessedAt: new Date().toISOString(),
       assessedBy: rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
     }
-    commit('ADD_SOCIAL_ASSESSMENT', record)
-    return record
+    try {
+      const { data } = await careTeamApi.addSocialAssessment(assessment)
+      local.id = (data.assessment && data.assessment.id) || local.id
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_SOCIAL_ASSESSMENT', local)
+    return local
   },
-  updateTaskStatus({ state, commit, rootState }, payload) {
+  async updateTaskStatus({ state, commit, rootState }, payload) {
     const task = state.tasks.find(t => t.id === payload.id)
     if (!task) return
     assertPatientWritable(state, task.patientId)
@@ -890,6 +989,12 @@ export const actions = {
           reason
         }
       ]
+    }
+    try {
+      await taskApi.updateStatus(payload.id, { status: payload.status, reason })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
     }
     commit('UPDATE_TASK', next)
     return next

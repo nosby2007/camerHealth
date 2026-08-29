@@ -373,6 +373,29 @@ export default {
       if (!v) return true
       return /^\d{2,3}\/\d{2,3}$/.test(v) || 'Format: 120/80'
     },
+    buildNursingNoteBody() {
+      const L = []
+      L.push('NURSING ASSESSMENT')
+      L.push('General condition: ' + (this.assessment.generalCondition || '—'))
+      L.push('Consciousness: ' + (this.assessment.consciousness || '—'))
+      if (this.assessment.skinCondition.length) L.push('Skin condition: ' + this.assessment.skinCondition.join(', '))
+      L.push('Respiratory status: ' + (this.assessment.respiratoryStatus || '—'))
+      if (this.assessment.nursingProblems.length) L.push('Nursing problems: ' + this.assessment.nursingProblems.join(', '))
+      L.push('Hygiene: ' + (this.assessment.hygiene || '—'))
+      L.push('Autonomy: ' + (this.assessment.autonomy || '—'))
+      if (this.assessment.additionalObservations) L.push('Additional observations: ' + this.assessment.additionalObservations)
+      L.push('')
+      L.push('VITALS: BP ' + (this.vitals.bp || '—') + ', HR ' + (this.vitals.hr || '—') + ', RR ' + (this.vitals.rr || '—') +
+        ', Temp ' + (this.vitals.temp || '—') + ', SpO2 ' + (this.vitals.spo2 || '—') + ', Pain ' + this.vitals.pain +
+        ', GCS ' + this.glasgowScore + ' (' + this.glasgowLabel + ')')
+      L.push('')
+      L.push('NURSING NOTE')
+      if (this.nursingNote.actions.length) L.push('Actions performed: ' + this.nursingNote.actions.join(', '))
+      L.push('Observation: ' + (this.nursingNote.observation || '—'))
+      L.push('Patient response: ' + (this.nursingNote.response || '—'))
+      if (this.nursingNote.orientation) L.push('Orientation given: ' + this.nursingNote.orientation)
+      return L.join('\n')
+    },
 
     async save() {
       if (!this.$refs.form.validate()) return
@@ -405,13 +428,21 @@ export default {
         // 3. Record the nursing progress note
         await this.$store.dispatch('clinical/addNursingNote', {
           patientId, recordedBy, recordedAt: now,
-          ...this.nursingNote
+          title: 'Nursing Evaluation',
+          body: this.buildNursingNoteBody(),
+          structuredData: {
+            vitals: { ...this.vitals },
+            encounter: { ...this.encounter },
+            assessment: { ...this.assessment },
+            nursingNote: { ...this.nursingNote },
+            patientId, recordedBy, recordedAt: now
+          }
         })
 
         this.$toast.success('Nursing evaluation saved successfully')
         this.$router.push(`/clinical/patients/${patientId}`)
       } catch (e) {
-        this.$toast.error('An error occurred while saving the record')
+        this.$toast.error(e.response?.data?.error || e.message || 'An error occurred while saving the record')
       } finally {
         this.saving = false
       }

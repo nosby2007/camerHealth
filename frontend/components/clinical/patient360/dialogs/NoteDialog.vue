@@ -71,16 +71,24 @@ export default {
     },
     async handleSave(draft) {
       const payload = { ...draft, patientId: this.patientId, authorRole: this.authorRole }
-      if (payload.id) {
-        this.note = await this.$store.dispatch('nursing/updateClinicalNote', payload)
-      } else {
-        this.note = await this.$store.dispatch('nursing/createClinicalNote', payload)
+      try {
+        if (payload.id) {
+          this.note = await this.$store.dispatch('nursing/updateClinicalNote', payload)
+        } else {
+          this.note = await this.$store.dispatch('nursing/createClinicalNote', payload)
+        }
+        this.$emit('saved', this.note)
+      } catch (err) {
+        this.$emit('error', err.response?.data?.error || err.message || 'Unable to save this note.')
       }
-      this.$emit('saved', this.note)
     },
     async handleSign(id) {
-      this.note = await this.$store.dispatch('nursing/signClinicalNote', id)
-      this.$emit('saved', this.note)
+      try {
+        this.note = await this.$store.dispatch('nursing/signClinicalNote', id)
+        this.$emit('saved', this.note)
+      } catch (err) {
+        this.$emit('error', err.response?.data?.error || err.message || 'Unable to sign this note.')
+      }
     }
   }
 }

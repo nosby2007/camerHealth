@@ -56,6 +56,9 @@ model Facility {
   clinicalNotes          ClinicalNote[]
   flowsheetColumns       FlowsheetColumn[]
   monthlyActivityReports MonthlyActivityReport[]
+  tasks                  Task[]
+  careTeamMembers        CareTeamMember[]
+  socialAssessments      SocialAssessment[]
 
   @@index([organizationId])
   @@index([organizationUnitId])
@@ -92,10 +95,15 @@ model StaffProfile {
   imagingCompletions  ImagingOrder[]    @relation("ImagingCompletedBy")
   prescriptions       Medication[]      @relation("MedicationPrescribedBy")
   appointmentsCreated Appointment[]     @relation("AppointmentCreatedBy")
+  appointmentsAsProvider Appointment[]  @relation("AppointmentProvider")
   admissions          Inpatient[]       @relation("InpatientAdmittedBy")
   inpatientsAttending Inpatient[]       @relation("InpatientAttendingDoctor")
   invoicesIssued      Invoice[]         @relation("InvoiceIssuedBy")
   staffAssignments    StaffAssignment[]
+  tasksCreated             Task[]             @relation("TaskCreatedBy")
+  tasksAssigned            Task[]             @relation("TaskAssignedTo")
+  careTeamMembersAdded     CareTeamMember[]   @relation("CareTeamMemberAddedBy")
+  socialAssessmentsFiled   SocialAssessment[] @relation("SocialAssessmentAssessedBy")
 
   @@unique([staffCode, facilityId])
   @@index([facilityId])
@@ -171,6 +179,9 @@ model Patient {
   vitalSigns       VitalSigns[]
   clinicalNotes    ClinicalNote[]
   flowsheetColumns FlowsheetColumn[]
+  tasks              Task[]
+  careTeamMembers    CareTeamMember[]
+  socialAssessments  SocialAssessment[]
 
   @@unique([mrn, facilityId])
   @@index([facilityId])
@@ -334,9 +345,10 @@ model Appointment {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  patient   Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  facility  Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  createdBy StaffProfile @relation("AppointmentCreatedBy", fields: [createdById], references: [id])
+  patient   Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility  Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdBy StaffProfile  @relation("AppointmentCreatedBy", fields: [createdById], references: [id])
+  provider  StaffProfile? @relation("AppointmentProvider", fields: [providerId], references: [id])
 
   @@index([patientId])
   @@index([facilityId])
@@ -1062,20 +1074,33 @@ model VitalSigns {
 
 // noteType: 'nursing' | 'medical' | 'plan_of_care'
 model ClinicalNote {
-  id          String    @id @default(uuid())
-  patientId   String    @map("patient_id")
-  facilityId  String    @map("facility_id")
-  encounterId String?   @map("encounter_id")
-  noteType    String    @map("note_type")
-  title       String?
-  body        String
-  status      String    @default("draft")
-  authorRole  String?   @map("author_role")
-  createdById String    @map("created_by_id")
-  signedAt    DateTime? @map("signed_at")
-  signedById  String?   @map("signed_by_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(uuid())
+  patientId      String    @map("patient_id")
+  facilityId     String    @map("facility_id")
+  encounterId    String?   @map("encounter_id")
+  noteType       String    @map("note_type")
+  title          String?
+  body           String
+  // Full structured form data for note types authored from a rich form
+  // (e.g. noteType 'medical' from the Medical Encounter page) — `body` stays
+  // a human-readable plain-text summary for list previews and notes with no
+  // structured form behind them; this carries everything needed to re-render
+  // an exact, formatted, printable copy of the original consultation note.
+  structuredData Json?     @map("structured_data")
+  status         String    @default("draft")
+  authorRole     String?   @map("author_role")
+  createdById    String    @map("created_by_id")
+  signedAt       DateTime? @map("signed_at")
+  signedById     String?   @map("signed_by_id")
+  sharedWithCareTeam Boolean  @default(false) @map("shared_with_care_team")
+  sharedAt           DateTime? @map("shared_at")
+  sharedById         String?   @map("shared_by_id")
+  // Addenda filed after a note is signed — a signed note's own body/title
+  // stay immutable (see the 409 in PATCH /clinical-notes/:id), but a
+  // clinician can still attach a dated, attributed amendment.
+  amendments     Json?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   patient  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
@@ -1321,4 +1346,90 @@ model MobileMoneyRequest {
   @@index([facilityId])
   @@index([externalReferenceId])
   @@map("mobile_money_requests")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Care coordination — Task (work list), CareTeamMember and SocialAssessment
+// were previously local-only Vuex state (never persisted server-side, so a
+// task or care-team entry only ever existed in the browser that created it).
+// These give them a real, shared, facility-scoped source of truth.
+// ═══════════════════════════════════════════════════════════════════════════
+model Task {
+  id             String    @id @default(uuid())
+  patientId      String    @map("patient_id")
+  facilityId     String    @map("facility_id")
+  relatedType    String?   @map("related_type")
+  relatedId      String?   @map("related_id")
+  title          String
+  assignedToRole String    @map("assigned_to_role")
+  // A task can also be delegated to one specific staff member rather than
+  // "whoever is on the role" — e.g. the Nurse Command Center's per-nurse
+  // task list, distinct from the department-wide worklist assignment.
+  assignedToId   String?   @map("assigned_to_id")
+  priority       String    @default("Routine")
+  status         String    @default("pending")
+  dueAt          DateTime? @map("due_at")
+  frequency      String?
+  actionReason   String?   @map("action_reason")
+  history        Json?
+  createdById    String    @map("created_by_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedById    String?   @map("updated_by_id")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  patient    Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility   Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdBy  StaffProfile  @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  assignedTo StaffProfile? @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@index([assignedToRole])
+  @@index([status])
+  @@map("tasks")
+}
+
+model CareTeamMember {
+  id             String    @id @default(uuid())
+  patientId      String    @map("patient_id")
+  facilityId     String    @map("facility_id")
+  name           String
+  role           String
+  service        String?
+  contact        String?
+  responsibility String?
+  status         String    @default("Active")
+  note           String?
+  addedById      String    @map("added_by_id")
+  addedAt        DateTime  @default(now()) @map("added_at")
+  removedAt      DateTime? @map("removed_at")
+
+  patient  Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  addedBy  StaffProfile @relation("CareTeamMemberAddedBy", fields: [addedById], references: [id])
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@map("care_team_members")
+}
+
+model SocialAssessment {
+  id           String    @id @default(uuid())
+  patientId    String    @map("patient_id")
+  facilityId   String    @map("facility_id")
+  domain       String
+  finding      String?
+  intervention String?
+  status       String    @default("Open")
+  followUpAt   DateTime? @map("follow_up_at")
+  assessedById String    @map("assessed_by_id")
+  assessedAt   DateTime  @default(now()) @map("assessed_at")
+
+  patient    Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility   Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  assessedBy StaffProfile @relation("SocialAssessmentAssessedBy", fields: [assessedById], references: [id])
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@map("social_assessments")
 }

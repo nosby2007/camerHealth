@@ -37,6 +37,10 @@ const leadRoutes = require('./routes/leads')
 const woundCareRoutes = require('./routes/wound-care')
 const carePlanRoutes = require('./routes/care-plans')
 const mobileMoneyRoutes = require('./routes/mobile-money')
+const taskRoutes = require('./routes/tasks')
+const careTeamRoutes = require('./routes/care-team')
+const dischargeRoutes = require('./routes/discharge')
+const educationRoutes = require('./routes/education')
 
 const app = express()
 
@@ -261,6 +265,10 @@ app.use('/api/leads', leadRoutes)
 app.use('/api', woundCareRoutes) // exposes /api/patients/:patientId/wounds and /api/wounds/*
 app.use('/api', carePlanRoutes) // exposes /api/care-plans/* and /api/care-plan-*
 app.use('/api/mobile-money', mobileMoneyRoutes)
+app.use('/api/tasks', taskRoutes)
+app.use('/api', careTeamRoutes) // exposes /api/care-team and /api/social-assessments
+app.use('/api', dischargeRoutes) // exposes /api/discharge/*
+app.use('/api', educationRoutes) // exposes /api/education*
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 

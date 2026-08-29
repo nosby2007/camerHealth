@@ -229,33 +229,41 @@ export default {
     }
   },
   methods: {
-    addTitle() {
+    async addTitle() {
       if (this.readOnly) return
-      this.$store.dispatch('education/addEducationTitle', {
-        patientId: this.patientId,
-        encounterId: this.encounterId,
-        admissionId: this.admissionId,
-        title: this.newTitle,
-        category: this.newCategory
-      })
-      this.showAddTitleDialog = false
-      this.newTitle = ''
-      this.$toast?.success('Title added')
+      try {
+        await this.$store.dispatch('education/addEducationTitle', {
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          admissionId: this.admissionId,
+          title: this.newTitle,
+          category: this.newCategory
+        })
+        this.showAddTitleDialog = false
+        this.newTitle = ''
+        this.$toast?.success('Title added')
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || 'Unable to add this title.')
+      }
     },
-    addPoint() {
+    async addPoint() {
       if (this.readOnly) return
-      this.$store.dispatch('education/addEducationPoint', {
-        titleId: this.newPointTitleId,
-        patientId: this.patientId,
-        encounterId: this.encounterId,
-        admissionId: this.admissionId,
-        label: this.newPointLabel,
-        topic: this.newPointTopic
-      })
-      this.showAddPointDialog = false
-      this.newPointLabel = ''
-      this.newPointTopic = ''
-      this.$toast?.success('Point added')
+      try {
+        await this.$store.dispatch('education/addEducationPoint', {
+          titleId: this.newPointTitleId,
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          admissionId: this.admissionId,
+          label: this.newPointLabel,
+          topic: this.newPointTopic
+        })
+        this.showAddPointDialog = false
+        this.newPointLabel = ''
+        this.newPointTopic = ''
+        this.$toast?.success('Point added')
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || 'Unable to add this education point.')
+      }
     },
     documentPoint(point) {
       if (this.readOnly) return
@@ -264,30 +272,38 @@ export default {
     },
     async fileEducation(data) {
       if (this.readOnly) return
-      const doc = await this.$store.dispatch('education/documentEducationPoint', {
-        pointId: this.selectedPointId,
-        titleId: this.selectedTitleId,
-        patientId: this.patientId,
-        encounterId: this.encounterId,
-        ...data
-      })
-      if (data.resolveAfterFile) {
-        await this.$store.dispatch('education/fileAndResolveEducationDocumentation', {
-          documentationId: doc.id,
+      try {
+        const doc = await this.$store.dispatch('education/documentEducationPoint', {
           pointId: this.selectedPointId,
+          titleId: this.selectedTitleId,
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          ...data
+        })
+        if (data.resolveAfterFile) {
+          await this.$store.dispatch('education/fileAndResolveEducationDocumentation', {
+            documentationId: doc.id,
+            pointId: this.selectedPointId,
+            patientId: this.patientId
+          })
+        }
+        this.showDocumentDialog = false
+        this.$toast?.success('Education documented')
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || 'Unable to document this education point.')
+      }
+    },
+    async removeMaterialFromAvs(assignmentId) {
+      if (this.readOnly) return
+      try {
+        await this.$store.dispatch('education/removeMaterialFromAvs', {
+          assignmentId,
           patientId: this.patientId
         })
+        this.$toast?.success('Material removed')
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || 'Unable to remove this material.')
       }
-      this.showDocumentDialog = false
-      this.$toast?.success('Education documented')
-    },
-    removeMaterialFromAvs(assignmentId) {
-      if (this.readOnly) return
-      this.$store.dispatch('education/removeMaterialFromAvs', {
-        assignmentId,
-        patientId: this.patientId
-      })
-      this.$toast?.success('Material removed')
     },
     openMaterialDialog() {
       if (!this.readOnly) this.showAddMaterialDialog = true
@@ -313,6 +329,8 @@ export default {
         this.materialForm = { title: '', language: 'French', format: 'Verbal + printed', instructions: '', addToAvs: true }
         this.showAddMaterialDialog = false
         this.$toast?.success('Education material added')
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || 'Unable to add this material.')
       } finally {
         this.savingMaterial = false
       }

@@ -1,4 +1,5 @@
 import { makeId, withBase } from '~/util/nursing-workflow.cjs'
+import { educationApi } from '~/services/api'
 
 const scoped = (arr, rootState, rootGetters) => {
   if (!arr) return []
@@ -84,9 +85,19 @@ export const mutations = {
   ADD_COMMENT(state, comment) {
     state.educationComments.push(comment)
   },
+  SET_PATIENT_DATA(state, { patientId, titles, points, documentations, materials, assignments, comments }) {
+    const keep = (arr, list) => arr.filter(item => item.patientId !== patientId).concat(list)
+    state.educationTitles = keep(state.educationTitles, titles)
+    state.educationPoints = keep(state.educationPoints, points)
+    state.learnerDocumentations = keep(state.learnerDocumentations, documentations)
+    state.patientMaterials = keep(state.patientMaterials, materials)
+    state.materialAssignments = keep(state.materialAssignments, assignments)
+    state.educationComments = keep(state.educationComments, comments)
+  },
   ADD_AUDIT(state, log) {
     state.auditLogs.push(log)
   },
+  SET_ERROR(state, error) { state.error = error },
   SET_SELECTED_TITLE(state, titleId) {
     state.selectedTitleId = titleId
   },
@@ -102,16 +113,33 @@ export const mutations = {
 }
 
 export const actions = {
-  initializeEducationForPatient({ commit, dispatch, rootState }, { patientId, encounterId, admissionId }) {
-    dispatch('syncEducationFromClinicalData', { patientId, encounterId, admissionId })
+  async fetchEducationOverview({ commit }, patientId) {
+    try {
+      const { data } = await educationApi.overview(patientId)
+      commit('SET_PATIENT_DATA', {
+        patientId,
+        titles: data.titles || [],
+        points: data.points || [],
+        documentations: data.documentations || [],
+        materials: data.materials || [],
+        assignments: data.assignments || [],
+        comments: data.comments || []
+      })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
   },
 
-  syncEducationFromClinicalData({ state, commit, dispatch, rootState }, { patientId, encounterId, admissionId }) {
-    const clinical = rootState.clinical || {}
-    const patient = clinical.patients?.find(p => p.id === patientId) || {}
+  async initializeEducationForPatient({ dispatch }, { patientId, encounterId, admissionId }) {
+    await dispatch('fetchEducationOverview', patientId)
+    await dispatch('syncEducationFromClinicalData', { patientId, encounterId, admissionId })
+  },
 
-    // Create default education titles if none exist
-    const existingTitles = state.educationTitles.filter(t => t.patientId === patientId && t.encounterId === encounterId)
+  async syncEducationFromClinicalData({ state, dispatch }, { patientId, encounterId, admissionId }) {
+    // Create default education titles if none exist for this patient yet
+    // (checked against what fetchEducationOverview just loaded from the
+    // server, so a returning session doesn't reseed duplicates).
+    const existingTitles = state.educationTitles.filter(t => t.patientId === patientId)
     if (existingTitles.length === 0) {
       const defaultTitles = [
         { title: 'General Patient Education', category: 'general' },
@@ -124,205 +152,211 @@ export const actions = {
         { title: 'Nutrition', category: 'nutrition' }
       ]
 
-      defaultTitles.forEach((t, idx) => {
-        const title = withBase(rootState, {
-          patientId,
-          encounterId,
-          admissionId,
-          ...t,
-          status: 'active',
-          source: 'system',
-          sortOrder: idx
-        }, 'EDT')
-        commit('ADD_TITLE', title)
-
-        ;(DEFAULT_EDUCATION_POINTS[t.category] || []).forEach((point, pointIdx) => {
-          commit('ADD_POINT', withBase(rootState, {
+      for (const t of defaultTitles) {
+        const title = await dispatch('addEducationTitle', { patientId, encounterId, admissionId, ...t, source: 'system' })
+        for (const point of (DEFAULT_EDUCATION_POINTS[t.category] || [])) {
+          await dispatch('addEducationPoint', {
             titleId: title.id,
             patientId,
             encounterId,
             admissionId,
             ...point,
-            status: 'active',
             requiredLearners: ['Patient', 'Family/Caregiver'],
-            sortOrder: pointIdx,
             systemGenerated: true
-          }, 'EDP'))
-        })
-      })
+          })
+        }
+      }
     }
   },
 
-  addEducationTitle({ commit, dispatch, rootState }, { patientId, encounterId, admissionId, title, category }) {
-    const record = withBase(rootState, {
-      patientId,
-      encounterId,
-      admissionId,
-      title,
-      category,
-      status: 'active',
-      source: 'manual',
-      sortOrder: 0
+  async addEducationTitle({ commit, dispatch, rootState }, { patientId, encounterId, admissionId, title, category, source }) {
+    const local = withBase(rootState, {
+      patientId, encounterId, admissionId, title, category,
+      status: 'active', source: source || 'manual', sortOrder: 0
     }, 'EDT')
-    commit('ADD_TITLE', record)
-    dispatch('audit', { action: 'EDUCATION_TITLE_ADDED', targetId: record.id, patientId })
-    return record
+    try {
+      const { data } = await educationApi.addTitle({ patientId, encounterId, admissionId, title, category, source: source || 'manual' })
+      Object.assign(local, data.title)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_TITLE', local)
+    dispatch('audit', { action: 'EDUCATION_TITLE_ADDED', targetId: local.id, patientId })
+    return local
   },
 
-  addEducationPoint({ commit, dispatch, rootState }, { titleId, patientId, encounterId, admissionId, label, description, topic, materialIds, linkedProblemIds, linkedOrderIds, linkedMedicationIds }) {
-    const record = withBase(rootState, {
-      titleId,
-      patientId,
-      encounterId,
-      admissionId,
-      label,
-      description,
-      topic,
-      status: 'active',
-      requiredLearners: ['Patient'],
-      materialIds,
-      linkedProblemIds,
-      linkedOrderIds,
-      linkedMedicationIds,
-      sortOrder: 0,
-      systemGenerated: false
+  async addEducationPoint({ commit, dispatch, rootState }, { titleId, patientId, encounterId, admissionId, label, description, topic, materialIds, linkedProblemIds, linkedOrderIds, linkedMedicationIds, requiredLearners, systemGenerated }) {
+    const local = withBase(rootState, {
+      titleId, patientId, encounterId, admissionId, label, description, topic,
+      status: 'active', requiredLearners: requiredLearners || ['Patient'],
+      materialIds, linkedProblemIds, linkedOrderIds, linkedMedicationIds,
+      sortOrder: 0, systemGenerated: systemGenerated || false
     }, 'EDP')
-    commit('ADD_POINT', record)
-    dispatch('audit', { action: 'EDUCATION_POINT_ADDED', targetId: record.id, patientId })
-    return record
+    try {
+      const { data } = await educationApi.addPoint({ titleId, patientId, encounterId, admissionId, label, description, topic, materialIds, linkedProblemIds, linkedOrderIds, linkedMedicationIds, requiredLearners: requiredLearners || ['Patient'], systemGenerated: systemGenerated || false })
+      Object.assign(local, data.point)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_POINT', local)
+    dispatch('audit', { action: 'EDUCATION_POINT_ADDED', targetId: local.id, patientId })
+    return local
   },
 
-  documentEducationPoint({ commit, dispatch, rootState }, { pointId, titleId, patientId, encounterId, learners, readiness, methods, responses, comment }) {
-    const doc = withBase(rootState, {
-      pointId,
-      titleId,
-      patientId,
-      encounterId,
-      learners,
-      readiness,
-      methods,
-      responses,
-      comment,
-      teachingCompleted: true,
-      familyEducation: learners?.includes('Family') || learners?.includes('Family/Caregiver') || learners?.includes('Caregiver') || false,
-      nextReviewAt: null,
+  async documentEducationPoint({ commit, dispatch, rootState }, { pointId, titleId, patientId, encounterId, learners, readiness, methods, responses, comment }) {
+    const familyEducation = learners?.includes('Family') || learners?.includes('Family/Caregiver') || learners?.includes('Caregiver') || false
+    const local = withBase(rootState, {
+      pointId, titleId, patientId, encounterId, learners, readiness, methods, responses, comment,
+      teachingCompleted: true, familyEducation, nextReviewAt: null,
       taughtBy: rootState.auth?.fullName || rootState.auth?.staffId,
       taughtByRole: rootState.auth?.role,
-      taughtAt: new Date().toISOString(),
-      filedAt: null,
-      resolvedAt: null,
-      status: 'documented'
+      taughtAt: new Date().toISOString(), filedAt: null, resolvedAt: null, status: 'documented'
     }, 'LRN')
-    commit('ADD_DOCUMENTATION', doc)
+    try {
+      const { data } = await educationApi.addDocumentation({ pointId, titleId, patientId, learners, readiness, methods, responses, comment, familyEducation })
+      Object.assign(local, data.documentation)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_DOCUMENTATION', local)
 
-    // Update point status based on response
     const point = rootState.education.educationPoints.find(p => p.id === pointId)
     if (point) {
       let newStatus = 'active'
-      if (responses?.includes('Needs Reinforcement')) {
-        newStatus = 'needs_reinforcement'
-      } else if (responses?.includes('Verbalizes Understanding') || responses?.includes('Demonstrated Understanding')) {
-        newStatus = 'completed'
-      }
+      if (responses?.includes('Needs Reinforcement')) newStatus = 'needs_reinforcement'
+      else if (responses?.includes('Verbalizes Understanding') || responses?.includes('Demonstrated Understanding')) newStatus = 'completed'
       commit('UPDATE_POINT', { ...point, status: newStatus })
     }
 
-    dispatch('audit', { action: 'EDUCATION_DOCUMENTED', targetId: doc.id, patientId })
-    return doc
+    dispatch('audit', { action: 'EDUCATION_DOCUMENTED', targetId: local.id, patientId })
+    return local
   },
 
-  fileEducationDocumentation({ state, commit, dispatch, rootState }, { documentationId, pointId, patientId }) {
+  async fileEducationDocumentation({ state, commit, dispatch }, { documentationId, pointId, patientId }) {
     const doc = state.learnerDocumentations.find(d => d.id === documentationId)
-    if (doc) {
-      const filed = { ...doc, filedAt: new Date().toISOString(), status: 'filed' }
-      commit('UPDATE_DOCUMENTATION', filed)
-      dispatch('audit', { action: 'EDUCATION_FILED', targetId: documentationId, patientId })
+    if (!doc) return
+    const filed = { ...doc, filedAt: new Date().toISOString(), status: 'filed' }
+    try {
+      await educationApi.updateDocumentation(documentationId, { filed: true })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
     }
+    commit('UPDATE_DOCUMENTATION', filed)
+    dispatch('audit', { action: 'EDUCATION_FILED', targetId: documentationId, patientId })
   },
 
-  fileAndResolveEducationDocumentation({ state, commit, dispatch, rootState }, { documentationId, pointId, patientId }) {
+  async fileAndResolveEducationDocumentation({ state, commit, dispatch }, { documentationId, pointId, patientId }) {
     const doc = state.learnerDocumentations.find(d => d.id === documentationId)
-    if (doc) {
-      const resolved = { ...doc, filedAt: new Date().toISOString(), resolvedAt: new Date().toISOString(), status: 'resolved' }
-      commit('UPDATE_DOCUMENTATION', resolved)
-
-      const point = state.educationPoints.find(p => p.id === pointId)
-      if (point) {
-        commit('UPDATE_POINT', { ...point, status: 'completed' })
-      }
-
-      dispatch('audit', { action: 'EDUCATION_RESOLVED', targetId: documentationId, patientId })
+    if (!doc) return
+    const resolved = { ...doc, filedAt: new Date().toISOString(), resolvedAt: new Date().toISOString(), status: 'resolved' }
+    try {
+      await educationApi.updateDocumentation(documentationId, { resolved: true })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
     }
-  },
-
-  resolveEducationPoint({ state, commit, dispatch, rootState }, { pointId, patientId, reason }) {
+    commit('UPDATE_DOCUMENTATION', resolved)
     const point = state.educationPoints.find(p => p.id === pointId)
-    if (point) {
-      commit('UPDATE_POINT', { ...point, status: 'resolved' })
-      dispatch('audit', { action: 'EDUCATION_POINT_RESOLVED', targetId: pointId, patientId, details: reason })
-    }
+    if (point) commit('UPDATE_POINT', { ...point, status: 'completed' })
+    dispatch('audit', { action: 'EDUCATION_RESOLVED', targetId: documentationId, patientId })
   },
 
-  markEducationPointNotApplicable({ state, commit, dispatch, rootState }, { pointId, patientId, reason }) {
+  async resolveEducationPoint({ state, commit, dispatch }, { pointId, patientId, reason }) {
     const point = state.educationPoints.find(p => p.id === pointId)
-    if (point) {
-      commit('UPDATE_POINT', { ...point, status: 'not_applicable' })
-      dispatch('audit', { action: 'EDUCATION_POINT_NOT_APPLICABLE', targetId: pointId, patientId, details: reason })
+    if (!point) return
+    try {
+      await educationApi.updatePoint(pointId, { status: 'resolved' })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
     }
+    commit('UPDATE_POINT', { ...point, status: 'resolved' })
+    dispatch('audit', { action: 'EDUCATION_POINT_RESOLVED', targetId: pointId, patientId, details: reason })
   },
 
-  addMaterialToAvs({ commit, dispatch, rootState }, { patientId, encounterId, materialId }) {
-    const assignment = withBase(rootState, {
-      patientId,
-      encounterId,
-      materialId,
-      addedToAvs: true,
+  async markEducationPointNotApplicable({ state, commit, dispatch }, { pointId, patientId, reason }) {
+    const point = state.educationPoints.find(p => p.id === pointId)
+    if (!point) return
+    try {
+      await educationApi.updatePoint(pointId, { status: 'not_applicable' })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('UPDATE_POINT', { ...point, status: 'not_applicable' })
+    dispatch('audit', { action: 'EDUCATION_POINT_NOT_APPLICABLE', targetId: pointId, patientId, details: reason })
+  },
+
+  async addMaterialToAvs({ commit, dispatch, rootState }, { patientId, encounterId, materialId }) {
+    const local = withBase(rootState, {
+      patientId, encounterId, materialId, addedToAvs: true,
       addedBy: rootState.auth?.fullName || rootState.auth?.staffId,
-      addedAt: new Date().toISOString(),
-      removedAt: null,
-      removedBy: null
+      addedAt: new Date().toISOString(), removedAt: null, removedBy: null
     }, 'ASN')
-    commit('ADD_MATERIAL_ASSIGNMENT', assignment)
-    dispatch('audit', { action: 'MATERIAL_ADDED_TO_AVS', targetId: assignment.id, patientId })
-    return assignment
+    try {
+      const { data } = await educationApi.addAssignment({ patientId, materialId, addedToAvs: true })
+      Object.assign(local, data.assignment)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_MATERIAL_ASSIGNMENT', local)
+    dispatch('audit', { action: 'MATERIAL_ADDED_TO_AVS', targetId: local.id, patientId })
+    return local
   },
 
-  createPatientMaterial({ commit, dispatch, rootState }, { patientId, title, language, format, instructions }) {
-    const material = withBase(rootState, {
-      patientId,
-      title,
-      language: language || 'French',
-      format: format || 'Verbal + printed',
-      instructions: instructions || '',
-      status: 'active',
+  async createPatientMaterial({ commit, dispatch, rootState }, { patientId, title, language, format, instructions }) {
+    const local = withBase(rootState, {
+      patientId, title, language: language || 'French', format: format || 'Verbal + printed',
+      instructions: instructions || '', status: 'active',
       createdBy: rootState.auth?.fullName || rootState.auth?.staffId
     }, 'MAT')
-    commit('ADD_MATERIAL', material)
-    dispatch('audit', { action: 'EDUCATION_MATERIAL_CREATED', targetId: material.id, patientId })
-    return material
-  },
-
-  removeMaterialFromAvs({ state, commit, dispatch, rootState }, { assignmentId, patientId }) {
-    const assignment = state.materialAssignments.find(a => a.id === assignmentId)
-    if (assignment) {
-      const updated = { ...assignment, removedAt: new Date().toISOString(), removedBy: rootState.auth?.fullName || rootState.auth?.staffId }
-      commit('UPDATE_MATERIAL_ASSIGNMENT', updated)
-      dispatch('audit', { action: 'MATERIAL_REMOVED_FROM_AVS', targetId: assignmentId, patientId })
+    try {
+      const { data } = await educationApi.addMaterial({ patientId, title, language, format, instructions })
+      Object.assign(local, data.material)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
     }
+    commit('ADD_MATERIAL', local)
+    dispatch('audit', { action: 'EDUCATION_MATERIAL_CREATED', targetId: local.id, patientId })
+    return local
   },
 
-  addEducationComment({ commit, dispatch, rootState }, { pointId, patientId, encounterId, comment }) {
-    const rec = withBase(rootState, {
-      pointId,
-      patientId,
-      encounterId,
-      comment,
+  async removeMaterialFromAvs({ state, commit, dispatch, rootState }, { assignmentId, patientId }) {
+    const assignment = state.materialAssignments.find(a => a.id === assignmentId)
+    if (!assignment) return
+    const updated = { ...assignment, removedAt: new Date().toISOString(), removedBy: rootState.auth?.fullName || rootState.auth?.staffId }
+    try {
+      await educationApi.removeAssignment(assignmentId)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('UPDATE_MATERIAL_ASSIGNMENT', updated)
+    dispatch('audit', { action: 'MATERIAL_REMOVED_FROM_AVS', targetId: assignmentId, patientId })
+  },
+
+  async addEducationComment({ commit, dispatch, rootState }, { pointId, patientId, encounterId, comment }) {
+    const local = withBase(rootState, {
+      pointId, patientId, encounterId, comment,
       commentedBy: rootState.auth?.fullName || rootState.auth?.staffId,
       commentedAt: new Date().toISOString()
     }, 'CMT')
-    commit('ADD_COMMENT', rec)
-    dispatch('audit', { action: 'EDUCATION_COMMENT_ADDED', targetId: rec.id, patientId })
-    return rec
+    try {
+      const { data } = await educationApi.addComment({ pointId, patientId, comment })
+      Object.assign(local, data.comment)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_COMMENT', local)
+    dispatch('audit', { action: 'EDUCATION_COMMENT_ADDED', targetId: local.id, patientId })
+    return local
   },
 
   audit({ commit, rootState }, event) {
