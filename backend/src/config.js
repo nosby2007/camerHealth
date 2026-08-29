@@ -88,12 +88,58 @@ const CORS_ORIGIN =
   config.CORS_ORIGIN ||
   defaultCorsOrigins
 
+// ─── Deployment mode ────────────────────────────────────────────────────────
+// DEPLOYMENT_MODE=cloud (default) — CameroHealth's own managed infrastructure.
+// DEPLOYMENT_MODE=onprem — installed on a hospital's own server; storage and
+// database are local, and CLOUD_PATIENT_SYNC must stay false so no clinical
+// data leaves the hospital network. See docs/onprem/ARCHITECTURE.md.
+const DEPLOYMENT_MODE = config.DEPLOYMENT_MODE === 'onprem' ? 'onprem' : 'cloud'
+const DATA_RESIDENCY = config.DATA_RESIDENCY === 'LOCAL' ? 'LOCAL' : 'CLOUD'
+const CLOUD_PATIENT_SYNC = String(config.CLOUD_PATIENT_SYNC).toLowerCase() === 'true'
+
+// Refuse to start with a self-contradictory deployment configuration rather
+// than silently doing the wrong thing with clinical data.
+if (DEPLOYMENT_MODE === 'onprem' && DATA_RESIDENCY === 'LOCAL' && CLOUD_PATIENT_SYNC) {
+  throw new Error(
+    '[CameroHealth Backend] Invalid configuration: DEPLOYMENT_MODE=onprem with ' +
+    'DATA_RESIDENCY=LOCAL requires CLOUD_PATIENT_SYNC=false. This combination would ' +
+    'send patient data to external infrastructure from what is declared as a ' +
+    'local-only, on-premise install — refusing to start.'
+  )
+}
+if (DEPLOYMENT_MODE === 'onprem' && DATA_RESIDENCY === 'CLOUD') {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[CameroHealth Backend] WARNING: DEPLOYMENT_MODE=onprem but DATA_RESIDENCY=CLOUD. ' +
+    'This is an on-premise install that has NOT declared local data residency — ' +
+    'confirm this is intentional.'
+  )
+}
+
+const STORAGE_PROVIDER = config.STORAGE_PROVIDER === 'minio' ? 'minio' : 'supabase'
+
 // ─── Export ─────────────────────────────────────────────────────────────────
 
 module.exports = {
   PORT: parseInt(config.PORT, 10) || 4000,
 
   NODE_ENV,
+
+  DEPLOYMENT_MODE,
+  DATA_RESIDENCY,
+  CLOUD_PATIENT_SYNC,
+  HOSPITAL_ID: config.HOSPITAL_ID || null,
+  HOSPITAL_NAME: config.HOSPITAL_NAME || null,
+  CAMEROHEALTH_VERSION: config.CAMEROHEALTH_VERSION || '1.0.0',
+
+  STORAGE_PROVIDER,
+  MINIO_ENDPOINT: config.MINIO_ENDPOINT || null,
+  MINIO_ACCESS_KEY: config.MINIO_ACCESS_KEY || null,
+  MINIO_SECRET_KEY: config.MINIO_SECRET_KEY || null,
+  MINIO_BUCKET: config.MINIO_BUCKET || 'camerohealth',
+  MINIO_USE_SSL: String(config.MINIO_USE_SSL).toLowerCase() === 'true',
+
+  TELEMETRY_ENABLED: String(config.TELEMETRY_ENABLED).toLowerCase() === 'true',
 
   DATABASE_URL: config.DATABASE_URL,
   DIRECT_URL: config.DIRECT_URL,

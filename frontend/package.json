@@ -19,6 +19,7 @@
     "@nuxtjs/axios": "^5.9.5",
     "@nuxtjs/pwa": "^3.0.0-beta.20",
     "@nuxtjs/toast": "^3.3.0",
+    "@supabase/supabase-js": "^2.39.0",
     "apexcharts": "3.16.1",
     "aws-amplify": "^2.2.7",
     "aws-amplify-vue": "^1.1.4",
@@ -40,13 +41,12 @@
     "nuxt-precompress": "^0.4.1",
     "qs": "^6.9.3",
     "socket.io-client": "^2.3.0",
-    "vue-apexcharts": "^1.5.2",
+    "vue-apexcharts": "1.6.0",
     "vue-chartjs": "^3.5.0",
     "vue-i18n": "^8.16.0",
     "vue-json-excel": "^0.2.98",
     "vue2-google-maps": "^0.10.7",
-    "vue2-leaflet": "^2.5.2",
-    "@supabase/supabase-js": "^2.39.0"
+    "vue2-leaflet": "^2.5.2"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^5.12.1",
@@ -61,6 +61,14 @@
     "eslint-plugin-nuxt": ">=0.4.2",
     "sass": "^1.26.3",
     "sass-loader": "^10.4.1"
+  },
+  "overrides": {
+    "vue": "2.7.16",
+    "@vue/composition-api": {
+      "peerDependencies": {
+        "vue": "$vue"
+      }
+    }
   },
   "engines": {
     "node": "20.x"

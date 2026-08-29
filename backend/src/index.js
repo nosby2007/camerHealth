@@ -163,11 +163,37 @@ app.get('/', (req, res) => {
   })
 })
 
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
+// Health payload is intentionally minimal: no patient, staff, clinical, or
+// secret data — this is polled by Docker/monitoring and may be reachable
+// without authentication.
+app.get('/api/health', async (req, res) => {
+  const { DEPLOYMENT_MODE, CAMEROHEALTH_VERSION, STORAGE_PROVIDER } = require('./config')
+
+  let database = 'unhealthy'
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    database = 'healthy'
+  } catch (e) {
+    database = 'unhealthy'
+  }
+
+  let storage = 'unhealthy'
+  try {
+    await require('./lib/storage').ensureReady()
+    storage = 'healthy'
+  } catch (e) {
+    storage = 'unhealthy'
+  }
+
+  const overall = database === 'healthy' && storage === 'healthy' ? 'healthy' : 'degraded'
+
+  res.status(overall === 'healthy' ? 200 : 503).json({
+    status: overall,
     service: 'CameroHealth API',
-    version: '1.0.0',
+    version: CAMEROHEALTH_VERSION,
+    deploymentMode: DEPLOYMENT_MODE,
+    database,
+    storage: `${storage} (${STORAGE_PROVIDER})`,
     environment: NODE_ENV,
     timestamp: new Date().toISOString()
   })
@@ -301,34 +327,16 @@ async function main() {
       '[DB] Connected to PostgreSQL (Supabase)'
     )
 
-    // ─── Supabase Storage ──────────────────────────────────────────────────
+    // ─── File Storage (Supabase in cloud mode, MinIO in on-prem mode) ───────
 
-    const {
-      ensureStorageBucket
-    } = require('./lib/supabase')
+    const storageService = require('./lib/storage')
+    const { STORAGE_PROVIDER } = require('./config')
 
-    const storageBucket =
-      process.env.SUPABASE_STORAGE_BUCKET
-
-    if (storageBucket) {
-      try {
-        await ensureStorageBucket(
-          storageBucket
-        )
-
-        console.log(
-          `[SUPABASE] Ensured storage bucket exists: ${storageBucket}`
-        )
-      } catch (bucketErr) {
-        console.warn(
-          '[SUPABASE] Could not ensure storage bucket:',
-          bucketErr.message
-        )
-      }
-    } else {
-      console.warn(
-        '[SUPABASE] SUPABASE_STORAGE_BUCKET is not configured; image upload may fail.'
-      )
+    try {
+      await storageService.ensureReady()
+      console.log(`[STORAGE] Ready (provider: ${STORAGE_PROVIDER})`)
+    } catch (storageErr) {
+      console.warn(`[STORAGE] Could not initialize ${STORAGE_PROVIDER} storage:`, storageErr.message)
     }
 
     // ─── Start HTTP Server ─────────────────────────────────────────────────

@@ -1,0 +1,47 @@
+
+# ─── Production hardening overlay ────────────────────────────────────────────
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Does NOT redefine `build:` — if the versioned images (camerohealth/api:X.Y.Z,
+# camerohealth/web:X.Y.Z) are already present locally (loaded via `docker load`
+# from the offline bundle, or pulled from the registry), Compose uses them
+# as-is and never rebuilds. This is what makes the air-gapped install work
+# with the same compose files as an online one.
+#
+# Adds: bounded log files (an unbounded log on a long-running hospital server
+# fills the disk over months) and conservative resource limits so one runaway
+# container cannot starve the others on modest hospital hardware.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  minio:
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  api:
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  web:
+    logging: *default-logging
+
+  nginx:
+    logging: *default-logging

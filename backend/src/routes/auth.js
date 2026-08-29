@@ -7,6 +7,7 @@ const { signToken } = require('../lib/jwt')
 const { validate } = require('../middleware/validate')
 const { authenticate } = require('../middleware/auth')
 const { resolveEffectiveRole } = require('../lib/orgHierarchy')
+const { DEPLOYMENT_MODE } = require('../config')
 
 const router = Router()
 
@@ -33,6 +34,24 @@ const loginSchema = z.object({
 })
 
 // ─── POST /api/auth/register (Register a new facility with its admin) ──────
+// ─── GET /api/auth/setup-status — has this install been set up yet? ────────
+// Public (no auth) — an on-prem install's frontend calls this before login
+// to decide whether to show the first-run hospital setup wizard or the
+// normal login screen. Meaningless for cloud (always "initialized", since
+// a shared cloud instance has many facilities); on-prem, it's true once the
+// single hospital's facility has been created via /register.
+router.get('/setup-status', async (req, res, next) => {
+  try {
+    const anyFacility = await prisma.facility.findFirst({ select: { id: true } })
+    res.json({
+      deploymentMode: DEPLOYMENT_MODE,
+      initialized: DEPLOYMENT_MODE === 'onprem' ? Boolean(anyFacility) : true
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
 router.post('/register', validate(registerSchema), async (req, res, next) => {
   try {
     const {
@@ -40,6 +59,19 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
       facilityEmail, facilityPhone,
       adminFullName, adminEmail, adminPassword
     } = req.body
+
+    // An on-premise install serves exactly one hospital — once its first-run
+    // setup wizard has created that hospital's facility, block any further
+    // self-registration through this public endpoint. Cloud deployments are
+    // unaffected (DEPLOYMENT_MODE=cloud is the default).
+    if (DEPLOYMENT_MODE === 'onprem') {
+      const anyFacility = await prisma.facility.findFirst({ select: { id: true } })
+      if (anyFacility) {
+        return res.status(409).json({
+          error: 'This installation has already been set up. Contact your administrator to add staff or facilities.'
+        })
+      }
+    }
 
     // Check if facility code or email already exists
     const existingFacility = await prisma.facility.findFirst({

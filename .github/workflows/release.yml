@@ -1,0 +1,78 @@
+name: Release — versioned images
+
+# Triggered by pushing a semver tag: git tag v1.0.0 && git push origin v1.0.0
+# Builds and publishes camerohealth/api and camerohealth/web at that exact
+# version to GitHub Container Registry — the images an on-prem hospital
+# install pulls (or that get bundled into an offline install package, see
+# docs/onprem/OFFLINE-INSTALLATION.md). Never publishes on a bare push to
+# main — only an explicit, deliberate version tag ships a release.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  build-and-publish:
+    name: Build + publish ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - image: api
+            context: backend
+          - image: web
+            context: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          build-args: |
+            API_URL=/api
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/camerohealth-${{ matrix.image }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/camerohealth-${{ matrix.image }}:stable
+
+  release-notes:
+    name: Draft release notes
+    runs-on: ubuntu-latest
+    needs: build-and-publish
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create GitHub Release (draft)
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --draft \
+            --generate-notes \
+            --title "CameroHealth ${GITHUB_REF_NAME}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

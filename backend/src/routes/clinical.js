@@ -249,26 +249,15 @@ router.patch('/imaging-orders/:id', authenticate, authorize(...CLINICAL_WRITE_RO
 
     // ── File upload (only when a file is provided) ────────────────────────────
     if (fileBase64) {
-      const { getSupabaseAdminClient, ensureStorageBucket } = require('../lib/supabase')
-      const bucket = process.env.SUPABASE_STORAGE_BUCKET
-      if (!bucket) {
-        return res.status(500).json({ error: 'SUPABASE_STORAGE_BUCKET is not configured' })
-      }
-      await ensureStorageBucket(bucket)
+      const storageService = require('../lib/storage')
+      await storageService.ensureReady()
 
       const finalName = imageName || order.imageName || 'imaging-file'
       const uploadPath = `${req.params.id}/${Date.now()}_${finalName}`
-      const supabase = getSupabaseAdminClient()
-      const { error: uploadError } = await supabase.storage.from(bucket).upload(uploadPath, Buffer.from(fileBase64, 'base64'), {
-        contentType: imageMimeType || 'application/octet-stream',
-        upsert: false
-      })
-      if (uploadError) throw uploadError
+      await storageService.upload(uploadPath, Buffer.from(fileBase64, 'base64'), imageMimeType || 'application/octet-stream')
+      const signedUrl = await storageService.getSignedUrl(uploadPath, 60 * 60 * 24)
 
-      const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(uploadPath, 60 * 60 * 24)
-      if (signedError) throw signedError
-
-      data.imageUrl = signedData?.signedURL || signedData?.signedUrl || ''
+      data.imageUrl = signedUrl
       data.imagePath = uploadPath
       data.imageName = finalName
       data.imageMimeType = imageMimeType || 'application/octet-stream'
