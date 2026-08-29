@@ -1323,6 +1323,7 @@
               :read-only="isPatientDischarged"
               @new-task="openContextForm('task')"
               @update-status="updateWorkListTask"
+              @reminder="handleWorkListReminder"
             />
 
             <Patient360RoleCoordinationTab
@@ -6709,15 +6710,33 @@ export default {
       if (!this.ensurePatientWritable() || !this.$refs.contextForms) return false
       return this.$refs.contextForms.open(kind, options)
     },
-    async updateWorkListTask({ task, status, reason }) {
+    async updateWorkListTask({ task, status, reason, ...continuity }) {
       if (!task || !task.id || !this.ensurePatientWritable()) return
       const labels = { done: 'completed', hold: 'placed on hold', cancel: 'cancelled' }
-      await this.$store.dispatch('clinical/updateTaskStatus', {
-        id: task.id,
-        status,
-        reason: reason || `Task ${labels[status] || 'updated'} from Patient 360 Work List`
-      })
-      this.toastSuccess(`Task ${labels[status] || 'updated'}.`)
+      try {
+        if (status === 'done') {
+          const result = await this.$store.dispatch('clinical/completeTaskAndScheduleNext', {
+            id: task.id,
+            reason,
+            ...continuity
+          })
+          this.toastSuccess(`Task completed. Next occurrence scheduled ${this.formatShortDate(result.nextTask.dueAt)}.`)
+          return
+        }
+        await this.$store.dispatch('clinical/updateTaskStatus', {
+          id: task.id,
+          status,
+          reason: reason || `Task ${labels[status] || 'updated'} from Patient 360 Work List`,
+          ...continuity
+        })
+        this.toastSuccess(`Task ${labels[status] || 'updated'}.`)
+      } catch (error) {
+        this.toastError(error.message || 'Unable to update the work-list task.')
+      }
+    },
+    handleWorkListReminder(tasks) {
+      if (!Array.isArray(tasks) || !tasks.length) return
+      this.toastError(`${tasks.length} work-list task(s) are due now or approaching.`)
     },
     handleContextFormSaved(message) {
       this.toastSuccess(message)
@@ -7408,14 +7427,10 @@ export default {
           instructions: this.forms.order.instructions,
           orderedBy: recordedBy
         })
-        await this.$store.dispatch('clinical/createTask', {
-          patientId,
-          relatedType: 'lab',
-          relatedId: record.id,
-          title: `Complete lab order: ${this.forms.order.lab.testName}`,
-          assignedToRole: 'LAB',
-          priority: this.forms.order.lab.priority || 'Routine',
-          actionReason: this.forms.order.instructions || 'Created from Patient 360'
+        await this.$store.dispatch('clinical/createTasksFromClinicalOrder', {
+          order: { id: record.id, type: 'lab', description: this.forms.order.lab.testName, assigned_role: 'LAB', priority: this.forms.order.lab.priority || 'Routine', due_at: record.requestedAt || new Date().toISOString(), frequency: 'Once' },
+          patient: { id: patientId, name: this.activePatient.displayName || this.activePatient.name },
+          encounter: { id: this.currentEncounterId }
         })
         this.selectedChartTab = 'Orders'
         this.closeChartDialog('lab')
@@ -7441,14 +7456,10 @@ export default {
           instructions: this.forms.order.instructions,
           orderedBy: recordedBy
         })
-        await this.$store.dispatch('clinical/createTask', {
-          patientId,
-          relatedType: 'imaging',
-          relatedId: record.id,
-          title: `Complete imaging order: ${this.forms.order.imaging.modality}`,
-          assignedToRole: 'IMAGING',
-          priority: this.forms.order.imaging.priority || 'Routine',
-          actionReason: this.forms.order.instructions || 'Created from Patient 360'
+        await this.$store.dispatch('clinical/createTasksFromClinicalOrder', {
+          order: { id: record.id, type: 'imaging', description: this.forms.order.imaging.modality, assigned_role: 'IMAGING', priority: this.forms.order.imaging.priority || 'Routine', due_at: record.requestedAt || new Date().toISOString(), frequency: 'Once' },
+          patient: { id: patientId, name: this.activePatient.displayName || this.activePatient.name },
+          encounter: { id: this.currentEncounterId }
         })
         this.selectedChartTab = 'Orders'
         this.closeChartDialog('imaging')
@@ -7484,14 +7495,10 @@ export default {
           notes: this.forms.order.instructions,
           prescribedBy: recordedBy
         })
-        await this.$store.dispatch('clinical/createTask', {
-          patientId,
-          relatedType: 'medication',
-          relatedId: record.id,
-          title: `Administer ${this.forms.order.medication.medication}`,
-          assignedToRole: 'NURSE',
-          priority: 'routine',
-          actionReason: this.forms.order.instructions || 'Created from Patient 360'
+        await this.$store.dispatch('clinical/createTasksFromClinicalOrder', {
+          order: { id: record.id, type: 'medication', medication: this.forms.order.medication.medication, description: this.forms.order.instructions || `Administer ${this.forms.order.medication.medication}`, assigned_role: 'NURSE', priority: 'Routine', due_at: record.prescribedAt || new Date().toISOString(), frequency: this.forms.order.medication.frequency || 'Once' },
+          patient: { id: patientId, name: this.activePatient.displayName || this.activePatient.name },
+          encounter: { id: this.currentEncounterId }
         })
 
         // Bill the Cash Office at the exact DB price catalog rate — without

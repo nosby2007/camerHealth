@@ -18,6 +18,38 @@ test('generates tasks for medication and wound orders', () => {
   assert.equal(tasks.length >= 2, true);
   assert.ok(tasks.some((task) => task.title === 'Wound follow-up'));
   assert.ok(tasks.some((task) => task.title === 'Clinical acknowledgement'));
+  assert.ok(tasks.every((task) => task.automation_source === 'clinical-order'));
+  assert.ok(tasks.every((task) => task.series_id === 'order-1'));
+});
+
+test('calculates the next occurrence for common clinical frequencies', () => {
+  const anchor = '2026-08-29T08:00:00.000Z';
+  assert.equal(workflowEngine.nextOccurrenceAt('Q4H', anchor), '2026-08-29T12:00:00.000Z');
+  assert.equal(workflowEngine.nextOccurrenceAt('Daily', anchor), '2026-08-30T08:00:00.000Z');
+  assert.equal(workflowEngine.nextOccurrenceAt('Once', anchor), null);
+});
+
+test('requires and links the next task when a work-list task is completed', () => {
+  const next = workflowEngine.nextTaskFromCompletion({
+    id: 'task-1', patientId: 'patient-1', title: 'Wound care', assignedToRole: 'NURSE', frequency: 'Daily', dueAt: '2026-08-29T08:00:00.000Z'
+  }, { performedAt: '2026-08-29T08:15:00.000Z', nextDueAt: '2026-08-30T08:00:00.000Z' });
+  assert.equal(next.parentTaskId, 'task-1');
+  assert.equal(next.seriesId, 'task-1');
+  assert.equal(next.occurrenceNumber, 2);
+  assert.equal(next.dueAt, '2026-08-30T08:00:00.000Z');
+});
+
+test('rejects completion without a future task date for one-time work', () => {
+  assert.throws(() => workflowEngine.nextTaskFromCompletion({
+    id: 'task-2', patientId: 'patient-1', title: 'One-time assessment', frequency: 'Once'
+  }, { performedAt: '2026-08-29T08:15:00.000Z' }), /next due date/i);
+});
+
+test('activates reminders at the configured lead time', () => {
+  const task = { status: 'pending', dueAt: '2026-08-29T10:00:00.000Z', reminderMinutesBefore: 30 };
+  assert.equal(workflowEngine.reminderState(task, '2026-08-29T09:20:00.000Z'), 'scheduled');
+  assert.equal(workflowEngine.reminderState(task, '2026-08-29T09:35:00.000Z'), 'reminder');
+  assert.equal(workflowEngine.reminderState(task, '2026-08-29T10:05:00.000Z'), 'due');
 });
 
 test('enforces role-based permissions', () => {
