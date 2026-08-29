@@ -73,16 +73,17 @@ jobs:
     name: Dependency audit (informational)
     runs-on: ubuntu-latest
     continue-on-error: true # advisory only — does not block merges
-    strategy:
-      matrix:
-        app: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm audit --audit-level=high
-        working-directory: ${{ matrix.app }}
+      - name: Audit backend
+        run: npm audit --audit-level=high
+        working-directory: backend
+      - name: Audit frontend
+        run: npm audit --audit-level=high
+        working-directory: frontend
 
   docker-build:
     name: Docker build (no push — validates Dockerfiles on every PR/push)
