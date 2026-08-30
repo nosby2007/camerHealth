@@ -96,8 +96,6 @@ export default {
   methods: {
     canAccessPatient(patient) {
       if (!patient) return false
-      const profile = this.$store.getters['facility/accessProfileForRole']?.(this.role) || {}
-      if (profile.canOpenChart) return true
       return ['NURSE', 'DOCTOR', 'NP', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'PHARMACY', 'LAB'].includes(this.role)
     },
     patientFromCode(code) {

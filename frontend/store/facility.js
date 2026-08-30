@@ -405,6 +405,7 @@ export const actions = {
 export const getters = {
   getFacility: (state) => state.facility || {},
   getAllStaff:  (state) => state.staff || [],
+  getActiveStaff: (state) => (state.staff || []).filter(s => s.status === 'active'),
   // Resolves a logged-in staff member's department/ward, plus the full
   // Department/Ward records when available, for the clinical command
   // center's header context. staffId here is the human staffCode
