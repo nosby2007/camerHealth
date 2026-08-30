@@ -164,6 +164,7 @@ export const billingApi = {
   // Clearances
   issueClearance:   (data)    => api.post('/billing/clearances', data),
   getClearances:    (pid)     => api.get(`/billing/clearances/${pid}`),
+  getActiveClearances: (department) => api.get('/billing/clearances', { params: department ? { department } : {} }),
   revokeClearance:  (id)      => api.delete(`/billing/clearances/${id}`),
   // Legacy list
   list:   (params)            => api.get('/billing', { params }),

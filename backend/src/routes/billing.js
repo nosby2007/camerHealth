@@ -370,6 +370,26 @@ router.post('/clearances', authenticate, facilityScoped, async (req, res, next) 
   } catch (err) { next(err) }
 })
 
+// ─── GET /api/billing/clearances?department= — Active clearances facility-wide,
+// optionally filtered by department (feeds a doctor's "cleared for consult"
+// queue for their department — distinct from the per-patient lookup below).
+router.get('/clearances', authenticate, facilityScoped, async (req, res, next) => {
+  try {
+    const facilityId = getFacilityId(req)
+    const { department } = req.query
+    const clearances = await prisma.clearance.findMany({
+      where: {
+        facilityId,
+        revoked: false,
+        expiresAt: { gt: new Date() },
+        ...(department ? { department } : {})
+      },
+      include: { patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } }
+    })
+    res.json({ clearances })
+  } catch (err) { next(err) }
+})
+
 // ─── GET /api/billing/clearances/:patientId — Get active clearances ──────────
 router.get('/clearances/:patientId', authenticate, facilityScoped, async (req, res, next) => {
   try {

@@ -22,6 +22,7 @@ export const state = () => ({
   catalog: deepClone(DEFAULT_CATALOG),
   statements: {},      // keyed by patientId
   clearances: {},      // keyed by patientId → array
+  activeClearances: [], // facility-wide, feeds clearedPatientsForDepartment
   loading: false,
   error: null
 })
@@ -54,6 +55,7 @@ export const mutations = {
   SET_CLEARANCES(state, { patientId, clearances }) {
     state.clearances = { ...state.clearances, [patientId]: clearances }
   },
+  SET_ACTIVE_CLEARANCES(state, clearances) { state.activeClearances = clearances },
   SET_LOADING(state, val) { state.loading = val },
   SET_ERROR(state, err) { state.error = err }
 }
@@ -165,6 +167,15 @@ await billingApi.updateCharge(chargeId, { status: 'Waived' })
     }
   },
 
+  async fetchActiveClearances({ commit }, department) {
+    try {
+      const { data } = await billingApi.getActiveClearances(department)
+      commit('SET_ACTIVE_CLEARANCES', data.clearances || [])
+    } catch (err) {
+      commit('SET_ACTIVE_CLEARANCES', [])
+    }
+  },
+
   async revokeClearance({ dispatch, state }, clearanceId) {
     await billingApi.revokeClearance(clearanceId)
     // Refresh clearances for all patients that have this clearance
@@ -253,5 +264,22 @@ export const getters = {
       new Date(c.expiresAt) > new Date() &&
       (!serviceType || c.serviceType === serviceType)
     ) || null
+  },
+
+  // Patients cleared (paid) for consultation in a given department — feeds
+  // the doctor's command-center consultation queue. dispatch
+  // billing/fetchActiveClearances(department) first to populate this.
+  clearedPatientsForDepartment: state => department => {
+    const list = department
+      ? state.activeClearances.filter(c => c.department === department)
+      : state.activeClearances
+    const seen = new Set()
+    const patients = []
+    for (const c of list) {
+      if (!c.patient || seen.has(c.patient.id)) continue
+      seen.add(c.patient.id)
+      patients.push(c.patient)
+    }
+    return patients
   }
 }
