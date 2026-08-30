@@ -180,7 +180,7 @@ export default {
       if (!this.photoBlob) return
       this.savingPhoto = true
       try {
-        const patient = this.patientFromCode(this.patientId) || this.patientFromCode(this.manualCode) || this.$store.getters['clinical/getPatientById']?.(this.patientId)
+        const patient = this.patientFromCode(this.patientId) || this.patientFromCode(this.manualCode) || this.$store.getters['clinical/getPatient']?.(this.patientId)
         if (!patient || !this.canAccessPatient(patient)) {
           this.$emit('toast', 'Unauthorized to save wound photo.')
           return
