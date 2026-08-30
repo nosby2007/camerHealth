@@ -226,7 +226,15 @@ export default {
         this.$store.dispatch('clinical/fetchLabOrders'),
         this.$store.dispatch('clinical/fetchImagingOrders'),
         this.$store.dispatch('clinical/fetchTasks'),
-        this.$store.dispatch('billing/fetchAllStatements')
+        this.$store.dispatch('billing/fetchAllStatements'),
+        // auth.department/service now come straight from login/session
+        // refresh (see store/auth.js) — this just resolves the full
+        // Department/Ward records for display, and the department-wide
+        // clearance queue below. Deliberately NOT facility/fetchStaff here:
+        // GET /api/staff is ADMIN-only and every other role would 403,
+        // breaking this Promise.all for the majority of users landing here.
+        this.$store.dispatch('facility/fetchDepartments'),
+        this.$store.dispatch('billing/fetchActiveClearances')
       ])
     } catch (error) {
       this.$toast.error(error.response?.data?.error || 'Unable to load the command center data.')

@@ -405,6 +405,25 @@ export const actions = {
 export const getters = {
   getFacility: (state) => state.facility || {},
   getAllStaff:  (state) => state.staff || [],
+  // Resolves a logged-in staff member's department/ward, plus the full
+  // Department/Ward records when available, for the clinical command
+  // center's header context. staffId here is the human staffCode
+  // (e.g. "PH01-ADM001") — what auth.staffId actually holds, not the DB id.
+  getStaffContext: (state) => (staffId) => {
+    if (!staffId) return null
+    const staff = (state.staff || []).find(s => s.staffCode === staffId || s.id === staffId)
+    if (!staff) return null
+    const departmentRecord = (state.departments || []).find(d => d.name === staff.department) || null
+    const serviceRecord = departmentRecord
+      ? (departmentRecord.wards || []).find(w => w.name === staff.service) || null
+      : null
+    return {
+      department: staff.department || null,
+      service: staff.service || null,
+      departmentRecord,
+      serviceRecord
+    }
+  },
   getAuditLog: (state) => state.auditLog.length ? state.auditLog : (state.staffLoginHistory || []),
   getClinicalDepartments: (state, getters) => getters.getHospitalModel.departments,
   getSpecialties: (state, getters) => {
