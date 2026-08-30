@@ -2,9 +2,10 @@
 const { Router } = require('express')
 const { z } = require('zod')
 const prisma = require('../lib/prisma')
-const { authenticate } = require('../middleware/auth')
+const { authenticate, authorize } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { requirePatientForFacility } = require('../lib/tenant')
+const { CLINICAL_WRITE_ROLES } = require('../lib/clinicalRoles')
 
 const router = Router()
 
@@ -71,7 +72,7 @@ router.get('/patients/:patientId/wounds', authenticate, async (req, res, next) =
 })
 
 // ─── POST /wounds — create a wound ───────────────────────────────────────────
-router.post('/wounds', authenticate, validate(woundSchema), async (req, res, next) => {
+router.post('/wounds', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(woundSchema), async (req, res, next) => {
   try {
     await requirePatientForFacility(req.body.patientId, req.user.facilityId, { select: { id: true } })
     const wound = await prisma.wound.create({
@@ -91,7 +92,7 @@ router.post('/wounds', authenticate, validate(woundSchema), async (req, res, nex
 })
 
 // ─── PATCH /wounds/:id ────────────────────────────────────────────────────────
-router.patch('/wounds/:id', authenticate, validate(woundUpdateSchema), async (req, res, next) => {
+router.patch('/wounds/:id', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(woundUpdateSchema), async (req, res, next) => {
   try {
     const existing = await prisma.wound.findFirst({ where: { id: req.params.id, facilityId: req.user.facilityId } })
     if (!existing) return res.status(404).json({ error: 'Wound not found' })
@@ -111,7 +112,7 @@ router.patch('/wounds/:id', authenticate, validate(woundUpdateSchema), async (re
 })
 
 // ─── POST /wounds/:id/assessments — server computes area/volume/trend ───────
-router.post('/wounds/:id/assessments', authenticate, validate(assessmentSchema), async (req, res, next) => {
+router.post('/wounds/:id/assessments', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(assessmentSchema), async (req, res, next) => {
   try {
     const wound = await prisma.wound.findFirst({ where: { id: req.params.id, facilityId: req.user.facilityId } })
     if (!wound) return res.status(404).json({ error: 'Wound not found' })
@@ -151,7 +152,7 @@ router.post('/wounds/:id/assessments', authenticate, validate(assessmentSchema),
 })
 
 // ─── POST /wounds/:id/photos — base64 upload to Supabase Storage ────────────
-router.post('/wounds/:id/photos', authenticate, validate(photoSchema), async (req, res, next) => {
+router.post('/wounds/:id/photos', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(photoSchema), async (req, res, next) => {
   try {
     const wound = await prisma.wound.findFirst({ where: { id: req.params.id, facilityId: req.user.facilityId } })
     if (!wound) return res.status(404).json({ error: 'Wound not found' })

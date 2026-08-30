@@ -140,7 +140,7 @@ export default {
 				{ icon: 'mdi-view-dashboard', titleKey: 'EMR Command Center', to: '/clinical/dashboard', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'BILLING', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
 				{ icon: 'mdi-monitor-dashboard', titleKey: 'EMR Command Center', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
 				{ icon: 'mdi-medical-bag', titleKey: 'Doctor Worklist', to: '/clinical/doctor', roles: ['ADMIN', 'DOCTOR', 'NP'] },
-				{ icon: 'mdi-account-heart', titleKey: 'Nurse Command Center', to: '/clinical/nursing', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },
+				{ icon: 'mdi-account-heart', titleKey: 'Nurse Command Center', to: '/clinical/nursing', roles: ['ADMIN', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },
 				{ icon: 'mdi-account-group', titleKey: 'Patient Listing', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS', 'FRONT_DESK'] },
 				{ icon: 'mdi-account-plus', titleKey: 'New Patient', to: '/clinical/patients/new', roles: ['ADMIN', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },
 				{ icon: 'mdi-clipboard-list', titleKey: 'Outpatient', to: '/clinical/visits', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },

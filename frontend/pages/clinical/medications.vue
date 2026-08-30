@@ -218,9 +218,12 @@
               outlined tile dense class="rounded-0 mb-4" placeholder="Search patient..." :rules="[v => !!v || 'Required']" :disabled="!!editingId"></v-autocomplete>
 
             <label class="form-label">Medication / Drug Name <span class="error--text">*</span></label>
-            <v-combobox v-model="form.medication" :items="drugSuggestions" item-text="name" item-value="name"
-              outlined tile dense class="rounded-0 mb-4"
-              placeholder="Choose or type drug name..." :rules="[v => !!v || 'Required']"></v-combobox>
+            <v-autocomplete v-model="form.medication" :items="drugSuggestions" item-text="name" item-value="name"
+              outlined tile dense class="rounded-0 mb-4" :disabled="!drugSuggestions.length"
+              :placeholder="drugSuggestions.length ? 'Select from the official price catalog...' : 'No priced drugs in this facility\'s catalog yet'"
+              :rules="[v => !!v || 'Required', () => !!selectedDrugCatalogItem || 'Must be selected from the official price catalog']"
+              persistent-hint :hint="drugSuggestions.length ? '' : 'An Admin must add drugs to the price catalog (Admin → Price Catalog) before they can be prescribed.'"
+            ></v-autocomplete>
             <div v-if="selectedDrugPrice" class="text-caption mb-4" style="color:#0B3D2E; font-weight:800">
               <v-icon x-small color="#0B3D2E" class="mr-1">mdi-cash-text</v-icon>
               Official price per unit: {{ fmtMoney(selectedDrugPrice) }} XAF — billed at the Cash Office at this exact rate.
@@ -265,7 +268,7 @@
         </div>
         <div class="pa-4 d-flex justify-end b-top" style="gap:8px">
           <v-btn text tile class="font-weight-black text-caption" @click="rxDialog = false">CANCEL</v-btn>
-          <v-btn color="#003366" dark tile depressed :disabled="!formValid || !form.patientId || !form.medication"
+          <v-btn color="#003366" dark tile depressed :disabled="!formValid || !form.patientId || !form.medication || (!editingId && !selectedDrugCatalogItem)"
             @click="saveRx" class="font-weight-black text-caption px-6">
             <v-icon left small>mdi-check-decagram</v-icon> {{ editingId ? 'SAVE CHANGES' : 'ISSUE PRESCRIPTION' }}
           </v-btn>

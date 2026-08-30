@@ -12,6 +12,46 @@ const router = Router()
 
 const STAGES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_DONE', 'PROPOSAL_SENT', 'NEGOTIATION', 'SIGNED', 'LOST']
 
+// Lead.createdById is a required FK to StaffProfile — fine for leads entered
+// by Super Admin/Sales, but a public visitor submitting the contact form has
+// no staff account. Attribute those leads to one fixed, login-disabled
+// system account instead of loosening the schema. Reuses the same internal
+// placeholder facility platform.js already created for vendor team members.
+const VENDOR_HQ_CODE = 'CAMEROHEALTH-HQ'
+const WEBSITE_SYSTEM_STAFF_CODE = `${VENDOR_HQ_CODE}-WEB001`
+
+async function ensureWebsiteSystemStaff() {
+  const existingStaff = await prisma.staffProfile.findFirst({ where: { staffCode: WEBSITE_SYSTEM_STAFF_CODE } })
+  if (existingStaff) return existingStaff
+
+  let hq = await prisma.facility.findUnique({ where: { code: VENDOR_HQ_CODE } })
+  if (!hq) {
+    hq = await prisma.facility.create({
+      data: {
+        code: VENDOR_HQ_CODE,
+        name: 'CameroHealth (Internal)',
+        region: 'N/A',
+        city: 'N/A',
+        email: 'ops@camerohealth.cm',
+        status: 'active'
+      }
+    })
+  }
+
+  // No passwordHash — this account can never authenticate, it exists purely
+  // as an attribution record for leads with no human submitter.
+  return prisma.staffProfile.create({
+    data: {
+      staffCode: WEBSITE_SYSTEM_STAFF_CODE,
+      fullName: 'Website (public form)',
+      email: 'website-system@camerohealth.cm',
+      role: 'SUPPORT',
+      facilityId: hq.id,
+      status: 'inactive'
+    }
+  })
+}
+
 // ─── Schemas ────────────────────────────────────────────────────────────────
 // Every optional field is also .nullable(): Vuetify's clearable v-select
 // (facilityType, source in the New Lead form) emits `null`, not `undefined`,
@@ -63,6 +103,57 @@ const activitySchema = z.object({
 const convertSchema = z.object({
   facilityCode: z.string().min(2).max(20),
   facilityEmail: z.string().email()
+})
+
+// The public marketing site's "request a demo" form — contact.vue. Its
+// fields don't line up 1:1 with the Lead columns (role/size/message have no
+// dedicated column), so the route below folds them into the lead record plus
+// a first activity note rather than dropping them.
+const publicDemoRequestSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  facility: z.string().min(1),
+  city: z.string().min(1),
+  role: z.string().min(1),
+  size: z.string().min(1),
+  message: z.string().min(1),
+  consent: z.literal(true)
+})
+
+// ─── POST /public — the marketing site's "request a demo" form ─────────────
+// No authentication — this is what a visitor on camerohealth.cm submits.
+// Protected by the same global rate limiter as the rest of /api (see
+// backend/src/index.js), not a separate one, consistent with the other
+// public endpoint in this app (POST /api/auth/register).
+router.post('/public', validate(publicDemoRequestSchema), async (req, res, next) => {
+  try {
+    const { name, email, facility, city, role, size, message } = req.body
+    const systemStaff = await ensureWebsiteSystemStaff()
+
+    const lead = await prisma.lead.create({
+      data: {
+        organizationName: facility,
+        contactName: name,
+        contactEmail: email,
+        city,
+        source: 'website_contact_form',
+        createdById: systemStaff.id
+      }
+    })
+    await prisma.leadActivity.create({
+      data: {
+        leadId: lead.id,
+        type: 'note',
+        toStage: 'NEW',
+        body: `Demande de démonstration soumise via le site public.\nFonction: ${role}\nCapacité de l'établissement: ${size}\n\nPriorités:\n${message}`,
+        createdById: systemStaff.id
+      }
+    })
+
+    res.status(201).json({ received: true })
+  } catch (error) {
+    next(error)
+  }
 })
 
 // ─── GET / — list leads, optionally filtered by stage ────────────────────────

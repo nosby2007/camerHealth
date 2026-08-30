@@ -93,16 +93,28 @@ const CLINICAL_PERMITTED = {
   NURSE:   ['/clinical'],
   CNA:     ['/clinical/nursing', '/clinical/patients'],
   MIDWIFE: ['/clinical'],
-  LAB:     ['/clinical', '/clinical/lab', '/clinical/dashboard'],
-  IMAGING: ['/clinical', '/clinical/imaging', '/clinical/dashboard'],
-  PHARMACY: ['/clinical', '/clinical/medications', '/clinical/dashboard'],
   MAJOR_SERVICE: ['/clinical'],
   NURSING_SUPERVISOR: ['/clinical'],
+  // Non-clinical-write roles: an explicit allowlist only, never the bare
+  // '/clinical' prefix — that prefix matches every clinical sub-route
+  // (medications, lab, imaging, wound care...) via startsWith, which used to
+  // let these roles reach prescribing/ordering pages just by typing the URL,
+  // even though the nav never linked to them.
+  LAB:     ['/clinical/lab', '/clinical/dashboard', '/clinical/patients'],
+  IMAGING: ['/clinical/imaging', '/clinical/dashboard', '/clinical/patients'],
+  PHARMACY: ['/clinical/pharmacy', '/clinical/medications', '/clinical/dashboard', '/clinical/patients'],
   BILLING: ['/clinical/billing', '/clinical/catalog', '/clinical/dashboard', '/clinical/insurance'],
-  RECORDS: ['/clinical', '/clinical/patients', '/clinical/dashboard'],
-  FRONT_DESK: ['/clinical', '/clinical/patients', '/clinical/appointments', '/clinical/dashboard'],
-  SOCIAL_WORKER: ['/clinical'],
-  PHYSIOTHERAPIST: ['/clinical', '/clinical/nursing', '/clinical/dashboard']
+  RECORDS: ['/clinical/patients', '/clinical/dashboard', '/clinical/documents', '/clinical/report-center'],
+  FRONT_DESK: ['/clinical/patients', '/clinical/appointments', '/clinical/dashboard'],
+  SOCIAL_WORKER: ['/clinical/patients', '/clinical/dashboard', '/clinical/referrals'],
+  PHYSIOTHERAPIST: ['/clinical/patients', '/clinical/dashboard']
+}
+
+// Sub-paths explicitly OFF-LIMITS even for a role whose CLINICAL_PERMITTED
+// entry would otherwise allow it via a broad '/clinical' prefix match.
+// Checked before CLINICAL_PERMITTED so a denial always wins.
+const CLINICAL_DENIED = {
+  DOCTOR: ['/clinical/nursing']
 }
 
 const MINISTRY_PERMITTED = ['/ministry', '/surveillance', '/maps', '/reports']
@@ -167,6 +179,8 @@ export default function ({ store, redirect, route }) {
   // ── 4. Clinical / Admin routes ───────────────────────────────────────────────
   if (path.startsWith('/clinical') || path.startsWith('/admin')) {
     if (!CLINICAL_ROLES.includes(role)) return redirect(MINISTRY_HOME[role] || '/')
+    const denied = CLINICAL_DENIED[role] || []
+    if (denied.some(p => path.startsWith(p))) return redirect(CLINICAL_HOME[role] || '/')
     const permitted = CLINICAL_PERMITTED[role] || []
     const allowed   = permitted.some(p => path.startsWith(p))
     if (!allowed) return redirect(CLINICAL_HOME[role] || '/')
