@@ -83,6 +83,7 @@
       "immunizations": "Immunizations",
       "procedure": "Sedation / Procedure",
       "care_teams": "Care Teams",
+      "chat": "Chat",
       "handoff": "Handoff",
       "documents": "Documents",
       "registration": "Registration"

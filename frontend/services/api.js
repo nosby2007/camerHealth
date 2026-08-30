@@ -131,7 +131,10 @@ export const clinicalApi = {
   // eMAR — per-dose administration history, distinct from the order itself
   getMedicationAdministrations: (params) => api.get('/medication-administrations', { params }),
   createMedicationAdministration: (data) => api.post('/medication-administrations', data),
-  administerMedication: (id, data) => api.patch(`/medication-administrations/${id}`, data)
+  administerMedication: (id, data) => api.patch(`/medication-administrations/${id}`, data),
+  // Internal patient chat — async care-team discussion thread
+  getPatientMessages: (patientId) => api.get('/patient-chat', { params: { patientId } }),
+  sendPatientMessage: (data) => api.post('/patient-chat', data)
 }
 
 // ─── Appointment endpoints ──────────────────────────────────────────────────

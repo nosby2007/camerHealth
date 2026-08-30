@@ -97,6 +97,7 @@ export default {
         Immunizations: 'immunizations',
         'Sedation/Procedure Documentation': 'procedure',
         'Care Teams': 'care_teams',
+        Chat: 'chat',
         Handoff: 'handoff',
         Documents: 'documents',
         Registration: 'registration'
