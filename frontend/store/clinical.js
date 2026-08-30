@@ -24,6 +24,7 @@ export const state = () => ({
   inpatients: [],
   appointments: [],
   medications: [],
+  medicationAdministrations: [],
   labOrders: [],
   imagingOrders: [],
   invoices: [],
@@ -92,6 +93,13 @@ export const mutations = {
   UPDATE_MEDICATION(state, med) {
     const idx = state.medications.findIndex(m => m.id === med.id)
     if (idx !== -1) state.medications.splice(idx, 1, med)
+  },
+  SET_MEDICATION_ADMINISTRATIONS(state, rows) { state.medicationAdministrations = rows },
+  UPSERT_MEDICATION_ADMINISTRATION(state, row) {
+    if (!row) return
+    const idx = state.medicationAdministrations.findIndex(a => a.id === row.id)
+    if (idx !== -1) state.medicationAdministrations.splice(idx, 1, row)
+    else state.medicationAdministrations.push(row)
   },
   SET_LAB_ORDERS(state, orders) { state.labOrders = orders },
   ADD_LAB_ORDER(state, order) { state.labOrders.push(order) },
@@ -1308,6 +1316,28 @@ export const actions = {
       const { data: updated } = await clinicalApi.updateMedication(id, data)
       commit('UPDATE_MEDICATION', updated.medication || updated)
       return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  // ─── eMAR ───────────────────────────────────────────────────────────────
+  async fetchMedicationAdministrations({ commit }, params) {
+    try {
+      const { data } = await clinicalApi.getMedicationAdministrations(params)
+      commit('SET_MEDICATION_ADMINISTRATIONS', data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async administerMedication({ commit }, { id, ...data }) {
+    try {
+      const { data: result } = await clinicalApi.administerMedication(id, data)
+      commit('UPSERT_MEDICATION_ADMINISTRATION', result.administration)
+      if (result.nextDue) commit('UPSERT_MEDICATION_ADMINISTRATION', result.nextDue)
+      return result
     } catch (err) {
       commit('SET_ERROR', err.response?.data?.error || err.message)
       throw err

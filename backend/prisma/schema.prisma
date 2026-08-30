@@ -32,21 +32,22 @@ model Facility {
   organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   organizationUnit OrganizationUnit? @relation(fields: [organizationUnitId], references: [id], onDelete: SetNull)
 
-  staffProfiles StaffProfile[]
-  patients      Patient[]
-  visits        Visit[]
-  labOrders     LabOrder[]
-  imagingOrders ImagingOrder[]
-  medications   Medication[]
-  invoices      Invoice[]
-  charges       Charge[]
-  payments      Payment[]
-  clearances    Clearance[]
-  appointments  Appointment[]
-  inpatients    Inpatient[]
-  auditLogs     AuditLog[]
-  departments   Department[]
-  priceCatalog  PriceCatalog[]
+  staffProfiles             StaffProfile[]
+  patients                  Patient[]
+  visits                    Visit[]
+  labOrders                 LabOrder[]
+  imagingOrders             ImagingOrder[]
+  medications               Medication[]
+  medicationAdministrations MedicationAdministration[]
+  invoices                  Invoice[]
+  charges                   Charge[]
+  payments                  Payment[]
+  clearances                Clearance[]
+  appointments              Appointment[]
+  inpatients                Inpatient[]
+  auditLogs                 AuditLog[]
+  departments               Department[]
+  priceCatalog              PriceCatalog[]
 
   wounds                 Wound[]
   carePlans              CarePlan[]
@@ -104,6 +105,21 @@ model StaffProfile {
   tasksAssigned            Task[]             @relation("TaskAssignedTo")
   careTeamMembersAdded     CareTeamMember[]   @relation("CareTeamMemberAddedBy")
   socialAssessmentsFiled   SocialAssessment[] @relation("SocialAssessmentAssessedBy")
+  facility             Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  patientsCreated      Patient[]                  @relation("PatientCreatedBy")
+  visitsRecorded       Visit[]                    @relation("VisitRecordedBy")
+  visitsAttending      Visit[]                    @relation("VisitAttendingDoctor")
+  labRequests          LabOrder[]                 @relation("LabRequestedBy")
+  labCompletions       LabOrder[]                 @relation("LabCompletedBy")
+  imagingRequests      ImagingOrder[]             @relation("ImagingRequestedBy")
+  imagingCompletions   ImagingOrder[]             @relation("ImagingCompletedBy")
+  prescriptions        Medication[]               @relation("MedicationPrescribedBy")
+  administrationsGiven MedicationAdministration[] @relation("MedicationAdministeredBy")
+  appointmentsCreated  Appointment[]              @relation("AppointmentCreatedBy")
+  admissions           Inpatient[]                @relation("InpatientAdmittedBy")
+  inpatientsAttending  Inpatient[]                @relation("InpatientAttendingDoctor")
+  invoicesIssued       Invoice[]                  @relation("InvoiceIssuedBy")
+  staffAssignments     StaffAssignment[]
 
   @@unique([staffCode, facilityId])
   @@index([facilityId])
@@ -159,18 +175,19 @@ model Patient {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  facility      Facility       @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  createdBy     StaffProfile   @relation("PatientCreatedBy", fields: [createdById], references: [id])
-  visits        Visit[]
-  labOrders     LabOrder[]
-  imagingOrders ImagingOrder[]
-  medications   Medication[]
-  invoices      Invoice[]
-  charges       Charge[]
-  payments      Payment[]
-  clearances    Clearance[]
-  appointments  Appointment[]
-  inpatients    Inpatient[]
+  facility                  Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdBy                 StaffProfile               @relation("PatientCreatedBy", fields: [createdById], references: [id])
+  visits                    Visit[]
+  labOrders                 LabOrder[]
+  imagingOrders             ImagingOrder[]
+  medications               Medication[]
+  medicationAdministrations MedicationAdministration[]
+  invoices                  Invoice[]
+  charges                   Charge[]
+  payments                  Payment[]
+  clearances                Clearance[]
+  appointments              Appointment[]
+  inpatients                Inpatient[]
 
   wounds           Wound[]
   carePlans        CarePlan[]
@@ -320,14 +337,57 @@ model Medication {
   prescribedAt     DateTime  @default(now()) @map("prescribed_at")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
+  // ── eMAR: order-level clinical detail for point-of-care nursing reference ──
+  form             String?   @map("form") // tablet | syrup | iv | g-tube | injection | inhaler...
+  medicationClass  String?   @map("medication_class")
+  education        String?
+  sideEffects      String?   @map("side_effects")
+  priority         String?   @default("Routine") // Routine | Today | Urgent | STAT
 
-  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  facility     Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  prescribedBy StaffProfile @relation("MedicationPrescribedBy", fields: [prescribedById], references: [id])
+  patient         Patient                    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility        Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  prescribedBy    StaffProfile               @relation("MedicationPrescribedBy", fields: [prescribedById], references: [id])
+  administrations MedicationAdministration[]
 
   @@index([patientId])
   @@index([facilityId])
   @@map("medications")
+}
+
+// ─── Medication Administration (eMAR) ────────────────────────────────────────
+// One row per scheduled/actual dose event — the normalized history that backs
+// the eMAR grid and the administration report. Distinct from Medication (the
+// order/prescription itself) so administering one dose never overwrites the
+// record of another.
+model MedicationAdministration {
+  id               String    @id @default(uuid())
+  medicationId     String    @map("medication_id")
+  patientId        String    @map("patient_id")
+  facilityId       String    @map("facility_id")
+  scheduledFor     DateTime  @map("scheduled_for")
+  administeredAt   DateTime? @map("administered_at")
+  administeredById String?   @map("administered_by_id")
+  status           String    @default("Due") // Due | Given | Held | Refused | Not Available
+  route            String?
+  doseGiven        String?   @map("dose_given")
+  site             String?
+  lotNumber        String?   @map("lot_number")
+  patientResponse  String?   @map("patient_response")
+  refusalReason    String?   @map("refusal_reason")
+  comment          String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  medication     Medication    @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility       Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  administeredBy StaffProfile? @relation("MedicationAdministeredBy", fields: [administeredById], references: [id])
+
+  @@index([medicationId])
+  @@index([patientId])
+  @@index([facilityId])
+  @@index([scheduledFor])
+  @@map("medication_administrations")
 }
 
 // ─── Appointment ─────────────────────────────────────────────────────────────

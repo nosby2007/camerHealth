@@ -127,7 +127,11 @@ export const clinicalApi = {
   // Medications
   getMedications: () => api.get('/clinical/medications'),
   createMedication: (data) => api.post('/clinical/medications', data),
-  updateMedication: (id, data) => api.patch(`/clinical/medications/${id}`, data)
+  updateMedication: (id, data) => api.patch(`/clinical/medications/${id}`, data),
+  // eMAR — per-dose administration history, distinct from the order itself
+  getMedicationAdministrations: (params) => api.get('/medication-administrations', { params }),
+  createMedicationAdministration: (data) => api.post('/medication-administrations', data),
+  administerMedication: (id, data) => api.patch(`/medication-administrations/${id}`, data)
 }
 
 // ─── Appointment endpoints ──────────────────────────────────────────────────

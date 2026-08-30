@@ -18,10 +18,24 @@ WORKDIR /app
 ARG API_URL=http://localhost:4000/api
 ENV API_URL=${API_URL}
 ENV BACKEND_API_URL=${API_URL}
-ENV NODE_ENV=production
+
+# nuxt.config.js hard-requires these to be non-empty (fails the build
+# otherwise — see the REQUIRED_ENV check there). Both are optional
+# integrations (Google Maps display, an OAuth client) not needed by every
+# deployment, so an on-prem install with neither configured still needs a
+# build-time value; "unconfigured" is a clearly-fake placeholder that
+# satisfies the presence check without looking like a real credential.
+ARG VUE_APP_GOOGLE_MAPS_API_KEY=unconfigured
+ARG CLIENT_ID=unconfigured
+ENV VUE_APP_GOOGLE_MAPS_API_KEY=${VUE_APP_GOOGLE_MAPS_API_KEY}
+ENV CLIENT_ID=${CLIENT_ID}
 
 COPY package.json package-lock.json ./
 RUN npm ci
+
+# Set only after npm ci — NODE_ENV=production earlier makes npm skip
+# devDependencies (e.g. cross-env, needed by `npm run generate` below).
+ENV NODE_ENV=production
 
 COPY . .
 RUN npm run generate
