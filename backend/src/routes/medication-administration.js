@@ -5,10 +5,11 @@
 const { Router } = require('express')
 const { z } = require('zod')
 const prisma = require('../lib/prisma')
-const { authenticate } = require('../middleware/auth')
+const { authenticate, authorize } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { requirePatientForFacility } = require('../lib/tenant')
 const { nextOccurrenceAt, isDiscontinued } = require('../lib/medicationSchedule')
+const { NURSE_CHART_ROLES } = require('../lib/clinicalRoles')
 
 const router = Router()
 
@@ -59,7 +60,7 @@ router.get('/medication-administrations', authenticate, async (req, res, next) =
 // Creates a "Due" row directly — used by clinical.js when a new order is
 // placed (the first scheduled dose) and available generally for manually
 // scheduling a dose outside that flow.
-router.post('/medication-administrations', authenticate, validate(createDueSchema), async (req, res, next) => {
+router.post('/medication-administrations', authenticate, authorize('ADMIN', ...NURSE_CHART_ROLES), validate(createDueSchema), async (req, res, next) => {
   try {
     const { medicationId, patientId, scheduledFor } = req.body
     await requirePatientForFacility(patientId, req.user.facilityId, { select: { id: true } })
@@ -90,7 +91,7 @@ router.post('/medication-administrations', authenticate, validate(createDueSchem
 // administration time, to avoid drift), UNLESS the order has since been
 // discontinued/cancelled/stopped. The cadence continues for Held/Refused/Not
 // Available too — only discontinuation stops future doses from being planned.
-router.patch('/medication-administrations/:id', authenticate, validate(administerSchema), async (req, res, next) => {
+router.patch('/medication-administrations/:id', authenticate, authorize('ADMIN', ...NURSE_CHART_ROLES), validate(administerSchema), async (req, res, next) => {
   try {
     const existing = await prisma.medicationAdministration.findFirst({
       where: { id: req.params.id, facilityId: req.user.facilityId }
