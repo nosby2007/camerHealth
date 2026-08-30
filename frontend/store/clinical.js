@@ -1,4 +1,5 @@
 const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
+const { generateTasksFromOrder, nextTaskFromCompletion } = require('../services/clinical/workflowEngine')
 import { patientApi, clinicalApi, appointmentApi, inpatientApi, vitalsApi, clinicalNotesApi } from '~/services/api'
 import { enqueue, isNetworkError } from '~/util/offline-queue'
 
@@ -23,6 +24,7 @@ export const state = () => ({
   inpatients: [],
   appointments: [],
   medications: [],
+  medicationAdministrations: [],
   labOrders: [],
   imagingOrders: [],
   invoices: [],
@@ -91,6 +93,13 @@ export const mutations = {
   UPDATE_MEDICATION(state, med) {
     const idx = state.medications.findIndex(m => m.id === med.id)
     if (idx !== -1) state.medications.splice(idx, 1, med)
+  },
+  SET_MEDICATION_ADMINISTRATIONS(state, rows) { state.medicationAdministrations = rows },
+  UPSERT_MEDICATION_ADMINISTRATION(state, row) {
+    if (!row) return
+    const idx = state.medicationAdministrations.findIndex(a => a.id === row.id)
+    if (idx !== -1) state.medicationAdministrations.splice(idx, 1, row)
+    else state.medicationAdministrations.push(row)
   },
   SET_LAB_ORDERS(state, orders) { state.labOrders = orders },
   ADD_LAB_ORDER(state, order) { state.labOrders.push(order) },
@@ -783,6 +792,8 @@ export const actions = {
   },
   createTask({ state, commit, rootState }, task) {
     assertPatientWritable(state, task.patientId)
+    const existing = task.automationKey && state.tasks.find(item => item.automationKey === task.automationKey)
+    if (existing) return existing
     const now = new Date().toISOString()
     const actor = rootState.auth.fullName || 'Unknown user'
     const record = {
@@ -790,6 +801,12 @@ export const actions = {
       id: 'TSK-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       ...tenantFields(rootState),
       status: 'pending',
+      seriesId: task.seriesId || null,
+      parentTaskId: task.parentTaskId || null,
+      occurrenceNumber: Number(task.occurrenceNumber || 1),
+      reminderMinutesBefore: Number(task.reminderMinutesBefore ?? 30),
+      reminderAcknowledgedAt: null,
+      automationSource: task.automationSource || null,
       createdAt: now,
       createdBy: actor,
       updatedAt: now,
@@ -808,6 +825,27 @@ export const actions = {
     }
     commit('ADD_TASK', record)
     return record
+  },
+  createTasksFromClinicalOrder({ dispatch }, { order, patient = {}, encounter = {} }) {
+    const generated = generateTasksFromOrder(order, patient, encounter)
+    return Promise.all(generated.map((task, index) => dispatch('createTask', {
+      patientId: task.patient_id,
+      encounterId: task.encounter_id,
+      relatedType: task.source_type,
+      relatedId: task.source_id,
+      title: task.title,
+      instructions: task.description,
+      assignedToRole: task.assigned_role,
+      assignedToUserId: task.assigned_user_id,
+      priority: task.priority,
+      dueAt: task.due_at,
+      frequency: task.frequency,
+      reminderMinutesBefore: task.reminder_minutes_before,
+      seriesId: task.series_id,
+      automationSource: task.automation_source,
+      automationKey: `${task.source_type}:${task.source_id}:${task.title}:${index}`,
+      actionReason: `Automatically generated from clinical order ${task.source_id}`
+    })))
   },
   addCareTeamMember({ state, commit, rootState }, member) {
     assertPatientWritable(state, member.patientId)
@@ -844,6 +882,8 @@ export const actions = {
     const next = {
       ...task,
       status: payload.status,
+      completedAt: payload.status === 'done' ? (payload.performedAt || now) : task.completedAt || null,
+      completionDocumentation: payload.status === 'done' ? reason : task.completionDocumentation || '',
       updatedAt: now,
       updatedBy: actor,
       actionReason: reason,
@@ -860,6 +900,42 @@ export const actions = {
       ]
     }
     commit('UPDATE_TASK', next)
+    return next
+  },
+  async completeTaskAndScheduleNext({ state, commit, dispatch, rootState }, payload) {
+    const task = state.tasks.find(item => item.id === payload.id)
+    if (!task) throw new Error('Task not found')
+    assertPatientWritable(state, task.patientId)
+    if (!String(payload.reason || '').trim()) throw new Error('Completion documentation is required')
+    const actor = payload.updatedBy || rootState.auth.fullName || 'Unknown user'
+    const performedAt = payload.performedAt || new Date().toISOString()
+    const nextTaskPayload = nextTaskFromCompletion(task, { ...payload, performedAt })
+    const nextTask = await dispatch('createTask', nextTaskPayload)
+    const completed = {
+      ...task,
+      status: 'done',
+      completedAt: performedAt,
+      completionDocumentation: payload.reason,
+      nextTaskId: nextTask.id,
+      updatedAt: performedAt,
+      updatedBy: actor,
+      actionReason: payload.reason,
+      history: [
+        ...(task.history || []),
+        {
+          id: 'THS-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+          action: 'COMPLETED_AND_NEXT_SCHEDULED',
+          status: 'done',
+          actor,
+          at: performedAt,
+          reason: payload.reason,
+          nextTaskId: nextTask.id,
+          nextDueAt: nextTask.dueAt
+        }
+      ]
+    }
+    commit('UPDATE_TASK', completed)
+    return { completedTask: completed, nextTask }
   },
   createDocument({ state, commit, rootState }, document) {
     assertPatientWritable(state, document.patientId)
@@ -1135,6 +1211,28 @@ export const actions = {
       const { data: updated } = await clinicalApi.updateMedication(id, data)
       commit('UPDATE_MEDICATION', updated.medication || updated)
       return updated
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  // ─── eMAR ───────────────────────────────────────────────────────────────
+  async fetchMedicationAdministrations({ commit }, params) {
+    try {
+      const { data } = await clinicalApi.getMedicationAdministrations(params)
+      commit('SET_MEDICATION_ADMINISTRATIONS', data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async administerMedication({ commit }, { id, ...data }) {
+    try {
+      const { data: result } = await clinicalApi.administerMedication(id, data)
+      commit('UPSERT_MEDICATION_ADMINISTRATION', result.administration)
+      if (result.nextDue) commit('UPSERT_MEDICATION_ADMINISTRATION', result.nextDue)
+      return result
     } catch (err) {
       commit('SET_ERROR', err.response?.data?.error || err.message)
       throw err

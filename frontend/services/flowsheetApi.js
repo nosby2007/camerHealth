@@ -5,7 +5,7 @@ export class FlowsheetApi {
 
   async saveCell({ cellId, rowId, columnId, patientId, encounterId, value, displayValue, source }) {
     try {
-      const response = await this.axios.post('/api/flowsheets/cells', {
+      const response = await this.axios.post('/flowsheets/cells', {
         id: cellId,
         rowId,
         columnId,
@@ -25,7 +25,7 @@ export class FlowsheetApi {
 
   async fileColumn({ columnId, patientId, encounterId }) {
     try {
-      const response = await this.axios.post(`/api/flowsheets/columns/${columnId}/file`, {
+      const response = await this.axios.post(`/flowsheets/columns/${columnId}/file`, {
         patientId,
         encounterId,
         filedAt: new Date().toISOString()
@@ -38,7 +38,7 @@ export class FlowsheetApi {
 
   async getColumnStatus({ columnId, patientId, encounterId }) {
     try {
-      const response = await this.axios.get(`/api/flowsheets/columns/${columnId}/status`, {
+      const response = await this.axios.get(`/flowsheets/columns/${columnId}/status`, {
         params: { patientId, encounterId }
       })
       return { success: true, data: response.data }
@@ -49,7 +49,7 @@ export class FlowsheetApi {
 
   async correctCell({ originalCellId, rowId, columnId, patientId, encounterId, newValue, reason }) {
     try {
-      const response = await this.axios.post('/api/flowsheets/corrections', {
+      const response = await this.axios.post('/flowsheets/corrections', {
         originalCellId,
         rowId,
         columnId,

@@ -1,6 +1,3 @@
-const {
-  taskFromProviderOrder
-} = require('../util/nursing-workflow.cjs')
 const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
 import { woundCareApi } from '~/services/api'
 
@@ -132,27 +129,6 @@ export const actions = {
     dispatch('audit', { action: 'NURSING_ASSESSMENT_CREATED', targetTable: 'nursing_assessments', targetId: record.id, patientId: record.patientId })
     return record
   },
-  createOrder({ commit, dispatch, rootState }, order) {
-    assertPatientWritable(rootState, order.patientId)
-    const record = withBase(rootState, { status: 'active', ...order }, 'ORD')
-    commit('ADD_RECORD', { collection: 'orders', record })
-    dispatch('audit', { action: 'ORDER_CREATED', targetTable: 'orders', targetId: record.id, patientId: record.patientId })
-    const task = taskFromProviderOrder({
-      id: record.id,
-      patient_id: record.patientId,
-      facility_id: record.facilityId,
-      assigned_role: record.assignedRole,
-      assigned_staff_id: record.assignedStaffId,
-      order_type: record.orderType,
-      title: record.title,
-      priority: record.priority,
-      reason: record.reason,
-      instructions: record.instructions,
-      due_at: record.dueAt
-    })
-    if (task) dispatch('createTask', mapSnakeTask(task))
-    return record
-  },
   createTask({ commit, dispatch, rootState }, task) {
     assertPatientWritable(rootState, task.patientId)
     const record = withBase(rootState, { status: 'pending', priority: 'routine', ...task }, 'NTK')
@@ -246,6 +222,22 @@ export const actions = {
     const record = { ...order, status: 'signed', signedAt: new Date().toISOString(), signedBy: rootState.auth.fullName || rootState.auth.staffId }
     commit('UPDATE_RECORD', { collection: 'orders', record })
     dispatch('audit', { action: 'ORDER_SIGNED', targetTable: 'orders', targetId: record.id, patientId: record.patientId })
+    dispatch('clinical/createTasksFromClinicalOrder', {
+      order: {
+        id: record.id,
+        type: record.orderType,
+        category: record.orderType,
+        medication: record.medication && record.medication.name,
+        description: record.title || record.notes || record.reason || `${record.orderType} order`,
+        assigned_role: record.assignedRole || orderRole(record.orderType),
+        assigned_user_id: record.assignedStaffId || null,
+        priority: record.priority || 'Routine',
+        due_at: record.startDateTime || record.dueAt || record.signedAt,
+        frequency: record.frequency || 'Once'
+      },
+      patient: { id: record.patientId },
+      encounter: { id: record.encounterId }
+    }, { root: true })
     return record
   },
   updateMedicationAdministration({ commit, dispatch, rootState }, { patientId, encounterId, medicationId, marData }) {
@@ -423,17 +415,7 @@ function load(key) {
   }
 }
 
-function mapSnakeTask(task) {
-  return {
-    patientId: task.patient_id,
-    facilityId: task.facility_id,
-    linkedOrderId: task.linked_order_id,
-    linkedOrderType: task.linked_order_type,
-    title: task.title,
-    priority: task.priority,
-    reason: task.reason,
-    status: task.status,
-    assignedNurseId: task.assigned_nurse_id,
-    dueAt: task.due_at
-  }
+function orderRole(orderType) {
+  const roles = { lab: 'LAB', imaging: 'IMAGING', medication: 'NURSE', procedure: 'NURSE', wound: 'NURSE', wound_dressing: 'NURSE' }
+  return roles[String(orderType || '').toLowerCase()] || 'NURSE'
 }

@@ -1076,68 +1076,17 @@
               </div>
 
               <div class="emar-layout">
-                <section class="emar-board">
-                  <div class="emar-time-header">
-                    <span>Medication</span>
-                    <div>
-                      <strong v-for="time in marTimeColumns" :key="time" :class="{ focus: marTimeFocus === time }">{{ time }}</strong>
-                    </div>
-                    <span>Actions</span>
-                  </div>
-
-                  <article v-for="med in visibleEmarMedicationRows" :key="med.id" class="emar-row" :class="med.statusClass">
-                    <div class="emar-medication">
-                      <div>
-                        <v-icon small :color="med.color">{{ med.icon }}</v-icon>
-                        <strong>{{ med.label }}</strong>
-                      </div>
-                      <p>{{ med.detail }}</p>
-                      <div class="emar-med-meta">
-                        <span>{{ med.route }}</span>
-                        <span>{{ med.frequency }}</span>
-                        <span>{{ med.dispense }}</span>
-                      </div>
-                      <div class="emar-admin-instructions">
-                        <v-icon x-small>mdi-clipboard-text-outline</v-icon>
-                        <span>{{ med.administrationInstructions }}</span>
-                      </div>
-                      <small v-if="marShowEducation">{{ med.education }}</small>
-                    </div>
-
-                    <div class="emar-time-grid">
-                      <button
-                        v-for="cell in med.timeline"
-                        :key="`${med.id}-${cell.time}`"
-                        type="button"
-                        :class="['emar-time-cell', cell.status, { focus: marTimeFocus === cell.time }]"
-                        @click="openMarAction(cell.defaultAction, med, cell)"
-                      >
-                        <span>{{ cell.text }}</span>
-                      </button>
-                    </div>
-
-                    <div class="emar-actions">
-                      <button type="button" @click="openMarAction('given', med)">
-                        <v-icon x-small>mdi-check</v-icon>Administer
-                      </button>
-                      <button type="button" @click="openMarAction('held', med)">
-                        <v-icon x-small>mdi-pause</v-icon>Hold
-                      </button>
-                      <button type="button" @click="openMarAction('refused', med)">
-                        <v-icon x-small>mdi-account-cancel-outline</v-icon>Refuse
-                      </button>
-                      <button type="button" @click="openOrderComposer('medication', med.orderItem)">
-                        <v-icon x-small>mdi-information-outline</v-icon>Details
-                      </button>
-                    </div>
-                  </article>
-
-                  <div v-if="!visibleEmarMedicationRows.length" class="empty-orders compact">
-                    <v-icon size="42" color="#94a3b8">mdi-pill-off</v-icon>
-                    <strong>No medication in this eMAR view</strong>
-                    <span>Place a medication order or adjust the view filter.</span>
-                  </div>
-                </section>
+                <EmarGrid
+                  :medications="visibleEmarMedicationRows"
+                  :administrations="medicationAdministrations"
+                  :time-columns="marTimeColumns"
+                  :focus-time="marTimeFocus"
+                  :show-education="marShowEducation"
+                  @cell-click="onEmarCellClick"
+                  @row-action="onEmarRowAction"
+                  @open-report="openMarReport"
+                  @open-details="med => openOrderComposer('medication', med.orderItem)"
+                />
 
                 <aside class="emar-side">
                   <section class="emar-advisories">
@@ -1323,6 +1272,7 @@
               :read-only="isPatientDischarged"
               @new-task="openContextForm('task')"
               @update-status="updateWorkListTask"
+              @reminder="handleWorkListReminder"
             />
 
             <Patient360RoleCoordinationTab
@@ -2046,6 +1996,8 @@
               <v-text-field v-model="forms.order.medication.frequency" label="Frequency" dense outlined :rules="[requiredRule]" />
               <v-text-field v-model="forms.order.medication.medicationClass" label="Medication class" dense outlined readonly />
               <v-text-field v-model="forms.order.medication.indication" label="Clinical indication / need" dense outlined />
+              <v-select v-model="forms.order.medication.form" :items="medicationForms" label="Form" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.order.medication.priority" :items="priorityOptions" label="Priority" dense outlined />
             </div>
             <v-textarea v-model="forms.order.instructions" label="Administration instructions" rows="2" dense outlined />
             <div v-if="forms.order.medication.sideEffects || forms.order.medication.education || forms.order.medication.safetyWarnings" class="medication-order-support">
@@ -2100,6 +2052,35 @@
           <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveMarAction">
             <v-icon x-small left>mdi-content-save-check</v-icon>File eMAR action
           </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="dialogs.marReport" max-width="760" scrollable>
+      <v-card class="chart-dialog">
+        <v-card-title class="dialog-title">
+          <div>
+            <span>Administration report</span>
+            <strong>{{ selectedMarMedication ? selectedMarMedication.label : '' }}</strong>
+          </div>
+          <v-btn icon small @click="dialogs.marReport = false"><v-icon small>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-data-table
+            :headers="marReportHeaders"
+            :items="marReportRows"
+            :items-per-page="10"
+            dense
+            no-data-text="No administration history filed yet for this medication."
+          >
+            <template #item.status="{ item }">
+              <v-chip x-small :color="marReportStatusColor(item.status)" dark>{{ item.status }}</v-chip>
+            </template>
+          </v-data-table>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <v-spacer />
+          <v-btn text small @click="dialogs.marReport = false">Close</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -2409,6 +2390,7 @@ import Patient360ChartReviewTab from '~/components/clinical/patient360/chart-rev
 import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets/Patient360FlowsheetsTab.vue'
 import Patient360LabResultsTab from '~/components/clinical/patient360/labs/Patient360LabResultsTab.vue'
 import Patient360MedicationTab from '~/components/clinical/patient360/medications/Patient360MedicationTab.vue'
+import EmarGrid from '~/components/clinical/emar/EmarGrid.vue'
 import Patient360WorkListTab from '~/components/clinical/patient360/work-list/Patient360WorkListTab.vue'
 import Patient360CareTeamTab from '~/components/clinical/patient360/care-team/Patient360CareTeamTab.vue'
 import Patient360RoleCoordinationTab from '~/components/clinical/patient360/coordination/Patient360RoleCoordinationTab.vue'
@@ -2561,7 +2543,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360RoleCoordinationTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, Patient360DoctorCommandCenter, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360RoleCoordinationTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, Patient360DoctorCommandCenter, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip, EmarGrid },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false },
@@ -2876,10 +2858,11 @@ export default {
       marHideAdmins: false,
       marSearch: '',
       selectedMarMedication: null,
+      selectedMarAdministrationId: null,
       selectedMarAction: 'given',
       selectedWoundForDialogId: '',
       avatarClearReason: '',
-      marTimeColumns: ['1400', '1500', '1600', '1700', '1800', '1900', '2000'],
+      marTimeColumnsFallback: ['1400', '1500', '1600', '1700', '1800', '1900', '2000'],
       remoteAiCarePlan: null,
       aiCareLoading: false,
       aiCareError: '',
@@ -2894,6 +2877,7 @@ export default {
         discharge: false,
         scan: false,
         marAction: false,
+        marReport: false,
         note: false,
         woundCare: false,
         carePlan: false,
@@ -2912,6 +2896,7 @@ export default {
       severityOptions: ['Mild', 'Moderate', 'Severe', 'Critical'],
       priorityOptions: ['Routine', 'Today', 'Urgent', 'STAT'],
       medicationRoutes: ['Oral', 'IV', 'IM', 'Topical', 'Inhalation', 'Sublingual', 'Rectal'],
+      medicationForms: ['tablet', 'syrup', 'iv', 'g-tube', 'injection', 'inhaler'],
       marActionOptions: ['Given', 'Held', 'Refused', 'Not scanned', 'Patient education', 'Details reviewed'],
       painScoreOptions: Array.from({ length: 11 }, (_, value) => value),
       documentCategories: ['Clinical Note', 'Consent', 'Referral', 'Discharge Summary', 'Education', 'Wound Photo'],
@@ -4967,6 +4952,18 @@ export default {
         }
       }))
     },
+    medicationAdministrations() {
+      return this.$store.state.clinical.medicationAdministrations.filter(a => a.patientId === this.activePatientId)
+    },
+    marTimeColumns() {
+      const times = new Set()
+      this.medicationAdministrations.forEach(a => {
+        const t = this.formatSlotTime(a.scheduledFor)
+        if (t) times.add(t)
+      })
+      if (!times.size) return this.marTimeColumnsFallback
+      return Array.from(times).sort()
+    },
     emarMedicationRows() {
       const medications = this.patientMedications.filter(isMedicationOrderForMar)
       return medications.map((med) => {
@@ -4978,7 +4975,6 @@ export default {
         const isInfusion = /infusion|ivpb|continuous|running/i.test(`${name} ${route} ${frequency}`)
         const status = med.status || 'Active'
         const statusClass = this.orderStatusClass(status)
-        const adminTime = med.scheduledTime || med.schedule || med.dueTime || ''
         return {
           id: med.id,
           raw: med,
@@ -4994,6 +4990,7 @@ export default {
           frequency,
           dispense: med.dispenseLocation || med.dispenseAt || 'Central pharmacy / unit stock',
           medicationClass: med.medicationClass || (catalogItem && catalogItem.medicationClass) || '',
+          form: med.form || (catalogItem && catalogItem.form) || '',
           sideEffects: med.sideEffects || (catalogItem && catalogItem.sideEffects) || '',
           education: med.education || (catalogItem && catalogItem.education) || `Educate patient on ${name}, indication, expected effect and side effects.`,
           administrationInstructions: resolveAdministrationInstructions(med, catalogItem),
@@ -5003,18 +5000,21 @@ export default {
           color: isInfusion ? '#7c3aed' : isPrn ? '#b45309' : '#0f766e',
           icon: isInfusion ? 'mdi-iv-bag' : isPrn ? 'mdi-pill-multiple' : 'mdi-pill',
           lastAdmin: med.lastAdminTime || med.administeredAt || med.lastAdmin || 'Not filed',
+          // Real per-dose history (medicationAdministrations, fetched from the
+          // backend) drives this now instead of comparing a single free-text
+          // status against one adminTime — see EmarGrid.vue for the cell
+          // icon/color resolution that consumes the same records directly.
           timeline: this.marTimeColumns.map(time => {
-            const isDue = !isPrn && Boolean(adminTime) && time === adminTime
-            const isGiven = String(status).toLowerCase() === 'given' || String(med.administrationStatus || '').toLowerCase() === 'given'
-            const isHeld = /hold|held/i.test(status)
-            const isRunning = isInfusion && ['1600', '1700', '1800'].includes(time)
-            const text = isGiven && time === adminTime ? 'Given' : isHeld && time === adminTime ? 'Held' : isRunning ? 'Running' : isDue ? 'Due' : isPrn ? 'PRN' : ''
-            return {
-              time,
-              text,
-              status: isGiven && time === adminTime ? 'given' : isHeld && time === adminTime ? 'held' : isRunning ? 'running' : isDue ? 'due' : isPrn ? 'prn' : 'empty',
-              defaultAction: isDue || isPrn || isRunning ? 'given' : 'details'
+            const administration = this.medicationAdministrations.find(a => a.medicationId === med.id && this.formatSlotTime(a.scheduledFor) === time)
+            if (!administration) return { time, text: isPrn ? 'PRN' : '', status: isPrn ? 'prn' : 'empty', defaultAction: isPrn ? 'given' : 'details', administrationId: null }
+            const map = {
+              Given: { text: 'Given', status: 'given', defaultAction: 'details' },
+              Held: { text: 'Held', status: 'held', defaultAction: 'details' },
+              Refused: { text: 'Refused', status: 'refused', defaultAction: 'details' },
+              'Not Available': { text: 'N/A', status: 'held', defaultAction: 'details' }
             }
+            const resolved = map[administration.status] || { text: 'Due', status: 'due', defaultAction: 'given' }
+            return { time, ...resolved, administrationId: administration.id }
           })
         }
       })
@@ -5054,6 +5054,33 @@ export default {
       if (unscanned) rows.push({ level: 'warning', title: 'Barcode scan pending', detail: `${unscanned} active medication(s) do not have a scan filed.` })
       if (!rows.length) rows.push({ level: 'normal', title: 'No blocking advisory', detail: 'Continue medication rights and patient education.' })
       return rows
+    },
+    marReportHeaders() {
+      return [
+        { text: 'Scheduled', value: 'scheduledFor' },
+        { text: 'Given at', value: 'administeredAt' },
+        { text: 'Nurse', value: 'nurse' },
+        { text: 'Status', value: 'status' },
+        { text: 'Dose', value: 'doseGiven' },
+        { text: 'Patient response', value: 'patientResponse' },
+        { text: 'Comment', value: 'comment' }
+      ]
+    },
+    marReportRows() {
+      if (!this.selectedMarMedication) return []
+      return this.medicationAdministrations
+        .filter(a => a.medicationId === this.selectedMarMedication.id)
+        .slice()
+        .sort((a, b) => new Date(b.scheduledFor) - new Date(a.scheduledFor))
+        .map(a => ({
+          scheduledFor: new Date(a.scheduledFor).toLocaleString(),
+          administeredAt: a.administeredAt ? new Date(a.administeredAt).toLocaleString() : '-',
+          nurse: (a.administeredBy && a.administeredBy.fullName) || '-',
+          status: a.status,
+          doseGiven: a.doseGiven || '-',
+          patientResponse: a.patientResponse || '-',
+          comment: a.comment || '-'
+        }))
     },
     marEducationCards() {
       return this.visibleEmarMedicationRows.slice(0, 5).map(row => ({
@@ -5838,6 +5865,7 @@ export default {
       this.selectedNoteId = null
       this.amendingNoteId = null
       this.loadAvatarPlacements()
+      if (newId) this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: newId })
     }
   },
   mounted() {
@@ -5845,6 +5873,12 @@ export default {
     // DB catalog price, same as the standalone medications.vue flow —
     // otherwise Cash Office never sees a charge for it (no price to bill at).
     this.$store.dispatch('billing/fetchCatalog')
+    // The eMAR grid needs both the orders (medications) and their per-dose
+    // history (medicationAdministrations) — neither was being loaded for a
+    // patient opened directly (only pharmacy/medications.vue populated the
+    // former as a side effect of its own unrelated view).
+    this.$store.dispatch('clinical/fetchMedications')
+    if (this.activePatientId) this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: this.activePatientId })
     this.$store.commit('clinical/LOAD_FROM_STORAGE')
     if (this.$store.hasModule && this.$store.hasModule('nursing')) {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
@@ -6687,15 +6721,33 @@ export default {
       if (!this.ensurePatientWritable() || !this.$refs.contextForms) return false
       return this.$refs.contextForms.open(kind, options)
     },
-    async updateWorkListTask({ task, status, reason }) {
+    async updateWorkListTask({ task, status, reason, ...continuity }) {
       if (!task || !task.id || !this.ensurePatientWritable()) return
       const labels = { done: 'completed', hold: 'placed on hold', cancel: 'cancelled' }
-      await this.$store.dispatch('clinical/updateTaskStatus', {
-        id: task.id,
-        status,
-        reason: reason || `Task ${labels[status] || 'updated'} from Patient 360 Work List`
-      })
-      this.toastSuccess(`Task ${labels[status] || 'updated'}.`)
+      try {
+        if (status === 'done') {
+          const result = await this.$store.dispatch('clinical/completeTaskAndScheduleNext', {
+            id: task.id,
+            reason,
+            ...continuity
+          })
+          this.toastSuccess(`Task completed. Next occurrence scheduled ${this.formatShortDate(result.nextTask.dueAt)}.`)
+          return
+        }
+        await this.$store.dispatch('clinical/updateTaskStatus', {
+          id: task.id,
+          status,
+          reason: reason || `Task ${labels[status] || 'updated'} from Patient 360 Work List`,
+          ...continuity
+        })
+        this.toastSuccess(`Task ${labels[status] || 'updated'}.`)
+      } catch (error) {
+        this.toastError(error.message || 'Unable to update the work-list task.')
+      }
+    },
+    handleWorkListReminder(tasks) {
+      if (!Array.isArray(tasks) || !tasks.length) return
+      this.toastError(`${tasks.length} work-list task(s) are due now or approaching.`)
     },
     handleContextFormSaved(message) {
       this.toastSuccess(message)
@@ -6908,6 +6960,8 @@ export default {
           this.forms.order.medication.sideEffects = order.raw.sideEffects || (catalogItem && catalogItem.sideEffects) || ''
           this.forms.order.medication.education = order.raw.education || (catalogItem && catalogItem.education) || ''
           this.forms.order.medication.safetyWarnings = order.raw.safetyWarnings || (catalogItem && catalogItem.warnings) || ''
+          this.forms.order.medication.form = order.raw.form || (catalogItem && catalogItem.form) || ''
+          this.forms.order.medication.priority = order.raw.priority || 'Routine'
           this.forms.order.instructions = order.raw.administrationInstructions || order.raw.instructions || order.raw.notes || order.detail || ''
         }
         return
@@ -6932,6 +6986,8 @@ export default {
       this.forms.order.medication.sideEffects = item.sideEffects || ''
       this.forms.order.medication.education = item.education || ''
       this.forms.order.medication.safetyWarnings = item.warnings || ''
+      this.forms.order.medication.form = item.form || ''
+      this.forms.order.medication.priority = 'Routine'
       this.forms.order.instructions = ''
     },
     async handleOrderAction(action, order) {
@@ -6970,6 +7026,15 @@ export default {
       this.orderMode = set.kind || 'Medication'
       this.openOrderComposer(this.orderMode)
     },
+    marReportStatusColor(status) {
+      const colors = { Given: '#16a34a', Held: '#7c3aed', Refused: '#dc2626', 'Not Available': '#64748b', Due: '#f97316' }
+      return colors[status] || '#64748b'
+    },
+    formatSlotTime(iso) {
+      const d = new Date(iso)
+      if (Number.isNaN(d.getTime())) return null
+      return `${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`
+    },
     openMarQuickScan() {
       const firstDue = this.visibleEmarMedicationRows.find(row => row.timeline.some(cell => cell.status === 'due')) || this.visibleEmarMedicationRows[0] || null
       if (firstDue) {
@@ -6978,6 +7043,28 @@ export default {
       } else {
         this.openChartDialog('medication')
       }
+    },
+    onEmarCellClick({ medication, administration, defaultAction }) {
+      if (defaultAction === 'details' && administration && administration.status !== 'Given') {
+        // A resolved-but-non-Given cell (Held/Refused/N-A) still opens the
+        // action dialog pre-filled, rather than the read-only order details,
+        // so a nurse can review/amend what was filed.
+        this.openMarAction(administration.status.toLowerCase(), medication, { time: this.formatSlotTime(administration.scheduledFor), administrationId: administration.id })
+        return
+      }
+      if (defaultAction === 'details') {
+        this.openOrderComposer('medication', medication.orderItem)
+        return
+      }
+      const cell = medication.timeline.find(c => administration && c.administrationId === administration.id)
+      this.openMarAction('given', medication, cell)
+    },
+    onEmarRowAction({ action, medication }) {
+      this.openMarAction(action, medication)
+    },
+    openMarReport(medication) {
+      this.selectedMarMedication = medication
+      this.$set(this.dialogs, 'marReport', true)
     },
     openMarAction(action, medication, cell) {
       if (action === 'details') {
@@ -6989,17 +7076,23 @@ export default {
         given: 'Given',
         held: 'Held',
         refused: 'Refused',
+        'not available': 'Not Available',
         scan: 'Not scanned',
         education: 'Patient education'
       }
+      // No cell was clicked (row action button) — fall back to this
+      // medication's earliest still-open (Due) dose so the action applies to
+      // the right administration record.
+      const targetCell = cell || (medication && medication.timeline.find(c => c.status === 'due'))
       this.selectedMarMedication = medication
+      this.selectedMarAdministrationId = targetCell ? targetCell.administrationId : null
       this.selectedMarAction = actionMap[normalized] || 'Given'
       this.forms.mar = {
         ...defaultDialogForms().mar,
         action: this.selectedMarAction,
-        time: cell && cell.time ? cell.time : this.marTimeFocus,
+        time: targetCell && targetCell.time ? targetCell.time : this.marTimeFocus,
         dose: medication ? medication.detail.split(' · ')[0] || '' : '',
-        comment: cell && cell.text ? `eMAR cell ${cell.time}: ${cell.text}` : '',
+        comment: targetCell && targetCell.text ? `eMAR cell ${targetCell.time}: ${targetCell.text}` : '',
         patientResponse: medication && this.marShowEducation ? medication.education : ''
       }
       this.$set(this.dialogs, 'marAction', true)
@@ -7010,28 +7103,33 @@ export default {
       if (form && form.validate && !form.validate()) return
       this.savingDialog = true
       try {
-        const now = new Date().toISOString()
         const action = this.forms.mar.action || 'Given'
-        const statusMap = {
-          Given: 'Given',
-          Held: 'Hold',
-          Refused: 'Refused',
-          'Not scanned': 'Not scanned',
-          'Patient education': 'Education documented',
-          'Details reviewed': 'Reviewed'
-        }
-        if (this.selectedMarMedication.raw && this.selectedMarMedication.raw.id) {
-          await this.$store.dispatch('clinical/updateMedication', {
-            ...this.selectedMarMedication.raw,
-            status: statusMap[action] || action,
-            lastAdminTime: this.forms.mar.time,
-            lastScanAt: this.forms.mar.barcode ? now : this.selectedMarMedication.raw.lastScanAt,
-            administrationStatus: statusMap[action] || action,
-            administrationComment: this.forms.mar.comment,
-            patientResponse: this.forms.mar.patientResponse,
-            updatedAt: now,
-            updatedBy: this.actorName()
-          })
+        const administrationStatusMap = { Given: 'Given', Held: 'Held', Refused: 'Refused', 'Not Available': 'Not Available' }
+        const administrationStatus = administrationStatusMap[action]
+        if (administrationStatus) {
+          let administrationId = this.selectedMarAdministrationId
+          if (!administrationId && this.selectedMarMedication.raw && this.selectedMarMedication.raw.id) {
+            // PRN / demand doses have no pre-scheduled "Due" row — create one
+            // filed for right now, then administer it in the same flow.
+            const created = await this.$store.dispatch('clinical/createMedicationAdministration', {
+              medicationId: this.selectedMarMedication.raw.id,
+              patientId: this.activePatientId,
+              scheduledFor: new Date().toISOString()
+            })
+            administrationId = (created.administration || created).id
+          }
+          if (administrationId) {
+            await this.$store.dispatch('clinical/administerMedication', {
+              id: administrationId,
+              status: administrationStatus,
+              route: this.selectedMarMedication.route,
+              doseGiven: this.forms.mar.dose,
+              site: this.forms.mar.site,
+              refusalReason: action === 'Refused' ? this.forms.mar.comment : undefined,
+              patientResponse: this.forms.mar.patientResponse,
+              comment: this.forms.mar.comment
+            })
+          }
         }
         await this.$store.dispatch('clinical/createTask', {
           patientId: this.activePatientId,
@@ -7374,14 +7472,10 @@ export default {
           instructions: this.forms.order.instructions,
           orderedBy: recordedBy
         })
-        await this.$store.dispatch('clinical/createTask', {
-          patientId,
-          relatedType: 'lab',
-          relatedId: record.id,
-          title: `Complete lab order: ${this.forms.order.lab.testName}`,
-          assignedToRole: 'LAB',
-          priority: this.forms.order.lab.priority || 'Routine',
-          actionReason: this.forms.order.instructions || 'Created from Patient 360'
+        await this.$store.dispatch('clinical/createTasksFromClinicalOrder', {
+          order: { id: record.id, type: 'lab', description: this.forms.order.lab.testName, assigned_role: 'LAB', priority: this.forms.order.lab.priority || 'Routine', due_at: record.requestedAt || new Date().toISOString(), frequency: 'Once' },
+          patient: { id: patientId, name: this.activePatient.displayName || this.activePatient.name },
+          encounter: { id: this.currentEncounterId }
         })
         this.selectedChartTab = 'Orders'
         this.closeChartDialog('lab')
@@ -7407,14 +7501,10 @@ export default {
           instructions: this.forms.order.instructions,
           orderedBy: recordedBy
         })
-        await this.$store.dispatch('clinical/createTask', {
-          patientId,
-          relatedType: 'imaging',
-          relatedId: record.id,
-          title: `Complete imaging order: ${this.forms.order.imaging.modality}`,
-          assignedToRole: 'IMAGING',
-          priority: this.forms.order.imaging.priority || 'Routine',
-          actionReason: this.forms.order.instructions || 'Created from Patient 360'
+        await this.$store.dispatch('clinical/createTasksFromClinicalOrder', {
+          order: { id: record.id, type: 'imaging', description: this.forms.order.imaging.modality, assigned_role: 'IMAGING', priority: this.forms.order.imaging.priority || 'Routine', due_at: record.requestedAt || new Date().toISOString(), frequency: 'Once' },
+          patient: { id: patientId, name: this.activePatient.displayName || this.activePatient.name },
+          encounter: { id: this.currentEncounterId }
         })
         this.selectedChartTab = 'Orders'
         this.closeChartDialog('imaging')
@@ -7446,18 +7536,20 @@ export default {
           sideEffects: this.forms.order.medication.sideEffects || (catalogItem && catalogItem.sideEffects) || '',
           education: this.forms.order.medication.education || (catalogItem && catalogItem.education) || '',
           safetyWarnings: this.forms.order.medication.safetyWarnings || (catalogItem && catalogItem.warnings) || '',
+          form: this.forms.order.medication.form || (catalogItem && catalogItem.form) || '',
+          priority: this.forms.order.medication.priority || 'Routine',
           instructions: this.forms.order.instructions,
           notes: this.forms.order.instructions,
           prescribedBy: recordedBy
         })
-        await this.$store.dispatch('clinical/createTask', {
-          patientId,
-          relatedType: 'medication',
-          relatedId: record.id,
-          title: `Administer ${this.forms.order.medication.medication}`,
-          assignedToRole: 'NURSE',
-          priority: 'routine',
-          actionReason: this.forms.order.instructions || 'Created from Patient 360'
+        // The backend auto-schedules the first eMAR dose when the order is
+        // created — pull it in now so the grid shows it immediately instead
+        // of waiting for the next unrelated refresh.
+        await this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId })
+        await this.$store.dispatch('clinical/createTasksFromClinicalOrder', {
+          order: { id: record.id, type: 'medication', medication: this.forms.order.medication.medication, description: this.forms.order.instructions || `Administer ${this.forms.order.medication.medication}`, assigned_role: 'NURSE', priority: 'Routine', due_at: record.prescribedAt || new Date().toISOString(), frequency: this.forms.order.medication.frequency || 'Once' },
+          patient: { id: patientId, name: this.activePatient.displayName || this.activePatient.name },
+          encounter: { id: this.currentEncounterId }
         })
 
         // Bill the Cash Office at the exact DB price catalog rate — without
@@ -7782,7 +7874,7 @@ function defaultDialogForms() {
       instructions: '',
       lab: { testName: '', priority: 'Routine' },
       imaging: { modality: '', priority: 'Routine' },
-      medication: { medication: '', dosage: '', route: 'Oral', frequency: '', medicationClass: '', indication: '', sideEffects: '', education: '', safetyWarnings: '' }
+      medication: { medication: '', dosage: '', route: 'Oral', frequency: '', medicationClass: '', indication: '', sideEffects: '', education: '', safetyWarnings: '', form: '', priority: 'Routine' }
     },
     mar: {
       action: 'Given',

@@ -50,3 +50,10 @@ coverage/
 tmp_*
 old_catalog*
 extract_catalog.js
+
+# ─── Deploy tooling caches / local-only artifacts ────────────────────────────
+.firebase/
+.vercel/
+deploy/onprem/backup/
+deploy/onprem/nginx/certs/*.pem
+deploy/onprem/nginx/certs/*.key

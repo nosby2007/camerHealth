@@ -5,6 +5,7 @@ const prisma = require('../lib/prisma')
 const { authenticate } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { requirePatientForFacility } = require('../lib/tenant')
+const { roundToNextStandardSlot } = require('../lib/medicationSchedule')
 
 const router = Router()
 
@@ -65,7 +66,13 @@ const medicationSchema = z.object({
   qtyDispensed: z.number().int().nullable().optional(),
   dispensedBy: z.string().nullable().optional(),
   dispensedAt: z.string().nullable().optional(),
-  pharmacistNotes: z.string().nullable().optional()
+  pharmacistNotes: z.string().nullable().optional(),
+// ── eMAR: order-level clinical detail for point-of-care nursing reference ──
+  form: z.string().nullable().optional(),
+  medicationClass: z.string().nullable().optional(),
+  sideEffects: z.string().nullable().optional(),
+  education: z.string().nullable().optional(),
+  priority: z.string().nullable().optional()
 })
 
 // ─── VISITS ─────────────────────────────────────────────────────────────────
@@ -313,9 +320,36 @@ router.post('/medications', authenticate, validate(medicationSchema), async (req
         dispensedBy: req.body.dispensedBy || null,
         dispensedAt: req.body.dispensedAt ? new Date(req.body.dispensedAt) : null,
         pharmacistNotes: req.body.pharmacistNotes || null,
-        prescribedById: req.user.id
+        prescribedById: req.user.id,
+        // ── eMAR: order-level clinical detail ─────────────────────────────────
+        form: req.body.form || null,
+        medicationClass: req.body.medicationClass || null,
+        sideEffects: req.body.sideEffects || null,
+        education: req.body.education || null,
+        priority: req.body.priority || 'Routine'
       }
     })
+
+    // eMAR: schedule the first dose. STAT/Urgent orders are due immediately;
+    // everything else lands on the next standard clock slot for the
+    // frequency rather than the exact prescribing timestamp. PRN/once orders
+    // get no initial row — they stay demand-driven, as today.
+    const isUrgent = /^(stat|urgent)$/i.test(String(med.priority || ''))
+    const firstDoseAt = isUrgent
+      ? med.prescribedAt.toISOString()
+      : roundToNextStandardSlot(med.frequency, med.prescribedAt)
+    if (firstDoseAt) {
+      await prisma.medicationAdministration.create({
+        data: {
+          medicationId: med.id,
+          patientId: med.patientId,
+          facilityId: req.user.facilityId,
+          scheduledFor: new Date(firstDoseAt),
+          status: 'Due'
+        }
+      })
+    }
+
     res.status(201).json(med)
   } catch (error) {
     next(error)
@@ -332,7 +366,12 @@ router.patch('/medications/:id', authenticate, async (req, res, next) => {
       qtyDispensed,
       dispensedBy,
       dispensedAt,
-      pharmacistNotes
+      pharmacistNotes,
+      form,
+      medicationClass,
+      sideEffects,
+      education,
+      priority
     } = req.body
     const med = await prisma.medication.findFirst({
       where: { id: req.params.id, facilityId: req.user.facilityId }
@@ -348,6 +387,11 @@ router.patch('/medications/:id', authenticate, async (req, res, next) => {
     if (dispensedBy) data.dispensedBy = dispensedBy
     if (dispensedAt) data.dispensedAt = new Date(dispensedAt)
     if (pharmacistNotes !== undefined) data.pharmacistNotes = pharmacistNotes
+    if (form !== undefined) data.form = form
+    if (medicationClass !== undefined) data.medicationClass = medicationClass
+    if (sideEffects !== undefined) data.sideEffects = sideEffects
+    if (education !== undefined) data.education = education
+    if (priority) data.priority = priority
 
     const updated = await prisma.medication.update({
       where: { id: req.params.id },
