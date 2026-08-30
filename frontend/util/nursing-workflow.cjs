@@ -39,6 +39,25 @@ function taskFromProviderOrder(order, assignedNurse) {
   }
 }
 
+// Bridges taskFromProviderOrder's snake_case shape (matching the backend's
+// column naming) to the camelCase payload store/nursing.js's createTask
+// action forwards to taskApi.create.
+function mapSnakeTask(task) {
+  if (!task) return task
+  return {
+    patientId: task.patient_id,
+    facilityId: task.facility_id,
+    linkedOrderId: task.linked_order_id,
+    linkedOrderType: task.linked_order_type,
+    title: task.title,
+    priority: task.priority,
+    reason: task.reason,
+    status: task.status,
+    assignedNurseId: task.assigned_nurse_id,
+    dueAt: task.due_at
+  }
+}
+
 function makeId(prefix = 'ID') {
   const timestamp = Date.now().toString(36)
   const random = Math.random().toString(36).substring(2, 9)
@@ -59,6 +78,7 @@ module.exports = {
   calculateWoundVolume,
   hasWoundAreaIncreased,
   taskFromProviderOrder,
+  mapSnakeTask,
   makeId,
   withBase
 }
