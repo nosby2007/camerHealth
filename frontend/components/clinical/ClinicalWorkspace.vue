@@ -1993,7 +1993,13 @@
               <v-autocomplete v-model="forms.order.medication.medication" :items="orderDrugSuggestions" item-text="name" item-value="name"
                 label="Medication" dense outlined :disabled="!orderDrugSuggestions.length"
                 :placeholder="orderDrugSuggestions.length ? 'Select from the official price catalog...' : 'No priced drugs in this facility\'s catalog yet'"
-                :rules="[requiredRule, () => !!orderSelectedCatalogItem || 'Must be selected from the official price catalog']" />
+                :rules="[requiredRule, () => !!orderSelectedCatalogItem || 'Must be selected from the official price catalog']">
+                <template #append-outer>
+                  <v-btn v-if="currentRole === 'ADMIN'" icon small title="Add a drug to the price catalog" :to="'/admin/tarification'" target="_blank">
+                    <v-icon small>mdi-tag-plus-outline</v-icon>
+                  </v-btn>
+                </template>
+              </v-autocomplete>
               <v-text-field v-model="forms.order.medication.dosage" label="Dose" dense outlined :rules="[requiredRule]" />
               <v-select v-model="forms.order.medication.route" :items="medicationRoutes" label="Route" dense outlined :rules="[requiredRule]" />
               <v-text-field v-model="forms.order.medication.frequency" label="Frequency" dense outlined :rules="[requiredRule]" />
