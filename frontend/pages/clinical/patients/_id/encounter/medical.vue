@@ -432,7 +432,10 @@
           </v-card>
 
           <!-- Actions -->
-          <div class="d-flex justify-end" style="gap:12px">
+          <div class="d-flex justify-end no-print" style="gap:12px">
+            <v-btn large tile depressed outlined color="#0f766e" class="font-weight-black text-caption px-6" @click="printConsultation">
+              <v-icon left>mdi-printer</v-icon>PRINT
+            </v-btn>
             <v-btn large tile depressed outlined color="#003366" class="font-weight-black text-caption px-8"
               :to="`/clinical/patients/${$route.params.id}`">
               Cancel
@@ -447,11 +450,62 @@
       </v-row>
     </v-form>
 
+    <!-- ── Printable consultation note — screen-hidden, print-only ────────── -->
+    <div class="print-sheet">
+      <div class="print-header">
+        <div>
+          <strong>{{ $store.state.auth.institution || 'CameroHealth' }}</strong>
+          <div class="print-sub">Medical consultation note</div>
+        </div>
+        <div class="print-sub text-right">
+          Printed {{ new Date().toLocaleString('en-GB') }}
+        </div>
+      </div>
+      <div class="print-patient">
+        <div><strong>{{ patientName }}</strong> — {{ patient && patient.id }}</div>
+        <div v-if="patient">{{ patient.gender }} · {{ calculatedAge(patient.dob) }} years · Blood group: {{ patient.bloodType || 'N/A' }}</div>
+        <div v-if="hasAllergy" class="print-allergy">ALLERGY: {{ patient.allergies }}</div>
+      </div>
+      <h2 class="print-title">{{ diagnosis.primary || encounter.chiefComplaint || 'Medical Consultation' }}</h2>
+      <pre class="print-body">{{ buildConsultationBody() }}</pre>
+      <div class="print-signature">
+        <div>Physician: {{ $store.state.auth.fullName || $store.state.auth.staffId }}</div>
+        <div>Date: {{ new Date().toLocaleDateString('en-GB') }}</div>
+        <div class="print-sign-line">Signature: _______________________________</div>
+      </div>
+    </div>
+
     <style scoped>
     .vital-badge { display:flex; flex-direction:column; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; padding:8px 16px; border-radius:2px; min-width:80px; }
     .vital-badge span { font-size:10px; color:#6b7280; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
     .vital-badge strong { font-size:14px; color:#003366; }
     .order-row, .decision-box { background:#F8FAFC; border:1px solid #E5E7EB; }
+    .print-sheet { display: none; }
+    </style>
+
+    <style>
+    @media print {
+      body * { visibility: hidden; }
+      .print-sheet, .print-sheet * { visibility: visible; }
+      .print-sheet {
+        display: block !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 24px;
+        color: #000;
+        font-family: 'Times New Roman', Georgia, serif;
+      }
+      .print-header { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px; }
+      .print-sub { font-size:11px; color:#333; }
+      .print-patient { border:1px solid #000; padding:8px 12px; margin-bottom:14px; font-size:13px; line-height:1.6; }
+      .print-allergy { font-weight:bold; color:#000; }
+      .print-title { font-size:16px; margin:0 0 10px; text-transform:uppercase; letter-spacing:.5px; }
+      .print-body { white-space: pre-wrap; font-family: 'Times New Roman', Georgia, serif; font-size:13px; line-height:1.5; }
+      .print-signature { margin-top:40px; font-size:13px; }
+      .print-sign-line { margin-top:24px; }
+    }
     </style>
 
   </v-container>
@@ -593,6 +647,85 @@ export default {
       if (!medicationName) return null
       return this.drugCatalogSuggestions.find(d => d.name.toLowerCase() === String(medicationName).toLowerCase()) || null
     },
+    printConsultation() {
+      window.print()
+    },
+    // A plain-text rendering of the full consultation, used as
+    // ClinicalNote.body — the record other views (note lists, chart review)
+    // read when they don't know about this form's structured field layout.
+    // The exact structured data is saved alongside it (see save()) so the
+    // print view can render a properly formatted copy instead of this text.
+    buildConsultationBody() {
+      const structuredRx = this.prescriptionRows.filter(row => row.medication)
+      const L = []
+      L.push('CHIEF COMPLAINT: ' + (this.encounter.chiefComplaint || '—'))
+      L.push('')
+      L.push('HISTORY OF PRESENT ILLNESS:')
+      L.push(this.encounter.historyOfIllness || '—')
+      if (this.encounter.medicalHistory) L.push('\nPAST MEDICAL HISTORY: ' + this.encounter.medicalHistory)
+      if (this.encounter.surgicalHistory) L.push('SURGICAL HISTORY: ' + this.encounter.surgicalHistory)
+      if (this.encounter.familyHistory) L.push('FAMILY HISTORY: ' + this.encounter.familyHistory)
+      L.push('ALLERGIES: ' + (this.encounter.allergies || 'None known'))
+      if (this.encounter.currentMeds) L.push('CURRENT MEDICATIONS (prior to consult): ' + this.encounter.currentMeds)
+      if (this.encounter.riskFactors && this.encounter.riskFactors.length) L.push('RISK FACTORS: ' + this.encounter.riskFactors.join(', '))
+
+      L.push('\nPHYSICAL EXAMINATION:')
+      L.push('General condition: ' + this.exam.generalState)
+      if (this.exam.cardiovascular) L.push('Cardiovascular: ' + this.exam.cardiovascular)
+      if (this.exam.respiratory) L.push('Respiratory: ' + this.exam.respiratory)
+      if (this.exam.abdominal) L.push('Abdominal: ' + this.exam.abdominal)
+      if (this.exam.neurological) L.push('Neurological: ' + this.exam.neurological)
+      if (this.exam.other) L.push('Other systems: ' + this.exam.other)
+      if (this.exam.clinicalFindings) L.push('Clinical summary: ' + this.exam.clinicalFindings)
+
+      L.push('\nDIAGNOSTIC ASSESSMENT:')
+      L.push('Primary diagnosis: ' + (this.diagnosis.primary || '—'))
+      if (this.diagnosis.differentials.length) L.push('Differential diagnoses: ' + this.diagnosis.differentials.join(', '))
+      if (this.diagnosis.comorbidities.length) L.push('Comorbidities: ' + this.diagnosis.comorbidities.join(', '))
+      L.push('Severity: ' + this.diagnosis.severity)
+
+      if (this.plan.medications || structuredRx.length) {
+        L.push('\nTREATMENT PLAN:')
+        if (this.plan.medications) L.push(this.plan.medications)
+        structuredRx.forEach(rx => {
+          L.push('- ' + rx.medication + (rx.dosage ? ' ' + rx.dosage : '') + (rx.route ? ' · ' + rx.route : '') +
+            (rx.frequency ? ' · ' + rx.frequency : '') + (rx.duration ? ' · ' + rx.duration : '') + ' (' + rx.dispenseAt + ')')
+        })
+      }
+      if (this.plan.labOrders.length) L.push('LAB ORDERS: ' + this.plan.labOrders.join(', '))
+      if (this.plan.imagingOrders.length) L.push('IMAGING ORDERS: ' + this.plan.imagingOrders.join(', '))
+      if (this.plan.otherOrders) L.push('OTHER ORDERS: ' + this.plan.otherOrders)
+
+      if (this.outcome.decision) {
+        L.push('\nOUTCOME / DISPOSITION: ' + this.outcome.decision)
+        if (this.outcome.decision === 'Admission') {
+          L.push('Ward: ' + this.admission.ward + (this.admission.bedNumber ? ' (bed ' + this.admission.bedNumber + ')' : ''))
+          L.push('Admission type: ' + this.admission.admissionType)
+          if (this.admission.admissionReason) L.push('Reason: ' + this.admission.admissionReason)
+        }
+        if (this.outcome.decision === 'Inter-facility referral') {
+          L.push('Referred to: ' + (this.referral.toFacility || '—') + ' — ' + this.referral.specialty + ' (' + this.referral.priority + ')')
+          if (this.referral.reason) L.push('Reason: ' + this.referral.reason)
+        }
+        if (this.outcome.decision === 'Discharge home') {
+          if (this.discharge.condition) L.push('Condition at discharge: ' + this.discharge.condition)
+          if (this.discharge.warningSigns) L.push('Warning signs to watch for: ' + this.discharge.warningSigns)
+          if (this.discharge.homeCare) L.push('Home care instructions: ' + this.discharge.homeCare)
+        }
+        if (this.outcome.nextAppointment) L.push('Next appointment: ' + this.outcome.nextAppointment)
+        if (this.outcome.patientInstructions) L.push('Patient instructions: ' + this.outcome.patientInstructions)
+      }
+
+      if (this.soap.subjective || this.soap.objective || this.soap.assessment || this.soap.plan) {
+        L.push('\nSOAP SUMMARY:')
+        if (this.soap.subjective) L.push('S: ' + this.soap.subjective)
+        if (this.soap.objective) L.push('O: ' + this.soap.objective)
+        if (this.soap.assessment) L.push('A: ' + this.soap.assessment)
+        if (this.soap.plan) L.push('P: ' + this.soap.plan)
+      }
+
+      return L.join('\n')
+    },
     async save() {
       if (!this.$refs.form.validate()) return
       this.saving = true
@@ -608,20 +741,22 @@ export default {
 
         await this.$store.dispatch('clinical/addMedicalNote', {
           patientId, recordedBy, recordedAt: now,
-          diagnosis: this.diagnosis.primary,
-          differentials: this.diagnosis.differentials,
-          severity: this.diagnosis.severity,
-          clinicalFindings: this.exam.clinicalFindings,
-          plan: this.plan.medications,
-          soap: { ...this.soap },
-          outcome: { ...this.outcome },
-          admission: { ...this.admission },
-          referral: { ...this.referral },
-          discharge: { ...this.discharge },
-          billing: { ...this.billing },
-          prescriptions: this.prescriptionRows.filter(row => row.medication),
-          exam: { ...this.exam },
-          encounter: { ...this.encounter }
+          title: 'Medical Consultation — ' + (this.diagnosis.primary || this.encounter.chiefComplaint || 'Untitled'),
+          body: this.buildConsultationBody(),
+          structuredData: {
+            encounter: { ...this.encounter },
+            exam: { ...this.exam },
+            diagnosis: { ...this.diagnosis },
+            plan: { ...this.plan },
+            prescriptions: this.prescriptionRows.filter(row => row.medication),
+            soap: { ...this.soap },
+            outcome: { ...this.outcome },
+            admission: { ...this.admission },
+            referral: { ...this.referral },
+            discharge: { ...this.discharge },
+            billing: { ...this.billing },
+            patientId, recordedBy, recordedAt: now
+          }
         })
 
         const structuredRx = this.prescriptionRows.filter(row => row.medication)

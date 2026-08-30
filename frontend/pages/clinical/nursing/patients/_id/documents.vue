@@ -35,7 +35,10 @@ export default {
     patient() { return (this.$store.getters['clinical/patientDirectory'] || []).find(item => item.id === this.patientId) || {} },
     chart() { return this.$store.getters['nursing/patientNursing360'](this.patientId) }
   },
-  mounted() { this.$store.commit('nursing/LOAD_FROM_STORAGE') },
+  mounted() {
+    this.$store.commit('nursing/LOAD_FROM_STORAGE')
+    this.$store.dispatch('nursing/loadPatientChart', this.patientId)
+  },
   methods: { saveDocument() { this.$store.dispatch('nursing/createDocument', { ...this.form, patientId: this.patientId, status: 'active' }); this.form.title = '' } }
 }
 </script>

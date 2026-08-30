@@ -209,9 +209,27 @@ export default {
       doctorFilterDepartment: this.$store.state.auth.department || 'General Medicine'
     }
   },
-  mounted() {
+  async mounted() {
     if (this.$store.state.auth.department) {
       this.doctorFilterDepartment = this.$store.state.auth.department
+    }
+    // The command center reads from the same patient/visit/order/appointment
+    // state every other clinical page populates — without fetching here it
+    // renders every metric as zero on a fresh session (this is usually the
+    // first clinical page a user lands on after login).
+    try {
+      await Promise.all([
+        this.$store.dispatch('clinical/fetchPatients'),
+        this.$store.dispatch('clinical/fetchVisits'),
+        this.$store.dispatch('clinical/fetchAppointments'),
+        this.$store.dispatch('clinical/fetchInpatients'),
+        this.$store.dispatch('clinical/fetchLabOrders'),
+        this.$store.dispatch('clinical/fetchImagingOrders'),
+        this.$store.dispatch('clinical/fetchTasks'),
+        this.$store.dispatch('billing/fetchAllStatements')
+      ])
+    } catch (error) {
+      this.$toast.error(error.response?.data?.error || 'Unable to load the command center data.')
     }
   },
   computed: {

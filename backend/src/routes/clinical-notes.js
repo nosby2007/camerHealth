@@ -27,19 +27,31 @@ const vitalsSchema = z.object({
   recordedAt: z.string().optional()
 })
 
+// The Nurse Command Center (frontend/store/nursing.js) files several more
+// granular note types than the original nursing/medical/plan_of_care set —
+// union both vocabularies rather than forcing every caller onto one.
 const noteSchema = z.object({
   patientId: z.string().uuid(),
   encounterId: z.string().optional(),
-  noteType: z.enum(['nursing', 'medical', 'plan_of_care']),
+  noteType: z.enum(['nursing', 'medical', 'plan_of_care', 'nursing_note', 'wound_note', 'progress_note', 'incident_note', 'provider_notification', 'discharge_note']),
   title: z.string().optional(),
   body: z.string().min(1),
-  authorRole: z.string().optional()
+  status: z.string().optional(),
+  authorRole: z.string().optional(),
+  // Full form data behind notes authored from a structured page (e.g. the
+  // Medical Encounter form) — lets the exact original note be re-rendered
+  // later (view/print), rather than only ever having the flattened summary.
+  structuredData: z.record(z.any()).optional()
 })
 
 const noteUpdateSchema = z.object({
   title: z.string().optional(),
   body: z.string().min(1).optional(),
   status: z.string().optional()
+})
+
+const amendSchema = z.object({
+  body: z.string().min(1)
 })
 
 // ─── Vitals ─────────────────────────────────────────────────────────────────
@@ -86,7 +98,7 @@ router.get('/vitals', authenticate, async (req, res, next) => {
 // POST /api/clinical-notes — create a note
 router.post('/clinical-notes', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(noteSchema), async (req, res, next) => {
   try {
-    const { patientId, encounterId, noteType, title, body, authorRole } = req.body
+    const { patientId, encounterId, noteType, title, body, status, authorRole, structuredData } = req.body
     const note = await prisma.clinicalNote.create({
       data: {
         patientId,
@@ -95,8 +107,9 @@ router.post('/clinical-notes', authenticate, authorize(...CLINICAL_WRITE_ROLES),
         noteType,
         title: title || null,
         body,
+        structuredData: structuredData || null,
         authorRole: authorRole || req.user.role,
-        status: 'filed',
+        status: status || 'filed',
         createdById: req.user.id
       }
     })
@@ -182,6 +195,58 @@ router.patch('/clinical-notes/:id/sign', authenticate, authorize(...CLINICAL_WRI
         action: 'CLINICAL_NOTE_SIGNED',
         actorId: req.user.id,
         targetId: note.id
+      }
+    })
+    res.json({ note })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// PATCH /api/clinical-notes/:id/share — flag a note as shared with the care team
+router.patch('/clinical-notes/:id/share', authenticate, authorize(...CLINICAL_WRITE_ROLES), async (req, res, next) => {
+  try {
+    const existing = await prisma.clinicalNote.findFirst({
+      where: { id: req.params.id, facilityId: req.user.facilityId }
+    })
+    if (!existing) {
+      return res.status(404).json({ error: 'Clinical note not found' })
+    }
+    if (existing.status === 'draft') {
+      return res.status(409).json({ error: 'File the note before sharing it with the care team' })
+    }
+    const note = await prisma.clinicalNote.update({
+      where: { id: req.params.id },
+      data: { sharedWithCareTeam: true, sharedAt: new Date(), sharedById: req.user.id }
+    })
+    res.json({ note })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// POST /api/clinical-notes/:id/amend — attach an addendum to a note. A signed
+// note's own body/title stay immutable (PATCH /:id 409s on a signed note),
+// but an amendment can always be added — it does not alter the original.
+router.post('/clinical-notes/:id/amend', authenticate, authorize(...CLINICAL_WRITE_ROLES), validate(amendSchema), async (req, res, next) => {
+  try {
+    const existing = await prisma.clinicalNote.findFirst({
+      where: { id: req.params.id, facilityId: req.user.facilityId }
+    })
+    if (!existing) {
+      return res.status(404).json({ error: 'Clinical note not found' })
+    }
+    const amendments = Array.isArray(existing.amendments) ? existing.amendments : []
+    const note = await prisma.clinicalNote.update({
+      where: { id: req.params.id },
+      data: {
+        status: existing.status === 'signed' ? 'amended' : existing.status,
+        amendments: [...amendments, {
+          body: req.body.body,
+          actorId: req.user.id,
+          actorName: req.user.fullName || req.user.staffCode,
+          at: new Date().toISOString()
+        }]
       }
     })
     res.json({ note })

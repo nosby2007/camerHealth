@@ -101,7 +101,10 @@ export default {
       return this.patients
     }
   },
-  mounted() { this.$store.commit('nursing/LOAD_FROM_STORAGE') },
+  mounted() {
+    this.$store.commit('nursing/LOAD_FROM_STORAGE')
+    this.$store.dispatch('nursing/fetchTasks')
+  },
   methods: {
     patientTasks(id) { return this.tasks.filter(task => task.patientId === id && ['pending', 'in_progress'].includes(task.status)) },
     patientWounds(id) { return this.wounds.filter(wound => wound.patientId === id && !['healed', 'closed'].includes(wound.status)) },

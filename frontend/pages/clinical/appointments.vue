@@ -63,10 +63,14 @@
               ></v-text-field>
 
               <v-select
-                v-model="form.provider"
-                :items="providers"
+                v-model="form.providerId"
+                :items="providerOptions"
+                item-text="displayLabel"
+                item-value="id"
                 label="Attending Provider"
                 flat outlined tile dense
+                clearable
+                :no-data-text="providersLoaded ? 'No doctor/NP found for this facility' : 'Loading providers...'"
                 class="mb-4 rounded-0"
               ></v-select>
 
@@ -147,6 +151,8 @@
 </template>
 
 <script>
+import { staffApi } from '~/services/api'
+
 export default {
   head: { title: 'Appointments' },
   data() {
@@ -156,9 +162,10 @@ export default {
       statusFilter: '',
       editingId: null,
       saving: false,
-      form: { patientId: '', type: '', date: '', time: '', provider: '', reason: '' },
+      form: { patientId: '', type: '', date: '', time: '', providerId: '', reason: '' },
       appointmentTypes: ['General Consultation', 'Follow-Up', 'Vaccination', 'Antenatal Care', 'Lab Review', 'Specialist Referral', 'Emergency'],
-      providers: ['Dr. Kamga', 'Dr. Nkeng', 'Dr. Biya', 'Nurse Fouda', 'Nurse Mbarga'],
+      providersLoaded: false,
+      facilityProviders: [],
       headers: [
         { text: 'PATIENT', value: 'patientName' },
         { text: 'TYPE', value: 'type' },
@@ -192,19 +199,36 @@ export default {
     filteredAppointments() {
       if (!this.statusFilter) return this.appointments
       return this.appointments.filter(a => a.status === this.statusFilter)
+    },
+    providerOptions() {
+      return this.facilityProviders.map(p => ({
+        ...p,
+        displayLabel: `${p.role === 'NP' ? 'NP' : 'Dr.'} ${p.fullName}${p.specialty ? ' — ' + p.specialty : ''}`
+      }))
     }
   },
   async mounted() {
     try {
       await Promise.all([
         this.$store.dispatch('clinical/fetchPatients'),
-        this.$store.dispatch('clinical/fetchAppointments')
+        this.$store.dispatch('clinical/fetchAppointments'),
+        this.loadProviders()
       ])
     } catch (error) {
       this.$toast.error(error.response?.data?.error || 'Unable to load appointments.')
     }
   },
   methods: {
+    async loadProviders() {
+      try {
+        const { data } = await staffApi.getProviders()
+        this.facilityProviders = data
+      } catch (error) {
+        this.$toast.error(error.response?.data?.error || 'Unable to load the facility provider list.')
+      } finally {
+        this.providersLoaded = true
+      }
+    },
     async save() {
       if (!this.$refs.form.validate()) return
       this.saving = true
@@ -213,7 +237,8 @@ export default {
         type: this.form.type,
         date: this.form.date,
         time: this.form.time || null,
-        notes: this.form.reason || null
+        notes: this.form.reason || null,
+        providerId: this.form.providerId || null
       }
       try {
         if (this.editingId) {
@@ -234,7 +259,7 @@ export default {
     },
     editAppointment(item) {
       this.editingId = item.id
-      this.form = { patientId: item.patientId, type: item.type, date: item.date, time: item.time, provider: item.provider, reason: item.reason }
+      this.form = { patientId: item.patientId, type: item.type, date: item.date, time: item.time, providerId: item.providerId || '', reason: item.reason }
     },
     cancelEdit() {
       this.editingId = null

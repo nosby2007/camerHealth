@@ -32,7 +32,10 @@ export default {
     patientId() { return this.$route.params.id },
     patient() { return (this.$store.getters['clinical/patientDirectory'] || []).find(item => item.id === this.patientId) || {} }
   },
-  mounted() { this.$store.commit('nursing/LOAD_FROM_STORAGE') },
+  mounted() {
+    this.$store.commit('nursing/LOAD_FROM_STORAGE')
+    this.$store.dispatch('nursing/loadPatientChart', this.patientId)
+  },
   methods: { saveAssessment() { this.$store.dispatch('nursing/createNursingAssessment', { ...this.form, patientId: this.patientId }); this.$toast && this.$toast.success('Assessment saved') } }
 }
 </script>

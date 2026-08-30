@@ -241,6 +241,8 @@ export default {
         })
         this.$emit('saved', record)
         this.$emit('close')
+      } catch (err) {
+        this.$emit('error', err.response?.data?.error || err.message || 'Unable to save this care plan.')
       } finally {
         this.saving = false
       }

@@ -146,7 +146,7 @@ export default {
         })
         this.$emit('close')
       } catch (error) {
-        this.formError = error.message || 'Discharge could not be completed.'
+        this.formError = error.response?.data?.error || error.message || 'Discharge could not be completed.'
       } finally {
         this.saving = false
       }

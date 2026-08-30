@@ -2222,6 +2222,7 @@
       :existing-note="noteDialogConfig.existingNote"
       @close="closeChartDialog('note')"
       @saved="handleNoteSaved"
+      @error="toastError"
     />
     <WoundCareDialog
       :open="dialogs.woundCare"
@@ -2238,6 +2239,7 @@
       :author-role="currentRole"
       @close="closeChartDialog('carePlan')"
       @saved="handleCarePlanSaved"
+      @error="toastError"
     />
     <DischargePlanDialog
       :open="dialogs.discharge"
@@ -2818,18 +2820,6 @@ export default {
         { label: 'Neuro status', values: { '6/30/2026 0700': 'Alert', '6/30/2026 0800': 'Oriented' } },
         { label: 'Skin/wound', values: { '6/30/2026 0700': 'Dressing intact', '6/30/2026 0800': 'Photo due' } },
         { label: 'Fall precautions', values: { '6/30/2026 0700': 'Active', '6/30/2026 0800': 'Active' } }
-      ],
-      careTeamRows: [
-        { label: 'Raja M Khan, MD', values: { Role: 'Attending', Shift: 'Current admission', Contact: '478-803-7525' } },
-        { label: 'Cyra De Los Reyes, RN', values: { Role: 'Registered Nurse', Shift: '0700-1900', Contact: '478-803-7300' } },
-        { label: 'Ahmad A Kabbani, MD', values: { Role: 'Consulting physician', Shift: 'On call', Contact: '478-745-2915' } },
-        { label: 'Emily Swortzel, RD', values: { Role: 'Dietitian', Shift: 'Day', Contact: '478-803-7300' } }
-      ],
-      worklistRows: [
-        { label: 'Wound management: dressing algorithm', values: { Time: '1000', Priority: 'Today', Status: 'Open' } },
-        { label: 'Reassess pain and vitals', values: { Time: '1200', Priority: 'Routine', Status: 'Due' } },
-        { label: 'Acknowledge new lab result', values: { Time: 'Now', Priority: 'High', Status: 'Unread' } },
-        { label: 'Discharge readiness review', values: { Time: '1500', Priority: 'Today', Status: 'Pending' } }
       ],
       defaultRows: [
         { label: 'Current status', values: { '6/30/2026 0700': 'Reviewed' } },
@@ -5711,10 +5701,7 @@ export default {
             Action: task.actionReason || 'Document in flowsheet'
           }
         }))
-        : this.worklistRows.map(row => ({
-          label: row.label,
-          values: { ...row.values, Action: row.values.Status === 'Open' || row.values.Status === 'Due' ? 'Documenter / completer' : 'Review' }
-        }))
+        : [{ label: 'No task filed for this patient', values: { Time: '-', Priority: '-', Status: '-', Action: '-' } }]
       return rows
     },
     skinWoundFlowsheetRows() {
@@ -5773,7 +5760,7 @@ export default {
       ]
     },
     visibleWorklistRows() {
-      if (!this.patientTasks.length) return this.worklistRows
+      if (!this.patientTasks.length) return [{ label: 'No task filed for this patient', values: { Time: '-', Priority: '-', Status: '-' } }]
       return this.patientTasks.map(task => ({
         label: task.title || task.label || 'Care task',
         values: {
@@ -5804,7 +5791,8 @@ export default {
         values: { Role: member.role || member.responsibility || '-', Shift: member.status || 'Active', Contact: member.contact || member.service || '-' }
       }))
       if (attending && !rows.some(row => row.label === attending)) rows.unshift({ label: attending, values: { Role: 'Attending / Referent', Shift: 'Current', Contact: patient.phone || '-' } })
-      return rows.length ? rows : this.careTeamRows
+      if (rows.length) return rows
+      return [{ label: 'No care team filed', values: { Role: '-', Shift: '-', Contact: 'Use "Add member" to file the care team' } }]
     },
     activePatient() {
       const patient = this.findPatientRecord(this.activePatientId)
@@ -5887,6 +5875,7 @@ export default {
       this.selectedNoteId = null
       this.amendingNoteId = null
       this.loadAvatarPlacements()
+      this.loadCareCoordinationData(newId)
       if (newId) this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: newId })
     }
   },
@@ -5913,6 +5902,7 @@ export default {
       this.registerOpenChart(this.activePatientId)
     }
     this.loadAvatarPlacements()
+    this.loadCareCoordinationData(this.activePatientId)
     if (process.client) {
       this.updateViewportBreakpoints()
       window.addEventListener('resize', this.updateViewportBreakpoints)
@@ -5985,6 +5975,13 @@ export default {
     },
     avatarStorageKey() {
       return `camero_patient_avatar_placements_${this.activePatientId || 'demo'}`
+    },
+    loadCareCoordinationData(patientId) {
+      if (!patientId) return
+      this.$store.dispatch('clinical/fetchTasks', { patientId })
+      this.$store.dispatch('clinical/fetchCareTeam', patientId)
+      this.$store.dispatch('clinical/fetchSocialAssessments', patientId)
+      this.$store.dispatch('discharge/fetchDischargeOverview', patientId)
     },
     loadAvatarPlacements() {
       const patientMarkers = (this.$store.getters['nursing/getBodyMapMarkers'] || [])
