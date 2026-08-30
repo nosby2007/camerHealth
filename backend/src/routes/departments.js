@@ -10,7 +10,7 @@ const router = Router()
 const deptSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
-  headOfDepartment: z.string().optional(),
+  headOfDepartment: z.string().nullable().optional(),
   status: z.string().optional(),
   sortOrder: z.number().optional()
 })
