@@ -37,6 +37,7 @@ const leadRoutes = require('./routes/leads')
 const woundCareRoutes = require('./routes/wound-care')
 const carePlanRoutes = require('./routes/care-plans')
 const mobileMoneyRoutes = require('./routes/mobile-money')
+const medicationAdministrationRoutes = require('./routes/medication-administration')
 
 const app = express()
 
@@ -261,6 +262,7 @@ app.use('/api/leads', leadRoutes)
 app.use('/api', woundCareRoutes) // exposes /api/patients/:patientId/wounds and /api/wounds/*
 app.use('/api', carePlanRoutes) // exposes /api/care-plans/* and /api/care-plan-*
 app.use('/api/mobile-money', mobileMoneyRoutes)
+app.use('/api', medicationAdministrationRoutes) // exposes /api/medication-administrations
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 

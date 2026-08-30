@@ -127,6 +127,8 @@ services:
       dockerfile: Dockerfile
       args:
         API_URL: ${APP_ORIGIN:-https://camerohealth.local}/api
+        VUE_APP_GOOGLE_MAPS_API_KEY: ${VUE_APP_GOOGLE_MAPS_API_KEY:-unconfigured}
+        CLIENT_ID: ${CLIENT_ID:-unconfigured}
     image: camerohealth/web:${CAMEROHEALTH_VERSION:-dev}
     restart: unless-stopped
     networks:

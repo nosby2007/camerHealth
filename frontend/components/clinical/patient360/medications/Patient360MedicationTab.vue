@@ -37,7 +37,7 @@
       <div class="medication-table" role="table" aria-label="Patient medication list">
         <div class="medication-head" role="row"><span>Medication</span><span>Dose / route</span><span>Schedule</span><span>Pharmacy</span><span>Education</span></div>
         <article v-for="med in filteredMedications" :key="med.id" class="medication-row">
-          <span><strong>{{ medicationName(med) }}</strong><small>{{ catalogFor(med)?.medicationClass || med.medicationClass || 'Class not labelled' }}</small></span>
+          <span><strong>{{ medicationName(med) }}</strong><small>{{ med.medicationClass || catalogFor(med)?.medicationClass || 'Class not labelled' }}</small></span>
           <span><strong>{{ med.dose || med.dosage || 'Per order' }}</strong><small>{{ med.route || 'Route not filed' }}</small></span>
           <span><strong>{{ med.frequency || 'Not scheduled' }}</strong><small>{{ med.status || 'Active' }}</small></span>
           <span><b :class="['status', pharmacyStatusClass(med)]">{{ pharmacyStatus(med) }}</b><small>{{ med.stockAction || med.dispenseLocation || 'Hospital pharmacy' }}</small></span>
