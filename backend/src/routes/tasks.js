@@ -16,12 +16,12 @@ const TASK_ROLES = ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_S
 
 const taskSchema = z.object({
   patientId: z.string().uuid(),
-  relatedType: z.string().optional(),
-  relatedId: z.string().optional(),
+  relatedType: z.string().nullable().optional(),
+  relatedId: z.string().nullable().optional(),
   title: z.string().min(1),
   assignedToRole: z.string().min(1),
-  assignedToId: z.string().uuid().optional(),
-  priority: z.string().optional(),
+  assignedToId: z.string().uuid().nullable().optional(),
+  priority: z.string().nullable().optional(),
   dueAt: z.string().nullable().optional(),
   frequency: z.string().nullable().optional(),
   actionReason: z.string().nullable().optional()

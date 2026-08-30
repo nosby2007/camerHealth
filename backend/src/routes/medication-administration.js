@@ -24,14 +24,14 @@ const createDueSchema = z.object({
 
 const administerSchema = z.object({
   status: z.enum(['Given', 'Held', 'Refused', 'Not Available']),
-  administeredAt: z.string().optional(),
-  route: z.string().optional(),
-  doseGiven: z.string().optional(),
-  site: z.string().optional(),
-  lotNumber: z.string().optional(),
-  patientResponse: z.string().optional(),
-  refusalReason: z.string().optional(),
-  comment: z.string().optional()
+  administeredAt: z.string().nullable().optional(),
+  route: z.string().nullable().optional(),
+  doseGiven: z.string().nullable().optional(),
+  site: z.string().nullable().optional(),
+  lotNumber: z.string().nullable().optional(),
+  patientResponse: z.string().nullable().optional(),
+  refusalReason: z.string().nullable().optional(),
+  comment: z.string().nullable().optional()
 })
 
 // ─── GET /medication-administrations?patientId=&medicationId= ──────────────
