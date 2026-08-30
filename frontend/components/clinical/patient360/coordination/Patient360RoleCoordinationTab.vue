@@ -162,6 +162,9 @@ export default {
     noteStatuses: [{ text: 'Draft / Brouillon', value: 'draft' }, { text: 'Sign now / Signer', value: 'signed' }],
     assignmentRoles: Object.keys(ROLE_LABELS).map(value => ({ value, text: ROLE_LABELS[value] }))
   }),
+  created() {
+    if (!this.activeStaff.length) this.$store.dispatch('facility/fetchActiveStaffSummary')
+  },
   computed: {
     isFrench() { return this.$i18n && this.$i18n.locale === 'fr' },
     mode() {

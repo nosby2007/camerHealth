@@ -99,7 +99,8 @@ export const staffApi = {
   list: () => api.get('/staff'),
   create: (data) => api.post('/staff', data),
   update: (id, data) => api.patch(`/staff/${id}`, data),
-  getProviders: () => api.get('/staff/providers')
+  getProviders: () => api.get('/staff/providers'),
+  getActiveSummary: () => api.get('/staff/active-summary')
 }
 
 // ─── Patient endpoints ──────────────────────────────────────────────────────

@@ -152,6 +152,7 @@ export const DEFAULT_DEPARTMENTS = [
 export const state = () => ({
   facility: null,
   staff: [],
+  activeStaffSummary: [],
   staffRoles: [],
   departments: [],
   auditLog: [],
@@ -164,6 +165,7 @@ export const state = () => ({
 export const mutations = {
   SET_FACILITY(state, facility) { state.facility = facility },
   SET_STAFF(state, staff) { state.staff = staff },
+  SET_ACTIVE_STAFF_SUMMARY(state, staff) { state.activeStaffSummary = staff },
   SET_DEPARTMENTS(state, departments) { state.departments = departments },
   SET_AUDIT_LOG(state, logs) { state.auditLog = logs },
   ADD_STAFF(state, member) { state.staff.push(member) },
@@ -261,6 +263,17 @@ export const actions = {
       throw err
     } finally {
       commit('SET_LOADING', false)
+    }
+  },
+
+  async fetchActiveStaffSummary({ commit }) {
+    try {
+      const { data } = await staffApi.getActiveSummary()
+      commit('SET_ACTIVE_STAFF_SUMMARY', data.staff || data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
     }
   },
 
@@ -405,7 +418,7 @@ export const actions = {
 export const getters = {
   getFacility: (state) => state.facility || {},
   getAllStaff:  (state) => state.staff || [],
-  getActiveStaff: (state) => (state.staff || []).filter(s => s.status === 'active'),
+  getActiveStaff: (state) => state.activeStaffSummary || [],
   // Resolves a logged-in staff member's department/ward, plus the full
   // Department/Ward records when available, for the clinical command
   // center's header context. staffId here is the human staffCode

@@ -37,6 +37,31 @@ router.get('/providers', authenticate, async (req, res, next) => {
   }
 })
 
+// GET /api/staff/active-summary — Minimal active-staff roster (no contact info)
+// for role-coordination views (Social Services, Unit Management, Nursing
+// Supervision). Open to any authenticated staff — unlike GET /, this
+// deliberately omits email/phone/staffCode so non-admin coordination roles
+// aren't handed the HR-adjacent staff directory.
+router.get('/active-summary', authenticate, async (req, res, next) => {
+  try {
+    const staff = await prisma.staffProfile.findMany({
+      where: { facilityId: req.user.facilityId, status: 'active' },
+      select: {
+        id: true,
+        fullName: true,
+        role: true,
+        department: true,
+        service: true,
+        status: true
+      },
+      orderBy: { fullName: 'asc' }
+    })
+    res.json(staff)
+  } catch (error) {
+    next(error)
+  }
+})
+
 // GET /api/staff — List staff for the user's facility
 router.get('/', authenticate, authorize('ADMIN'), async (req, res, next) => {
   try {
