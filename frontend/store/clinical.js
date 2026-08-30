@@ -1335,6 +1335,16 @@ export const actions = {
       throw err
     }
   },
+  async createMedicationAdministration({ commit }, data) {
+    try {
+      const { data: result } = await clinicalApi.createMedicationAdministration(data)
+      commit('UPSERT_MEDICATION_ADMINISTRATION', result.administration || result)
+      return result
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
   async administerMedication({ commit }, { id, ...data }) {
     try {
       const { data: result } = await clinicalApi.administerMedication(id, data)
