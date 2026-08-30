@@ -148,6 +148,12 @@ model Patient {
   phiAccessBasis    String? @map("phi_access_basis")
   consentStatus     String? @map("consent_status")
 
+  // ── Discharge ─────────────────────────────────────────────────────────────
+  dischargedAt         DateTime? @map("discharged_at")
+  dischargeDisposition String?   @map("discharge_disposition") // Home / Transfer / AMA / Deceased
+  dischargeReason      String?   @map("discharge_reason")
+  dischargedBy         String?   @map("discharged_by")
+
   // ── Insurance & Emergency Contact ────────────────────────────────────────────
   insuranceProvider            String? @map("insurance_provider")
   policyNumber                 String? @map("policy_number")

@@ -298,7 +298,7 @@ export const actions = {
     commit('UPDATE_PATIENT', record)
     return record
   },
-  dischargePatient({ state, commit, rootState }, payload) {
+  async dischargePatient({ state, commit, rootState }, payload) {
     const patientId = payload.patientId
     const existing = state.patients.find(item => item.id === patientId)
     if (!existing) throw new Error('Patient record not found')
@@ -307,34 +307,48 @@ export const actions = {
     const parsedDischargeAt = requestedDischargeAt ? new Date(requestedDischargeAt) : new Date()
     const dischargedAt = isNaN(parsedDischargeAt.getTime()) ? new Date().toISOString() : parsedDischargeAt.toISOString()
     const actor = rootState.auth.fullName || rootState.auth.staffId || 'Clinical user'
+    const dischargeDisposition = payload.disposition || payload.dischargeDisposition || 'Home'
+    const dischargeReason = payload.reason || payload.primaryDiagnosis || payload.note || 'Discharge workflow completed'
+
+    const { data: updatedPatient } = await patientApi.update(patientId, {
+      patientStatus: 'Discharged',
+      dischargedAt,
+      dischargeDisposition,
+      dischargeReason,
+      dischargedBy: actor
+    })
+
     const dischargeRecord = {
       ...existing,
-      patientStatus: 'Discharged',
+      ...(updatedPatient.patient || updatedPatient),
       admissionStatus: 'Discharged',
       recordStatus: 'Inactive',
       active: false,
-      dischargedAt,
-      dischargeDisposition: payload.disposition || payload.dischargeDisposition || 'Home',
-      dischargeReason: payload.reason || payload.primaryDiagnosis || payload.note || 'Discharge workflow completed',
-      dischargedBy: actor,
       updatedAt: dischargedAt,
       updatedBy: actor
     }
     commit('UPDATE_PATIENT', dischargeRecord)
 
-    state.inpatients
+    const activeInpatients = state.inpatients
       .filter(item => item.patientId === patientId && String(item.status || '').toLowerCase() !== 'discharged')
-      .forEach(item => commit('UPDATE_INPATIENT', {
-        ...item,
+    await Promise.all(activeInpatients.map(async item => {
+      const { data: updated } = await inpatientApi.update(item.id, {
         status: 'Discharged',
-        dischargedAt,
-        dischargeDisposition: dischargeRecord.dischargeDisposition,
+        dischargeSummary: dischargeReason
+      })
+      commit('UPDATE_INPATIENT', {
+        ...item,
+        ...(updated.inpatient || updated),
+        dischargeDisposition,
         dischargedBy: actor
-      }))
+      })
+    }))
 
-    state.tasks
+    const openTasks = state.tasks
       .filter(item => item.patientId === patientId && ['pending', 'hold'].includes(String(item.status || '').toLowerCase()))
-      .forEach(item => commit('UPDATE_TASK', {
+    await Promise.all(openTasks.map(async item => {
+      await taskApi.updateStatus(item.id, { status: 'cancel', reason: 'Closed by completed discharge workflow' })
+      commit('UPDATE_TASK', {
         ...item,
         status: 'cancel',
         updatedAt: dischargedAt,
@@ -351,17 +365,21 @@ export const actions = {
             reason: 'Closed by completed discharge workflow'
           }
         ]
-      }))
+      })
+    }))
 
-    state.medications
+    const activeMedications = state.medications
       .filter(item => item.patientId === patientId && String(item.status || '').toLowerCase() === 'active')
-      .forEach(item => commit('UPDATE_MEDICATION', {
+    await Promise.all(activeMedications.map(async item => {
+      const { data: updated } = await clinicalApi.updateMedication(item.id, { status: 'Discontinued' })
+      commit('UPDATE_MEDICATION', {
         ...item,
-        status: 'Discontinued',
+        ...(updated.medication || updated),
         discontinuedAt: dischargedAt,
         discontinuedBy: actor,
         discontinuationReason: 'Patient discharged'
-      }))
+      })
+    }))
 
     return dischargeRecord
   },

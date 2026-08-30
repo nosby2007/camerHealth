@@ -118,6 +118,12 @@ function formatPatient(p) {
     consentStatus: p.consentStatus || 'Pending',
     phiAccessBasis: p.phiAccessBasis || 'Treatment',
 
+    // Discharge
+    dischargedAt: p.dischargedAt,
+    dischargeDisposition: p.dischargeDisposition || '',
+    dischargeReason: p.dischargeReason || '',
+    dischargedBy: p.dischargedBy || '',
+
     // Insurance & emergency
     insuranceProvider: p.insuranceProvider || '',
     policyNumber: p.policyNumber || '',
@@ -331,6 +337,11 @@ router.patch('/:id', authenticate, async (req, res, next) => {
         ...(b.departmentRouting !== undefined && { departmentRouting: b.departmentRouting }),
         ...(b.acuityLevel !== undefined && { acuityLevel: b.acuityLevel }),
         ...(b.status && { status: b.status }),
+        ...(b.patientStatus !== undefined && { patientStatus: b.patientStatus }),
+        ...(b.dischargedAt !== undefined && { dischargedAt: b.dischargedAt ? new Date(b.dischargedAt) : null }),
+        ...(b.dischargeDisposition !== undefined && { dischargeDisposition: b.dischargeDisposition }),
+        ...(b.dischargeReason !== undefined && { dischargeReason: b.dischargeReason }),
+        ...(b.dischargedBy !== undefined && { dischargedBy: b.dischargedBy }),
         ...(b.metadata && { metadata: { ...((existing.metadata) || {}), ...b.metadata } })
       }
     })
