@@ -1310,6 +1310,15 @@
               @handoff="openCommandAction('handoff')"
             />
 
+            <Patient360ChatTab
+              v-else-if="selectedChartTab === 'Chat'"
+              :patient="activePatient"
+              :messages="patientMessages"
+              :current-full-name="$store.state.auth.fullName"
+              :read-only="isPatientDischarged"
+              @send="sendChatMessage"
+            />
+
             <Patient360HandoffTab
               v-else-if="selectedChartTab === 'Handoff'"
               :patient="activePatient"
@@ -2402,6 +2411,7 @@ import Patient360FlowsheetsTab from '~/components/clinical/patient360/flowsheets
 import Patient360LabResultsTab from '~/components/clinical/patient360/labs/Patient360LabResultsTab.vue'
 import Patient360MedicationTab from '~/components/clinical/patient360/medications/Patient360MedicationTab.vue'
 import EmarGrid from '~/components/clinical/emar/EmarGrid.vue'
+import Patient360ChatTab from '~/components/clinical/patient360/chat/Patient360ChatTab.vue'
 import Patient360WorkListTab from '~/components/clinical/patient360/work-list/Patient360WorkListTab.vue'
 import Patient360CareTeamTab from '~/components/clinical/patient360/care-team/Patient360CareTeamTab.vue'
 import Patient360RoleCoordinationTab from '~/components/clinical/patient360/coordination/Patient360RoleCoordinationTab.vue'
@@ -2469,6 +2479,7 @@ const ALL_CLINICAL_TABS = [
   'Immunizations',
   'Sedation/Procedure Documentation',
   'Care Teams',
+  'Chat',
   'Handoff',
   'Documents',
   'Registration',
@@ -2503,7 +2514,7 @@ const TAB_ACCESS = {
   MIDWIFE: GENERAL_CLINICAL_TABS.filter(tab => tab !== 'Sedation/Procedure Documentation'),
   MAJOR_SERVICE: [...GENERAL_CLINICAL_TABS, 'Unit Management'],
   NURSING_SUPERVISOR: [...GENERAL_CLINICAL_TABS, 'Nursing Supervision'],
-  CNA: ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Navigators', 'Flowsheets', 'Work List', 'Care Plan', 'Education', 'Handoff'],
+  CNA: ['Summary', 'EMR Command Center', 'Nurse Command Center', 'Navigators', 'Flowsheets', 'Work List', 'Care Plan', 'Education', 'Chat', 'Handoff'],
   LAB: ['Summary', 'EMR Command Center', 'Chart Review', 'Navigators', 'Orders', 'Lab Results', 'Work List'],
   IMAGING: ['Summary', 'EMR Command Center', 'Chart Review', 'Navigators', 'Orders', 'Work List', 'Documents'],
   PHARMACY: ['Summary', 'EMR Command Center', 'Chart Review', 'Orders', 'MAR', 'Medications', 'Work List', 'Education'],
@@ -2554,7 +2565,7 @@ const ACCESS_PROFILES = {
 
 export default {
   name: 'ClinicalWorkspace',
-  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360RoleCoordinationTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, Patient360DoctorCommandCenter, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip, EmarGrid },
+  components: { FlowSection, PatientBanner, LeftPatientPanel, RightClinicalPanel, TabNav, NoteDialog, WoundCareDialog, CarePlanDialog, DischargePlanDialog, PatientBarcodeScannerDialog, Patient360CarePlanTab, Patient360EducationTab, Patient360ChartReviewTab, Patient360FlowsheetsTab, Patient360LabResultsTab, Patient360MedicationTab, Patient360WorkListTab, Patient360CareTeamTab, Patient360RoleCoordinationTab, Patient360ImmunizationsTab, Patient360HandoffTab, Patient360DocumentsTab, Patient360RegistrationTab, Patient360WoundManagementTab, Patient360ProcedureTab, Patient360DoctorCommandCenter, TimedCareDocumentationDialog, BodyAssessmentDialog, Patient360ContextForms, NavigatorStrip, EmarGrid, Patient360ChatTab },
   props: {
     patientId: { type: String, default: '' },
     patientScoped: { type: Boolean, default: false },
@@ -4973,6 +4984,9 @@ export default {
     medicationAdministrations() {
       return this.$store.state.clinical.medicationAdministrations.filter(a => a.patientId === this.activePatientId)
     },
+    patientMessages() {
+      return this.$store.state.clinical.patientMessages.filter(m => m.patientId === this.activePatientId)
+    },
     marTimeColumns() {
       const times = new Set()
       this.medicationAdministrations.forEach(a => {
@@ -5882,7 +5896,10 @@ export default {
       this.amendingNoteId = null
       this.loadAvatarPlacements()
       this.loadCareCoordinationData(newId)
-      if (newId) this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: newId })
+      if (newId) {
+        this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: newId })
+        this.$store.dispatch('clinical/fetchPatientMessages', newId)
+      }
     }
   },
   mounted() {
@@ -5895,7 +5912,10 @@ export default {
     // patient opened directly (only pharmacy/medications.vue populated the
     // former as a side effect of its own unrelated view).
     this.$store.dispatch('clinical/fetchMedications')
-    if (this.activePatientId) this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: this.activePatientId })
+    if (this.activePatientId) {
+      this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: this.activePatientId })
+      this.$store.dispatch('clinical/fetchPatientMessages', this.activePatientId)
+    }
     this.$store.commit('clinical/LOAD_FROM_STORAGE')
     if (this.$store.hasModule && this.$store.hasModule('nursing')) {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
@@ -7086,6 +7106,13 @@ export default {
     },
     onEmarRowAction({ action, medication }) {
       this.openMarAction(action, medication)
+    },
+    async sendChatMessage(body) {
+      try {
+        await this.$store.dispatch('clinical/sendPatientMessage', { patientId: this.activePatientId, body })
+      } catch (e) {
+        this.toastError('Unable to send message.')
+      }
     },
     openMarReport(medication) {
       this.selectedMarMedication = medication

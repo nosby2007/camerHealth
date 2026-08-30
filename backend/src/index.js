@@ -42,6 +42,7 @@ const careTeamRoutes = require('./routes/care-team')
 const dischargeRoutes = require('./routes/discharge')
 const educationRoutes = require('./routes/education')
 const medicationAdministrationRoutes = require('./routes/medication-administration')
+const patientChatRoutes = require('./routes/patient-chat')
 
 const app = express()
 
@@ -271,6 +272,7 @@ app.use('/api', careTeamRoutes) // exposes /api/care-team and /api/social-assess
 app.use('/api', dischargeRoutes) // exposes /api/discharge/*
 app.use('/api', educationRoutes) // exposes /api/education*
 app.use('/api', medicationAdministrationRoutes) // exposes /api/medication-administrations
+app.use('/api', patientChatRoutes) // exposes /api/patient-chat
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 

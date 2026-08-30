@@ -25,6 +25,7 @@ export const state = () => ({
   appointments: [],
   medications: [],
   medicationAdministrations: [],
+  patientMessages: [],
   labOrders: [],
   imagingOrders: [],
   invoices: [],
@@ -101,6 +102,8 @@ export const mutations = {
     if (idx !== -1) state.medicationAdministrations.splice(idx, 1, row)
     else state.medicationAdministrations.push(row)
   },
+  SET_PATIENT_MESSAGES(state, rows) { state.patientMessages = rows },
+  ADD_PATIENT_MESSAGE(state, row) { state.patientMessages.push(row) },
   SET_LAB_ORDERS(state, orders) { state.labOrders = orders },
   ADD_LAB_ORDER(state, order) { state.labOrders.push(order) },
   UPDATE_LAB_ORDER(state, order) {
@@ -1338,6 +1341,27 @@ export const actions = {
       commit('UPSERT_MEDICATION_ADMINISTRATION', result.administration)
       if (result.nextDue) commit('UPSERT_MEDICATION_ADMINISTRATION', result.nextDue)
       return result
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  // ─── Patient chat ─────────────────────────────────────────────────────────
+  async fetchPatientMessages({ commit }, patientId) {
+    try {
+      const { data } = await clinicalApi.getPatientMessages(patientId)
+      commit('SET_PATIENT_MESSAGES', data)
+      return data
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+  },
+  async sendPatientMessage({ commit }, { patientId, body }) {
+    try {
+      const { data } = await clinicalApi.sendPatientMessage({ patientId, body })
+      commit('ADD_PATIENT_MESSAGE', data)
+      return data
     } catch (err) {
       commit('SET_ERROR', err.response?.data?.error || err.message)
       throw err

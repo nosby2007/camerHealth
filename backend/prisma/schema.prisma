@@ -39,6 +39,7 @@ model Facility {
   imagingOrders             ImagingOrder[]
   medications               Medication[]
   medicationAdministrations MedicationAdministration[]
+  patientMessages           PatientMessage[]
   invoices                  Invoice[]
   charges                   Charge[]
   payments                  Payment[]
@@ -86,26 +87,27 @@ model StaffProfile {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  facility               Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  patientsCreated        Patient[]                  @relation("PatientCreatedBy")
-  visitsRecorded         Visit[]                    @relation("VisitRecordedBy")
-  visitsAttending        Visit[]                    @relation("VisitAttendingDoctor")
-  labRequests            LabOrder[]                 @relation("LabRequestedBy")
-  labCompletions         LabOrder[]                 @relation("LabCompletedBy")
-  imagingRequests        ImagingOrder[]             @relation("ImagingRequestedBy")
-  imagingCompletions     ImagingOrder[]             @relation("ImagingCompletedBy")
-  prescriptions          Medication[]               @relation("MedicationPrescribedBy")
-  administrationsGiven   MedicationAdministration[] @relation("MedicationAdministeredBy")
-  appointmentsCreated    Appointment[]              @relation("AppointmentCreatedBy")
-  appointmentsAsProvider Appointment[]              @relation("AppointmentProvider")
-  admissions             Inpatient[]                @relation("InpatientAdmittedBy")
-  inpatientsAttending    Inpatient[]                @relation("InpatientAttendingDoctor")
-  invoicesIssued         Invoice[]                  @relation("InvoiceIssuedBy")
-  staffAssignments       StaffAssignment[]
-  tasksCreated           Task[]                     @relation("TaskCreatedBy")
-  tasksAssigned          Task[]                     @relation("TaskAssignedTo")
-  careTeamMembersAdded   CareTeamMember[]           @relation("CareTeamMemberAddedBy")
-  socialAssessmentsFiled SocialAssessment[]         @relation("SocialAssessmentAssessedBy")
+  facility                Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  patientsCreated         Patient[]                  @relation("PatientCreatedBy")
+  visitsRecorded          Visit[]                    @relation("VisitRecordedBy")
+  visitsAttending         Visit[]                    @relation("VisitAttendingDoctor")
+  labRequests             LabOrder[]                 @relation("LabRequestedBy")
+  labCompletions          LabOrder[]                 @relation("LabCompletedBy")
+  imagingRequests         ImagingOrder[]             @relation("ImagingRequestedBy")
+  imagingCompletions      ImagingOrder[]             @relation("ImagingCompletedBy")
+  prescriptions           Medication[]               @relation("MedicationPrescribedBy")
+  administrationsGiven    MedicationAdministration[] @relation("MedicationAdministeredBy")
+  patientMessagesAuthored PatientMessage[]           @relation("PatientMessageAuthor")
+  appointmentsCreated     Appointment[]              @relation("AppointmentCreatedBy")
+  appointmentsAsProvider  Appointment[]              @relation("AppointmentProvider")
+  admissions              Inpatient[]                @relation("InpatientAdmittedBy")
+  inpatientsAttending     Inpatient[]                @relation("InpatientAttendingDoctor")
+  invoicesIssued          Invoice[]                  @relation("InvoiceIssuedBy")
+  staffAssignments        StaffAssignment[]
+  tasksCreated            Task[]                     @relation("TaskCreatedBy")
+  tasksAssigned           Task[]                     @relation("TaskAssignedTo")
+  careTeamMembersAdded    CareTeamMember[]           @relation("CareTeamMemberAddedBy")
+  socialAssessmentsFiled  SocialAssessment[]         @relation("SocialAssessmentAssessedBy")
 
   @@unique([staffCode, facilityId])
   @@index([facilityId])
@@ -168,6 +170,7 @@ model Patient {
   imagingOrders             ImagingOrder[]
   medications               Medication[]
   medicationAdministrations MedicationAdministration[]
+  patientMessages           PatientMessage[]
   invoices                  Invoice[]
   charges                   Charge[]
   payments                  Payment[]
@@ -175,16 +178,16 @@ model Patient {
   appointments              Appointment[]
   inpatients                Inpatient[]
 
-  wounds           Wound[]
-  carePlans        CarePlan[]
-  educationTitles  EducationTitle[]
-  dischargePlans   DischargePlan[]
-  vitalSigns       VitalSigns[]
-  clinicalNotes    ClinicalNote[]
-  flowsheetColumns FlowsheetColumn[]
-  tasks              Task[]
-  careTeamMembers    CareTeamMember[]
-  socialAssessments  SocialAssessment[]
+  wounds            Wound[]
+  carePlans         CarePlan[]
+  educationTitles   EducationTitle[]
+  dischargePlans    DischargePlan[]
+  vitalSigns        VitalSigns[]
+  clinicalNotes     ClinicalNote[]
+  flowsheetColumns  FlowsheetColumn[]
+  tasks             Task[]
+  careTeamMembers   CareTeamMember[]
+  socialAssessments SocialAssessment[]
 
   @@unique([mrn, facilityId])
   @@index([facilityId])
@@ -374,6 +377,24 @@ model MedicationAdministration {
   @@index([facilityId])
   @@index([scheduledFor])
   @@map("medication_administrations")
+}
+
+// ─── Patient Chat (internal, async care-team discussion) ────────────────────
+model PatientMessage {
+  id         String   @id @default(uuid())
+  patientId  String   @map("patient_id")
+  facilityId String   @map("facility_id")
+  authorId   String   @map("author_id")
+  body       String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  patient  Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  author   StaffProfile @relation("PatientMessageAuthor", fields: [authorId], references: [id])
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@map("patient_messages")
 }
 
 // ─── Appointment ─────────────────────────────────────────────────────────────
@@ -1120,33 +1141,33 @@ model VitalSigns {
 
 // noteType: 'nursing' | 'medical' | 'plan_of_care'
 model ClinicalNote {
-  id             String    @id @default(uuid())
-  patientId      String    @map("patient_id")
-  facilityId     String    @map("facility_id")
-  encounterId    String?   @map("encounter_id")
-  noteType       String    @map("note_type")
-  title          String?
-  body           String
+  id                 String    @id @default(uuid())
+  patientId          String    @map("patient_id")
+  facilityId         String    @map("facility_id")
+  encounterId        String?   @map("encounter_id")
+  noteType           String    @map("note_type")
+  title              String?
+  body               String
   // Full structured form data for note types authored from a rich form
   // (e.g. noteType 'medical' from the Medical Encounter page) — `body` stays
   // a human-readable plain-text summary for list previews and notes with no
   // structured form behind them; this carries everything needed to re-render
   // an exact, formatted, printable copy of the original consultation note.
-  structuredData Json?     @map("structured_data")
-  status         String    @default("draft")
-  authorRole     String?   @map("author_role")
-  createdById    String    @map("created_by_id")
-  signedAt       DateTime? @map("signed_at")
-  signedById     String?   @map("signed_by_id")
-  sharedWithCareTeam Boolean  @default(false) @map("shared_with_care_team")
+  structuredData     Json?     @map("structured_data")
+  status             String    @default("draft")
+  authorRole         String?   @map("author_role")
+  createdById        String    @map("created_by_id")
+  signedAt           DateTime? @map("signed_at")
+  signedById         String?   @map("signed_by_id")
+  sharedWithCareTeam Boolean   @default(false) @map("shared_with_care_team")
   sharedAt           DateTime? @map("shared_at")
   sharedById         String?   @map("shared_by_id")
   // Addenda filed after a note is signed — a signed note's own body/title
   // stay immutable (see the 409 in PATCH /clinical-notes/:id), but a
   // clinician can still attach a dated, attributed amendment.
-  amendments     Json?
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  amendments         Json?
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   patient  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
