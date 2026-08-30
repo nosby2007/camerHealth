@@ -8,7 +8,7 @@ const prisma = require('../lib/prisma')
 const { authenticate, authorize } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { requirePatientForFacility } = require('../lib/tenant')
-const { nextOccurrenceAt, isDiscontinued } = require('../lib/medicationSchedule')
+const { nextOccurrenceAt, isDiscontinued, roundToNextStandardSlot } = require('../lib/medicationSchedule')
 const { NURSE_CHART_ROLES } = require('../lib/clinicalRoles')
 
 const router = Router()
@@ -142,6 +142,56 @@ router.patch('/medication-administrations/:id', authenticate, authorize('ADMIN',
     }
 
     res.json({ administration, nextDue })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// ─── POST /medication-administrations/backfill ──────────────────────────────
+// One-time maintenance operation: medications prescribed before this eMAR
+// feature shipped have zero MedicationAdministration rows — they never show
+// up in the grid's time columns and can't be administered without hitting
+// the (now-fixed) create-on-demand fallback every single time. This seeds
+// exactly the first "Due" row each such order would have gotten at creation
+// time, using the same non-urgent scheduling rule (POST /medications always
+// treats a backfilled order as routine, never STAT, regardless of the
+// order's own priority — blasting old orders as "due right now" would be
+// clinically wrong). Idempotent: skips any medication that already has at
+// least one administration row, so it's safe to run more than once.
+router.post('/medication-administrations/backfill', authenticate, authorize('ADMIN'), async (req, res, next) => {
+  try {
+    const candidates = await prisma.medication.findMany({
+      where: {
+        facilityId: req.user.facilityId,
+        administrations: { none: {} }
+      }
+    })
+
+    const seeded = []
+    const skipped = []
+    for (const medication of candidates) {
+      if (isDiscontinued(medication.status)) {
+        skipped.push({ medicationId: medication.id, drug: medication.drug, reason: 'discontinued' })
+        continue
+      }
+      const firstDoseAt = roundToNextStandardSlot(medication.frequency, medication.prescribedAt)
+      if (!firstDoseAt) {
+        skipped.push({ medicationId: medication.id, drug: medication.drug, reason: 'prn-or-once' })
+        continue
+      }
+      const administration = await prisma.medicationAdministration.create({
+        data: {
+          medicationId: medication.id,
+          patientId: medication.patientId,
+          facilityId: req.user.facilityId,
+          scheduledFor: new Date(firstDoseAt),
+          status: 'Due'
+        }
+      })
+      seeded.push({ medicationId: medication.id, drug: medication.drug, scheduledFor: administration.scheduledFor })
+    }
+
+    res.json({ seededCount: seeded.length, skippedCount: skipped.length, seeded, skipped })
   } catch (error) {
     next(error)
   }
