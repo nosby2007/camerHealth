@@ -25,8 +25,9 @@
           <div class="form-grid two">
             <v-select v-model="forms.task.assignedToRole" :items="careRoles" label="Responsible role" dense outlined />
             <v-select v-model="forms.task.priority" :items="priorities" label="Priority" dense outlined />
-            <v-text-field v-model="forms.task.dueAt" label="Due date and time" type="datetime-local" dense outlined />
+            <v-text-field v-model="forms.task.dueAt" label="First due date and time" type="datetime-local" dense outlined :rules="[requiredRule]" />
             <v-select v-model="forms.task.frequency" :items="frequencies" label="Frequency" dense outlined />
+            <v-select v-model="forms.task.reminderMinutesBefore" :items="reminderOptions" item-text="text" item-value="value" label="Reminder" dense outlined />
           </div>
           <v-textarea v-model="forms.task.instructions" label="Instructions and expected result" rows="3" dense outlined />
         </v-card-text>
@@ -180,7 +181,7 @@
 
 <script>
 const freshForms = () => ({
-  task: { title: '', assignedToRole: 'NURSE', priority: 'Today', dueAt: '', frequency: 'Once', instructions: '' },
+  task: { title: '', assignedToRole: 'NURSE', priority: 'Today', dueAt: '', frequency: 'Once', reminderMinutesBefore: 30, instructions: '' },
   safety: { type: 'allergies', allergies: '', allergySeverity: 'Not applicable', precautions: '', infectionStatus: '', fallRisk: 'Low', assistance: 'Independent', note: '' },
   labResult: { orderId: '', specimen: '', collectedAt: '', collectedBy: '', collectionStatus: 'Collected', result: '', unit: '', referenceRange: '', flag: 'Normal', comment: '', criticalCommunicatedTo: '', communicationAt: '' },
   imagingResult: { orderId: '', findings: '', impression: '', urgency: 'Routine', recommendation: '' },
@@ -209,6 +210,7 @@ export default {
       requiredRule: value => Boolean(value) || 'Required',
       priorities: ['Routine', 'Today', 'Urgent', 'STAT'],
       frequencies: ['Once', 'Each shift', 'Daily', 'Every 4 hours', 'Every 8 hours', 'PRN'],
+      reminderOptions: [{ text: 'At due time', value: 0 }, { text: '15 minutes before', value: 15 }, { text: '30 minutes before', value: 30 }, { text: '1 hour before', value: 60 }, { text: '4 hours before', value: 240 }],
       careRoles: ['NURSE', 'DOCTOR', 'NP', 'CNA', 'MIDWIFE', 'LAB', 'IMAGING', 'PHARMACY', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST', 'MAJOR_SERVICE'],
       socialDomains: ['Food security', 'Transportation', 'Financial strain', 'Housing', 'Utilities', 'Stress', 'Safety', 'Family support'],
       safetyTypes: [
@@ -241,6 +243,7 @@ export default {
         return false
       }
       this.forms = freshForms()
+      if (kind === 'task') this.forms.task.dueAt = this.toLocalDateTime(new Date(Date.now() + 60 * 60 * 1000))
       if (kind === 'safety') {
         this.forms.safety.type = options.type || 'allergies'
         this.forms.safety.allergies = this.patient.allergies || ''
@@ -278,9 +281,9 @@ export default {
     chooseOrder(kind) { this.close('order'); this.$emit('order', kind) },
     notify(message) { this.$emit('saved', message) },
     async saveTask() {
-      if (!this.forms.task.title) return
+      if (!this.forms.task.title || !this.forms.task.dueAt) return
       await this.runSave('task', async () => {
-        await this.$store.dispatch('clinical/createTask', { patientId: this.patientId, relatedType: 'care-task', title: this.forms.task.title, assignedToRole: this.forms.task.assignedToRole, priority: this.forms.task.priority, dueAt: this.forms.task.dueAt, frequency: this.forms.task.frequency, actionReason: this.forms.task.instructions || 'Created from Patient 360' })
+        await this.$store.dispatch('clinical/createTask', { patientId: this.patientId, encounterId: this.encounterId, relatedType: 'care-task', title: this.forms.task.title, instructions: this.forms.task.instructions, assignedToRole: this.forms.task.assignedToRole, priority: this.forms.task.priority, dueAt: new Date(this.forms.task.dueAt).toISOString(), frequency: this.forms.task.frequency, reminderMinutesBefore: this.forms.task.reminderMinutesBefore, automationSource: 'provider-created', actionReason: this.forms.task.instructions || 'Created from Patient 360' })
         this.notify('Care task created.')
       })
     },
@@ -353,7 +356,20 @@ export default {
     },
     async completeRelatedTask(relatedId, reason) {
       const task = (this.$store.getters['clinical/getTasks'] || []).find(item => item.patientId === this.patientId && item.relatedId === relatedId && !['done', 'cancel'].includes(item.status))
-      if (task) await this.$store.dispatch('clinical/updateTaskStatus', { id: task.id, status: 'done', reason })
+      if (task) {
+        const dueAt = new Date(Date.now() + 30 * 60 * 1000).toISOString()
+        await this.$store.dispatch('clinical/completeTaskAndScheduleNext', {
+          id: task.id,
+          reason,
+          performedAt: new Date().toISOString(),
+          nextTitle: `Provider review: ${task.title || 'clinical result'}`,
+          nextDueAt: dueAt,
+          nextFrequency: 'Once',
+          nextAssignedToRole: 'DOCTOR',
+          nextInstructions: `Review the completed result and document the clinical response. Source: ${relatedId}`,
+          reminderMinutesBefore: 15
+        })
+      }
     },
     toLocalDateTime(value) {
       const date = value instanceof Date ? value : new Date(value)
