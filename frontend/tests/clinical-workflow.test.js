@@ -29,6 +29,18 @@ test('calculates the next occurrence for common clinical frequencies', () => {
   assert.equal(workflowEngine.nextOccurrenceAt('Once', anchor), null);
 });
 
+test('keeps only the current eMAR day and selects the newest matching slot', () => {
+  const atLocalTime = (day, seconds = 0) => new Date(2026, 7, day, 8, 0, seconds).toISOString();
+  const rows = [
+    { id: 'yesterday', medicationId: 'med-1', scheduledFor: atLocalTime(29), status: 'Given' },
+    { id: 'today-old', medicationId: 'med-1', scheduledFor: atLocalTime(30), status: 'Due' },
+    { id: 'today-new', medicationId: 'med-1', scheduledFor: atLocalTime(30, 1), status: 'Given' }
+  ];
+  const today = workflowEngine.administrationsForLocalDay(rows, new Date(2026, 7, 30, 12));
+  assert.equal(today.some((row) => row.id === 'yesterday'), false);
+  assert.equal(workflowEngine.latestAdministrationForSlot(today, 'med-1', '0800').id, 'today-new');
+});
+
 test('requires and links the next task when a work-list task is completed', () => {
   const next = workflowEngine.nextTaskFromCompletion({
     id: 'task-1', patientId: 'patient-1', title: 'Wound care', assignedToRole: 'NURSE', frequency: 'Daily', dueAt: '2026-08-29T08:00:00.000Z'

@@ -55,6 +55,30 @@ function nextOccurrenceAt(frequency, anchor) {
   return new Date(base.getTime() + hours * 60 * 60 * 1000).toISOString();
 }
 
+function localDayKey(value = Date.now()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+}
+
+function administrationsForLocalDay(administrations, day = Date.now()) {
+  const expectedDay = localDayKey(day);
+  if (!expectedDay) return [];
+  return (administrations || []).filter((administration) => localDayKey(administration.scheduledFor) === expectedDay);
+}
+
+function latestAdministrationForSlot(administrations, medicationId, time) {
+  return (administrations || [])
+    .filter((administration) => administration.medicationId === medicationId && localSlotTime(administration.scheduledFor) === time)
+    .sort((left, right) => new Date(right.scheduledFor).getTime() - new Date(left.scheduledFor).getTime())[0] || null;
+}
+
+function localSlotTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
 function reminderState(task, now = new Date()) {
   if (!task || /done|complete|cancel|discontinued/i.test(String(task.status || ''))) return 'closed';
   const due = new Date(task.dueAt || task.due_at || '');
@@ -193,6 +217,9 @@ module.exports = {
   canAccessRole,
   calculateWoundSurface,
   nextOccurrenceAt,
+  localDayKey,
+  administrationsForLocalDay,
+  latestAdministrationForSlot,
   reminderState,
   nextTaskFromCompletion,
   generateTasksFromOrder,

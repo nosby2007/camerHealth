@@ -1078,7 +1078,7 @@
               <div class="emar-layout">
                 <EmarGrid
                   :medications="visibleEmarMedicationRows"
-                  :administrations="medicationAdministrations"
+                  :administrations="currentDayMedicationAdministrations"
                   :time-columns="marTimeColumns"
                   :focus-time="marTimeFocus"
                   :show-education="marShowEducation"
@@ -2441,6 +2441,7 @@ const { isMedicationOrderForMar, resolveAdministrationInstructions } = require('
 const { formatClinicalDate, formatVitalsSummary, resolveDisplayAccount } = require('~/util/patient-display.cjs')
 const { canPreviewRole: rolePreviewAllowed } = require('~/util/patient-360-policy.cjs')
 const { normalizeSearchValue, matchesPatientQuery, exactPatientIdentifierMatch } = require('~/util/patient-search.cjs')
+const { localDayKey, administrationsForLocalDay, latestAdministrationForSlot } = require('~/services/clinical/workflowEngine')
 
 function firstFiledValue(record, keys, fallback = '') {
   for (const key of keys) {
@@ -2867,6 +2868,9 @@ export default {
       marShowEducation: true,
       marHideAdmins: false,
       marSearch: '',
+      clinicalNowTick: Date.now(),
+      clinicalRefreshTimer: null,
+      clinicalRefreshDayKey: '',
       selectedMarMedication: null,
       selectedMarAdministrationId: null,
       selectedMarAction: 'given',
@@ -5009,12 +5013,15 @@ export default {
     medicationAdministrations() {
       return this.$store.state.clinical.medicationAdministrations.filter(a => a.patientId === this.activePatientId)
     },
+    currentDayMedicationAdministrations() {
+      return administrationsForLocalDay(this.medicationAdministrations, this.clinicalNowTick)
+    },
     patientMessages() {
       return this.$store.state.clinical.patientMessages.filter(m => m.patientId === this.activePatientId)
     },
     marTimeColumns() {
       const times = new Set()
-      this.medicationAdministrations.forEach(a => {
+      this.currentDayMedicationAdministrations.forEach(a => {
         const t = this.formatSlotTime(a.scheduledFor)
         if (t) times.add(t)
       })
@@ -5062,7 +5069,7 @@ export default {
           // status against one adminTime — see EmarGrid.vue for the cell
           // icon/color resolution that consumes the same records directly.
           timeline: this.marTimeColumns.map(time => {
-            const administration = this.medicationAdministrations.find(a => a.medicationId === med.id && this.formatSlotTime(a.scheduledFor) === time)
+            const administration = latestAdministrationForSlot(this.currentDayMedicationAdministrations, med.id, time)
             if (!administration) return { time, text: isPrn ? 'PRN' : '', status: isPrn ? 'prn' : 'empty', defaultAction: isPrn ? 'given' : 'details', administrationId: null }
             const map = {
               Given: { text: 'Given', status: 'given', defaultAction: 'details' },
@@ -5957,12 +5964,32 @@ export default {
     if (process.client) {
       this.updateViewportBreakpoints()
       window.addEventListener('resize', this.updateViewportBreakpoints)
+      document.addEventListener('visibilitychange', this.handleClinicalVisibilityChange)
+      this.clinicalRefreshDayKey = localDayKey(this.clinicalNowTick)
+      this.clinicalRefreshTimer = window.setInterval(this.refreshDaySensitiveData, 60000)
     }
   },
   beforeDestroy() {
-    if (process.client) window.removeEventListener('resize', this.updateViewportBreakpoints)
+    if (process.client) {
+      window.removeEventListener('resize', this.updateViewportBreakpoints)
+      document.removeEventListener('visibilitychange', this.handleClinicalVisibilityChange)
+      if (this.clinicalRefreshTimer) window.clearInterval(this.clinicalRefreshTimer)
+    }
   },
   methods: {
+    refreshDaySensitiveData(force = false) {
+      const now = Date.now()
+      const nextDayKey = localDayKey(now)
+      this.clinicalNowTick = now
+      if (!force && nextDayKey === this.clinicalRefreshDayKey) return
+      this.clinicalRefreshDayKey = nextDayKey
+      if (!this.activePatientId) return
+      this.$store.dispatch('clinical/fetchTasks', { patientId: this.activePatientId })
+      this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: this.activePatientId })
+    },
+    handleClinicalVisibilityChange() {
+      if (document.visibilityState === 'visible') this.refreshDaySensitiveData(true)
+    },
     translateSidebarText(value) {
       const keys = {
         Diabetes: 'diabetes',

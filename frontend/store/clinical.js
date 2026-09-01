@@ -1060,6 +1060,12 @@ export const actions = {
         }
       ]
     }
+    try {
+      await taskApi.updateStatus(payload.id, { status: 'done', reason: payload.reason })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
     commit('UPDATE_TASK', completed)
     return { completedTask: completed, nextTask }
   },

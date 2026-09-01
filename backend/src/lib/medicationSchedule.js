@@ -38,6 +38,20 @@ function nextOccurrenceAt(frequency, anchor) {
   return new Date(base.getTime() + hours * 60 * 60 * 1000).toISOString()
 }
 
+function occurrencesThrough(frequency, anchor, horizon, maximum = 32) {
+  const limit = new Date(horizon)
+  if (Number.isNaN(limit.getTime())) return []
+  const occurrences = []
+  let cursor = anchor
+  while (occurrences.length < maximum) {
+    const next = nextOccurrenceAt(frequency, cursor)
+    if (!next || new Date(next).getTime() > limit.getTime()) break
+    occurrences.push(next)
+    cursor = next
+  }
+  return occurrences
+}
+
 // For the FIRST dose of a new (non-urgent) order only: round up to the next
 // standard clock slot for that frequency's interval, rather than scheduling
 // it at the exact prescribing timestamp. Slots are even divisions of the day
@@ -83,4 +97,4 @@ function isDiscontinued(medicationStatus) {
   return DISCONTINUED_STATUS_RE.test(String(medicationStatus || ''))
 }
 
-module.exports = { FREQUENCY_HOURS, nextOccurrenceAt, roundToNextStandardSlot, isDiscontinued }
+module.exports = { FREQUENCY_HOURS, nextOccurrenceAt, occurrencesThrough, roundToNextStandardSlot, isDiscontinued }

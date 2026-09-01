@@ -8,12 +8,51 @@ const prisma = require('../lib/prisma')
 const { authenticate, authorize } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { requirePatientForFacility } = require('../lib/tenant')
-const { nextOccurrenceAt, isDiscontinued, roundToNextStandardSlot } = require('../lib/medicationSchedule')
+const { nextOccurrenceAt, occurrencesThrough, isDiscontinued, roundToNextStandardSlot } = require('../lib/medicationSchedule')
 const { NURSE_CHART_ROLES } = require('../lib/clinicalRoles')
 
 const router = Router()
 
 const ADMINISTERED_BY_SELECT = { select: { id: true, fullName: true } }
+
+async function ensureUpcomingAdministrations(facilityId, patientId, medicationId) {
+  if (!patientId) return
+  const medications = await prisma.medication.findMany({
+    where: {
+      facilityId,
+      patientId,
+      ...(medicationId && { id: medicationId })
+    },
+    include: {
+      administrations: { orderBy: { scheduledFor: 'desc' }, take: 1 }
+    }
+  })
+  const horizon = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+  for (const medication of medications) {
+    if (isDiscontinued(medication.status)) continue
+    const latest = medication.administrations[0]
+    if (!latest) continue
+    const occurrences = occurrencesThrough(medication.frequency, latest.scheduledFor, horizon)
+    for (const scheduledFor of occurrences) {
+      const scheduledDate = new Date(scheduledFor)
+      const existing = await prisma.medicationAdministration.findFirst({
+        where: { medicationId: medication.id, scheduledFor: scheduledDate },
+        select: { id: true }
+      })
+      if (existing) continue
+      await prisma.medicationAdministration.create({
+        data: {
+          medicationId: medication.id,
+          patientId: medication.patientId,
+          facilityId,
+          scheduledFor: scheduledDate,
+          status: 'Due'
+        }
+      })
+    }
+  }
+}
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 const createDueSchema = z.object({
@@ -43,6 +82,8 @@ router.get('/medication-administrations', authenticate, async (req, res, next) =
     const where = { facilityId: req.user.facilityId }
     if (patientId) where.patientId = patientId
     if (medicationId) where.medicationId = medicationId
+
+    await ensureUpcomingAdministrations(req.user.facilityId, patientId, medicationId)
 
     const administrations = await prisma.medicationAdministration.findMany({
       where,
@@ -129,15 +170,20 @@ router.patch('/medication-administrations/:id', authenticate, authorize('ADMIN',
     if (!isDiscontinued(medication.status)) {
       const nextTime = nextOccurrenceAt(medication.frequency, existing.scheduledFor)
       if (nextTime) {
-        nextDue = await prisma.medicationAdministration.create({
-          data: {
-            medicationId: medication.id,
-            patientId: medication.patientId,
-            facilityId: req.user.facilityId,
-            scheduledFor: new Date(nextTime),
-            status: 'Due'
-          }
+        nextDue = await prisma.medicationAdministration.findFirst({
+          where: { medicationId: medication.id, scheduledFor: new Date(nextTime) }
         })
+        if (!nextDue) {
+          nextDue = await prisma.medicationAdministration.create({
+            data: {
+              medicationId: medication.id,
+              patientId: medication.patientId,
+              facilityId: req.user.facilityId,
+              scheduledFor: new Date(nextTime),
+              status: 'Due'
+            }
+          })
+        }
       }
     }
 
