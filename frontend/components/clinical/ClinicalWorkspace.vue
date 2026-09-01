@@ -1833,7 +1833,7 @@
 
       <RightClinicalPanel
         :sidebar-index="visibleSidebarIndex"
-        :medical-history="medicalHistory"
+        :medical-history="translatedMedicalHistory"
         :can-see-clinical-history="canSeeClinicalHistory"
         :can-view-orders="canViewOrders"
         :active-orders="visibleActiveOrders"
@@ -3472,7 +3472,27 @@ export default {
       if (!this.canViewOrders) blocked.push('Orders', 'Blood Admin')
       if (!this.canSeeClinicalHistory) blocked.push('Risk', 'Problem List', 'History', 'Intake/Output')
       if (!this.canViewSocialNeeds) blocked.push('Discharge')
-      return this.sidebarIndex.filter(item => !blocked.includes(item))
+      const keys = {
+        Orders: 'orders',
+        'Plan of Care': 'plan_of_care',
+        Risk: 'risk',
+        'Problem List': 'problem_list',
+        History: 'history',
+        'Blood Admin': 'blood_admin',
+        'Intake/Output': 'intake_output',
+        'Care Team': 'care_team',
+        Discharge: 'discharge',
+        Notes: 'notes'
+      }
+      return this.sidebarIndex
+        .filter(item => !blocked.includes(item))
+        .map(item => this.$t(`clinical360.nursing.sidebar.index_items.${keys[item]}`))
+    },
+    translatedMedicalHistory() {
+      return this.medicalHistory.map(item => ({
+        label: this.translateSidebarText(item.label),
+        value: this.translateSidebarText(item.value)
+      }))
     },
     visibleActiveOrders() {
       if (!this.canViewOrders) return []
@@ -3497,9 +3517,14 @@ export default {
         }))
       ]
       const source = patientOrders.length ? patientOrders : this.activeOrders
-      if (this.currentRole === 'LAB') return source.filter(order => order.icon === 'mdi-flask' || order.title.toLowerCase().includes('cbc'))
-      if (this.currentRole === 'PHARMACY') return source.filter(order => order.icon === 'mdi-pill' || order.title.toLowerCase().includes('medication'))
-      return source
+      let filtered = source
+      if (this.currentRole === 'LAB') filtered = source.filter(order => order.icon === 'mdi-flask' || order.title.toLowerCase().includes('cbc'))
+      if (this.currentRole === 'PHARMACY') filtered = source.filter(order => order.icon === 'mdi-pill' || order.title.toLowerCase().includes('medication'))
+      return filtered.map(order => ({
+        ...order,
+        title: this.translateSidebarText(order.title),
+        detail: this.translateSidebarText(order.detail)
+      }))
     },
     patientVitals() {
       const all = this.$store.getters['clinical/getVitalSigns'] || []
@@ -5938,6 +5963,32 @@ export default {
     if (process.client) window.removeEventListener('resize', this.updateViewportBreakpoints)
   },
   methods: {
+    translateSidebarText(value) {
+      const keys = {
+        Diabetes: 'diabetes',
+        'Type 2': 'type_2',
+        Hypertension: 'hypertension',
+        Yes: 'yes',
+        'Fall risk': 'fall_risk',
+        High: 'high',
+        'Skin integrity': 'skin_integrity',
+        'Active wound': 'active_wound',
+        Isolation: 'isolation',
+        'No isolation': 'no_isolation',
+        'Wound dressing change': 'wound_dressing_change',
+        'Daily at 0900': 'daily_at_0900',
+        'CBC with differential': 'cbc_differential',
+        Scheduled: 'scheduled',
+        'Medication review': 'medication_review',
+        Acknowledge: 'acknowledge',
+        'Lab order': 'lab_order',
+        Requested: 'requested',
+        'Imaging order': 'imaging_order',
+        Medication: 'medication',
+        Active: 'active'
+      }
+      return keys[value] ? this.$t(`clinical360.nursing.sidebar.values.${keys[value]}`) : value
+    },
     submitGlobalSearch() {
       const directory = this.$store.getters['clinical/patientDirectory'] || []
       const exactPatient = directory.find(patient => exactPatientIdentifierMatch(patient, this.globalSearchQuery))
