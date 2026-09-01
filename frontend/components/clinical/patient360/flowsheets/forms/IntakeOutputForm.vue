@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-water</v-icon>
-        <span>Intake & Output Record</span>
+        <span>{{ $t('clinical360.flowsheets.forms.intake_output.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -15,7 +15,7 @@
       <v-card-text class="form-body">
         <form @submit.prevent="submitForm">
           <section class="form-section">
-            <h3 class="section-title">Fluid Intake</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.intake_output.section_fluid_intake') }}</h3>
 
             <div class="intake-items">
               <div v-for="item in intakeItems" :key="item.id" class="intake-item">
@@ -36,13 +36,13 @@
             </div>
 
             <div class="total-row">
-              <strong>Total Intake (8-hour shift)</strong>
+              <strong>{{ $t('clinical360.flowsheets.forms.intake_output.total_intake_label') }}</strong>
               <span class="total-value">{{ totalIntake }} mL</span>
             </div>
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Fluid Output</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.intake_output.section_fluid_output') }}</h3>
 
             <div class="output-items">
               <div v-for="item in outputItems" :key="item.id" class="output-item">
@@ -63,13 +63,13 @@
             </div>
 
             <div class="total-row">
-              <strong>Total Output (8-hour shift)</strong>
+              <strong>{{ $t('clinical360.flowsheets.forms.intake_output.total_output_label') }}</strong>
               <span class="total-value">{{ totalOutput }} mL</span>
             </div>
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">I&O Balance</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.intake_output.section_io_balance') }}</h3>
             <div class="balance-display" :class="{ positive: ioBalance > 0, negative: ioBalance < 0, neutral: ioBalance === 0 }">
               <div class="balance-icon">
                 <v-icon v-if="ioBalance > 0" large color="success">mdi-plus-circle</v-icon>
@@ -77,50 +77,58 @@
                 <v-icon v-else large>mdi-circle</v-icon>
               </div>
               <div>
-                <span class="balance-label">Net Balance</span>
+                <span class="balance-label">{{ $t('clinical360.flowsheets.forms.intake_output.net_balance_label') }}</span>
                 <strong class="balance-value">{{ ioBalance > 0 ? '+' : '' }}{{ ioBalance }} mL</strong>
               </div>
             </div>
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Urine Output Details</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.intake_output.section_urine_details') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Urine Color</label>
+                <label>{{ $t('clinical360.flowsheets.forms.intake_output.label_urine_color') }}</label>
                 <v-select
                   v-model="form.urineColor"
-                  :items="['Colorless', 'Pale yellow', 'Yellow', 'Dark yellow', 'Amber', 'Brown', 'Red', 'Other']"
+                  :items="urineColorOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Urine Clarity</label>
+                <label>{{ $t('clinical360.flowsheets.forms.intake_output.label_urine_clarity') }}</label>
                 <v-select
                   v-model="form.urineClarity"
-                  :items="['Clear', 'Slightly cloudy', 'Cloudy', 'Very turbid']"
+                  :items="urineClarityOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Catheter Type</label>
+                <label>{{ $t('clinical360.flowsheets.forms.intake_output.label_catheter_type') }}</label>
                 <v-select
                   v-model="form.catheterType"
-                  :items="['None', 'Foley', 'Condom', 'Straight Cath', 'Suprapubic']"
+                  :items="catheterTypeOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Catheter Status</label>
+                <label>{{ $t('clinical360.flowsheets.forms.intake_output.label_catheter_status') }}</label>
                 <v-select
                   v-model="form.catheterStatus"
-                  :items="['Patent', 'Draining well', 'Slow output', 'No output', 'Blocked', 'Removed']"
+                  :items="catheterStatusOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
@@ -129,13 +137,13 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Additional Output</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.intake_output.section_additional_output') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Nasogastric Drainage</label>
+                <label>{{ $t('clinical360.flowsheets.forms.intake_output.label_ng_drainage') }}</label>
                 <v-textarea
                   v-model="form.ngDrainage"
-                  placeholder="Color, consistency, amount if applicable..."
+                  :placeholder="$t('clinical360.flowsheets.forms.intake_output.placeholder_ng_drainage')"
                   outlined
                   dense
                   rows="2"
@@ -143,10 +151,10 @@
               </div>
 
               <div class="form-group">
-                <label>Drain Output</label>
+                <label>{{ $t('clinical360.flowsheets.forms.intake_output.label_drain_output') }}</label>
                 <v-textarea
                   v-model="form.drainOutput"
-                  placeholder="Type of drain, amount, character..."
+                  :placeholder="$t('clinical360.flowsheets.forms.intake_output.placeholder_drain_output')"
                   outlined
                   dense
                   rows="2"
@@ -154,20 +162,22 @@
               </div>
 
               <div class="form-group">
-                <label>Stool Output</label>
+                <label>{{ $t('clinical360.flowsheets.forms.intake_output.label_stool_output') }}</label>
                 <v-select
                   v-model="form.stoolOutput"
-                  :items="['No BM', 'Continent', 'Incontinent', 'Diarrhea', 'Hard/Constipated', 'Other']"
+                  :items="stoolOutputOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Vomitus/Emesis</label>
+                <label>{{ $t('clinical360.flowsheets.forms.intake_output.label_vomitus') }}</label>
                 <v-textarea
                   v-model="form.vomitus"
-                  placeholder="Amount, color, character if applicable..."
+                  :placeholder="$t('clinical360.flowsheets.forms.intake_output.placeholder_vomitus')"
                   outlined
                   dense
                   rows="2"
@@ -177,13 +187,13 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Clinical Notes</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.intake_output.section_clinical_notes') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Fluid Status & Assessment</label>
+                <label>{{ $t('clinical360.flowsheets.forms.intake_output.label_fluid_status') }}</label>
                 <v-textarea
                   v-model="form.fluidStatus"
-                  placeholder="Skin turgor, mucous membranes, weight changes, symptoms..."
+                  :placeholder="$t('clinical360.flowsheets.forms.intake_output.placeholder_fluid_status')"
                   outlined
                   dense
                   rows="3"
@@ -194,10 +204,10 @@
 
           <div class="form-actions">
             <v-btn type="button" outlined @click="$emit('close')">
-              Cancel
+              {{ $t('clinical360.flowsheets.forms.intake_output.cancel') }}
             </v-btn>
             <v-btn type="submit" color="primary" dark>
-              Save Intake & Output
+              {{ $t('clinical360.flowsheets.forms.intake_output.save') }}
             </v-btn>
           </div>
         </form>
@@ -239,37 +249,18 @@ export default {
           stool: 0,
           diaphoresis: 0
         },
-        urineColor: 'Pale yellow',
-        urineClarity: 'Clear',
-        catheterType: 'None',
+        urineColor: '',
+        urineClarity: '',
+        catheterType: '',
         catheterStatus: '',
         ngDrainage: '',
         drainOutput: '',
-        stoolOutput: 'No BM',
+        stoolOutput: '',
         vomitus: '',
         fluidStatus: ''
       },
-      intakeItems: [
-        { id: 'oral_water', label: 'Oral - Water' },
-        { id: 'oral_juice', label: 'Oral - Juice' },
-        { id: 'oral_milk', label: 'Oral - Milk' },
-        { id: 'oral_soup', label: 'Oral - Soup/Broth' },
-        { id: 'oral_other', label: 'Oral - Other' },
-        { id: 'iv_maintenance', label: 'IV Maintenance' },
-        { id: 'iv_bolus', label: 'IV Bolus' },
-        { id: 'iv_blood', label: 'IV Blood' },
-        { id: 'blood_products', label: 'Blood Products' },
-        { id: 'medications', label: 'Medications IV' }
-      ],
-      outputItems: [
-        { id: 'urine', label: 'Urine' },
-        { id: 'emesis', label: 'Emesis/Vomit' },
-        { id: 'ng_drainage', label: 'NG Drainage' },
-        { id: 'ostomy', label: 'Ostomy' },
-        { id: 'drain', label: 'Drain' },
-        { id: 'stool', label: 'Stool' },
-        { id: 'diaphoresis', label: 'Diaphoresis (est)' }
-      ]
+      intakeItemIds: ['oral_water', 'oral_juice', 'oral_milk', 'oral_soup', 'oral_other', 'iv_maintenance', 'iv_bolus', 'iv_blood', 'blood_products', 'medications'],
+      outputItemIds: ['urine', 'emesis', 'ng_drainage', 'ostomy', 'drain', 'stool', 'diaphoresis']
     }
   },
   computed: {
@@ -281,7 +272,53 @@ export default {
     },
     ioBalance() {
       return this.totalIntake - this.totalOutput
+    },
+    intakeItems() {
+      return this.intakeItemIds.map(id => ({
+        id,
+        label: this.$t(`clinical360.flowsheets.forms.intake_output.options.intake.${id}`)
+      }))
+    },
+    outputItems() {
+      return this.outputItemIds.map(id => ({
+        id,
+        label: this.$t(`clinical360.flowsheets.forms.intake_output.options.output.${id}`)
+      }))
+    },
+    urineColorOptions() {
+      return [
+        ['colorless', 'Colorless'], ['pale_yellow', 'Pale yellow'], ['yellow', 'Yellow'],
+        ['dark_yellow', 'Dark yellow'], ['amber', 'Amber'], ['brown', 'Brown'], ['red', 'Red'], ['other', 'Other']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.intake_output.options.urine_color.${k}`) }))
+    },
+    urineClarityOptions() {
+      return [
+        ['clear', 'Clear'], ['slightly_cloudy', 'Slightly cloudy'], ['cloudy', 'Cloudy'], ['very_turbid', 'Very turbid']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.intake_output.options.urine_clarity.${k}`) }))
+    },
+    catheterTypeOptions() {
+      return [
+        ['none', 'None'], ['foley', 'Foley'], ['condom', 'Condom'], ['straight_cath', 'Straight Cath'], ['suprapubic', 'Suprapubic']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.intake_output.options.catheter_type.${k}`) }))
+    },
+    catheterStatusOptions() {
+      return [
+        ['patent', 'Patent'], ['draining_well', 'Draining well'], ['slow_output', 'Slow output'],
+        ['no_output', 'No output'], ['blocked', 'Blocked'], ['removed', 'Removed']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.intake_output.options.catheter_status.${k}`) }))
+    },
+    stoolOutputOptions() {
+      return [
+        ['no_bm', 'No BM'], ['continent', 'Continent'], ['incontinent', 'Incontinent'],
+        ['diarrhea', 'Diarrhea'], ['hard_constipated', 'Hard/Constipated'], ['other', 'Other']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.intake_output.options.stool_output.${k}`) }))
     }
+  },
+  created() {
+    this.form.urineColor = 'Pale yellow'
+    this.form.urineClarity = 'Clear'
+    this.form.catheterType = 'None'
+    this.form.stoolOutput = 'No BM'
   },
   methods: {
     ...mapActions('flowsheets', ['createFlowsheetEntry']),
@@ -313,7 +350,7 @@ export default {
         this.$emit('save', this.form)
       } catch (error) {
         console.error('Error saving intake/output:', error)
-        alert('Error saving intake & output')
+        alert(this.$t('clinical360.flowsheets.forms.intake_output.save_error'))
       }
     }
   }

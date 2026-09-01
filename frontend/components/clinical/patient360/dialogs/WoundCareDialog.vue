@@ -3,14 +3,14 @@
     <v-card class="wound-dialog">
       <v-card-title class="dialog-title">
         <div>
-          <span>Wound documentation</span>
-          <strong>Wound Care Note with Photos</strong>
+          <span>{{ $t('clinical360.dialogs.wound_care_dialog.eyebrow') }}</span>
+          <strong>{{ $t('clinical360.dialogs.wound_care_dialog.title') }}</strong>
         </div>
         <v-btn icon small @click="$emit('close')"><v-icon small>mdi-close</v-icon></v-btn>
       </v-card-title>
       <v-card-text>
         <section v-if="!selectedWoundId && mode !== 'new'" class="wound-picker">
-          <p class="section-label">Select a wound to reassess, or document a new one</p>
+          <p class="section-label">{{ $t('clinical360.dialogs.wound_care_dialog.select_wound') }}</p>
           <div v-if="patientWounds.length" class="wound-grid">
             <WoundCard
               v-for="wound in patientWounds"
@@ -22,24 +22,24 @@
           </div>
           <div v-else class="empty-wounds">
             <v-icon size="40" color="#94a3b8">mdi-bandage</v-icon>
-            <span>No wounds documented yet for this patient.</span>
+            <span>{{ $t('clinical360.dialogs.wound_care_dialog.no_wounds') }}</span>
           </div>
           <v-btn v-if="!readOnly" depressed color="#0f766e" dark class="font-weight-black mt-3" @click="mode = 'new'">
-            <v-icon small left>mdi-plus</v-icon>Document a new wound
+            <v-icon small left>mdi-plus</v-icon>{{ $t('clinical360.dialogs.wound_care_dialog.document_new_wound') }}
           </v-btn>
         </section>
 
         <section v-else>
           <button type="button" class="back-link" @click="reset">
-            <v-icon x-small>mdi-arrow-left</v-icon> Choose a different wound
+            <v-icon x-small>mdi-arrow-left</v-icon> {{ $t('clinical360.dialogs.wound_care_dialog.choose_different_wound') }}
           </button>
 
           <div v-if="mode === 'new'" class="new-wound-fields">
-            <p class="section-label">New wound</p>
+            <p class="section-label">{{ $t('clinical360.dialogs.wound_care_dialog.new_wound') }}</p>
             <div class="dialog-grid three">
-              <v-text-field v-model="newWound.woundType" label="Wound type" dense outlined :rules="[requiredRule]" />
-              <v-text-field v-model="newWound.anatomicalLocation" label="Anatomical location" dense outlined :rules="[requiredRule]" />
-              <v-select v-model="newWound.acquiredLocation" :items="acquiredLocationOptions" label="Acquired location" dense outlined />
+              <v-text-field v-model="newWound.woundType" :label="$t('clinical360.dialogs.wound_care_dialog.wound_type')" dense outlined :rules="[requiredRule]" />
+              <v-text-field v-model="newWound.anatomicalLocation" :label="$t('clinical360.dialogs.wound_care_dialog.anatomical_location')" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="newWound.acquiredLocation" :items="acquiredLocationOptions" :label="$t('clinical360.dialogs.wound_care_dialog.acquired_location')" dense outlined />
             </div>
           </div>
           <div v-else class="existing-wound-summary">
@@ -48,48 +48,48 @@
           </div>
 
           <!-- Assessment Section -->
-          <p class="section-label">Assessment</p>
+          <p class="section-label">{{ $t('clinical360.dialogs.wound_care_dialog.assessment') }}</p>
           <div class="dialog-grid three">
-            <v-text-field v-model.number="assessment.lengthCm" type="number" label="Length (cm)" dense outlined />
-            <v-text-field v-model.number="assessment.widthCm" type="number" label="Width (cm)" dense outlined />
-            <v-text-field v-model.number="assessment.depthCm" type="number" label="Depth (cm)" dense outlined />
+            <v-text-field v-model.number="assessment.lengthCm" type="number" :label="$t('clinical360.dialogs.wound_care_dialog.length_cm')" dense outlined />
+            <v-text-field v-model.number="assessment.widthCm" type="number" :label="$t('clinical360.dialogs.wound_care_dialog.width_cm')" dense outlined />
+            <v-text-field v-model.number="assessment.depthCm" type="number" :label="$t('clinical360.dialogs.wound_care_dialog.depth_cm')" dense outlined />
           </div>
           <div class="dialog-grid three mt-3">
-            <v-select v-model="assessment.woundStatus" :items="woundStatusOptions" label="Wound status" dense outlined />
+            <v-select v-model="assessment.woundStatus" :items="woundStatusOptions" :label="$t('clinical360.dialogs.wound_care_dialog.wound_status')" dense outlined />
           </div>
           <div class="calculated-metrics">
-            <span>Surface area <strong>{{ surfaceArea }} cm²</strong></span>
-            <span>Volume <strong>{{ volume !== null ? volume + ' cm³' : '-' }}</strong></span>
+            <span>{{ $t('clinical360.dialogs.wound_care_dialog.surface_area') }} <strong>{{ surfaceArea }} cm²</strong></span>
+            <span>{{ $t('clinical360.dialogs.wound_care_dialog.volume') }} <strong>{{ volume !== null ? volume + ' cm³' : '-' }}</strong></span>
           </div>
           <div class="dialog-grid three mt-3">
-            <v-select v-model="assessment.drainageAmount" :items="['none', 'scant', 'small', 'moderate', 'large']" label="Drainage" dense outlined />
-            <v-text-field v-model="assessment.dressingType" label="Dressing" dense outlined />
-            <v-text-field v-model.number="assessment.painScore" type="number" min="0" max="10" label="Pain /10" dense outlined />
+            <v-select v-model="assessment.drainageAmount" :items="['none', 'scant', 'small', 'moderate', 'large']" :label="$t('clinical360.dialogs.wound_care_dialog.drainage')" dense outlined />
+            <v-text-field v-model="assessment.dressingType" :label="$t('clinical360.dialogs.wound_care_dialog.dressing')" dense outlined />
+            <v-text-field v-model.number="assessment.painScore" type="number" min="0" max="10" :label="$t('clinical360.dialogs.wound_care_dialog.pain_10')" dense outlined />
           </div>
-          <v-textarea v-model="assessment.treatmentPlan" label="Treatment plan" rows="3" dense outlined />
+          <v-textarea v-model="assessment.treatmentPlan" :label="$t('clinical360.dialogs.wound_care_dialog.treatment_plan')" rows="3" dense outlined />
 
-          <p class="section-label mt-4">Discharge continuity</p>
+          <p class="section-label mt-4">{{ $t('clinical360.dialogs.wound_care_dialog.discharge_continuity') }}</p>
           <div class="dialog-grid two">
-            <v-text-field v-model="assessment.followUpOwner" label="Follow-up clinician or service" dense outlined />
-            <v-text-field v-model="assessment.followUpDate" type="date" label="Follow-up date" dense outlined />
+            <v-text-field v-model="assessment.followUpOwner" :label="$t('clinical360.dialogs.wound_care_dialog.follow_up_owner')" dense outlined />
+            <v-text-field v-model="assessment.followUpDate" type="date" :label="$t('clinical360.dialogs.wound_care_dialog.follow_up_date')" dense outlined />
           </div>
           <v-textarea
             v-model="assessment.supplyPlan"
-            label="Dressing supplies and quantities"
+            :label="$t('clinical360.dialogs.wound_care_dialog.supply_plan')"
             rows="2"
             dense
             outlined
           />
           <v-textarea
             v-model="assessment.dischargeInstructions"
-            label="Patient/family instructions and warning signs"
+            :label="$t('clinical360.dialogs.wound_care_dialog.discharge_instructions')"
             rows="3"
             dense
             outlined
           />
 
           <!-- Photo Section - NEW -->
-          <p class="section-label mt-4">Wound Photos (Assessment ID: {{ assessmentId }})</p>
+          <p class="section-label mt-4">{{ $t('clinical360.dialogs.wound_care_dialog.wound_photos_assessment_id', { id: assessmentId }) }}</p>
           <div class="photo-section">
             <!-- Photo Capture -->
             <div v-if="!readOnly" class="photo-input-area">
@@ -101,7 +101,7 @@
                 class="mb-2"
               >
                 <v-icon small left>mdi-camera</v-icon>
-                Add Photo from Mobile/Camera
+                {{ $t('clinical360.dialogs.wound_care_dialog.add_photo_camera') }}
               </v-btn>
               <input
                 ref="fileInput"
@@ -120,7 +120,7 @@
                 class="mb-2"
               >
                 <v-icon small left>mdi-image-multiple</v-icon>
-                Select from Gallery
+                {{ $t('clinical360.dialogs.wound_care_dialog.select_from_gallery') }}
               </v-btn>
               <input
                 ref="galleryInput"
@@ -133,23 +133,23 @@
 
             <!-- Photo Preview -->
             <div v-if="photoPreview" class="photo-preview">
-              <img :src="photoPreview" alt="Photo preview" class="preview-image" />
+              <img :src="photoPreview" :alt="$t('clinical360.dialogs.wound_care_dialog.photo_preview')" class="preview-image" />
               <div class="preview-actions">
                 <v-btn small color="success" dark @click="savePhoto">
-                  <v-icon small>mdi-check</v-icon>Save Photo
+                  <v-icon small>mdi-check</v-icon>{{ $t('clinical360.dialogs.wound_care_dialog.save_photo') }}
                 </v-btn>
                 <v-btn small text @click="clearPhotoPreview">
-                  <v-icon small>mdi-close</v-icon>Cancel
+                  <v-icon small>mdi-close</v-icon>{{ $t('clinical360.dialogs.wound_care_dialog.cancel') }}
                 </v-btn>
               </div>
             </div>
 
             <!-- Photos Gallery -->
             <div v-if="assessment.photos && assessment.photos.length" class="photos-gallery">
-              <h4 class="gallery-title">Attached Photos ({{ assessment.photos.length }})</h4>
+              <h4 class="gallery-title">{{ $t('clinical360.dialogs.wound_care_dialog.attached_photos', { count: assessment.photos.length }) }}</h4>
               <div class="photos-grid">
                 <div v-for="(photo, idx) in assessment.photos" :key="idx" class="photo-item">
-                  <img :src="photo.data" :alt="`Photo ${idx + 1}`" class="gallery-image" />
+                  <img :src="photo.data" :alt="$t('clinical360.dialogs.wound_care_dialog.photo_n', { n: idx + 1 })" class="gallery-image" />
                   <div class="photo-info">
                     <small>{{ formatDate(photo.timestamp) }}</small>
                     <v-btn small icon @click="removePhoto(idx)">
@@ -162,17 +162,17 @@
 
             <div v-else class="no-photos">
               <v-icon color="#94a3b8">mdi-image-outline</v-icon>
-              <span>No photos attached yet</span>
+              <span>{{ $t('clinical360.dialogs.wound_care_dialog.no_photos') }}</span>
             </div>
           </div>
         </section>
       </v-card-text>
       <v-card-actions v-if="selectedWoundId || mode === 'new'" class="dialog-actions">
-        <span v-if="lastWarning" class="warning-flag"><v-icon x-small color="#be123c">mdi-alert</v-icon>Surface increased since prior measurement</span>
+        <span v-if="lastWarning" class="warning-flag"><v-icon x-small color="#be123c">mdi-alert</v-icon>{{ $t('clinical360.dialogs.wound_care_dialog.surface_increased') }}</span>
         <v-spacer />
-        <v-btn text small @click="$emit('close')">Cancel</v-btn>
+        <v-btn text small @click="$emit('close')">{{ $t('clinical360.dialogs.wound_care_dialog.cancel') }}</v-btn>
         <v-btn v-if="!readOnly" depressed color="#0f766e" dark small :loading="saving" @click="save">
-          <v-icon x-small left>mdi-content-save</v-icon>Save assessment
+          <v-icon x-small left>mdi-content-save</v-icon>{{ $t('clinical360.dialogs.wound_care_dialog.save_assessment') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -225,7 +225,7 @@ export default {
       lastWarning: false,
       acquiredLocationOptions: ['present_on_admission', 'facility_acquired', 'community_acquired', 'unknown'],
       woundStatusOptions: ['active', 'improving', 'worsening', 'healed', 'closed'],
-      requiredRule: value => Boolean(value) || 'Required'
+      requiredRule: value => Boolean(value) || this.$t('clinical360.dialogs.wound_care_dialog.required')
     }
   },
   computed: {
@@ -305,7 +305,7 @@ export default {
       })
 
       this.clearPhotoPreview()
-      this.$notify({ type: 'success', message: 'Photo saved to assessment' })
+      this.$notify({ type: 'success', message: this.$t('clinical360.dialogs.wound_care_dialog.photo_saved') })
     },
     clearPhotoPreview() {
       this.photoPreview = null
@@ -360,10 +360,10 @@ export default {
         }
 
         this.$emit('saved', record)
-        this.$notify({ type: 'success', message: 'Wound assessment saved with photos' })
+        this.$notify({ type: 'success', message: this.$t('clinical360.dialogs.wound_care_dialog.assessment_saved') })
         this.reset()
       } catch (e) {
-        this.$notify({ type: 'error', message: 'Error saving assessment' })
+        this.$notify({ type: 'error', message: this.$t('clinical360.dialogs.wound_care_dialog.assessment_save_error') })
       } finally {
         this.saving = false
       }

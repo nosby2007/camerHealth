@@ -86,7 +86,7 @@
           <v-text-field v-model.trim="noteForm.title" :label="copy.noteTitle" dense outlined />
           <v-textarea v-model.trim="noteForm.body" :label="copy.noteBody" rows="6" dense outlined />
           <div class="dialog-grid">
-            <v-select v-model="noteForm.status" :items="noteStatuses" :label="copy.noteStatus" dense outlined />
+            <v-select v-model="noteForm.status" :items="noteStatuses" item-text="text" item-value="value" :label="copy.noteStatus" dense outlined />
             <v-checkbox v-model="noteForm.share" :disabled="noteForm.status !== 'signed'" :label="copy.shareTeam" dense />
           </div>
         </v-card-text>
@@ -99,7 +99,7 @@
         <v-card-title class="dialog-title"><v-icon left color="#0f766e">mdi-account-voice</v-icon>{{ copy.meetingDialog }}</v-card-title>
         <v-card-text class="pt-5">
           <div class="dialog-grid">
-            <v-select v-model="meetingForm.type" :items="meetingTypes" :label="copy.meetingType" dense outlined />
+            <v-select v-model="meetingForm.type" :items="meetingTypes" item-text="text" item-value="value" :label="copy.meetingType" dense outlined />
             <v-text-field v-model="meetingForm.scheduledAt" type="datetime-local" :label="copy.date" dense outlined />
           </div>
           <v-text-field v-model.trim="meetingForm.attendees" :label="copy.attendees" dense outlined />
@@ -122,7 +122,7 @@
           <v-text-field v-model.trim="assignmentForm.title" :label="copy.taskTitle" dense outlined />
           <div class="dialog-grid">
             <v-select v-model="assignmentForm.assignedRole" :items="assignmentRoles" item-text="text" item-value="value" :label="copy.owner" dense outlined />
-            <v-select v-model="assignmentForm.priority" :items="priorities" :label="copy.priority" dense outlined />
+            <v-select v-model="assignmentForm.priority" :items="priorities" item-text="text" item-value="value" :label="copy.priority" dense outlined />
           </div>
           <v-text-field v-model="assignmentForm.dueAt" type="datetime-local" :label="copy.due" dense outlined />
           <v-textarea v-model.trim="assignmentForm.reason" :label="copy.instructions" rows="3" dense outlined />
@@ -157,10 +157,7 @@ export default {
     dialogs: { note: false, meeting: false, assignment: false },
     noteForm: { title: '', body: '', status: 'draft', share: false },
     meetingForm: { type: 'IDT Conference', scheduledAt: '', attendees: '', agenda: '', decisions: '', followUp: '', assignedRole: 'NURSE', dueAt: '' },
-    assignmentForm: { title: '', assignedRole: 'NURSE', priority: 'Today', dueAt: '', reason: '' },
-    priorities: ['Routine', 'Today', 'Urgent', 'STAT'],
-    noteStatuses: [{ text: 'Draft / Brouillon', value: 'draft' }, { text: 'Sign now / Signer', value: 'signed' }],
-    assignmentRoles: Object.keys(ROLE_LABELS).map(value => ({ value, text: ROLE_LABELS[value] }))
+    assignmentForm: { title: '', assignedRole: 'NURSE', priority: 'Today', dueAt: '', reason: '' }
   }),
   created() {
     if (!this.activeStaff.length) this.$store.dispatch('facility/fetchActiveStaffSummary')
@@ -174,20 +171,89 @@ export default {
       return this.role === 'SOCIAL_WORKER' ? 'social' : this.role === 'MAJOR_SERVICE' ? 'unit' : 'supervision'
     },
     copy() {
-      const fr = {
-        social: { eyebrow: 'CONTINUITE ET ACCOMPAGNEMENT', title: 'Service social', subtitle: 'Evaluation sociale, obstacles a la sortie, ressources et coordination familiale.' },
-        unit: { eyebrow: 'PILOTAGE OPERATIONNEL', title: 'Pilotage du service', subtitle: 'Couverture du personnel, charge de travail, securite et coordination du service.' },
-        supervision: { eyebrow: 'GOUVERNANCE DES SOINS', title: 'Supervision infirmiere', subtitle: 'Surveillance transversale des services, qualite, effectifs et escalades cliniques.' },
-        careTeam: 'Equipe de soins', note: 'Rediger une note', assignment: 'Affecter', conference: 'Conference', readOnly: 'Patient sorti : cet espace est en lecture seule.', workQueue: 'TRAVAIL ACTIF', workQueueTitle: 'Actions et suivis', viewAll: 'Voir la liste', item: 'Element', owner: 'Responsable', due: 'Echeance', status: 'Statut', noDetail: 'Aucun detail', team: 'Equipe', noTasks: 'Aucune action ouverte dans ce perimetre.', governance: 'COORDINATION', meetingsTitle: 'IDT, qualite et reunions cliniques', add: 'Ajouter', noMeetings: 'Aucun compte rendu de reunion pour ce patient.', coverage: 'COUVERTURE', staffTitle: 'Personnel disponible', available: 'Disponible', noStaff: 'Aucun membre actif trouve.', interdisciplinary: 'INTERDISCIPLINAIRE', patientTeam: 'Equipe du patient', openCareTeam: 'Ouvrir toute l equipe', noteDialog: 'Nouvelle note professionnelle', noteTitle: 'Titre de la note', noteBody: 'Evaluation, constat et plan', noteStatus: 'Statut', shareTeam: 'Partager avec l equipe de soins', meetingDialog: 'Conference et compte rendu', meetingType: 'Type de reunion', date: 'Date et heure', attendees: 'Participants', agenda: 'Ordre du jour', decisions: 'Decisions et recommandations', followUp: 'Action de suivi', priority: 'Priorite', instructions: 'Instructions / justification', fileMinutes: 'Classer le compte rendu', assignmentDialog: 'Nouvelle affectation', taskTitle: 'Tache ou intervention', assign: 'Affecter', cancel: 'Annuler', save: 'Enregistrer', saveError: 'Enregistrement impossible. Verifiez vos droits et le statut du patient.' }
-      const en = {
-        social: { eyebrow: 'CONTINUITY AND SUPPORT', title: 'Social Services', subtitle: 'Social assessment, discharge barriers, resources and family coordination.' },
-        unit: { eyebrow: 'UNIT OPERATIONS', title: 'Unit Management', subtitle: 'Staff coverage, workload, safety and service coordination.' },
-        supervision: { eyebrow: 'NURSING GOVERNANCE', title: 'Nursing Supervision', subtitle: 'Cross-unit oversight, quality, staffing and clinical escalation.' },
-        careTeam: 'Care team', note: 'Write note', assignment: 'Assign', conference: 'Conference', readOnly: 'Discharged patient: this workspace is read only.', workQueue: 'ACTIVE WORK', workQueueTitle: 'Actions and follow-up', viewAll: 'View work list', item: 'Item', owner: 'Owner', due: 'Due', status: 'Status', noDetail: 'No detail', team: 'Team', noTasks: 'No open action in this scope.', governance: 'COORDINATION', meetingsTitle: 'IDT, quality and clinical meetings', add: 'Add', noMeetings: 'No meeting minutes filed for this patient.', coverage: 'COVERAGE', staffTitle: 'Available staff', available: 'Available', noStaff: 'No active staff member found.', interdisciplinary: 'INTERDISCIPLINARY', patientTeam: 'Patient care team', openCareTeam: 'Open full care team', noteDialog: 'New professional note', noteTitle: 'Note title', noteBody: 'Assessment, findings and plan', noteStatus: 'Status', shareTeam: 'Share with care team', meetingDialog: 'Conference and meeting minutes', meetingType: 'Meeting type', date: 'Date and time', attendees: 'Attendees', agenda: 'Agenda', decisions: 'Decisions and recommendations', followUp: 'Follow-up action', priority: 'Priority', instructions: 'Instructions / rationale', fileMinutes: 'File meeting minutes', assignmentDialog: 'New assignment', taskTitle: 'Task or intervention', assign: 'Assign', cancel: 'Cancel', save: 'Save', saveError: 'Unable to save. Check your access and the patient chart status.' }
-      const source = this.isFrench ? fr : en
-      return { ...source, ...source[this.mode] }
+      const t = key => this.$t(`clinical360.coordination.tab.${key}`)
+      return {
+        eyebrow: this.$t(`clinical360.coordination.tab.${this.mode}.eyebrow`),
+        title: this.$t(`clinical360.coordination.tab.${this.mode}.title`),
+        subtitle: this.$t(`clinical360.coordination.tab.${this.mode}.subtitle`),
+        careTeam: t('care_team'),
+        note: t('write_note'),
+        assignment: t('assign'),
+        conference: t('conference'),
+        readOnly: t('read_only_banner'),
+        workQueue: t('work_queue_eyebrow'),
+        workQueueTitle: t('work_queue_title'),
+        viewAll: t('view_all'),
+        item: t('item'),
+        owner: t('owner'),
+        due: t('due'),
+        status: t('status'),
+        noDetail: t('no_detail'),
+        team: t('team'),
+        noTasks: t('no_tasks'),
+        governance: t('governance_eyebrow'),
+        meetingsTitle: t('meetings_title'),
+        add: t('add'),
+        noMeetings: t('no_meetings'),
+        coverage: t('coverage_eyebrow'),
+        staffTitle: t('staff_title'),
+        available: t('available'),
+        noStaff: t('no_staff'),
+        interdisciplinary: t('interdisciplinary_eyebrow'),
+        patientTeam: t('patient_team'),
+        openCareTeam: t('open_care_team'),
+        noteDialog: t('note_dialog_title'),
+        noteTitle: t('note_title_label'),
+        noteBody: t('note_body_label'),
+        noteStatus: t('note_status_label'),
+        shareTeam: t('share_team'),
+        meetingDialog: t('meeting_dialog_title'),
+        meetingType: t('meeting_type_label'),
+        date: t('date_label'),
+        attendees: t('attendees_label'),
+        agenda: t('agenda_label'),
+        decisions: t('decisions_label'),
+        followUp: t('follow_up_label'),
+        priority: t('priority_label'),
+        instructions: t('instructions_label'),
+        fileMinutes: t('file_minutes'),
+        assignmentDialog: t('assignment_dialog_title'),
+        taskTitle: t('task_title_label'),
+        assign: t('assign'),
+        cancel: t('cancel'),
+        save: t('save'),
+        saveError: t('save_error')
+      }
     },
-    meetingTypes() { return ['IDT Conference', 'Quality Assurance Review', 'Clinical Meeting', 'Safety Huddle', 'Discharge Planning Conference'] },
+    noteStatuses() {
+      return [
+        { value: 'draft', text: this.$t('clinical360.coordination.tab.note_statuses.draft') },
+        { value: 'signed', text: this.$t('clinical360.coordination.tab.note_statuses.signed') }
+      ]
+    },
+    priorities() {
+      return [
+        { value: 'Routine', text: this.$t('clinical360.coordination.tab.priorities.routine') },
+        { value: 'Today', text: this.$t('clinical360.coordination.tab.priorities.today') },
+        { value: 'Urgent', text: this.$t('clinical360.coordination.tab.priorities.urgent') },
+        { value: 'STAT', text: this.$t('clinical360.coordination.tab.priorities.stat') }
+      ]
+    },
+    assignmentRoles() {
+      return Object.keys(ROLE_LABELS).map(value => ({
+        value,
+        text: this.$t(`clinical360.coordination.tab.roles.${value.toLowerCase()}`)
+      }))
+    },
+    meetingTypes() {
+      return [
+        { value: 'IDT Conference', text: this.$t('clinical360.coordination.tab.meeting_types.idt_conference') },
+        { value: 'Quality Assurance Review', text: this.$t('clinical360.coordination.tab.meeting_types.quality_assurance_review') },
+        { value: 'Clinical Meeting', text: this.$t('clinical360.coordination.tab.meeting_types.clinical_meeting') },
+        { value: 'Safety Huddle', text: this.$t('clinical360.coordination.tab.meeting_types.safety_huddle') },
+        { value: 'Discharge Planning Conference', text: this.$t('clinical360.coordination.tab.meeting_types.discharge_planning_conference') }
+      ]
+    },
     activeStaff() { return this.$store.getters['facility/getActiveStaff'] || [] },
     scopedStaff() {
       if (this.mode === 'social') return this.activeStaff.filter(item => item.role === 'SOCIAL_WORKER')
@@ -205,12 +271,11 @@ export default {
     openTasks() { return this.scopedTasks.filter(item => !/done|complete|cancel|resolved/i.test(item.status || '')).length },
     meetingRecords() { return this.documents.filter(item => /conference|meeting|quality|idt|safety huddle/i.test(`${item.category || ''} ${item.title || ''}`)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) },
     metrics() {
-      const staffLabel = this.isFrench ? 'Personnel' : 'Staff coverage'
       return [
-        { label: this.isFrench ? 'Actions ouvertes' : 'Open actions', value: this.openTasks, detail: this.copy.workQueueTitle, icon: 'mdi-clipboard-alert-outline', color: this.openTasks ? '#c2410c' : '#15803d', state: this.openTasks ? 'warning' : 'good' },
-        { label: staffLabel, value: this.scopedStaff.length, detail: this.copy.staffTitle, icon: 'mdi-account-multiple-check-outline', color: '#0369a1', state: 'neutral' },
-        { label: this.isFrench ? 'Conferences' : 'Conferences', value: this.meetingRecords.length, detail: 'IDT / QA / Clinical', icon: 'mdi-account-voice', color: '#7c3aed', state: 'neutral' },
-        { label: this.isFrench ? 'Equipe patient' : 'Patient team', value: this.members.length, detail: this.copy.interdisciplinary, icon: 'mdi-account-group-outline', color: '#0f766e', state: 'neutral' }
+        { label: this.$t('clinical360.coordination.tab.metric_open_actions'), value: this.openTasks, detail: this.copy.workQueueTitle, icon: 'mdi-clipboard-alert-outline', color: this.openTasks ? '#c2410c' : '#15803d', state: this.openTasks ? 'warning' : 'good' },
+        { label: this.$t('clinical360.coordination.tab.metric_staff_coverage'), value: this.scopedStaff.length, detail: this.copy.staffTitle, icon: 'mdi-account-multiple-check-outline', color: '#0369a1', state: 'neutral' },
+        { label: this.$t('clinical360.coordination.tab.metric_conferences'), value: this.meetingRecords.length, detail: this.$t('clinical360.coordination.tab.metric_conferences_detail'), icon: 'mdi-account-voice', color: '#7c3aed', state: 'neutral' },
+        { label: this.$t('clinical360.coordination.tab.metric_patient_team'), value: this.members.length, detail: this.copy.interdisciplinary, icon: 'mdi-account-group-outline', color: '#0f766e', state: 'neutral' }
       ]
     }
   },
@@ -218,7 +283,7 @@ export default {
     nowLocal() { const date = new Date(Date.now() - new Date().getTimezoneOffset() * 60000); return date.toISOString().slice(0, 16) },
     formatDate(value) { return value ? new Date(value).toLocaleString(this.isFrench ? 'fr-CM' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) : '-' },
     initials(name) { return String(name || '?').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() },
-    roleLabel(role) { return ROLE_LABELS[role] || role },
+    roleLabel(role) { return ROLE_LABELS[role] ? this.$t(`clinical360.coordination.tab.roles.${String(role).toLowerCase()}`) : role },
     taskState(task) { const value = String(task.status || '').toLowerCase(); return /done|complete|resolved/.test(value) ? 'good' : /urgent|missed|overdue/.test(`${value} ${task.priority || ''}`.toLowerCase()) ? 'danger' : 'warning' },
     openNote() { this.noteForm = { title: this.copy.title, body: '', status: 'draft', share: false }; this.dialogs.note = true },
     openMeeting() { this.meetingForm = { type: 'IDT Conference', scheduledAt: this.nowLocal(), attendees: '', agenda: '', decisions: '', followUp: '', assignedRole: this.mode === 'social' ? 'SOCIAL_WORKER' : 'NURSE', dueAt: '' }; this.dialogs.meeting = true },
@@ -233,7 +298,7 @@ export default {
           if (this.noteForm.share) await this.$store.dispatch('nursing/shareClinicalNote', note.id)
         }
         this.dialogs.note = false
-        this.$emit('saved', this.isFrench ? 'Note enregistree.' : 'Note saved.')
+        this.$emit('saved', this.$t('clinical360.coordination.tab.note_saved'))
       } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
     },
     async saveMeeting() {
@@ -244,7 +309,7 @@ export default {
         await this.$store.dispatch('clinical/createDocument', { patientId: this.patientId, title: `${form.type} - ${this.patient.fullName || this.patient.name || this.patientId}`, category: 'Care Team Conference', status: 'Filed', content: [`Scheduled: ${form.scheduledAt}`, `Attendees: ${form.attendees || '-'}`, `Agenda: ${form.agenda || '-'}`, `Decisions: ${form.decisions}`, `Follow-up: ${form.followUp || '-'}`].join('\n') })
         if (form.followUp) await this.$store.dispatch('clinical/createTask', { patientId: this.patientId, title: form.followUp, assignedToRole: form.assignedRole, priority: 'Today', dueAt: form.dueAt || null, relatedType: 'care-team-conference', actionReason: `${form.type}: ${form.decisions}` })
         this.dialogs.meeting = false
-        this.$emit('saved', this.isFrench ? 'Compte rendu classe.' : 'Meeting minutes filed.')
+        this.$emit('saved', this.$t('clinical360.coordination.tab.meeting_filed'))
       } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
     },
     async saveAssignment() {
@@ -254,7 +319,7 @@ export default {
         const form = this.assignmentForm
         await this.$store.dispatch('clinical/createTask', { patientId: this.patientId, title: form.title, assignedToRole: form.assignedRole, priority: form.priority, dueAt: form.dueAt || null, relatedType: `${this.mode}-coordination`, actionReason: form.reason || `${this.copy.title} assignment` })
         this.dialogs.assignment = false
-        this.$emit('saved', this.isFrench ? 'Tache affectee.' : 'Task assigned.')
+        this.$emit('saved', this.$t('clinical360.coordination.tab.task_assigned'))
       } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
     }
   }

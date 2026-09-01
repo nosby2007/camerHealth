@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-file-document-outline</v-icon>
-        <span>Select Care Plan Template</span>
+        <span>{{ $t('clinical360.care_plan.template_selector.select_template') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>

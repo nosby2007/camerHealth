@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-hospital-box-outline</v-icon>
-        <span>Discharge Continuity Planning</span>
+        <span>{{ $t('clinical360.discharge.continuity_form.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -16,166 +16,168 @@
         <form @submit.prevent="submitForm">
           <!-- Discharge Planning Summary -->
           <section class="form-section">
-            <h3 class="section-title">📋 Discharge Summary</h3>
+            <h3 class="section-title">📋 {{ $t('clinical360.discharge.continuity_form.section_summary_title') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Discharge Date/Time *</label>
+                <label>{{ $t('clinical360.discharge.continuity_form.discharge_datetime_label') }} *</label>
                 <v-text-field v-model="form.dischargeDateTime" type="datetime-local" outlined dense required />
               </div>
               <div class="form-group">
-                <label>Disposition Type *</label>
+                <label>{{ $t('clinical360.discharge.continuity_form.disposition_label') }} *</label>
                 <v-select
                   v-model="form.disposition"
-                  :items="['Home', 'Home with services', 'Assisted living', 'Skilled nursing', 'Acute rehab', 'LTAC', 'Hospice']"
+                  :items="dispositionOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined dense required
                 />
               </div>
               <div class="form-group">
-                <label>Discharge Destination</label>
-                <v-text-field v-model="form.destination" placeholder="Address/Facility name" outlined dense />
+                <label>{{ $t('clinical360.discharge.continuity_form.destination_label') }}</label>
+                <v-text-field v-model="form.destination" :placeholder="$t('clinical360.discharge.continuity_form.destination_placeholder')" outlined dense />
               </div>
             </div>
           </section>
 
           <!-- Medications at Discharge -->
           <section class="form-section">
-            <h3 class="section-title">💊 Medications at Discharge</h3>
+            <h3 class="section-title">💊 {{ $t('clinical360.discharge.continuity_form.section_medications_title') }}</h3>
             <v-text-field
               v-model="form.medicationsAtDischarge"
-              label="List all discharge medications"
-              placeholder="Include: name, dose, route, frequency..."
+              :label="$t('clinical360.discharge.continuity_form.medications_list_label')"
+              :placeholder="$t('clinical360.discharge.continuity_form.medications_list_placeholder')"
               outlined dense multi-line rows="4"
             />
           </section>
 
           <!-- Instruction Content -->
           <section class="form-section">
-            <h3 class="section-title">📝 Discharge Instructions</h3>
+            <h3 class="section-title">📝 {{ $t('clinical360.discharge.continuity_form.section_instructions_title') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Diet Instructions</label>
-                <v-text-field v-model="form.diet" placeholder="Specific diet restrictions/recommendations..." outlined dense />
+                <label>{{ $t('clinical360.discharge.continuity_form.diet_instructions_label') }}</label>
+                <v-text-field v-model="form.diet" :placeholder="$t('clinical360.discharge.continuity_form.diet_instructions_placeholder')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Activity Restrictions</label>
-                <v-text-field v-model="form.activity" placeholder="Weight bearing, lifting limits, return to work..." outlined dense />
+                <label>{{ $t('clinical360.discharge.continuity_form.activity_restrictions_label') }}</label>
+                <v-text-field v-model="form.activity" :placeholder="$t('clinical360.discharge.continuity_form.activity_restrictions_placeholder')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Wound Care Instructions</label>
-                <v-textarea v-model="form.woundCare" placeholder="Dressing changes, signs of infection, bathing..." outlined dense rows="3" />
+                <label>{{ $t('clinical360.discharge.continuity_form.wound_care_instructions_label') }}</label>
+                <v-textarea v-model="form.woundCare" :placeholder="$t('clinical360.discharge.continuity_form.wound_care_instructions_placeholder')" outlined dense rows="3" />
               </div>
             </div>
           </section>
 
           <!-- Signs/Symptoms to Monitor -->
           <section class="form-section">
-            <h3 class="section-title">⚠️ Return Precautions</h3>
+            <h3 class="section-title">⚠️ {{ $t('clinical360.discharge.continuity_form.section_return_precautions_title') }}</h3>
             <v-textarea
               v-model="form.returnPrecautions"
-              label="When to return to hospital/seek care"
-              placeholder="List red flags and warning signs..."
+              :label="$t('clinical360.discharge.continuity_form.return_precautions_label')"
+              :placeholder="$t('clinical360.discharge.continuity_form.return_precautions_placeholder')"
               outlined dense rows="4"
             />
           </section>
 
           <!-- Follow-up Appointments -->
           <section class="form-section">
-            <h3 class="section-title">📅 Follow-up Appointments</h3>
+            <h3 class="section-title">📅 {{ $t('clinical360.discharge.continuity_form.section_appointments_title') }}</h3>
             <div class="appointments-list">
               <div v-for="(appt, idx) in form.appointments" :key="idx" class="appt-card">
                 <div class="appt-content">
-                  <v-text-field v-model="form.appointments[idx].provider" placeholder="Provider name/specialty" outlined dense />
-                  <v-text-field v-model="form.appointments[idx].date" type="date" label="Scheduled date" outlined dense />
-                  <v-text-field v-model="form.appointments[idx].time" type="time" label="Time" outlined dense />
-                  <v-text-field v-model="form.appointments[idx].location" placeholder="Office/clinic location" outlined dense />
-                  <v-text-field v-model="form.appointments[idx].phone" placeholder="Contact phone" outlined dense />
+                  <v-text-field v-model="form.appointments[idx].provider" :placeholder="$t('clinical360.discharge.continuity_form.appointment_provider_placeholder')" outlined dense />
+                  <v-text-field v-model="form.appointments[idx].date" type="date" :label="$t('clinical360.discharge.continuity_form.appointment_scheduled_date_label')" outlined dense />
+                  <v-text-field v-model="form.appointments[idx].time" type="time" :label="$t('clinical360.discharge.continuity_form.appointment_time_label')" outlined dense />
+                  <v-text-field v-model="form.appointments[idx].location" :placeholder="$t('clinical360.discharge.continuity_form.appointment_location_placeholder')" outlined dense />
+                  <v-text-field v-model="form.appointments[idx].phone" :placeholder="$t('clinical360.discharge.continuity_form.appointment_phone_placeholder')" outlined dense />
                 </div>
                 <v-btn small icon @click="removeAppointment(idx)">
                   <v-icon small>mdi-close</v-icon>
                 </v-btn>
               </div>
               <v-btn small text color="primary" @click="addAppointment">
-                <v-icon small>mdi-plus</v-icon>Add Appointment
+                <v-icon small>mdi-plus</v-icon>{{ $t('clinical360.discharge.continuity_form.add_appointment_btn') }}
               </v-btn>
             </div>
           </section>
 
           <!-- Home Services -->
           <section class="form-section">
-            <h3 class="section-title">🏥 Home Services Arranged</h3>
+            <h3 class="section-title">🏥 {{ $t('clinical360.discharge.continuity_form.section_home_services_title') }}</h3>
             <div class="services-checklist">
               <div v-for="service in homeServices" :key="service" class="service-item">
                 <v-checkbox v-model="form.homeServices[service]" />
-                <span>{{ service }}</span>
+                <span>{{ homeServiceLabels[service] }}</span>
               </div>
             </div>
             <v-text-field
               v-model="form.serviceDetails"
-              label="Service provider details and schedule"
-              placeholder="Agency names, phone numbers, visit times..."
+              :label="$t('clinical360.discharge.continuity_form.service_details_label')"
+              :placeholder="$t('clinical360.discharge.continuity_form.service_details_placeholder')"
               outlined dense multi-line rows="3"
             />
           </section>
 
           <!-- Medications Teaching -->
           <section class="form-section">
-            <h3 class="section-title">💊 Medication Teaching Completed</h3>
+            <h3 class="section-title">💊 {{ $t('clinical360.discharge.continuity_form.section_medication_teaching_title') }}</h3>
             <div class="checklist">
-              <v-checkbox v-model="form.medicationTeachingDone" label="Patient/family educated on all medications" />
-              <v-checkbox v-model="form.sideEffectsTaught" label="Side effects and when to report reviewed" />
-              <v-checkbox v-model="form.interactionsTaught" label="Drug interactions and food interactions discussed" />
-              <v-checkbox v-model="form.adherenceAssessed" label="Adherence plan and resources provided" />
+              <v-checkbox v-model="form.medicationTeachingDone" :label="$t('clinical360.discharge.continuity_form.medication_teaching_done')" />
+              <v-checkbox v-model="form.sideEffectsTaught" :label="$t('clinical360.discharge.continuity_form.side_effects_taught')" />
+              <v-checkbox v-model="form.interactionsTaught" :label="$t('clinical360.discharge.continuity_form.interactions_taught')" />
+              <v-checkbox v-model="form.adherenceAssessed" :label="$t('clinical360.discharge.continuity_form.adherence_assessed')" />
             </div>
           </section>
 
           <!-- Transportation & Support -->
           <section class="form-section">
-            <h3 class="section-title">🚗 Transportation & Support</h3>
+            <h3 class="section-title">🚗 {{ $t('clinical360.discharge.continuity_form.section_transportation_title') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Transportation Arranged</label>
-                <v-checkbox v-model="form.transportationArranged" label="Yes" />
+                <label>{{ $t('clinical360.discharge.continuity_form.transportation_arranged_label') }}</label>
+                <v-checkbox v-model="form.transportationArranged" :label="$t('clinical360.discharge.continuity_form.notified_yes')" />
               </div>
               <div class="form-group">
-                <label>Caregiver/Support Person</label>
-                <v-text-field v-model="form.caregiver" placeholder="Name and relationship" outlined dense />
+                <label>{{ $t('clinical360.discharge.continuity_form.caregiver_label') }}</label>
+                <v-text-field v-model="form.caregiver" :placeholder="$t('clinical360.discharge.continuity_form.caregiver_placeholder')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Financial Resources Discussed</label>
-                <v-checkbox v-model="form.financialResourcesDiscussed" label="Medicare/Medicaid, payment options" />
+                <label>{{ $t('clinical360.discharge.continuity_form.financial_resources_label') }}</label>
+                <v-checkbox v-model="form.financialResourcesDiscussed" :label="$t('clinical360.discharge.continuity_form.financial_resources_checkbox')" />
               </div>
             </div>
           </section>
 
           <!-- Referrals -->
           <section class="form-section">
-            <h3 class="section-title">📤 Referrals & Resources</h3>
+            <h3 class="section-title">📤 {{ $t('clinical360.discharge.continuity_form.section_referrals_title') }}</h3>
             <v-textarea
               v-model="form.referrals"
-              label="Referrals made and community resources provided"
-              placeholder="Physical therapy, nutrition, social services, support groups..."
+              :label="$t('clinical360.discharge.continuity_form.referrals_label')"
+              :placeholder="$t('clinical360.discharge.continuity_form.referrals_placeholder')"
               outlined dense rows="3"
             />
           </section>
 
           <!-- Discharge Coordinator -->
           <section class="form-section">
-            <h3 class="section-title">Discharge Coordination</h3>
+            <h3 class="section-title">{{ $t('clinical360.discharge.continuity_form.section_coordination_title') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Discharge Coordinator</label>
-                <v-text-field v-model="form.coordinator" placeholder="Name/Title" outlined dense />
+                <label>{{ $t('clinical360.discharge.continuity_form.coordinator_label') }}</label>
+                <v-text-field v-model="form.coordinator" :placeholder="$t('clinical360.discharge.continuity_form.coordinator_placeholder')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Coordinator Contact</label>
-                <v-text-field v-model="form.coordinatorContact" placeholder="Phone number" outlined dense />
+                <label>{{ $t('clinical360.discharge.continuity_form.coordinator_contact_label') }}</label>
+                <v-text-field v-model="form.coordinatorContact" :placeholder="$t('clinical360.discharge.continuity_form.coordinator_contact_placeholder')" outlined dense />
               </div>
             </div>
           </section>
 
           <div class="form-actions">
-            <v-btn type="button" outlined @click="$emit('close')">Cancel</v-btn>
-            <v-btn type="submit" color="primary" dark>Save Discharge Plan</v-btn>
+            <v-btn type="button" outlined @click="$emit('close')">{{ $t('clinical360.discharge.continuity_form.cancel_btn') }}</v-btn>
+            <v-btn type="submit" color="primary" dark>{{ $t('clinical360.discharge.continuity_form.save_btn') }}</v-btn>
           </div>
         </form>
       </v-card-text>
@@ -207,6 +209,25 @@ export default {
       homeServices: ['Nursing', 'Physical therapy', 'Occupational therapy', 'Speech therapy', 'Social work', 'Dietitian']
     }
   },
+  computed: {
+    dispositionOptions() {
+      return [
+        ['disposition_home', 'Home'], ['disposition_home_with_services', 'Home with services'],
+        ['disposition_assisted_living', 'Assisted living'], ['disposition_skilled_nursing', 'Skilled nursing'],
+        ['disposition_acute_rehab', 'Acute rehab'], ['disposition_ltac', 'LTAC'], ['disposition_hospice', 'Hospice']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.discharge.continuity_form.${k}`) }))
+    },
+    homeServiceLabels() {
+      return {
+        Nursing: this.$t('clinical360.discharge.continuity_form.service_nursing'),
+        'Physical therapy': this.$t('clinical360.discharge.continuity_form.service_physical_therapy'),
+        'Occupational therapy': this.$t('clinical360.discharge.continuity_form.service_occupational_therapy'),
+        'Speech therapy': this.$t('clinical360.discharge.continuity_form.service_speech_therapy'),
+        'Social work': this.$t('clinical360.discharge.continuity_form.service_social_work'),
+        Dietitian: this.$t('clinical360.discharge.continuity_form.service_dietitian')
+      }
+    }
+  },
   methods: {
     ...mapActions('discharge', ['createDischargePlan']),
     addAppointment() {
@@ -225,7 +246,7 @@ export default {
         })
         this.$emit('save', this.form)
       } catch (error) {
-        alert('Error saving discharge plan')
+        alert(this.$t('clinical360.discharge.continuity_form.error_save_failed'))
       }
     }
   }

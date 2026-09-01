@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-clipboard-check</v-icon>
-        <span>Medication Reconciliation</span>
+        <span>{{ $t('clinical360.orders.med_reconciliation.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -18,20 +18,20 @@
           <section class="form-section">
             <div class="reconciliation-banner">
               <v-icon small>mdi-information</v-icon>
-              <span>Compare home medications with current facility orders and identify discrepancies</span>
+              <span>{{ $t('clinical360.orders.med_reconciliation.banner_instructions') }}</span>
             </div>
           </section>
 
           <!-- Home Medications -->
           <section class="form-section">
-            <h3 class="section-title">Current Home Medications</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.med_reconciliation.current_home_medications') }}</h3>
             <div class="med-table">
               <div class="table-header">
-                <span>Medication</span>
-                <span>Dose</span>
-                <span>Frequency</span>
-                <span>Reason</span>
-                <span>Status</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.col_medication') }}</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.col_dose') }}</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.col_frequency') }}</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.col_reason') }}</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.col_status') }}</span>
               </div>
               <div v-for="(med, idx) in form.homeMedications" :key="idx" class="table-row">
                 <span>{{ med.name }}</span>
@@ -40,7 +40,9 @@
                 <span>{{ med.reason }}</span>
                 <v-select
                   :value="med.reconciliationStatus"
-                  :items="['Continue', 'Hold', 'Dose change', 'Discontinued']"
+                  :items="reconciliationStatusOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                   @change="form.homeMedications[idx].reconciliationStatus = $event"
@@ -51,13 +53,13 @@
 
           <!-- Current Facility Orders -->
           <section class="form-section">
-            <h3 class="section-title">Current Facility Orders</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.med_reconciliation.current_facility_orders') }}</h3>
             <div class="med-table">
               <div class="table-header">
-                <span>Medication</span>
-                <span>Dose</span>
-                <span>Route</span>
-                <span>Frequency</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.col_medication') }}</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.col_dose') }}</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.col_route') }}</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.col_frequency') }}</span>
               </div>
               <div v-for="(med, idx) in form.facilityOrders" :key="idx" class="table-row">
                 <span>{{ med.name }}</span>
@@ -70,11 +72,11 @@
 
           <!-- Discrepancies Found -->
           <section class="form-section">
-            <h3 class="section-title">Discrepancies & Actions</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.med_reconciliation.discrepancies_actions') }}</h3>
             <div class="discrepancy-list">
               <div v-if="discrepancies.length === 0" class="no-discrepancies">
                 <v-icon color="success">mdi-check-circle</v-icon>
-                <span>No discrepancies found</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.no_discrepancies_found') }}</span>
               </div>
               <div v-for="(disc, idx) in discrepancies" v-else :key="idx" class="discrepancy-card" :class="disc.severity">
                 <div class="disc-header">
@@ -83,10 +85,12 @@
                 </div>
                 <p>{{ disc.description }}</p>
                 <div class="disc-action">
-                  <label>Action Required:</label>
+                  <label>{{ $t('clinical360.orders.med_reconciliation.action_required') }}</label>
                   <v-select
                     :value="form.discrepancyActions[idx]"
-                    :items="['Clarify with provider', 'Order correction', 'Note discrepancy', 'Patient education']"
+                    :items="discrepancyActionOptions"
+                    item-value="value"
+                    item-text="text"
                     outlined
                     dense
                     @change="form.discrepancyActions[idx] = $event"
@@ -98,84 +102,86 @@
 
           <!-- Allergy & Interaction Check -->
           <section class="form-section">
-            <h3 class="section-title">Safety Checks</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.med_reconciliation.safety_checks') }}</h3>
             <div class="safety-checklist">
               <label class="checklist-item">
                 <v-checkbox v-model="form.safetyChecks.allergiesVerified" />
-                <span>Patient allergies verified against all medications</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.allergies_verified') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.safetyChecks.drugInteractionsChecked" />
-                <span>Drug-drug interactions checked</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.drug_drug_interactions_checked') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.safetyChecks.drugAllergiesChecked" />
-                <span>Drug-allergy incompatibilities checked</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.drug_allergy_checked') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.safetyChecks.duplicateTherapyReviewed" />
-                <span>Duplicate therapy reviewed</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.duplicate_therapy_reviewed') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.safetyChecks.dosingAppropriate" />
-                <span>Dosing appropriate for patient (renal, hepatic, age)</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.dosing_appropriate') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.safetyChecks.contraindications" />
-                <span>No contraindications present</span>
+                <span>{{ $t('clinical360.orders.med_reconciliation.no_contraindications') }}</span>
               </label>
             </div>
           </section>
 
           <!-- Patient Education -->
           <section class="form-section">
-            <h3 class="section-title">Patient Education</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.med_reconciliation.patient_education') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Education Provided On:</label>
+                <label>{{ $t('clinical360.orders.med_reconciliation.education_provided_on') }}</label>
                 <div class="education-checks">
                   <label class="check-item">
                     <v-checkbox v-model="form.education.purposeOfMeds" />
-                    <span>Purpose of medications</span>
+                    <span>{{ $t('clinical360.orders.med_reconciliation.purpose_of_medications') }}</span>
                   </label>
                   <label class="check-item">
                     <v-checkbox v-model="form.education.sideEffects" />
-                    <span>Common side effects</span>
+                    <span>{{ $t('clinical360.orders.med_reconciliation.common_side_effects') }}</span>
                   </label>
                   <label class="check-item">
-                    <v-checkbox v-model="form.education.takeAs Ordered" />
-                    <span>Take as ordered</span>
+                    <v-checkbox v-model="form.education.takeAsOrdered" />
+                    <span>{{ $t('clinical360.orders.med_reconciliation.take_as_ordered') }}</span>
                   </label>
                   <label class="check-item">
                     <v-checkbox v-model="form.education.drugInteractions" />
-                    <span>Drug interactions/food</span>
+                    <span>{{ $t('clinical360.orders.med_reconciliation.drug_interactions_food') }}</span>
                   </label>
                   <label class="check-item">
                     <v-checkbox v-model="form.education.storagePrecautions" />
-                    <span>Storage precautions</span>
+                    <span>{{ $t('clinical360.orders.med_reconciliation.storage_precautions') }}</span>
                   </label>
                   <label class="check-item">
                     <v-checkbox v-model="form.education.whenToCallDoctor" />
-                    <span>When to call doctor</span>
+                    <span>{{ $t('clinical360.orders.med_reconciliation.when_to_call_doctor') }}</span>
                   </label>
                 </div>
               </div>
 
               <div class="form-group">
-                <label>Patient Understanding</label>
+                <label>{{ $t('clinical360.orders.med_reconciliation.patient_understanding') }}</label>
                 <v-select
                   v-model="form.patientUnderstanding"
-                  :items="['Full understanding', 'Good understanding', 'Partial understanding', 'Limited understanding', 'Unable to assess']"
+                  :items="patientUnderstandingOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Education Notes</label>
+                <label>{{ $t('clinical360.orders.med_reconciliation.education_notes') }}</label>
                 <v-textarea
                   v-model="form.educationNotes"
-                  placeholder="Additional education provided or barriers to understanding..."
+                  :placeholder="$t('clinical360.orders.med_reconciliation.education_notes_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -186,13 +192,13 @@
 
           <!-- Reconciliation Summary -->
           <section class="form-section">
-            <h3 class="section-title">Reconciliation Summary</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.med_reconciliation.reconciliation_summary') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Reconciled By *</label>
+                <label>{{ $t('clinical360.orders.med_reconciliation.reconciled_by') }}</label>
                 <v-text-field
                   v-model="form.reconciledBy"
-                  placeholder="Name/ID of person performing reconciliation"
+                  :placeholder="$t('clinical360.orders.med_reconciliation.reconciled_by_placeholder')"
                   outlined
                   dense
                   required
@@ -200,20 +206,22 @@
               </div>
 
               <div class="form-group">
-                <label>Overall Reconciliation Status</label>
+                <label>{{ $t('clinical360.orders.med_reconciliation.overall_reconciliation_status') }}</label>
                 <v-select
                   v-model="form.reconciliationStatus"
-                  :items="['Completed - No changes', 'Completed - Changes made', 'Pending provider review', 'Unable to complete']"
+                  :items="overallReconciliationStatusOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Summary Notes</label>
+                <label>{{ $t('clinical360.orders.med_reconciliation.summary_notes') }}</label>
                 <v-textarea
                   v-model="form.summaryNotes"
-                  placeholder="Summary of reconciliation findings and actions taken..."
+                  :placeholder="$t('clinical360.orders.med_reconciliation.summary_notes_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -224,10 +232,10 @@
 
           <div class="form-actions">
             <v-btn type="button" outlined @click="$emit('close')">
-              Cancel
+              {{ $t('clinical360.orders.med_reconciliation.cancel') }}
             </v-btn>
             <v-btn type="submit" color="primary" dark>
-              Complete Reconciliation
+              {{ $t('clinical360.orders.med_reconciliation.complete_reconciliation') }}
             </v-btn>
           </div>
         </form>

@@ -2,7 +2,7 @@
   <div class="transfer-form">
     <v-card>
       <v-card-title class="form-header">
-        <span>Transfer Checklist</span>
+        <span>{{ $t('clinical360.navigator.transfer_checklist.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -15,11 +15,11 @@
         <form @submit.prevent="submitForm">
           <!-- Transfer Details -->
           <section class="form-section">
-            <h3 class="section-title">Transfer Information</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.transfer_checklist.section_transfer_info_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>Current Unit/Location</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.current_location_label') }}</label>
                 <v-text-field
                   v-model="form.currentLocation"
                   outlined
@@ -29,10 +29,12 @@
               </div>
 
               <div class="form-group">
-                <label>Transferring To (Required)</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.transfer_location_label') }}</label>
                 <v-select
                   v-model="form.transferLocation"
                   :items="transferLocations"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                   required
@@ -40,17 +42,19 @@
               </div>
 
               <div class="form-group">
-                <label>Transfer Reason</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.transfer_reason_label') }}</label>
                 <v-select
                   v-model="form.transferReason"
-                  :items="['Step Down Care', 'Isolation Change', 'Specialty Care', 'Room Change', 'Other']"
+                  :items="transferReasonItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Anticipated Transfer Time</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.transfer_time_label') }}</label>
                 <v-text-field
                   v-model="form.transferTime"
                   type="datetime-local"
@@ -63,41 +67,47 @@
 
           <!-- Patient Condition -->
           <section class="form-section">
-            <h3 class="section-title">Current Patient Status</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.transfer_checklist.section_patient_status_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>General Condition</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.general_condition_label') }}</label>
                 <v-select
                   v-model="form.patientCondition"
-                  :items="['Stable', 'Improved', 'Unchanged', 'Declined', 'Critical']"
+                  :items="patientConditionItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Mobility Level</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.mobility_level_label') }}</label>
                 <v-select
                   v-model="form.mobilityLevel"
-                  :items="['Independent', 'Assistance of 1', 'Assistance of 2', 'Bedbound']"
+                  :items="mobilityLevelItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Cognitive Status</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.cognitive_status_label') }}</label>
                 <v-select
                   v-model="form.cognitiveStatus"
-                  :items="['Alert & Oriented', 'Confused', 'Altered LOC']"
+                  :items="cognitiveStatusItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Pain Level (0-10)</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.pain_level_label') }}</label>
                 <v-text-field
                   v-model="form.painLevel"
                   type="number"
@@ -112,7 +122,7 @@
 
           <!-- Equipment & Lines Transfer -->
           <section class="form-section">
-            <h3 class="section-title">Equipment & Lines Management</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.transfer_checklist.section_equipment_title') }}</h3>
 
             <div class="checklist">
               <label v-for="item in equipmentItems" :key="item.id" class="checklist-item">
@@ -123,10 +133,10 @@
 
             <div class="form-grid" style="margin-top: 16px">
               <div class="form-group">
-                <label>Equipment Transfer Notes</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.equipment_notes_label') }}</label>
                 <v-textarea
                   v-model="form.equipmentNotes"
-                  placeholder="e.g., IV relocated to right arm, oxygen flow verified"
+                  :placeholder="$t('clinical360.navigator.transfer_checklist.equipment_notes_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -137,14 +147,14 @@
 
           <!-- Hand-off Communication -->
           <section class="form-section">
-            <h3 class="section-title">Hand-off Communication (SBAR)</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.transfer_checklist.section_handoff_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>Situation - Key Events</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.situation_label') }}</label>
                 <v-textarea
                   v-model="form.situation"
-                  placeholder="Current clinical situation..."
+                  :placeholder="$t('clinical360.navigator.transfer_checklist.situation_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -152,10 +162,10 @@
               </div>
 
               <div class="form-group">
-                <label>Background - Medical History</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.background_label') }}</label>
                 <v-textarea
                   v-model="form.background"
-                  placeholder="Relevant medical history..."
+                  :placeholder="$t('clinical360.navigator.transfer_checklist.background_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -163,10 +173,10 @@
               </div>
 
               <div class="form-group">
-                <label>Assessment - Current Issues</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.assessment_label') }}</label>
                 <v-textarea
                   v-model="form.assessment"
-                  placeholder="Assessment and concerns..."
+                  :placeholder="$t('clinical360.navigator.transfer_checklist.assessment_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -174,10 +184,10 @@
               </div>
 
               <div class="form-group">
-                <label>Recommendation - Next Steps</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.recommendation_label') }}</label>
                 <v-textarea
                   v-model="form.recommendation"
-                  placeholder="Recommended actions and follow-up..."
+                  :placeholder="$t('clinical360.navigator.transfer_checklist.recommendation_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -188,24 +198,24 @@
 
           <!-- Transferring Personnel -->
           <section class="form-section">
-            <h3 class="section-title">Transfer Documentation</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.transfer_checklist.section_documentation_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>Transferring Nurse</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.transferring_nurse_label') }}</label>
                 <v-text-field
                   v-model="form.transferringNurse"
-                  placeholder="Name"
+                  :placeholder="$t('clinical360.navigator.transfer_checklist.name_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Receiving Unit Contact</label>
+                <label>{{ $t('clinical360.navigator.transfer_checklist.receiving_contact_label') }}</label>
                 <v-text-field
                   v-model="form.receivingContact"
-                  placeholder="Name or extension"
+                  :placeholder="$t('clinical360.navigator.transfer_checklist.receiving_contact_placeholder')"
                   outlined
                   dense
                 />
@@ -220,14 +230,14 @@
               outlined
               @click="$emit('close')"
             >
-              Cancel
+              {{ $t('clinical360.navigator.transfer_checklist.cancel_btn') }}
             </v-btn>
             <v-btn
               type="submit"
               color="primary"
               dark
             >
-              Complete Transfer
+              {{ $t('clinical360.navigator.transfer_checklist.complete_transfer_btn') }}
             </v-btn>
           </div>
         </form>
@@ -268,32 +278,71 @@ export default {
         recommendation: '',
         transferringNurse: '',
         receivingContact: ''
-      },
-      transferLocations: [
-        'ICU',
-        'Step-Down Unit',
-        'Medical/Surgical Floor',
-        'Telemetry Unit',
-        'Pediatrics',
-        'Maternity',
-        'OR',
-        'Recovery',
-        'Other Facility'
-      ],
-      equipmentItems: [
-        { id: 'iv_line', label: 'IV Line (location noted)' },
-        { id: 'oxygen', label: 'Oxygen Supply' },
-        { id: 'monitor', label: 'Cardiac Monitor' },
-        { id: 'catheter', label: 'Urinary Catheter' },
-        { id: 'drain', label: 'Drains/Tubes' },
-        { id: 'other', label: 'Other Equipment' }
+      }
+    }
+  },
+  computed: {
+    transferLocations() {
+      return [
+        { text: this.$t('clinical360.navigator.transfer_checklist.location_icu'), value: 'ICU' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.location_step_down'), value: 'Step-Down Unit' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.location_med_surg'), value: 'Medical/Surgical Floor' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.location_telemetry'), value: 'Telemetry Unit' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.location_pediatrics'), value: 'Pediatrics' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.location_maternity'), value: 'Maternity' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.location_or'), value: 'OR' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.location_recovery'), value: 'Recovery' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.location_other_facility'), value: 'Other Facility' }
+      ]
+    },
+    transferReasonItems() {
+      return [
+        { text: this.$t('clinical360.navigator.transfer_checklist.reason_step_down_care'), value: 'Step Down Care' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.reason_isolation_change'), value: 'Isolation Change' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.reason_specialty_care'), value: 'Specialty Care' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.reason_room_change'), value: 'Room Change' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.reason_other'), value: 'Other' }
+      ]
+    },
+    patientConditionItems() {
+      return [
+        { text: this.$t('clinical360.navigator.transfer_checklist.condition_stable'), value: 'Stable' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.condition_improved'), value: 'Improved' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.condition_unchanged'), value: 'Unchanged' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.condition_declined'), value: 'Declined' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.condition_critical'), value: 'Critical' }
+      ]
+    },
+    mobilityLevelItems() {
+      return [
+        { text: this.$t('clinical360.navigator.transfer_checklist.mobility_independent'), value: 'Independent' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.mobility_assistance_1'), value: 'Assistance of 1' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.mobility_assistance_2'), value: 'Assistance of 2' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.mobility_bedbound'), value: 'Bedbound' }
+      ]
+    },
+    cognitiveStatusItems() {
+      return [
+        { text: this.$t('clinical360.navigator.transfer_checklist.cognitive_alert_oriented'), value: 'Alert & Oriented' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.cognitive_confused'), value: 'Confused' },
+        { text: this.$t('clinical360.navigator.transfer_checklist.cognitive_altered_loc'), value: 'Altered LOC' }
+      ]
+    },
+    equipmentItems() {
+      return [
+        { id: 'iv_line', label: this.$t('clinical360.navigator.transfer_checklist.equipment_iv_line') },
+        { id: 'oxygen', label: this.$t('clinical360.navigator.transfer_checklist.equipment_oxygen') },
+        { id: 'monitor', label: this.$t('clinical360.navigator.transfer_checklist.equipment_monitor') },
+        { id: 'catheter', label: this.$t('clinical360.navigator.transfer_checklist.equipment_catheter') },
+        { id: 'drain', label: this.$t('clinical360.navigator.transfer_checklist.equipment_drain') },
+        { id: 'other', label: this.$t('clinical360.navigator.transfer_checklist.equipment_other') }
       ]
     }
   },
   methods: {
     submitForm() {
       if (!this.form.transferLocation) {
-        alert('Please select a transfer destination')
+        alert(this.$t('clinical360.navigator.transfer_checklist.error_select_destination'))
         return
       }
 

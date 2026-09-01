@@ -1,13 +1,13 @@
 <template>
   <section class="handoff-shell">
-    <header><div><small>SHIFT CONTINUITY</small><h2>Clinical handoff</h2><p>SBAR summary generated from the live chart.</p></div><v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="$emit('new-handoff')"><v-icon x-small left>mdi-account-switch-outline</v-icon>Document handoff</v-btn></header>
+    <header><div><small>{{ $t('clinical360.handoff.tab.shift_continuity') }}</small><h2>{{ $t('clinical360.handoff.tab.clinical_handoff') }}</h2><p>{{ $t('clinical360.handoff.tab.sbar_summary_note') }}</p></div><v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="$emit('new-handoff')"><v-icon x-small left>mdi-account-switch-outline</v-icon>{{ $t('clinical360.handoff.tab.document_handoff') }}</v-btn></header>
     <div class="sbar-grid">
-      <article><b>S</b><div><strong>Situation</strong><p>{{ patient.patientClass || 'Patient' }} · {{ patient.bed || 'Bed not assigned' }}</p><span>{{ latestConcern }}</span></div></article>
-      <article><b>B</b><div><strong>Background</strong><p>{{ patient.diagnosis || patient.primaryDiagnosis || 'Diagnosis not documented' }}</p><span>{{ patient.allergies || 'Allergies require verification' }}</span></div></article>
-      <article><b>A</b><div><strong>Assessment</strong><p>{{ openOrders }} open diagnostic order(s)</p><span>{{ tasks.length }} work-list item(s), {{ overdueTasks }} overdue</span></div></article>
-      <article><b>R</b><div><strong>Recommendation</strong><p>{{ nextAction }}</p><span>Incoming team must acknowledge unresolved items.</span></div></article>
+      <article><b>S</b><div><strong>{{ $t('clinical360.handoff.tab.situation') }}</strong><p>{{ patient.patientClass || $t('clinical360.handoff.tab.patient_fallback') }} · {{ patient.bed || $t('clinical360.handoff.tab.bed_not_assigned') }}</p><span>{{ latestConcern }}</span></div></article>
+      <article><b>B</b><div><strong>{{ $t('clinical360.handoff.tab.background') }}</strong><p>{{ patient.diagnosis || patient.primaryDiagnosis || $t('clinical360.handoff.tab.diagnosis_not_documented') }}</p><span>{{ patient.allergies || $t('clinical360.handoff.tab.allergies_require_verification') }}</span></div></article>
+      <article><b>A</b><div><strong>{{ $t('clinical360.handoff.tab.assessment') }}</strong><p>{{ $t('clinical360.handoff.tab.open_diagnostic_orders', { count: openOrders }) }}</p><span>{{ $t('clinical360.handoff.tab.work_list_items_overdue', { count: tasks.length, overdue: overdueTasks }) }}</span></div></article>
+      <article><b>R</b><div><strong>{{ $t('clinical360.handoff.tab.recommendation') }}</strong><p>{{ nextAction }}</p><span>{{ $t('clinical360.handoff.tab.incoming_team_acknowledge') }}</span></div></article>
     </div>
-    <section class="open-items"><h3>Unresolved before handoff</h3><div v-if="!openItems.length" class="clear"><v-icon small color="#047857">mdi-check-circle</v-icon>No unresolved items identified.</div><div v-for="item in openItems" :key="item.id" class="item"><v-icon small :color="item.color">{{ item.icon }}</v-icon><strong>{{ item.title }}</strong><span>{{ item.detail }}</span></div></section>
+    <section class="open-items"><h3>{{ $t('clinical360.handoff.tab.unresolved_before_handoff') }}</h3><div v-if="!openItems.length" class="clear"><v-icon small color="#047857">mdi-check-circle</v-icon>{{ $t('clinical360.handoff.tab.no_unresolved_items') }}</div><div v-for="item in openItems" :key="item.id" class="item"><v-icon small :color="item.color">{{ item.icon }}</v-icon><strong>{{ item.title }}</strong><span>{{ item.detail }}</span></div></section>
   </section>
 </template>
 <script>

@@ -1,20 +1,20 @@
 <template>
   <div class="body-assessment-avatar">
     <div class="avatar-header">
-      <h3>Body Assessment</h3>
+      <h3>{{ $t('clinical360.assessment.body_avatar.title') }}</h3>
       <div class="avatar-controls">
-        <button type="button" class="control-btn" @click="view = 'front'">Front</button>
-        <button type="button" class="control-btn" @click="view = 'back'">Back</button>
-        <button type="button" class="control-btn" @click="clearSelection">Clear</button>
+        <button type="button" class="control-btn" @click="view = 'front'">{{ $t('clinical360.assessment.body_avatar.front') }}</button>
+        <button type="button" class="control-btn" @click="view = 'back'">{{ $t('clinical360.assessment.body_avatar.back') }}</button>
+        <button type="button" class="control-btn" @click="clearSelection">{{ $t('clinical360.assessment.body_avatar.clear') }}</button>
       </div>
     </div>
 
-    <div class="body-map" :class="[view, anatomy, { 'with-image': avatarImageSrc }]" aria-label="Interactive body assessment map">
+    <div class="body-map" :class="[view, anatomy, { 'with-image': avatarImageSrc }]" :aria-label="$t('clinical360.assessment.body_avatar.map_aria_label')">
       <img
         v-if="avatarImageSrc"
         class="assessment-avatar-image"
         :src="avatarImageSrc"
-        :alt="`${anatomy} ${view} body avatar`"
+        :alt="$t('clinical360.assessment.body_avatar.avatar_alt', { anatomy, view })"
       >
       <button
         v-for="area in visibleAreas"
@@ -25,18 +25,18 @@
         @click="toggleArea(area.label)"
       >
         <v-icon x-small>{{ area.icon }}</v-icon>
-        <span>{{ area.label }}</span>
+        <span>{{ areaLabel(area) }}</span>
       </button>
     </div>
 
     <div class="selected-areas">
-      <h4>Selected Areas</h4>
+      <h4>{{ $t('clinical360.assessment.body_avatar.selected_areas') }}</h4>
       <div v-if="!selectedAreas.length" class="no-selection">
-        Select body areas to document pain, wound, IV line, mobility or neuro findings.
+        {{ $t('clinical360.assessment.body_avatar.no_selection') }}
       </div>
       <div v-else class="areas-list">
         <span v-for="area in selectedAreas" :key="area" class="area-tag">
-          {{ area }}
+          {{ areaLabelForValue(area) }}
           <button type="button" @click="toggleArea(area)">x</button>
         </span>
       </div>
@@ -109,6 +109,13 @@ export default {
     }
   },
   methods: {
+    areaLabel(area) {
+      return this.$t(`clinical360.assessment.body_avatar.areas.${area.key.replace(/-/g, '_')}`)
+    },
+    areaLabelForValue(label) {
+      const area = BODY_AREAS.find(item => item.label === label)
+      return area ? this.areaLabel(area) : label
+    },
     toggleArea(label) {
       if (this.selectedAreas.includes(label)) {
         this.selectedAreas = this.selectedAreas.filter(item => item !== label)

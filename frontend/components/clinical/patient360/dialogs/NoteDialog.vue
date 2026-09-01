@@ -45,10 +45,12 @@ export default {
   },
   computed: {
     dialogEyebrow() {
-      return this.authorRole ? `${this.authorRole} documentation` : 'Clinical documentation'
+      return this.authorRole
+        ? this.$t('clinical360.dialogs.note_dialog.role_documentation', { role: this.authorRole })
+        : this.$t('clinical360.dialogs.note_dialog.clinical_documentation')
     },
     dialogHeadline() {
-      return this.dialogTitle || NOTE_TYPE_LABELS[this.noteType] || 'Clinical Note'
+      return this.dialogTitle || this.translatedNoteTypeLabel(this.noteType) || this.$t('clinical360.dialogs.note_dialog.clinical_note')
     }
   },
   watch: {
@@ -60,6 +62,9 @@ export default {
     }
   },
   methods: {
+    translatedNoteTypeLabel(noteType) {
+      return NOTE_TYPE_LABELS[noteType] ? this.$t(`clinical360.dialogs.note_dialog.note_types.${noteType}`) : ''
+    },
     buildDraft() {
       if (this.existingNote) return { ...this.existingNote }
       return {
@@ -79,7 +84,10 @@ export default {
         }
         this.$emit('saved', this.note)
       } catch (err) {
-        this.$emit('error', err.response?.data?.error || err.message || 'Unable to save this note.')
+        this.$emit(
+          'error',
+          err.response?.data?.error || err.message || this.$t('clinical360.dialogs.note_dialog.save_error')
+        )
       }
     },
     async handleSign(id) {
@@ -87,7 +95,10 @@ export default {
         this.note = await this.$store.dispatch('nursing/signClinicalNote', id)
         this.$emit('saved', this.note)
       } catch (err) {
-        this.$emit('error', err.response?.data?.error || err.message || 'Unable to sign this note.')
+        this.$emit(
+          'error',
+          err.response?.data?.error || err.message || this.$t('clinical360.dialogs.note_dialog.sign_error')
+        )
       }
     }
   }

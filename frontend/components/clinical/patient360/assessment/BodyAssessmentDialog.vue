@@ -3,8 +3,8 @@
     <v-card class="body-assessment-dialog">
       <v-card-title class="body-assessment-title">
         <div>
-          <span>Nurse Command Center</span>
-          <strong>Body Assessment</strong>
+          <span>{{ $t('clinical360.assessment.body_dialog.eyebrow') }}</span>
+          <strong>{{ $t('clinical360.assessment.body_dialog.title') }}</strong>
         </div>
         <v-spacer></v-spacer>
         <v-btn icon small @click="closeDialog">
@@ -17,83 +17,83 @@
           <BodyAssessmentAvatar :gender="gender" @area-selected="handleAreaSelected" />
           <aside class="body-assessment-form">
             <label>
-              Assessment focus
+              {{ $t('clinical360.assessment.body_dialog.assessment_focus') }}
               <select v-model="assessmentType">
-                <option value="general">General body assessment</option>
-                <option value="wound">Wound assessment</option>
-                <option value="iv">IV line assessment</option>
-                <option value="trach">Tracheostomy assessment</option>
-                <option value="foley">Foley catheter assessment</option>
-                <option value="drain">Drain assessment</option>
-                <option value="ostomy">Ostomy assessment</option>
-                <option value="pain">Pain assessment</option>
+                <option value="general">{{ $t('clinical360.assessment.body_dialog.focus_general') }}</option>
+                <option value="wound">{{ $t('clinical360.assessment.body_dialog.focus_wound') }}</option>
+                <option value="iv">{{ $t('clinical360.assessment.body_dialog.focus_iv') }}</option>
+                <option value="trach">{{ $t('clinical360.assessment.body_dialog.focus_trach') }}</option>
+                <option value="foley">{{ $t('clinical360.assessment.body_dialog.focus_foley') }}</option>
+                <option value="drain">{{ $t('clinical360.assessment.body_dialog.focus_drain') }}</option>
+                <option value="ostomy">{{ $t('clinical360.assessment.body_dialog.focus_ostomy') }}</option>
+                <option value="pain">{{ $t('clinical360.assessment.body_dialog.focus_pain') }}</option>
               </select>
             </label>
             <label>
-              Priority
+              {{ $t('clinical360.assessment.body_dialog.priority') }}
               <select v-model="severity">
-                <option>Routine</option>
-                <option>Watch</option>
-                <option>Urgent</option>
-                <option>Critical</option>
+                <option value="Routine">{{ $t('clinical360.assessment.body_dialog.priority_routine') }}</option>
+                <option value="Watch">{{ $t('clinical360.assessment.body_dialog.priority_watch') }}</option>
+                <option value="Urgent">{{ $t('clinical360.assessment.body_dialog.priority_urgent') }}</option>
+                <option value="Critical">{{ $t('clinical360.assessment.body_dialog.priority_critical') }}</option>
               </select>
             </label>
             <label v-if="assessmentType === 'wound'">
-              Wound status
+              {{ $t('clinical360.assessment.body_dialog.wound_status') }}
               <select v-model="elementStatus">
-                <option>Open</option>
-                <option>Improving</option>
-                <option>Worsening</option>
-                <option>Resolved</option>
+                <option value="Open">{{ $t('clinical360.assessment.body_dialog.wound_status_open') }}</option>
+                <option value="Improving">{{ $t('clinical360.assessment.body_dialog.wound_status_improving') }}</option>
+                <option value="Worsening">{{ $t('clinical360.assessment.body_dialog.wound_status_worsening') }}</option>
+                <option value="Resolved">{{ $t('clinical360.assessment.body_dialog.wound_status_resolved') }}</option>
               </select>
             </label>
             <label v-else-if="assessmentType === 'iv'">
-              IV status
+              {{ $t('clinical360.assessment.body_dialog.iv_status') }}
               <select v-model="elementStatus">
-                <option>Patent</option>
-                <option>Infiltrated</option>
-                <option>Phlebitis</option>
-                <option>Discontinued</option>
+                <option value="Patent">{{ $t('clinical360.assessment.body_dialog.iv_status_patent') }}</option>
+                <option value="Infiltrated">{{ $t('clinical360.assessment.body_dialog.iv_status_infiltrated') }}</option>
+                <option value="Phlebitis">{{ $t('clinical360.assessment.body_dialog.iv_status_phlebitis') }}</option>
+                <option value="Discontinued">{{ $t('clinical360.assessment.body_dialog.iv_status_discontinued') }}</option>
               </select>
             </label>
             <label v-else-if="assessmentType === 'trach'">
-              Trach status
+              {{ $t('clinical360.assessment.body_dialog.trach_status') }}
               <select v-model="elementStatus">
-                <option>Secure</option>
-                <option>Needs suction</option>
-                <option>Redness</option>
-                <option>Escalate</option>
+                <option value="Secure">{{ $t('clinical360.assessment.body_dialog.trach_status_secure') }}</option>
+                <option value="Needs suction">{{ $t('clinical360.assessment.body_dialog.trach_status_needs_suction') }}</option>
+                <option value="Redness">{{ $t('clinical360.assessment.body_dialog.trach_status_redness') }}</option>
+                <option value="Escalate">{{ $t('clinical360.assessment.body_dialog.trach_status_escalate') }}</option>
               </select>
             </label>
             <label v-else-if="assessmentType === 'foley'">
-              Foley status
+              {{ $t('clinical360.assessment.body_dialog.foley_status') }}
               <select v-model="elementStatus">
-                <option>Draining</option>
-                <option>Low output</option>
-                <option>Obstructed</option>
-                <option>Removed</option>
+                <option value="Draining">{{ $t('clinical360.assessment.body_dialog.foley_status_draining') }}</option>
+                <option value="Low output">{{ $t('clinical360.assessment.body_dialog.foley_status_low_output') }}</option>
+                <option value="Obstructed">{{ $t('clinical360.assessment.body_dialog.foley_status_obstructed') }}</option>
+                <option value="Removed">{{ $t('clinical360.assessment.body_dialog.foley_status_removed') }}</option>
               </select>
             </label>
             <label v-else-if="assessmentType === 'drain'">
-              Drain status
+              {{ $t('clinical360.assessment.body_dialog.drain_status') }}
               <select v-model="elementStatus">
-                <option>Active</option>
-                <option>Low output</option>
-                <option>Clamped</option>
-                <option>Removed</option>
+                <option value="Active">{{ $t('clinical360.assessment.body_dialog.drain_status_active') }}</option>
+                <option value="Low output">{{ $t('clinical360.assessment.body_dialog.drain_status_low_output') }}</option>
+                <option value="Clamped">{{ $t('clinical360.assessment.body_dialog.drain_status_clamped') }}</option>
+                <option value="Removed">{{ $t('clinical360.assessment.body_dialog.drain_status_removed') }}</option>
               </select>
             </label>
             <label v-else-if="assessmentType === 'ostomy'">
-              Ostomy status
+              {{ $t('clinical360.assessment.body_dialog.ostomy_status') }}
               <select v-model="elementStatus">
-                <option>Intact</option>
-                <option>Leak</option>
-                <option>Irritated skin</option>
-                <option>Resolved</option>
+                <option value="Intact">{{ $t('clinical360.assessment.body_dialog.ostomy_status_intact') }}</option>
+                <option value="Leak">{{ $t('clinical360.assessment.body_dialog.ostomy_status_leak') }}</option>
+                <option value="Irritated skin">{{ $t('clinical360.assessment.body_dialog.ostomy_status_irritated_skin') }}</option>
+                <option value="Resolved">{{ $t('clinical360.assessment.body_dialog.ostomy_status_resolved') }}</option>
               </select>
             </label>
             <label v-else-if="assessmentType === 'pain'">
-              Pain score
+              {{ $t('clinical360.assessment.body_dialog.pain_score') }}
               <select v-model="elementStatus">
                 <option>0</option>
                 <option>1-3</option>
@@ -102,16 +102,16 @@
               </select>
             </label>
             <label>
-              Nursing observation
-              <textarea v-model="notes" rows="5" placeholder="Skin, pain, wound, IV site, mobility, neuro or respiratory finding"></textarea>
+              {{ $t('clinical360.assessment.body_dialog.nursing_observation') }}
+              <textarea v-model="notes" rows="5" :placeholder="$t('clinical360.assessment.body_dialog.nursing_observation_placeholder')"></textarea>
             </label>
             <label>
-              Next action
-              <textarea v-model="nextAction" rows="3" placeholder="Reposition, wound photo, notify provider, medication review, reassess"></textarea>
+              {{ $t('clinical360.assessment.body_dialog.next_action') }}
+              <textarea v-model="nextAction" rows="3" :placeholder="$t('clinical360.assessment.body_dialog.next_action_placeholder')"></textarea>
             </label>
             <div class="selected-summary">
-              <strong>{{ selectedAreas.length || 'No' }} area(s) selected</strong>
-              <span>{{ selectedAreas.join(', ') || 'Select body areas on the avatar.' }}</span>
+              <strong>{{ selectedAreas.length ? $t('clinical360.assessment.body_dialog.areas_selected_count', { count: selectedAreas.length }) : $t('clinical360.assessment.body_dialog.areas_selected_none') }}</strong>
+              <span>{{ selectedAreas.join(', ') || $t('clinical360.assessment.body_dialog.select_areas_hint') }}</span>
             </div>
           </aside>
         </div>
@@ -119,9 +119,9 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn text @click="closeDialog">Cancel</v-btn>
+        <v-btn text @click="closeDialog">{{ $t('clinical360.assessment.body_dialog.cancel') }}</v-btn>
         <v-btn color="#0f766e" dark depressed :disabled="!selectedAreas.length" @click="saveAssessment">
-          Save Assessment
+          {{ $t('clinical360.assessment.body_dialog.save_assessment') }}
         </v-btn>
       </v-card-actions>
     </v-card>

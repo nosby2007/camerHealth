@@ -10,10 +10,10 @@
         </template>
         <v-list dense>
           <v-list-item @click="$emit('document')">
-            <v-list-item-title>Document</v-list-item-title>
+            <v-list-item-title>{{ $t('clinical360.education.point_card.document') }}</v-list-item-title>
           </v-list-item>
           <v-list-item @click="$emit('add-material')">
-            <v-list-item-title>Add Material</v-list-item-title>
+            <v-list-item-title>{{ $t('clinical360.education.point_card.add_material') }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
@@ -24,22 +24,22 @@
     </div>
 
     <div v-if="point.topic" class="topic">
-      <strong>Topic:</strong> {{ point.topic }}
+      <strong>{{ $t('clinical360.education.point_card.topic') }}</strong> {{ point.topic }}
     </div>
 
     <div v-if="latestDoc" class="latest-doc">
-      <span class="label">Latest:</span>
+      <span class="label">{{ $t('clinical360.education.point_card.latest') }}</span>
       <span class="learners">{{ latestDoc.learners?.join(', ') }}</span>
       <span class="status" :class="latestDoc.status">{{ latestDoc.status }}</span>
     </div>
 
     <div v-else class="no-doc">
-      Not yet documented
+      {{ $t('clinical360.education.point_card.not_yet_documented') }}
     </div>
 
     <div class="card-actions">
       <v-btn x-small text color="#0f766e" @click="$emit('document')">
-        <v-icon x-small left>mdi-pencil</v-icon>Document
+        <v-icon x-small left>mdi-pencil</v-icon>{{ $t('clinical360.education.point_card.document') }}
       </v-btn>
     </div>
   </div>

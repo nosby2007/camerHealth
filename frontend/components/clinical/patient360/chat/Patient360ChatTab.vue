@@ -1,11 +1,11 @@
 <template>
   <section class="chat-shell">
     <header>
-      <div><small>CARE TEAM</small><h2>Internal chat</h2><p>Async discussion for {{ patient.displayName || patient.name || 'this patient' }} — visible to the whole clinical team, not part of the legal chart.</p></div>
+      <div><small>{{ $t('clinical360.chat.tab.eyebrow') }}</small><h2>{{ $t('clinical360.chat.tab.title') }}</h2><p>{{ $t('clinical360.chat.tab.subtitle', { name: patient.displayName || patient.name || $t('clinical360.chat.tab.patient_fallback') }) }}</p></div>
     </header>
 
     <div ref="feed" class="chat-feed">
-      <div v-if="!messages.length" class="empty"><v-icon size="32" color="#94a3b8">mdi-message-text-outline</v-icon><span>No messages yet — start the discussion.</span></div>
+      <div v-if="!messages.length" class="empty"><v-icon size="32" color="#94a3b8">mdi-message-text-outline</v-icon><span>{{ $t('clinical360.chat.tab.empty_state') }}</span></div>
       <article v-for="msg in messages" :key="msg.id" class="bubble" :class="{ mine: isMine(msg) }">
         <div class="meta"><strong>{{ authorName(msg) }}</strong><span>{{ formatTime(msg.createdAt) }}</span></div>
         <p>{{ msg.body }}</p>
@@ -13,10 +13,10 @@
     </div>
 
     <form v-if="!readOnly" class="composer" @submit.prevent="send">
-      <v-textarea v-model="draft" rows="2" auto-grow dense hide-details placeholder="Message the care team about this patient..." />
-      <v-btn depressed color="#0f766e" dark :disabled="!draft.trim()" @click="send"><v-icon small left>mdi-send</v-icon>Send</v-btn>
+      <v-textarea v-model="draft" rows="2" auto-grow dense hide-details :placeholder="$t('clinical360.chat.tab.composer_placeholder')" />
+      <v-btn depressed color="#0f766e" dark :disabled="!draft.trim()" @click="send"><v-icon small left>mdi-send</v-icon>{{ $t('clinical360.chat.tab.send') }}</v-btn>
     </form>
-    <div v-else class="readonly-note">This patient's record is read-only — chat is view-only.</div>
+    <div v-else class="readonly-note">{{ $t('clinical360.chat.tab.readonly_note') }}</div>
   </section>
 </template>
 
@@ -45,7 +45,7 @@ export default {
       return this.authorName(msg) === this.currentFullName
     },
     authorName(msg) {
-      return (msg.author && msg.author.fullName) || 'Care team'
+      return (msg.author && msg.author.fullName) || this.$t('clinical360.chat.tab.author_fallback')
     },
     formatTime(iso) {
       const d = new Date(iso)

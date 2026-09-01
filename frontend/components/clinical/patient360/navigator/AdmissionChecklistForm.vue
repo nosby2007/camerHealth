@@ -2,7 +2,7 @@
   <div class="admission-form">
     <v-card>
       <v-card-title class="form-header">
-        <span>Admission Checklist</span>
+        <span>{{ $t('clinical360.navigator.admission_checklist.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -15,29 +15,29 @@
         <form @submit.prevent="submitForm">
           <!-- Demographics & Identification -->
           <section class="form-section">
-            <h3 class="section-title">Patient Identification & Safety</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.admission_checklist.section_identification_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>MRN Verified</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.mrn_verified_label') }}</label>
                 <v-checkbox v-model="form.mrnVerified" />
               </div>
 
               <div class="form-group">
-                <label>ID Band Applied</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.id_band_label') }}</label>
                 <v-checkbox v-model="form.idBandApplied" />
               </div>
 
               <div class="form-group">
-                <label>Allergies Confirmed</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.allergies_confirmed_label') }}</label>
                 <v-checkbox v-model="form.allergiesConfirmed" />
               </div>
 
               <div class="form-group">
-                <label>Allergy List</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.allergy_list_label') }}</label>
                 <v-text-field
                   v-model="form.allergyList"
-                  placeholder="e.g., Penicillin, NKDA"
+                  :placeholder="$t('clinical360.navigator.admission_checklist.allergy_list_placeholder')"
                   outlined
                   dense
                 />
@@ -47,11 +47,11 @@
 
           <!-- Vital Signs & Assessment -->
           <section class="form-section">
-            <h3 class="section-title">Initial Assessment</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.admission_checklist.section_assessment_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>Temperature (°C)</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.temperature_label') }}</label>
                 <v-text-field
                   v-model="form.temperature"
                   type="number"
@@ -62,7 +62,7 @@
               </div>
 
               <div class="form-group">
-                <label>Heart Rate (bpm)</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.heart_rate_label') }}</label>
                 <v-text-field
                   v-model="form.heartRate"
                   type="number"
@@ -72,7 +72,7 @@
               </div>
 
               <div class="form-group">
-                <label>BP Systolic (mmHg)</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.bp_systolic_label') }}</label>
                 <v-text-field
                   v-model="form.bpSystolic"
                   type="number"
@@ -82,7 +82,7 @@
               </div>
 
               <div class="form-group">
-                <label>BP Diastolic (mmHg)</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.bp_diastolic_label') }}</label>
                 <v-text-field
                   v-model="form.bpDiastolic"
                   type="number"
@@ -92,7 +92,7 @@
               </div>
 
               <div class="form-group">
-                <label>Respiratory Rate</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.respiratory_rate_label') }}</label>
                 <v-text-field
                   v-model="form.respiratoryRate"
                   type="number"
@@ -102,7 +102,7 @@
               </div>
 
               <div class="form-group">
-                <label>SpO2 (%)</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.spo2_label') }}</label>
                 <v-text-field
                   v-model="form.spo2"
                   type="number"
@@ -115,44 +115,50 @@
 
           <!-- Admission Orders & Precautions -->
           <section class="form-section">
-            <h3 class="section-title">Precautions & Orders</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.admission_checklist.section_precautions_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>Fall Risk Level</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.fall_risk_label') }}</label>
                 <v-select
                   v-model="form.fallRisk"
-                  :items="['Low', 'Medium', 'High']"
+                  :items="fallRiskItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Isolation Type</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.isolation_type_label') }}</label>
                 <v-select
                   v-model="form.isolationType"
-                  :items="['No isolation', 'Standard', 'Contact', 'Droplet', 'Airborne']"
+                  :items="isolationTypeItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Code Status</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.code_status_label') }}</label>
                 <v-select
                   v-model="form.codeStatus"
-                  :items="['Full Resuscitation', 'Limited Resuscitation', 'No Resuscitation', 'Comfort Care']"
+                  :items="codeStatusItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Special Precautions</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.special_precautions_label') }}</label>
                 <v-text-field
                   v-model="form.specialPrecautions"
-                  placeholder="e.g., NPO, Bed rest"
+                  :placeholder="$t('clinical360.navigator.admission_checklist.special_precautions_placeholder')"
                   outlined
                   dense
                 />
@@ -162,7 +168,7 @@
 
           <!-- Equipment & Devices -->
           <section class="form-section">
-            <h3 class="section-title">Equipment & Devices</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.admission_checklist.section_equipment_title') }}</h3>
 
             <div class="checklist">
               <label v-for="item in equipmentItems" :key="item.id" class="checklist-item">
@@ -174,7 +180,7 @@
 
           <!-- Orientation & Education -->
           <section class="form-section">
-            <h3 class="section-title">Orientation</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.admission_checklist.section_orientation_title') }}</h3>
 
             <div class="checklist">
               <label v-for="item in orientationItems" :key="item.id" class="checklist-item">
@@ -186,24 +192,24 @@
 
           <!-- Admitting Provider -->
           <section class="form-section">
-            <h3 class="section-title">Admission Documentation</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.admission_checklist.section_documentation_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>Admitting Provider</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.admitting_provider_label') }}</label>
                 <v-text-field
                   v-model="form.admittingProvider"
-                  placeholder="Provider name"
+                  :placeholder="$t('clinical360.navigator.admission_checklist.admitting_provider_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Admission Notes</label>
+                <label>{{ $t('clinical360.navigator.admission_checklist.admission_notes_label') }}</label>
                 <v-textarea
                   v-model="form.admissionNotes"
-                  placeholder="Additional notes..."
+                  :placeholder="$t('clinical360.navigator.admission_checklist.admission_notes_placeholder')"
                   outlined
                   dense
                   rows="4"
@@ -219,14 +225,14 @@
               outlined
               @click="$emit('close')"
             >
-              Cancel
+              {{ $t('clinical360.navigator.admission_checklist.cancel_btn') }}
             </v-btn>
             <v-btn
               type="submit"
               color="primary"
               dark
             >
-              Save Admission
+              {{ $t('clinical360.navigator.admission_checklist.save_btn') }}
             </v-btn>
           </div>
         </form>
@@ -281,21 +287,51 @@ export default {
         // Documentation
         admittingProvider: '',
         admissionNotes: ''
-      },
-      equipmentItems: [
-        { id: 'bed', label: 'Bed & Controls' },
-        { id: 'monitor', label: 'Cardiac Monitor' },
-        { id: 'iv', label: 'IV Access' },
-        { id: 'oxygen', label: 'Oxygen Equipment' },
-        { id: 'suction', label: 'Suction Equipment' },
-        { id: 'call_bell', label: 'Call Bell' }
-      ],
-      orientationItems: [
-        { id: 'room_tour', label: 'Room Tour Completed' },
-        { id: 'call_system', label: 'Call System Explained' },
-        { id: 'bed_controls', label: 'Bed Controls Demonstrated' },
-        { id: 'bathroom', label: 'Bathroom Location Shown' },
-        { id: 'safety_info', label: 'Safety Information Provided' }
+      }
+    }
+  },
+  computed: {
+    fallRiskItems() {
+      return [
+        { text: this.$t('clinical360.navigator.admission_checklist.fall_risk_low'), value: 'Low' },
+        { text: this.$t('clinical360.navigator.admission_checklist.fall_risk_medium'), value: 'Medium' },
+        { text: this.$t('clinical360.navigator.admission_checklist.fall_risk_high'), value: 'High' }
+      ]
+    },
+    isolationTypeItems() {
+      return [
+        { text: this.$t('clinical360.navigator.admission_checklist.isolation_none'), value: 'No isolation' },
+        { text: this.$t('clinical360.navigator.admission_checklist.isolation_standard'), value: 'Standard' },
+        { text: this.$t('clinical360.navigator.admission_checklist.isolation_contact'), value: 'Contact' },
+        { text: this.$t('clinical360.navigator.admission_checklist.isolation_droplet'), value: 'Droplet' },
+        { text: this.$t('clinical360.navigator.admission_checklist.isolation_airborne'), value: 'Airborne' }
+      ]
+    },
+    codeStatusItems() {
+      return [
+        { text: this.$t('clinical360.navigator.admission_checklist.code_status_full'), value: 'Full Resuscitation' },
+        { text: this.$t('clinical360.navigator.admission_checklist.code_status_limited'), value: 'Limited Resuscitation' },
+        { text: this.$t('clinical360.navigator.admission_checklist.code_status_none'), value: 'No Resuscitation' },
+        { text: this.$t('clinical360.navigator.admission_checklist.code_status_comfort'), value: 'Comfort Care' }
+      ]
+    },
+    equipmentItems() {
+      return [
+        { id: 'bed', label: this.$t('clinical360.navigator.admission_checklist.equipment_bed') },
+        { id: 'monitor', label: this.$t('clinical360.navigator.admission_checklist.equipment_monitor') },
+        { id: 'iv', label: this.$t('clinical360.navigator.admission_checklist.equipment_iv') },
+        { id: 'oxygen', label: this.$t('clinical360.navigator.admission_checklist.equipment_oxygen') },
+        { id: 'suction', label: this.$t('clinical360.navigator.admission_checklist.equipment_suction') },
+        { id: 'call_bell', label: this.$t('clinical360.navigator.admission_checklist.equipment_call_bell') }
+      ]
+    },
+    orientationItems() {
+      return [
+        { id: 'room_tour', label: this.$t('clinical360.navigator.admission_checklist.orientation_room_tour') },
+        { id: 'call_system', label: this.$t('clinical360.navigator.admission_checklist.orientation_call_system') },
+        { id: 'bed_controls', label: this.$t('clinical360.navigator.admission_checklist.orientation_bed_controls') },
+        { id: 'bathroom', label: this.$t('clinical360.navigator.admission_checklist.orientation_bathroom') },
+        { id: 'safety_info', label: this.$t('clinical360.navigator.admission_checklist.orientation_safety_info') }
       ]
     }
   },

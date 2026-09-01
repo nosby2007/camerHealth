@@ -25,12 +25,13 @@ export default {
   },
   methods: {
     tabLabel(tab) {
-      const labels = {
-        overview: 'Overview',
-        managePlanDocumentProgress: 'Manage Plan & Document Progress',
-        summaryAndNote: 'Summary and Note'
+      const keys = {
+        overview: 'overview',
+        managePlanDocumentProgress: 'manage_plan_document_progress',
+        summaryAndNote: 'summary_and_note'
       }
-      return labels[tab] || tab
+      const key = keys[tab]
+      return key ? this.$t(`clinical360.care_plan.sub_tabs.${key}`) : tab
     }
   }
 }

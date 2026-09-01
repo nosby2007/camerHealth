@@ -1,11 +1,11 @@
 <template>
   <v-dialog :value="show" max-width="600" persistent @input="$emit('update:show', $event)">
     <v-card>
-      <v-card-title>Add Rows to Flowsheet</v-card-title>
+      <v-card-title>{{ $t('clinical360.flowsheets.add_rows_dialog.title') }}</v-card-title>
       <v-card-text>
         <v-text-field
           v-model="search"
-          label="Search rows"
+          :label="$t('clinical360.flowsheets.add_rows_dialog.search_rows')"
           outlined
           dense
           prepend-inner-icon="mdi-magnify"
@@ -27,8 +27,8 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text small @click="$emit('update:show', false)">Cancel</v-btn>
-        <v-btn depressed color="#0f766e" dark small @click="addRows">Add Selected</v-btn>
+        <v-btn text small @click="$emit('update:show', false)">{{ $t('clinical360.flowsheets.add_rows_dialog.cancel') }}</v-btn>
+        <v-btn depressed color="#0f766e" dark small @click="addRows">{{ $t('clinical360.flowsheets.add_rows_dialog.add_selected') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
