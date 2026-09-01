@@ -5,10 +5,12 @@
       class="panel-toggle"
       :aria-expanded="(!collapsed).toString()"
       aria-controls="patient-left-panel-body"
-      :aria-label="collapsed ? 'Expand patient context panel' : 'Collapse patient context panel'"
+      :aria-label="collapsed ? $t('clinical360.nursing.patient_context.expand') : $t('clinical360.nursing.patient_context.collapse')"
       @click="$emit('toggle')"
     >
-      <v-icon small>{{ collapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
+      <v-icon small>
+        {{ collapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}
+      </v-icon>
     </button>
 
     <div v-if="!collapsed" id="patient-left-panel-body" class="panel-body">
@@ -18,89 +20,101 @@
         </div>
         <div>
           <h1>{{ patient.name }}</h1>
-          <p>{{ patient.gender }}, {{ patient.age }} y.o.</p>
+          <p>{{ patient.gender }}, {{ patient.age }} {{ $t('clinical360.nursing.patient_context.years_old') }}</p>
         </div>
       </div>
 
       <div class="demographic-stack">
-        <div><span>DOB</span><strong>{{ patient.dob }}</strong></div>
+        <div><span>{{ $t('clinical360.nursing.patient_context.dob') }}</span><strong>{{ patient.dob }}</strong></div>
         <div><span>MRN</span><strong>{{ patient.mrn }}</strong></div>
-        <div><span>Account</span><strong>{{ patient.account }}</strong></div>
-        <div><span>Bed</span><strong>{{ patient.bed }}</strong></div>
+        <div><span>{{ $t('clinical360.nursing.patient_context.account') }}</span><strong>{{ patient.account }}</strong></div>
+        <div><span>{{ $t('clinical360.nursing.patient_context.bed') }}</span><strong>{{ patient.bed }}</strong></div>
       </div>
 
-      <div class="alert-block code-alert">Code: {{ patient.codeStatus }}</div>
-      <div class="alert-block critical">Precautions: {{ patient.precautions }}</div>
-      <div class="alert-block infection">Infection: {{ patient.infectionStatus }}</div>
-      <div class="alert-block wound">Admission wound documentation</div>
+      <div class="alert-block code-alert">
+        {{ $t('clinical360.nursing.patient_context.code') }} : {{ patient.codeStatus }}
+      </div>
+      <div class="alert-block critical">
+        {{ $t('clinical360.nursing.patient_context.precautions') }} : {{ patient.precautions }}
+      </div>
+      <div class="alert-block infection">
+        {{ $t('clinical360.nursing.patient_context.infection') }} : {{ patient.infectionStatus }}
+      </div>
+      <div class="alert-block wound">
+        {{ $t('clinical360.nursing.patient_context.admission_wound') }}
+      </div>
 
       <div v-if="accessProfile.restrictedNotice" class="restricted-notice">
-        <v-icon x-small color="#92400e">mdi-lock-alert</v-icon>
+        <v-icon x-small color="#92400e">
+          mdi-lock-alert
+        </v-icon>
         {{ accessProfile.restrictedNotice }}
       </div>
 
       <div class="story-section">
-        <span>Attending</span>
+        <span>{{ $t('clinical360.nursing.patient_context.attending') }}</span>
         <strong>{{ patient.attending }}</strong>
       </div>
       <div class="story-section">
-        <span>Allergies</span>
+        <span>{{ $t('clinical360.nursing.allergies') }}</span>
         <strong>{{ patient.allergies }}</strong>
       </div>
       <div class="story-section compact">
-        <span>Admitted</span>
+        <span>{{ $t('clinical360.nursing.patient_context.admitted') }}</span>
         <strong>{{ patient.admitted }}</strong>
         <small>{{ patient.patientClass }}</small>
       </div>
       <div class="story-section compact">
-        <span>Vitals</span>
+        <span>{{ $t('clinical360.nursing.patient_context.vitals') }}</span>
         <strong>{{ patient.vitals }}</strong>
         <small>BMI {{ patient.bmi }}</small>
       </div>
 
       <div class="story-worklist">
-        <h2>Acknowledge orders</h2>
+        <h2>{{ $t('clinical360.nursing.patient_context.acknowledge_orders') }}</h2>
         <p v-for="item in acknowledgeOrders" :key="item.label">
-          <v-icon x-small :color="item.color">{{ item.icon }}</v-icon>
+          <v-icon x-small :color="item.color">
+            {{ item.icon }}
+          </v-icon>
           {{ item.label }} <strong>{{ item.count }}</strong>
         </p>
       </div>
     </div>
 
-    <div v-else class="panel-rail" role="group" aria-label="Patient context (collapsed)">
-      <div class="rail-avatar" :aria-label="`Patient ${patient.name}`" role="img">
+    <div v-else class="panel-rail" role="group" :aria-label="$t('clinical360.nursing.patient_context.collapsed')">
+      <div class="rail-avatar" :aria-label="`${$t('clinical360.nursing.patient_context.patient')} ${patient.name}`" role="img">
         <span>{{ patient.initials }}</span>
       </div>
-      <button type="button" class="rail-icon allergy" :aria-label="`Allergy: ${patient.allergies}`">
+      <button type="button" class="rail-icon allergy" :aria-label="`${$t('clinical360.nursing.patient_context.allergy')} : ${patient.allergies}`">
         <v-tooltip top>
           <template #activator="{ on }">
             <span v-on="on"><v-icon small color="#be123c">mdi-allergy</v-icon></span>
           </template>
-          <span>Allergy: {{ patient.allergies }}</span>
+          <span>{{ $t('clinical360.nursing.patient_context.allergy') }} : {{ patient.allergies }}</span>
         </v-tooltip>
       </button>
-      <button type="button" class="rail-icon code" :aria-label="`Code status: ${patient.codeStatus}`">
+      <button type="button" class="rail-icon code" :aria-label="`${$t('clinical360.nursing.patient_context.code_status')} : ${patient.codeStatus}`">
         <v-tooltip top>
           <template #activator="{ on }">
             <span v-on="on"><v-icon small color="#f97316">mdi-heart-pulse</v-icon></span>
           </template>
-          <span>Code: {{ patient.codeStatus }}</span>
+          <span>{{ $t('clinical360.nursing.patient_context.code') }} : {{ patient.codeStatus }}</span>
         </v-tooltip>
       </button>
-      <button type="button" class="rail-icon infection" :aria-label="`Isolation: ${patient.infectionStatus}`">
+      <button type="button" class="rail-icon infection" :aria-label="`${$t('clinical360.nursing.patient_context.isolation')} : ${patient.infectionStatus}`">
         <v-tooltip top>
           <template #activator="{ on }">
             <span v-on="on"><v-icon small color="#16a34a">mdi-biohazard</v-icon></span>
           </template>
-          <span>Isolation: {{ patient.infectionStatus }}</span>
+          <span>{{ $t('clinical360.nursing.patient_context.isolation') }} : {{ patient.infectionStatus }}</span>
         </v-tooltip>
       </button>
-      <button type="button" class="rail-icon bed" :aria-label="`Bed: ${patient.bed}`">
+      <button type="button" class="rail-icon bed" :aria-label="`${$t('clinical360.nursing.patient_context.bed')} : ${patient.bed}`">
         <v-tooltip top>
           <template #activator="{ on }">
             <span v-on="on"><v-icon small color="#0f766e">mdi-bed</v-icon></span>
           </template>
-          <span>Bed: {{ patient.bed }}</span>
+          <span>{{ $t('clinical360.nursing.patient_context.bed') }} : {{ patient.bed }}</span>
         </v-tooltip>
       </button>
     </div>

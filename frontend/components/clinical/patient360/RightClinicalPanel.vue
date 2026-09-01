@@ -5,22 +5,24 @@
       class="panel-toggle"
       :aria-expanded="(!collapsed).toString()"
       aria-controls="patient-right-panel-body"
-      :aria-label="collapsed ? 'Expand clinical sidebar' : 'Collapse clinical sidebar'"
+      :aria-label="collapsed ? $t('clinical360.nursing.sidebar.expand') : $t('clinical360.nursing.sidebar.collapse')"
       @click="$emit('toggle')"
     >
-      <v-icon small>{{ collapsed ? 'mdi-chevron-left' : 'mdi-chevron-right' }}</v-icon>
+      <v-icon small>
+        {{ collapsed ? 'mdi-chevron-left' : 'mdi-chevron-right' }}
+      </v-icon>
     </button>
 
     <div v-if="!collapsed" id="patient-right-panel-body" class="panel-body">
       <section class="clipboard-panel">
-        <h2>Index</h2>
+        <h2>{{ $t('clinical360.nursing.sidebar.index') }}</h2>
         <div class="index-grid">
           <a v-for="item in sidebarIndex" :key="item" href="#" @click.prevent>{{ item }}</a>
         </div>
       </section>
 
       <section v-if="canSeeClinicalHistory" class="clipboard-panel">
-        <h2>Medical History</h2>
+        <h2>{{ $t('clinical360.nursing.sidebar.medical_history') }}</h2>
         <div v-for="item in medicalHistory" :key="item.label" class="history-row">
           <span>{{ item.label }}</span>
           <strong>{{ item.value }}</strong>
@@ -29,12 +31,24 @@
 
       <section v-if="canViewOrders" class="orders-panel">
         <div class="orders-header">
-          <strong>Inpatient Orders</strong>
-          <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark class="font-weight-black" @click="$emit('new-order')">New</v-btn>
+          <strong>{{ $t('clinical360.nursing.sidebar.inpatient_orders') }}</strong>
+          <v-btn
+            v-if="!readOnly"
+            x-small
+            depressed
+            color="#0f766e"
+            dark
+            class="font-weight-black"
+            @click="$emit('new-order')"
+          >
+            {{ $t('clinical360.nursing.sidebar.new') }}
+          </v-btn>
         </div>
         <div v-if="activeOrders.length" class="order-list">
           <article v-for="order in activeOrders" :key="order.title" class="order-row">
-            <v-icon small :color="order.color">{{ order.icon }}</v-icon>
+            <v-icon small :color="order.color">
+              {{ order.icon }}
+            </v-icon>
             <div>
               <strong>{{ order.title }}</strong>
               <span>{{ order.detail }}</span>
@@ -42,17 +56,21 @@
           </article>
         </div>
         <div v-else class="no-orders">
-          <v-icon size="52" color="#94a3b8">mdi-clipboard-text-outline</v-icon>
-          <span>No Orders</span>
+          <v-icon size="52" color="#94a3b8">
+            mdi-clipboard-text-outline
+          </v-icon>
+          <span>{{ $t('clinical360.nursing.sidebar.no_orders') }}</span>
         </div>
         <button v-if="!readOnly" class="sign-button" @click="$emit('sign-orders')">
-          <v-icon small>mdi-draw-pen</v-icon>
-          Sign
+          <v-icon small>
+            mdi-draw-pen
+          </v-icon>
+          {{ $t('clinical360.nursing.sidebar.sign') }}
         </button>
       </section>
 
       <section v-if="recentLabItems.length" class="clipboard-panel">
-        <h2>Recent Labs</h2>
+        <h2>{{ $t('clinical360.nursing.sidebar.recent_labs') }}</h2>
         <div v-for="item in recentLabItems" :key="item.key" class="history-row">
           <span>{{ item.label }}</span>
           <strong>{{ item.status }}</strong>
@@ -60,15 +78,15 @@
       </section>
 
       <section v-if="pendingTasks.length" class="clipboard-panel">
-        <h2>Pending Tasks</h2>
+        <h2>{{ $t('clinical360.nursing.sidebar.pending_tasks') }}</h2>
         <div v-for="task in pendingTasks" :key="task.id || task.title" class="history-row">
-          <span>{{ task.title || 'Care task' }}</span>
-          <strong>{{ task.status || 'pending' }}</strong>
+          <span>{{ task.title || $t('clinical360.nursing.sidebar.care_task') }}</span>
+          <strong>{{ statusLabel(task.status || 'pending') }}</strong>
         </div>
       </section>
 
       <section v-if="careTeamRows.length" class="clipboard-panel">
-        <h2>Care Team</h2>
+        <h2>{{ $t('clinical360.nursing.sidebar.care_team') }}</h2>
         <div v-for="row in careTeamRows" :key="row.label" class="history-row">
           <span>{{ row.label }}</span>
           <strong>{{ row.values && row.values.Role }}</strong>
@@ -76,21 +94,31 @@
       </section>
     </div>
 
-    <div v-else class="panel-rail" role="group" aria-label="Clinical sidebar (collapsed)">
-      <button type="button" class="rail-icon" aria-label="Index / quick links">
-        <v-icon small color="#0f766e">mdi-format-list-bulleted</v-icon>
+    <div v-else class="panel-rail" role="group" :aria-label="$t('clinical360.nursing.sidebar.collapsed')">
+      <button type="button" class="rail-icon" :aria-label="$t('clinical360.nursing.sidebar.quick_links')">
+        <v-icon small color="#0f766e">
+          mdi-format-list-bulleted
+        </v-icon>
       </button>
-      <button v-if="canViewOrders" type="button" class="rail-icon" :aria-label="`Orders: ${activeOrders.length} active`" @click="!readOnly && $emit('sign-orders')">
-        <v-icon small color="#0369a1">mdi-clipboard-text-outline</v-icon>
+      <button v-if="canViewOrders" type="button" class="rail-icon" :aria-label="$t('clinical360.nursing.sidebar.orders_active', { count: activeOrders.length })" @click="!readOnly && $emit('sign-orders')">
+        <v-icon small color="#0369a1">
+          mdi-clipboard-text-outline
+        </v-icon>
       </button>
-      <button type="button" class="rail-icon" :aria-label="`Recent labs: ${recentLabItems.length}`">
-        <v-icon small color="#7c3aed">mdi-flask</v-icon>
+      <button type="button" class="rail-icon" :aria-label="$t('clinical360.nursing.sidebar.recent_labs_count', { count: recentLabItems.length })">
+        <v-icon small color="#7c3aed">
+          mdi-flask
+        </v-icon>
       </button>
-      <button type="button" class="rail-icon" aria-label="Care team">
-        <v-icon small color="#0f766e">mdi-account-group</v-icon>
+      <button type="button" class="rail-icon" :aria-label="$t('clinical360.nursing.sidebar.care_team')">
+        <v-icon small color="#0f766e">
+          mdi-account-group
+        </v-icon>
       </button>
-      <button type="button" class="rail-icon" :aria-label="`Pending tasks: ${pendingTasks.length}`">
-        <v-icon small color="#be123c">mdi-format-list-checks</v-icon>
+      <button type="button" class="rail-icon" :aria-label="$t('clinical360.nursing.sidebar.pending_tasks_count', { count: pendingTasks.length })">
+        <v-icon small color="#be123c">
+          mdi-format-list-checks
+        </v-icon>
       </button>
     </div>
   </aside>
@@ -113,21 +141,27 @@ export default {
     readOnly: { type: Boolean, default: false }
   },
   computed: {
-    recentLabItems() {
+    recentLabItems () {
       const labs = this.labOrders.map((order, index) => ({
         key: `lab-${index}`,
-        label: order.test || order.orderName || order.title || 'Lab order',
-        status: order.status || order.priority || 'Requested'
+        label: order.test || order.orderName || order.title || this.$t('clinical360.nursing.sidebar.lab_order'),
+        status: order.status || order.priority || this.$t('clinical360.nursing.sidebar.requested')
       }))
       const imaging = this.imagingOrders.map((order, index) => ({
         key: `imaging-${index}`,
-        label: order.exam || order.study || order.title || 'Imaging order',
-        status: order.status || order.priority || 'Requested'
+        label: order.exam || order.study || order.title || this.$t('clinical360.nursing.sidebar.imaging_order'),
+        status: order.status || order.priority || this.$t('clinical360.nursing.sidebar.requested')
       }))
       return [...labs, ...imaging].slice(0, 6)
     },
-    pendingTasks() {
+    pendingTasks () {
       return this.tasks.filter(task => task.status === 'pending' || task.status === 'hold').slice(0, 6)
+    }
+  },
+  methods: {
+    statusLabel (status) {
+      const key = `clinical360.nursing.statuses.${status}`
+      return this.$te(key) ? this.$t(key) : status
     }
   }
 }

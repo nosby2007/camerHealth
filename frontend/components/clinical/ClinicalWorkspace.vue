@@ -5,22 +5,22 @@
         <v-avatar tile size="24" color="#0f766e" class="mr-2">
           <v-icon dark x-small>mdi-hospital-building</v-icon>
         </v-avatar>
-        <strong>CameroHealth Chart</strong>
-        <span class="environment">Clinical Workflow</span>
+        <strong>{{ $t('clinical360.workspace.chart') }}</strong>
+        <span class="environment">{{ $t('clinical360.workspace.clinical_workflow') }}</span>
       </div>
       <div class="search-box" role="combobox" :aria-expanded="String(globalSearchOpen)" aria-haspopup="listbox">
         <v-icon small color="#64748b">mdi-magnify</v-icon>
         <input
           v-model="globalSearchQuery"
           type="search"
-          aria-label="Search patient chart"
-          placeholder="Search patient, MRN, order, tab"
+          :aria-label="$t('clinical360.workspace.search_chart')"
+          :placeholder="$t('clinical360.workspace.search_placeholder')"
           @focus="globalSearchOpen = true"
           @blur="scheduleGlobalSearchClose"
           @keydown.enter.prevent="submitGlobalSearch"
           @keydown.esc.prevent="clearGlobalSearch"
         >
-        <button v-if="globalSearchQuery" type="button" class="search-clear" title="Clear search" @mousedown.prevent @click="clearGlobalSearch">
+        <button v-if="globalSearchQuery" type="button" class="search-clear" :title="$t('clinical360.workspace.clear_search')" @mousedown.prevent @click="clearGlobalSearch">
           <v-icon x-small>mdi-close</v-icon>
         </button>
         <div v-if="globalSearchOpen && globalSearchQuery" class="global-search-results" role="listbox">
@@ -36,18 +36,18 @@
             <span><strong>{{ result.title }}</strong><small>{{ result.meta }}</small></span>
             <b>{{ result.group }}</b>
           </button>
-          <div v-if="!globalSearchResults.length" class="search-empty">No matching patient, MRN, order or chart section.</div>
+          <div v-if="!globalSearchResults.length" class="search-empty">{{ $t('clinical360.workspace.no_search_results') }}</div>
         </div>
       </div>
       <div class="topbar-actions">
         <v-btn v-if="patientScoped" x-small text color="#0f766e" class="font-weight-black" to="/clinical/patients">
-          <v-icon x-small left>mdi-account-search</v-icon>Patient list
+          <v-icon x-small left>mdi-account-search</v-icon>{{ $t('clinical360.workspace.patient_list') }}
         </v-btn>
         <v-btn x-small text color="#0f766e" class="font-weight-black" @click="dialogs.scan = true">
-          <v-icon x-small left>mdi-barcode-scan</v-icon>Scan bracelet
+          <v-icon x-small left>mdi-barcode-scan</v-icon>{{ $t('clinical360.workspace.scan_bracelet') }}
         </v-btn>
         <label v-if="canPreviewRole" class="role-switcher">
-          <span>Preview role</span>
+          <span>{{ $t('clinical360.workspace.preview_role') }}</span>
           <select v-model="previewRole">
             <option v-for="role in roleOptions" :key="role.value" :value="role.value">
               {{ role.short }}
@@ -55,11 +55,11 @@
           </select>
         </label>
         <v-btn v-if="patientScoped && activePatientId" x-small text color="#0f766e" class="font-weight-black" @click="openReportCenter">
-          <v-icon x-small left>mdi-printer</v-icon>Print
+          <v-icon x-small left>mdi-printer</v-icon>{{ $t('clinical360.workspace.print') }}
         </v-btn>
-        <v-btn x-small text color="#0f766e" class="font-weight-black">Chart correction</v-btn>
+        <v-btn x-small text color="#0f766e" class="font-weight-black">{{ $t('clinical360.workspace.chart_correction') }}</v-btn>
         <v-btn v-if="patientScoped && activePatientRecord" x-small tile depressed color="#D97706" dark class="font-weight-black ml-1" @click="openTransferModal">
-          <v-icon x-small left>mdi-swap-horizontal</v-icon>Transfer Patient
+          <v-icon x-small left>mdi-swap-horizontal</v-icon>{{ $t('clinical360.workspace.transfer_patient') }}
         </v-btn>
         <v-avatar size="28" color="#dbeafe">
           <span class="avatar-text">{{ userInitials }}</span>
@@ -80,7 +80,7 @@
           v-if="patientScoped"
           type="button"
           class="patient-tab-close"
-          :aria-label="`Close ${chart.shortName} chart`"
+          :aria-label="$t('clinical360.workspace.close_named_chart', { name: chart.shortName })"
           @click.stop="closeOpenChart(chart)"
         >
           <v-icon x-small>mdi-close</v-icon>
@@ -90,7 +90,7 @@
         v-if="patientScoped"
         type="button"
         class="patient-tab-add"
-        aria-label="Open another patient chart"
+        :aria-label="$t('clinical360.workspace.open_another_chart')"
         @click="$router.push('/clinical/patients')"
       >
         <v-icon x-small>mdi-plus</v-icon>
@@ -104,7 +104,7 @@
         <span>{{ accessProfile.scope }}</span>
       </div>
       <div>
-        <span>{{ visibleChartTabs.length }} chart tabs</span>
+        <span>{{ $t('clinical360.workspace.chart_tabs_count', { count: visibleChartTabs.length }) }}</span>
         <span>{{ accessProfile.audit }}</span>
       </div>
     </section>
@@ -132,8 +132,8 @@
 
     <v-alert v-if="isPatientDischarged" tile dense color="#475569" dark class="discharged-readonly-alert ma-0">
       <v-icon left small color="white">mdi-lock-outline</v-icon>
-      <strong>Discharged chart - read only.</strong>
-      Discharged {{ formatShortDate(activePatient.dischargedAt) }}. Clinical documentation, orders, assessments and care actions are disabled.
+      <strong>{{ $t('clinical360.workspace.discharged_read_only') }}</strong>
+      {{ $t('clinical360.workspace.discharged_detail', { date: formatShortDate(activePatient.dischargedAt) }) }}
     </v-alert>
 
     <div class="chart-frame" :class="{ 'left-collapsed': effectiveLeftPanelCollapsed, 'right-collapsed': effectiveRightPanelCollapsed, 'chart-readonly': isPatientDischarged }">
@@ -198,10 +198,10 @@
           class="font-weight-black"
           @click="dialogs.tabManager = true"
         >
-          <v-icon x-small left>mdi-tune-variant</v-icon>Manage tabs
+          <v-icon x-small left>mdi-tune-variant</v-icon>{{ $t('clinical360.workspace.manage_tabs') }}
         </v-btn>
         <v-chip x-small label color="#e0f2fe" text-color="#075985" class="font-weight-black">
-          Current admission
+          {{ $t('clinical360.workspace.current_admission') }}
         </v-chip>
             <v-btn
               v-if="activePatientId && canLaunchNurse && !isPatientDischarged"
@@ -212,7 +212,7 @@
               class="font-weight-black"
               @click="openChartDialog('nurse')"
             >
-              <v-icon x-small left>mdi-stethoscope</v-icon>Nurse work
+              <v-icon x-small left>mdi-stethoscope</v-icon>{{ $t('clinical360.workspace.nurse_work') }}
             </v-btn>
             <v-btn
               v-if="activePatientId && canLaunchMedical && !isPatientDischarged"
@@ -223,10 +223,10 @@
               class="font-weight-black"
               @click="openChartDialog('medical')"
             >
-              <v-icon x-small left>mdi-medical-bag</v-icon>Medical
+              <v-icon x-small left>mdi-medical-bag</v-icon>{{ $t('clinical360.workspace.medical') }}
             </v-btn>
             <v-btn v-if="canLaunchNurse && !isPatientDischarged" x-small depressed color="#0f766e" dark class="font-weight-black" @click="openChartDialog('nurse')">
-              <v-icon x-small left>mdi-plus</v-icon>New Reading
+              <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.workspace.new_reading') }}
                 </v-btn>
               </div>
             </div>
@@ -265,19 +265,19 @@
             <section v-if="selectedChartTab === 'Summary'" class="patient-summary-dashboard">
               <div class="summary-hero">
                 <div>
-                  <span>Patient summary</span>
+                  <span>{{ $t('clinical360.workspace.patient_summary') }}</span>
                   <strong>{{ summaryHeadline }}</strong>
                   <p>{{ summaryNarrative }}</p>
                 </div>
                 <div class="summary-actions">
                   <v-btn x-small depressed color="#003366" dark @click="openCommandAction('nurse')">
-                    <v-icon x-small left>mdi-stethoscope</v-icon>Nurse entry
+                    <v-icon x-small left>mdi-stethoscope</v-icon>{{ $t('clinical360.workspace.nurse_entry') }}
                   </v-btn>
                   <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('flowsheet')">
-                    <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed care
+                    <v-icon x-small left>mdi-clock-edit-outline</v-icon>{{ $t('clinical360.workspace.timed_care') }}
                   </v-btn>
                   <v-btn x-small text color="#7c3aed" @click="openCommandAction('handoff')">
-                    <v-icon x-small left>mdi-handshake-outline</v-icon>Handoff
+                    <v-icon x-small left>mdi-handshake-outline</v-icon>{{ $t('clinical360.workspace.handoff') }}
                   </v-btn>
                 </div>
               </div>
@@ -302,12 +302,12 @@
               <section class="summary-cycle-panel">
                 <header>
                   <div>
-                    <span>Patient cycle</span>
-                    <strong>Admission to continuity of care</strong>
+                    <span>{{ $t('clinical360.workspace.patient_cycle') }}</span>
+                    <strong>{{ $t('clinical360.workspace.admission_to_continuity') }}</strong>
                   </div>
                   <div class="summary-completeness">
                     <strong>{{ summaryCompleteness }}%</strong>
-                    <span>chart readiness</span>
+                    <span>{{ $t('clinical360.workspace.chart_readiness') }}</span>
                   </div>
                 </header>
                 <div class="summary-cycle-track">
@@ -331,8 +331,8 @@
               <div class="summary-columns summary-clinical-grid">
                 <section class="summary-panel">
                   <header>
-                    <span>Safety watch</span>
-                    <strong>Critical facts before every intervention</strong>
+                    <span>{{ $t('clinical360.workspace.safety_watch') }}</span>
+                    <strong>{{ $t('clinical360.workspace.critical_facts') }}</strong>
                   </header>
                   <div class="summary-safety-list">
                     <button
@@ -353,8 +353,8 @@
 
                 <section class="summary-panel">
                   <header>
-                    <span>Department ownership</span>
-                    <strong>Who acts next across the hospital</strong>
+                    <span>{{ $t('clinical360.workspace.department_ownership') }}</span>
+                    <strong>{{ $t('clinical360.workspace.who_acts_next') }}</strong>
                   </header>
                   <div class="summary-department-list">
                     <button
@@ -377,8 +377,8 @@
             <div class="summary-columns">
               <section class="summary-panel">
                 <header>
-                  <span>Today priorities</span>
-                  <strong>What must move before handoff</strong>
+                  <span>{{ $t('clinical360.workspace.today_priorities') }}</span>
+                  <strong>{{ $t('clinical360.workspace.before_handoff') }}</strong>
                   </header>
                   <div class="summary-list">
                     <button
@@ -398,8 +398,8 @@
 
                 <section class="summary-panel">
                   <header>
-                    <span>Care continuity</span>
-                    <strong>Last filed and next owner</strong>
+                    <span>{{ $t('clinical360.workspace.care_continuity') }}</span>
+                    <strong>{{ $t('clinical360.workspace.last_filed_next_owner') }}</strong>
                   </header>
                   <div class="summary-timeline">
                     <article v-for="item in summaryContinuityItems" :key="item.label">
@@ -416,8 +416,8 @@
               <div class="summary-columns">
                 <section class="summary-panel">
                   <header>
-                    <span>Care plan</span>
-                    <strong>Goals, interventions and outcomes</strong>
+                    <span>{{ $t('clinical360.workspace.care_plan') }}</span>
+                    <strong>{{ $t('clinical360.workspace.goals_interventions_outcomes') }}</strong>
                   </header>
                   <div class="summary-list compact">
                     <button
@@ -437,8 +437,8 @@
 
                 <section class="summary-panel">
                   <header>
-                    <span>Education</span>
-                    <strong>Teaching completed and family education</strong>
+                    <span>{{ $t('clinical360.workspace.education') }}</span>
+                    <strong>{{ $t('clinical360.workspace.teaching_completed') }}</strong>
                   </header>
                   <div class="summary-list compact">
                     <button
@@ -459,14 +459,14 @@
 
               <div class="summary-columns">
                 <FlowSection
-                  title="Patient Snapshot"
+                  :title="$t('clinical360.workspace.cards.patient_snapshot')"
                   :columns="['Current']"
                   :rows="summaryRows"
                   action="nurse"
                   @action="openCommandAction"
                 />
                 <FlowSection
-                  title="Latest Clinical Signals"
+                  :title="$t('clinical360.workspace.cards.latest_signals')"
                   :columns="['Last Filed']"
                   :rows="visibleVitalRows"
                   action="flowsheet"
@@ -476,7 +476,7 @@
 
               <FlowSection
                 v-if="summaryActiveOrderRows.length"
-                title="Active Orders Summary"
+                :title="$t('clinical360.workspace.cards.active_orders')"
                 :columns="['Detail']"
                 :rows="summaryActiveOrderRows"
                 action="orders"
@@ -484,7 +484,7 @@
               />
               <FlowSection
                 v-if="summaryLatestNoteRows.length"
-                title="Latest Notes"
+                :title="$t('clinical360.workspace.cards.latest_notes')"
                 :columns="['Type', 'Recorded', 'Summary']"
                 :rows="summaryLatestNoteRows"
                 action="notes"
@@ -492,7 +492,7 @@
               />
               <FlowSection
                 v-if="summaryPendingTaskRows.length"
-                title="Pending Tasks / Required Documentation"
+                :title="$t('clinical360.workspace.cards.pending_documentation')"
                 :columns="['Status']"
                 :rows="summaryPendingTaskRows"
                 action="worklist"
@@ -503,8 +503,8 @@
             <section v-else-if="selectedChartTab === 'EMR Command Center'" class="emr-command-center">
               <div class="command-brief">
                 <div>
-                  <span>General hospital command center</span>
-                  <strong>Protected 360 view for departments, offline work and Cameroonian hospital operations.</strong>
+                  <span>{{ $t('clinical360.workspace.hospital_command') }}</span>
+                  <strong>{{ $t('clinical360.workspace.hospital_command_detail') }}</strong>
                 </div>
                 <div class="command-brief-actions">
                   <v-chip small label color="#dcfce7" text-color="#166534" class="font-weight-black">
@@ -514,12 +514,12 @@
                     {{ accessProfile.short }} scope
                   </v-chip>
                   <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('nurse')">
-                    <v-icon x-small left>mdi-clipboard-pulse-outline</v-icon>Document
+                    <v-icon x-small left>mdi-clipboard-pulse-outline</v-icon>{{ $t('clinical360.workspace.document') }}
                   </v-btn>
                 </div>
               </div>
 
-              <div class="command-card-grid" aria-label="Hospital command modules">
+              <div class="command-card-grid" :aria-label="$t('clinical360.workspace.navigation.hospital_modules')">
                 <article
                   v-for="card in emrCommandCards"
                   :key="card.key"
@@ -539,7 +539,7 @@
                 </article>
               </div>
 
-              <div class="command-live-strip" aria-label="Live patient operations">
+              <div class="command-live-strip" :aria-label="$t('clinical360.workspace.navigation.live_operations')">
                 <button type="button" @click="selectChartTab('Work List')"><span>{{ $t('clinical360.command.open_work') }}</span><strong>{{ patientTasks.length }}</strong><small>{{ $t('clinical360.command.assigned_tasks') }}</small></button>
                 <button type="button" @click="selectChartTab('Orders')"><span>{{ $t('clinical360.command.diagnostics') }}</span><strong>{{ patientLabOrders.length + patientImagingOrders.length }}</strong><small>{{ $t('clinical360.command.lab_imaging') }}</small></button>
                 <button type="button" @click="selectChartTab('Documents')"><span>{{ $t('clinical360.command.chart_records') }}</span><strong>{{ patientDocuments.length }}</strong><small>{{ $t('clinical360.command.filed_documents') }}</small></button>
@@ -548,12 +548,12 @@
 
               <div class="command-two-column">
                 <FlowSection
-                  title="Department Coverage"
+                  :title="$t('clinical360.workspace.cards.department_coverage')"
                   :columns="['Status', 'Owner', 'Next']"
                   :rows="departmentCoverageRows"
                 />
                 <FlowSection
-                  title="Offline and Low-Bandwidth Readiness"
+                  :title="$t('clinical360.workspace.cards.offline_readiness')"
                   :columns="['State', 'Fallback', 'Action']"
                   :rows="offlineReadinessRows"
                 />
@@ -566,14 +566,14 @@
                   :rows="patientCycleRows"
                 />
                 <FlowSection
-                  title="Department Handoff Matrix"
+                  :title="$t('clinical360.workspace.cards.handoff_matrix')"
                   :columns="['From', 'To', 'Action']"
                   :rows="departmentHandoffRows"
                 />
               </div>
 
               <FlowSection
-                title="My Role - Actions Now"
+                :title="$t('clinical360.workspace.cards.role_actions')"
                 :columns="['Priority', 'Where', 'Action']"
                 :rows="roleActionRows"
               />
@@ -598,29 +598,29 @@
             <section v-else-if="selectedChartTab === 'Nurse Command Center'" class="nurse-command-center">
               <div class="command-brief nurse">
                 <div>
-                  <span>Nurse command center</span>
-                  <strong>One shift board for vitals, nursing tasks, medication safety, hygiene, mobility, wound care and handoff.</strong>
+                  <span>{{ $t('clinical360.workspace.nurse_command') }}</span>
+                  <strong>{{ $t('clinical360.workspace.nurse_command_detail') }}</strong>
                 </div>
                 <div class="command-brief-actions">
                   <v-btn x-small depressed color="#003366" dark @click="openCommandAction('nurse')">
-                    <v-icon x-small left>mdi-stethoscope</v-icon>New nursing entry
+                    <v-icon x-small left>mdi-stethoscope</v-icon>{{ $t('clinical360.workspace.new_nursing_entry') }}
                   </v-btn>
                   <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('flowsheet')">
-                    <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed flowsheet
+                    <v-icon x-small left>mdi-clock-edit-outline</v-icon>{{ $t('clinical360.workspace.timed_flowsheet') }}
                   </v-btn>
                   <v-btn x-small depressed color="#be123c" dark @click="openCommandAction('body')">
-                    <v-icon x-small left>mdi-human</v-icon>Body assessment
+                    <v-icon x-small left>mdi-human</v-icon>{{ $t('clinical360.workspace.body_assessment') }}
                   </v-btn>
                   <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('medication')">
-                    <v-icon x-small left>mdi-pill</v-icon>MAR
+                    <v-icon x-small left>mdi-pill</v-icon>{{ $t('clinical360.workspace.mar') }}
                   </v-btn>
                   <v-btn x-small depressed color="#7c3aed" dark @click="openCommandAction('handoff')">
-                    <v-icon x-small left>mdi-handshake-outline</v-icon>Handoff
+                    <v-icon x-small left>mdi-handshake-outline</v-icon>{{ $t('clinical360.workspace.handoff') }}
                   </v-btn>
                 </div>
               </div>
 
-              <div class="command-live-strip nurse-live" aria-label="Live nursing situation">
+              <div class="command-live-strip nurse-live" :aria-label="$t('clinical360.workspace.navigation.live_nursing')">
                 <button type="button" @click="openCommandAction('nurse')"><span>{{ $t('clinical360.command.last_vitals') }}</span><strong>{{ latestVitalsSummary || $t('clinical360.common.due') }}</strong><small>{{ $t('clinical360.command.document_assessment') }}</small></button>
                 <button type="button" @click="selectChartTab('MAR')"><span>{{ $t('clinical360.command.medication_profile') }}</span><strong>{{ patientMedications.length }}</strong><small>{{ $t('clinical360.command.active_items') }}</small></button>
                 <button type="button" @click="selectChartTab('Wound Management')"><span>{{ $t('clinical360.command.skin_integrity') }}</span><strong>{{ patientWounds.length }}</strong><small>{{ $t('clinical360.command.documented_wounds') }}</small></button>
@@ -640,19 +640,19 @@
 
               <div class="command-two-column">
                 <FlowSection
-                  title="Shift Care Board"
+                  :title="$t('clinical360.workspace.cards.shift_care_board')"
                   :columns="['Time', 'Priority', 'Action']"
                   :rows="nurseShiftRows"
                 />
                 <FlowSection
-                  title="Aide-Soignant and Support Tasks"
+                  :title="$t('clinical360.workspace.cards.support_tasks')"
                   :columns="['Status', 'Owner', 'Action']"
                   :rows="supportCareRows"
                 />
               </div>
 
               <FlowSection
-                title="Safety, Escalation and Handoff"
+                :title="$t('clinical360.workspace.cards.safety_escalation')"
                 :columns="['Signal', 'Owner', 'Action']"
                 :rows="nurseEscalationRows"
               />
@@ -672,19 +672,19 @@
             <section v-else-if="selectedChartTab === 'Avatar'" class="avatar-workspace">
               <div class="avatar-command">
                 <div>
-                  <span>Clinical avatar</span>
-                  <strong>Body map for risks, wounds, pain, lines, mobility and medication workload</strong>
+                  <span>{{ $t('clinical360.workspace.clinical_avatar') }}</span>
+                  <strong>{{ $t('clinical360.workspace.avatar_detail') }}</strong>
                   <p>{{ avatarNarrative }}</p>
                 </div>
                 <div class="flowsheet-actions">
                   <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('body')">
-                    <v-icon x-small left>mdi-human</v-icon>Body assessment
+                    <v-icon x-small left>mdi-human</v-icon>{{ $t('clinical360.workspace.body_assessment') }}
                   </v-btn>
                   <v-btn x-small depressed color="#0f766e" dark @click="openCommandAction('flowsheet')">
-                    <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed care
+                    <v-icon x-small left>mdi-clock-edit-outline</v-icon>{{ $t('clinical360.workspace.timed_care') }}
                   </v-btn>
                   <v-btn v-if="!isPatientDischarged" x-small text color="#7c3aed" @click="dialogs.woundCare = true">
-                    <v-icon x-small left>mdi-bandage</v-icon>Wound care
+                    <v-icon x-small left>mdi-bandage</v-icon>{{ $t('clinical360.workspace.wound_care') }}
                   </v-btn>
                 </div>
               </div>
@@ -704,8 +704,8 @@
               </div>
 
               <div class="avatar-grid">
-                <section class="patient-body-panel" aria-label="Patient body avatar">
-                  <div v-if="!isPatientDischarged" class="avatar-placement-palette" aria-label="Avatar placement tools">
+                <section class="patient-body-panel" :aria-label="$t('clinical360.workspace.navigation.patient_body_avatar')">
+                  <div v-if="!isPatientDischarged" class="avatar-placement-palette" :aria-label="$t('clinical360.workspace.navigation.placement_tools')">
                     <button
                       v-for="tool in avatarPlacementTools"
                       :key="tool.key"
@@ -720,23 +720,23 @@
                     </button>
                   </div>
                   <div class="avatar-legend">
-                    <span><i class="risk"></i>Risk</span>
-                    <span><i class="active"></i>Active care</span>
-                    <span><i class="stable"></i>Stable</span>
+                    <span><i class="risk"></i>{{ $t('clinical360.workspace.risk') }}</span>
+                    <span><i class="active"></i>{{ $t('clinical360.workspace.active_care') }}</span>
+                    <span><i class="stable"></i>{{ $t('clinical360.workspace.stable') }}</span>
                   </div>
                   <div class="avatar-view-toggle">
-                    <button :class="{ active: avatarView === 'front' }" type="button" @click="avatarView = 'front'">Front</button>
-                    <button :class="{ active: avatarView === 'back' }" type="button" @click="avatarView = 'back'">Back</button>
+                    <button :class="{ active: avatarView === 'front' }" type="button" @click="avatarView = 'front'">{{ $t('clinical360.workspace.front') }}</button>
+                    <button :class="{ active: avatarView === 'back' }" type="button" @click="avatarView = 'back'">{{ $t('clinical360.workspace.back') }}</button>
                   </div>
                   <div class="avatar-zoom-toggle">
-                    <button type="button" :disabled="avatarZoom <= AVATAR_ZOOM_MIN" aria-label="Zoom out" @click="zoomAvatar(-1)">
+                    <button type="button" :disabled="avatarZoom <= AVATAR_ZOOM_MIN" :aria-label="$t('clinical360.workspace.navigation.zoom_out')" @click="zoomAvatar(-1)">
                       <v-icon x-small>mdi-magnify-minus-outline</v-icon>
                     </button>
                     <span>{{ Math.round(avatarZoom * 100) }}%</span>
-                    <button type="button" :disabled="avatarZoom >= AVATAR_ZOOM_MAX" aria-label="Zoom in" @click="zoomAvatar(1)">
+                    <button type="button" :disabled="avatarZoom >= AVATAR_ZOOM_MAX" :aria-label="$t('clinical360.workspace.navigation.zoom_in')" @click="zoomAvatar(1)">
                       <v-icon x-small>mdi-magnify-plus-outline</v-icon>
                     </button>
-                    <button v-if="avatarZoom !== 1" type="button" aria-label="Reset zoom" @click="resetAvatarZoom">
+                    <button v-if="avatarZoom !== 1" type="button" :aria-label="$t('clinical360.workspace.navigation.reset_zoom')" @click="resetAvatarZoom">
                       <v-icon x-small>mdi-backup-restore</v-icon>
                     </button>
                   </div>
@@ -807,7 +807,7 @@
                     <strong v-else>{{ isPatientDischarged ? 'Placed items are available for review.' : 'Select or drag a sticker to document exact location.' }}</strong>
                     <small v-if="archivedAvatarPlacementCount">{{ archivedAvatarPlacementCount }} resolved / removed item(s) retained in audit history.</small>
                   </div>
-                  <div v-if="avatarPlacements.length" class="avatar-mapped-items" aria-label="Active mapped elements">
+                  <div v-if="avatarPlacements.length" class="avatar-mapped-items" :aria-label="$t('clinical360.workspace.navigation.active_mapped_elements')">
                     <button v-for="item in avatarPlacements" :key="`mapped-${item.id}`" type="button" @click="reviewAvatarPlacement(item)">
                       <v-icon x-small :color="item.color">{{ item.icon }}</v-icon>
                       <span><strong>{{ item.label }}</strong><small>{{ item.region }} · {{ item.status }}</small></span>
@@ -837,12 +837,12 @@
                     </button>
                   </div>
                   <FlowSection
-                    title="Selected Zone Detail"
+                    :title="$t('clinical360.workspace.cards.selected_zone')"
                     :columns="['Status', 'Evidence', 'Action']"
                     :rows="activeAvatarRows"
                   />
                   <FlowSection
-                    title="Placed LDA / Wound / Devices"
+                    :title="$t('clinical360.workspace.cards.placed_devices')"
                     :columns="['Type', 'Region', 'Status']"
                     :rows="avatarPlacementRows"
                   />
@@ -850,18 +850,18 @@
               </div>
 
               <FlowSection
-                title="Avatar Systems Review"
+                :title="$t('clinical360.workspace.cards.systems_review')"
                 required
                 :columns="['Status', 'Evidence', 'Action']"
                 :rows="avatarSystemRows"
               />
               <FlowSection
-                title="Lines, Wounds and Care Targets"
+                :title="$t('clinical360.workspace.cards.care_targets')"
                 :columns="['Location', 'Status', 'Next Step']"
                 :rows="avatarCareTargetRows"
               />
               <FlowSection
-                title="Avatar Priorities"
+                :title="$t('clinical360.workspace.cards.avatar_priorities')"
                 :columns="['Reason', 'Owner', 'Next Action']"
                 :rows="avatarPriorityRows"
               />
@@ -870,23 +870,23 @@
             <section v-else-if="selectedChartTab === 'Orders'" class="orders-workspace">
               <div class="orders-command">
                 <div>
-                  <span>Orders</span>
-                  <strong>Medication, diagnostics and care orders</strong>
+                  <span>{{ $t('clinical360.workspace.orders') }}</span>
+                  <strong>{{ $t('clinical360.workspace.orders_detail') }}</strong>
                 </div>
                 <div class="orders-quick-actions">
                   <v-btn x-small depressed color="#0369a1" dark @click="openOrderComposer('lab')">
-                    <v-icon x-small left>mdi-flask</v-icon>Lab
+                    <v-icon x-small left>mdi-flask</v-icon>{{ $t('clinical360.workspace.lab') }}
                   </v-btn>
                   <v-btn x-small depressed color="#7c3aed" dark @click="openOrderComposer('imaging')">
-                    <v-icon x-small left>mdi-radiology-box</v-icon>Imaging
+                    <v-icon x-small left>mdi-radiology-box</v-icon>{{ $t('clinical360.workspace.imaging') }}
                   </v-btn>
                   <v-btn x-small depressed color="#0f766e" dark @click="openOrderComposer('medication')">
-                    <v-icon x-small left>mdi-pill-plus</v-icon>Medication
+                    <v-icon x-small left>mdi-pill-plus</v-icon>{{ $t('clinical360.workspace.medication') }}
                   </v-btn>
                 </div>
               </div>
 
-              <div class="orders-tabs" role="tablist" aria-label="Order views">
+              <div class="orders-tabs" role="tablist" :aria-label="$t('clinical360.workspace.navigation.order_views')">
                 <button
                   v-for="tab in orderWorkspaceTabs"
                   :key="tab.key"
@@ -902,16 +902,16 @@
               <div class="orders-controls">
                 <label class="orders-toggle">
                   <input v-model="showHomeMedications" type="checkbox">
-                  <span>Show Home Medications</span>
+                  <span>{{ $t('clinical360.workspace.show_home_medications') }}</span>
                 </label>
                 <label>
-                  <span>Sort by</span>
+                  <span>{{ $t('clinical360.workspace.sort_by') }}</span>
                   <select v-model="orderSortBy">
                     <option v-for="option in orderSortOptions" :key="option" :value="option">{{ option }}</option>
                   </select>
                 </label>
                 <label>
-                  <span>Go to</span>
+                  <span>{{ $t('clinical360.workspace.go_to') }}</span>
                   <select v-model="orderGoTo">
                     <option v-for="option in orderGoToOptions" :key="option" :value="option">{{ option }}</option>
                   </select>
@@ -967,35 +967,35 @@
 
                   <div v-if="!visibleOrderGroups.length" class="empty-orders compact">
                     <v-icon size="42" color="#94a3b8">mdi-clipboard-text-outline</v-icon>
-                    <strong>No orders in this view</strong>
-                    <span>Use New, Lab, Imaging or Medication to place an order from Patient 360.</span>
+                    <strong>{{ $t('clinical360.workspace.no_orders_view') }}</strong>
+                    <span>{{ $t('clinical360.workspace.no_orders_hint') }}</span>
                   </div>
                 </div>
 
                 <aside class="order-sidebar-panel">
                   <div class="order-sidebar-tabs">
-                    <button type="button" :class="{ active: selectedOrderPanel === 'manage' }" @click="selectedOrderPanel = 'manage'">Manage Orders</button>
-                    <button type="button" :class="{ active: selectedOrderPanel === 'sets' }" @click="selectedOrderPanel = 'sets'">Order Sets</button>
+                    <button type="button" :class="{ active: selectedOrderPanel === 'manage' }" @click="selectedOrderPanel = 'manage'">{{ $t('clinical360.workspace.manage_orders') }}</button>
+                    <button type="button" :class="{ active: selectedOrderPanel === 'sets' }" @click="selectedOrderPanel = 'sets'">{{ $t('clinical360.workspace.order_sets') }}</button>
                   </div>
 
                   <div class="order-provider">
                     <v-icon small color="#0f766e">mdi-account-tie</v-icon>
                     <div>
-                      <span>Providers</span>
+                      <span>{{ $t('clinical360.workspace.providers') }}</span>
                       <strong>{{ activePatient.provider || activePatient.attending || 'Provider not assigned' }}</strong>
                     </div>
                   </div>
 
                   <div class="order-search-row">
-                    <input v-model="orderSearch" type="search" placeholder="Place orders, order sets, or pathways">
+                    <input v-model="orderSearch" type="search" :placeholder="$t('clinical360.workspace.navigation.place_orders_search')">
                     <button type="button" @click="openOrderComposer(orderMode)">
                       <v-icon x-small>mdi-plus</v-icon>
-                      New
+                      {{ $t('clinical360.nursing.sidebar.new') }}
                     </button>
                   </div>
 
                   <label class="order-mode-row">
-                    <span>Select order mode</span>
+                    <span>{{ $t('clinical360.workspace.select_order_mode') }}</span>
                     <select v-model="orderMode">
                       <option v-for="option in orderModeOptions" :key="option" :value="option">{{ option }}</option>
                     </select>
@@ -1031,20 +1031,20 @@
             <section v-else-if="selectedChartTab === 'MAR'" class="emar-workspace">
               <div class="emar-command">
                 <div>
-                  <span>eMAR</span>
-                  <strong>Medication Administration Record</strong>
+                  <span>{{ $t('clinical360.workspace.emar') }}</span>
+                  <strong>{{ $t('clinical360.workspace.mar_full') }}</strong>
                 </div>
                 <div class="emar-command-actions">
                   <v-btn x-small depressed color="#0f766e" dark @click="openMarQuickScan">
-                    <v-icon x-small left>mdi-barcode-scan</v-icon>Scan med
+                    <v-icon x-small left>mdi-barcode-scan</v-icon>{{ $t('clinical360.workspace.scan_medication') }}
                   </v-btn>
                   <v-btn v-if="canLaunchPrescription" x-small depressed color="#7c3aed" dark @click="openChartDialog('medication')">
-                    <v-icon x-small left>mdi-pill-plus</v-icon>Medication order
+                    <v-icon x-small left>mdi-pill-plus</v-icon>{{ $t('clinical360.workspace.medication_order') }}
                   </v-btn>
                 </div>
               </div>
 
-              <div class="emar-tabs" role="tablist" aria-label="eMAR views">
+              <div class="emar-tabs" role="tablist" :aria-label="$t('clinical360.workspace.navigation.emar_views')">
                 <button
                   v-for="tab in marViewTabs"
                   :key="tab.key"
@@ -1059,20 +1059,20 @@
 
               <div class="emar-controls">
                 <label>
-                  <span>Go to</span>
+                  <span>{{ $t('clinical360.workspace.go_to') }}</span>
                   <select v-model="marTimeFocus">
                     <option v-for="time in marTimeColumns" :key="time" :value="time">{{ time }}</option>
                   </select>
                 </label>
                 <label class="emar-toggle">
                   <input v-model="marShowEducation" type="checkbox">
-                  <span>Show Med Education</span>
+                  <span>{{ $t('clinical360.workspace.show_med_education') }}</span>
                 </label>
                 <label class="emar-toggle">
                   <input v-model="marHideAdmins" type="checkbox">
-                  <span>Hide All Admins</span>
+                  <span>{{ $t('clinical360.workspace.hide_all_admins') }}</span>
                 </label>
-                <input v-model="marSearch" class="emar-search" type="search" placeholder="Search medication, route, indication">
+                <input v-model="marSearch" class="emar-search" type="search" :placeholder="$t('clinical360.workspace.navigation.medication_search')">
               </div>
 
               <div class="emar-layout">
@@ -1092,7 +1092,7 @@
                   <section class="emar-advisories">
                     <header>
                       <v-icon small color="#be123c">mdi-alert-octagon</v-icon>
-                      <strong>Patient Chart Advisories</strong>
+                      <strong>{{ $t('clinical360.workspace.chart_advisories') }}</strong>
                     </header>
                     <article v-for="advisory in marAdvisories" :key="advisory.title" :class="advisory.level">
                       <strong>{{ advisory.title }}</strong>
@@ -1103,7 +1103,7 @@
                   <section class="emar-advisories">
                     <header>
                       <v-icon small color="#0f766e">mdi-school-outline</v-icon>
-                      <strong>Medication Education</strong>
+                      <strong>{{ $t('clinical360.workspace.medication_education') }}</strong>
                     </header>
                     <article v-for="row in marEducationCards" :key="row.label" class="education">
                       <strong>{{ row.label }}</strong>
@@ -1149,7 +1149,7 @@
                 <v-menu v-if="noteMenuOptions.length" offset-y>
                   <template #activator="{ on, attrs }">
                     <v-btn x-small depressed color="#0f766e" dark v-bind="attrs" v-on="on">
-                      <v-icon x-small left>mdi-note-plus</v-icon>New Note
+                      <v-icon x-small left>mdi-note-plus</v-icon>{{ $t('clinical360.workspace.new_note') }}
                       <v-icon x-small right>mdi-chevron-down</v-icon>
                     </v-btn>
                   </template>
@@ -1161,7 +1161,7 @@
                   </v-list>
                 </v-menu>
                 <v-btn v-if="canLaunchMedical" x-small depressed color="#1d4ed8" dark @click="openChartDialog('medical')">
-                  <v-icon x-small left>mdi-medical-bag</v-icon>Medical note (legacy)
+                  <v-icon x-small left>mdi-medical-bag</v-icon>{{ $t('clinical360.workspace.legacy_medical_note') }}
                 </v-btn>
               </div>
 
@@ -1180,10 +1180,10 @@
                       {{ formatShortDate(note.createdAt) }} &middot; {{ note.createdBy }}
                     </span>
                   </button>
-                  <div v-if="!signableNotes.length" class="notes-empty">No notes yet. Use New Note to document.</div>
+                  <div v-if="!signableNotes.length" class="notes-empty">{{ $t('clinical360.workspace.no_notes') }}</div>
 
                   <template v-if="legacyNoteEntries.length">
-                    <h3 class="legacy-heading">Legacy entries</h3>
+                    <h3 class="legacy-heading">{{ $t('clinical360.workspace.legacy_entries') }}</h3>
                     <div v-for="entry in legacyNoteEntries" :key="entry.id" class="notes-list-item legacy">
                       <strong>{{ entry.label }}</strong>
                       <span class="notes-meta">{{ entry.type }} &middot; {{ entry.recorded }}</span>
@@ -1200,11 +1200,11 @@
                         <p>{{ selectedNote.createdBy }} &middot; {{ formatShortDate(selectedNote.createdAt) }}</p>
                       </div>
                       <div class="notes-detail-actions">
-                        <v-btn v-if="selectedNote.status === 'draft'" x-small text color="#0f766e" @click="editSelectedNote">Edit</v-btn>
+                        <v-btn v-if="selectedNote.status === 'draft'" x-small text color="#0f766e" @click="editSelectedNote">{{ $t('clinical360.workspace.edit') }}</v-btn>
                         <v-btn v-if="selectedNote.status === 'draft'" x-small depressed color="#0f766e" dark @click="signSelectedNote">
-                          <v-icon x-small left>mdi-draw-pen</v-icon>Sign
+                          <v-icon x-small left>mdi-draw-pen</v-icon>{{ $t('clinical360.workspace.sign') }}
                         </v-btn>
-                        <v-btn v-if="selectedNote.status !== 'draft'" x-small text color="#7c3aed" @click="amendSelectedNote">Amend</v-btn>
+                        <v-btn v-if="selectedNote.status !== 'draft'" x-small text color="#7c3aed" @click="amendSelectedNote">{{ $t('clinical360.workspace.amend') }}</v-btn>
                         <v-btn v-if="selectedNote.status !== 'draft'" x-small text color="#0369a1" :disabled="selectedNote.sharedWithCareTeam" @click="shareSelectedNote">
                           {{ selectedNote.sharedWithCareTeam ? 'Shared' : 'Share' }}
                         </v-btn>
@@ -1213,15 +1213,15 @@
                     <p class="notes-body">{{ selectedNote.body }}</p>
 
                     <div v-if="amendingNoteId === selectedNote.id" class="amend-box">
-                      <v-textarea v-model="amendmentDraft" label="Amendment" rows="2" dense outlined />
+                      <v-textarea v-model="amendmentDraft" :label="$t('clinical360.workspace.fields.amendment')" rows="2" dense outlined />
                       <div class="amend-actions">
-                        <v-btn x-small text @click="amendingNoteId = null">Cancel</v-btn>
-                        <v-btn x-small depressed color="#7c3aed" dark @click="submitAmendment">Submit amendment</v-btn>
+                        <v-btn x-small text @click="amendingNoteId = null">{{ $t('clinical360.workspace.cancel') }}</v-btn>
+                        <v-btn x-small depressed color="#7c3aed" dark @click="submitAmendment">{{ $t('clinical360.workspace.submit_amendment') }}</v-btn>
                       </div>
                     </div>
 
                     <div v-if="selectedNote.amendments && selectedNote.amendments.length" class="notes-amendments">
-                      <h3>Amendments</h3>
+                      <h3>{{ $t('clinical360.workspace.amendments') }}</h3>
                       <div v-for="amendment in selectedNote.amendments" :key="amendment.id" class="amendment-row">
                         <span>{{ formatShortDate(amendment.at) }} &middot; {{ amendment.actor }}</span>
                         <p>{{ amendment.body }}</p>
@@ -1230,7 +1230,7 @@
                   </template>
                   <div v-else class="notes-empty-detail">
                     <v-icon size="42" color="#94a3b8">mdi-note-text-outline</v-icon>
-                    <span>Select a note to view details</span>
+                    <span>{{ $t('clinical360.workspace.select_note') }}</span>
                   </div>
                 </div>
               </div>
@@ -1368,11 +1368,11 @@
                   <p>{{ navigatorSectionContent.description }}</p>
                 </div>
                 <div class="navigator-section-pager">
-                  <button type="button" title="Previous subsection" aria-label="Previous subsection" :disabled="navigatorSectionIndex <= 0" @click="moveNavigatorSection(-1)">
+                  <button type="button" :title="$t('clinical360.workspace.navigation.previous_subsection')" :aria-label="$t('clinical360.workspace.navigation.previous_subsection')" :disabled="navigatorSectionIndex <= 0" @click="moveNavigatorSection(-1)">
                     <v-icon small>mdi-chevron-up</v-icon>
                   </button>
                   <b>{{ navigatorSectionIndex + 1 }} / {{ activeNavigatorSections.length }}</b>
-                  <button type="button" title="Next subsection" aria-label="Next subsection" :disabled="navigatorSectionIndex >= activeNavigatorSections.length - 1" @click="moveNavigatorSection(1)">
+                  <button type="button" :title="$t('clinical360.workspace.navigation.next_subsection')" :aria-label="$t('clinical360.workspace.navigation.next_subsection')" :disabled="navigatorSectionIndex >= activeNavigatorSections.length - 1" @click="moveNavigatorSection(1)">
                     <v-icon small>mdi-chevron-down</v-icon>
                   </button>
                 </div>
@@ -1380,7 +1380,7 @@
 
               <div class="navigator-readiness" :class="navigatorSectionContent.status">
                 <div>
-                  <span>Section readiness</span>
+                  <span>{{ $t('clinical360.workspace.section_readiness') }}</span>
                   <strong>{{ navigatorSectionContent.readiness }}%</strong>
                 </div>
                 <div class="navigator-readiness-track" role="progressbar" :aria-valuenow="navigatorSectionContent.readiness" aria-valuemin="0" aria-valuemax="100">
@@ -1400,7 +1400,7 @@
 
               <div class="navigator-continuity-grid">
                 <article>
-                  <header><v-icon x-small color="#0f766e">mdi-source-branch</v-icon><strong>Dependencies</strong></header>
+                  <header><v-icon x-small color="#0f766e">mdi-source-branch</v-icon><strong>{{ $t('clinical360.workspace.dependencies') }}</strong></header>
                   <ul>
                     <li v-for="item in navigatorSectionContent.dependencies" :key="item.label">
                       <span>{{ item.label }}</span>
@@ -1409,11 +1409,11 @@
                   </ul>
                 </article>
                 <article>
-                  <header><v-icon x-small color="#0f766e">mdi-account-arrow-right-outline</v-icon><strong>Continuity and ownership</strong></header>
+                  <header><v-icon x-small color="#0f766e">mdi-account-arrow-right-outline</v-icon><strong>{{ $t('clinical360.workspace.continuity_ownership') }}</strong></header>
                   <ul>
-                    <li><span>Primary owner</span><b>{{ activeNavigatorSectionMeta.owner }}</b></li>
-                    <li><span>Next action</span><b>{{ navigatorSectionContent.nextAction }}</b></li>
-                    <li><span>Patient state</span><b>{{ isPatientDischarged ? 'Read only' : 'Active care' }}</b></li>
+                    <li><span>{{ $t('clinical360.workspace.primary_owner') }}</span><b>{{ activeNavigatorSectionMeta.owner }}</b></li>
+                    <li><span>{{ $t('clinical360.workspace.next_action') }}</span><b>{{ navigatorSectionContent.nextAction }}</b></li>
+                    <li><span>{{ $t('clinical360.workspace.patient_state') }}</span><b>{{ isPatientDischarged ? $t('clinical360.workspace.read_only') : $t('clinical360.workspace.active_care') }}</b></li>
                   </ul>
                 </article>
               </div>
@@ -1426,7 +1426,7 @@
                   Health-Related Social Needs
                 </div>
                 <div class="sdoh-content">
-                  <div class="sdoh-wheel" aria-label="Social determinants of health summary">
+                  <div class="sdoh-wheel" :aria-label="$t('clinical360.workspace.navigation.sdoh_summary')">
                     <button
                       v-for="domain in sdohDomains"
                       :key="domain.key"
@@ -1461,7 +1461,7 @@
                         ></span>
                       </div>
                       <v-icon small color="#94a3b8">mdi-chevron-right</v-icon>
-                      <strong>Today</strong>
+                      <strong>{{ $t('clinical360.workspace.today') }}</strong>
                     </div>
                     <div class="popover-body">
                       <h4>{{ activeSdohDomain.date }}: {{ activeSdohDomain.summary }}</h4>
@@ -1483,102 +1483,102 @@
             <section v-else-if="selectedNavigator === 'shift'" class="navigator-workspace">
               <div class="navigator-banner">
                 <div>
-                  <strong>Shift Navigator</strong>
+                  <strong>{{ $t('clinical360.workspace.shift_navigator') }}</strong>
                   <span>{{ activePatient.name }} - active nursing shift</span>
                 </div>
                 <v-btn v-if="canLaunchNurse" x-small depressed color="#0f766e" dark @click="openChartDialog('nurse')">
-                  <v-icon x-small left>mdi-plus</v-icon>New Reading
+                  <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.workspace.new_reading') }}
                 </v-btn>
               </div>
               <FlowSection
-                title="Overview"
+                :title="$t('clinical360.workspace.navigation.overview')"
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="shiftOverviewRows"
               />
               <FlowSection
-                title="Signed/Held Orders"
+                :title="$t('clinical360.workspace.navigation.signed_held_orders')"
                 :columns="['Type', 'Status', 'Detail']"
                 :rows="signedHeldOrderRows"
               />
               <FlowSection
-                title="Release Orders"
+                :title="$t('clinical360.workspace.navigation.release_orders')"
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="releaseOrderRows"
               />
               <FlowSection
-                title="Care Everywhere"
+                :title="$t('clinical360.workspace.navigation.care_everywhere')"
                 :columns="['Authorization', 'Last Update', 'Action']"
                 :rows="careEverywhereRows"
               />
               <FlowSection
-                title="Quick Links"
+                :title="$t('clinical360.workspace.navigation.quick_links')"
                 :columns="['Destination', 'Status', 'Action']"
                 :rows="quickLinkRows"
               />
               <FlowSection
-                title="Delirium - GCS"
+                :title="$t('clinical360.workspace.navigation.delirium_gcs')"
                 required
                 :columns="flowColumns"
                 :rows="deliriumRows"
               />
               <FlowSection
-                title="Specimen Collection and Provider Notification"
+                :title="$t('clinical360.workspace.navigation.specimen_notification')"
                 :columns="['Status', 'Owner', 'Due']"
                 :rows="specimenNotificationRows"
               />
               <FlowSection
-                title="Assessments"
+                :title="$t('clinical360.workspace.navigation.assessments')"
                 :columns="['Last Filed']"
                 :rows="visibleAssessmentRows"
               />
               <FlowSection
-                title="Clinical Alerts"
+                :title="$t('clinical360.workspace.navigation.clinical_alerts')"
                 :columns="['Status', 'Source', 'Action']"
                 :rows="clinicalAlertRows"
               />
               <FlowSection
-                title="Vital Signs and Pain"
+                :title="$t('clinical360.workspace.navigation.vitals_pain')"
                 required
                 :columns="patientVitals.length ? ['Last Filed'] : flowColumns"
                 :rows="visibleVitalRows"
               />
               <FlowSection
-                title="Head to Toe"
+                :title="$t('clinical360.workspace.navigation.head_to_toe')"
                 :columns="['Last Filed', 'Concern', 'Action']"
                 :rows="headToToeRows"
               />
               <FlowSection
-                title="IV Assessment"
+                :title="$t('clinical360.workspace.navigation.iv_assessment')"
                 :columns="['Site', 'Status', 'Action']"
                 :rows="ivAssessmentRows"
               />
               <FlowSection
-                title="Intake and Output"
+                :title="$t('clinical360.workspace.navigation.intake_output')"
                 :columns="flowColumns"
                 :rows="intakeRows"
               />
               <FlowSection
-                title="Sepsis Screen"
+                :title="$t('clinical360.workspace.navigation.sepsis_screen')"
                 :columns="flowColumns"
                 :rows="sepsisRows"
               />
               <FlowSection
-                title="Rounds/Safety/Fall Risk"
+                :title="$t('clinical360.workspace.navigation.rounds_safety_fall')"
                 :columns="['Status', 'Risk', 'Action']"
                 :rows="safetyFallRows"
               />
               <FlowSection
-                title="Comfort and Hygiene"
+                :title="$t('clinical360.workspace.navigation.comfort_hygiene')"
                 :columns="['Status', 'Need', 'Action']"
                 :rows="comfortHygieneRows"
               />
               <FlowSection
-                title="Functional / Quality"
+                :title="$t('clinical360.workspace.navigation.functional_quality')"
                 :columns="['Status', 'Baseline', 'Goal']"
                 :rows="mobilityQualityRows"
               />
               <FlowSection
-                title="Plan of Care"
+                :title="$t('clinical360.workspace.navigation.plan_of_care')"
                 :columns="['Owner', 'Status', 'Next Step']"
                 :rows="carePlanRows"
               />
@@ -1587,51 +1587,51 @@
             <section v-else-if="selectedNavigator === 'admission'" class="navigator-workspace">
               <div class="navigator-banner">
                 <div>
-                  <strong>Admission Navigator</strong>
-                  <span>Admission, orders release and outside records</span>
+                  <strong>{{ $t('clinical360.workspace.admission_navigator') }}</strong>
+                  <span>{{ $t('clinical360.workspace.admission_navigator_detail') }}</span>
                 </div>
                 <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('document')">
-                  <v-icon x-small left>mdi-file-plus</v-icon>File admission document
+                  <v-icon x-small left>mdi-file-plus</v-icon>{{ $t('clinical360.workspace.file_admission_document') }}
                 </v-btn>
               </div>
               <FlowSection
-                title="Signed and Held Orders"
+                :title="$t('clinical360.workspace.navigation.signed_held_orders')"
                 :columns="['Type', 'Status', 'Detail']"
                 :rows="signedHeldOrderRows"
               />
               <FlowSection
-                title="Release Orders"
+                :title="$t('clinical360.workspace.navigation.release_orders')"
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="releaseOrderRows"
               />
               <FlowSection
-                title="Care Everywhere Outside Records"
+                :title="$t('clinical360.workspace.navigation.outside_records')"
                 :columns="['Authorization', 'Last Update', 'Action']"
                 :rows="careEverywhereRows"
               />
               <FlowSection
-                title="Quick Links"
+                :title="$t('clinical360.workspace.navigation.quick_links')"
                 :columns="['Destination', 'Status', 'Action']"
                 :rows="admissionQuickLinkRows"
               />
               <FlowSection
-                title="Documentation Review"
+                :title="$t('clinical360.workspace.navigation.documentation_review')"
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="admissionDocumentationRows"
               />
               <FlowSection
-                title="Intake and Output"
+                :title="$t('clinical360.workspace.navigation.intake_output')"
                 :columns="flowColumns"
                 :rows="intakeRows"
               />
               <FlowSection
-                title="Delirium - GCS"
+                :title="$t('clinical360.workspace.navigation.delirium_gcs')"
                 required
                 :columns="flowColumns"
                 :rows="deliriumRows"
               />
               <FlowSection
-                title="Sepsis Screen"
+                :title="$t('clinical360.workspace.navigation.sepsis_screen')"
                 :columns="flowColumns"
                 :rows="sepsisRows"
               />
@@ -1640,40 +1640,40 @@
             <section v-else-if="selectedNavigator === 'discharge'" class="navigator-workspace">
               <div class="navigator-banner">
                 <div>
-                  <strong>Discharge Navigator</strong>
-                  <span>Expected discharge, readiness, milestones, instructions and after visit summary</span>
+                  <strong>{{ $t('clinical360.workspace.discharge_navigator') }}</strong>
+                  <span>{{ $t('clinical360.workspace.discharge_navigator_detail') }}</span>
                 </div>
                 <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('discharge')">
-                  <v-icon x-small left>mdi-logout-variant</v-icon>File discharge bundle
+                  <v-icon x-small left>mdi-logout-variant</v-icon>{{ $t('clinical360.workspace.file_discharge_bundle') }}
                 </v-btn>
               </div>
               <div class="discharge-summary">
                 <div>
-                  <h3>Expected Discharge</h3>
+                  <h3>{{ $t('clinical360.workspace.expected_discharge') }}</h3>
                   <div class="segmented">
-                    <button>Today</button>
-                    <button class="active">Tomorrow</button>
-                    <button>Later</button>
+                    <button>{{ $t('clinical360.workspace.today') }}</button>
+                    <button class="active">{{ $t('clinical360.workspace.tomorrow') }}</button>
+                    <button>{{ $t('clinical360.workspace.later') }}</button>
                   </div>
                 </div>
                 <div>
-                  <h3>Medical Readiness for Discharge</h3>
+                  <h3>{{ $t('clinical360.workspace.medical_discharge_readiness') }}</h3>
                   <div class="segmented">
-                    <button>Ready Now</button>
-                    <button class="active">Not Yet Ready</button>
+                    <button>{{ $t('clinical360.workspace.ready_now') }}</button>
+                    <button class="active">{{ $t('clinical360.workspace.not_yet_ready') }}</button>
                   </div>
                 </div>
                 <div>
-                  <h3>Expected Time</h3>
+                  <h3>{{ $t('clinical360.workspace.expected_time') }}</h3>
                   <div class="segmented">
-                    <button>Morning</button>
-                    <button>Midday</button>
-                    <button class="active">Afternoon</button>
-                    <button>Evening</button>
+                    <button>{{ $t('clinical360.workspace.morning') }}</button>
+                    <button>{{ $t('clinical360.workspace.midday') }}</button>
+                    <button class="active">{{ $t('clinical360.workspace.afternoon') }}</button>
+                    <button>{{ $t('clinical360.workspace.evening') }}</button>
                   </div>
                 </div>
                 <div>
-                  <h3>Discharge Planning Comment</h3>
+                  <h3>{{ $t('clinical360.workspace.discharge_comment') }}</h3>
                   <p class="planning-comment">
                     {{ latestNursingNote ? latestNursingNote.observation || latestNursingNote.response : 'No discharge planning comment filed' }}
                   </p>
@@ -1681,33 +1681,33 @@
               </div>
 
               <FlowSection
-                title="Discharge Milestones and Delays"
+                :title="$t('clinical360.workspace.navigation.discharge_milestones')"
                 :columns="['Status', 'Owner', 'Due']"
                 :rows="dischargeRows"
               />
               <FlowSection
-                title="Quality Discharge"
+                :title="$t('clinical360.workspace.navigation.quality_discharge')"
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="dischargeQualityRows"
               />
               <FlowSection
-                title="Discharge Documentation"
+                :title="$t('clinical360.workspace.navigation.discharge_documentation')"
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="dischargeDocumentationRows"
               />
               <FlowSection
-                title="Discharge Instructions"
+                :title="$t('clinical360.workspace.navigation.discharge_instructions')"
                 required
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="dischargeInstructionRows"
               />
               <FlowSection
-                title="Follow-up Providers and After Visit Summary"
+                :title="$t('clinical360.workspace.navigation.follow_up_avs')"
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="afterVisitSummaryRows"
               />
               <FlowSection
-                title="Pain Impact"
+                :title="$t('clinical360.workspace.navigation.pain_impact')"
                 :columns="['Last Filed', 'Owner', 'Action']"
                 :rows="painImpactRows"
               />
@@ -1716,51 +1716,51 @@
             <section v-else-if="selectedNavigator === 'transfer'" class="navigator-workspace">
               <div class="navigator-banner">
                 <div>
-                  <strong>Transfer Navigator</strong>
-                  <span>Procedure, X-Ray transfer, ticket to ride, return handoff and monitoring</span>
+                  <strong>{{ $t('clinical360.workspace.transfer_navigator') }}</strong>
+                  <span>{{ $t('clinical360.workspace.transfer_navigator_detail') }}</span>
                 </div>
                 <v-btn x-small depressed color="#0f766e" dark @click="openChartDialog('document')">
-                  <v-icon x-small left>mdi-printer-check</v-icon>Print / file transfer packet
+                  <v-icon x-small left>mdi-printer-check</v-icon>{{ $t('clinical360.workspace.file_transfer_packet') }}
                 </v-btn>
               </div>
               <FlowSection
-                title="Pre-Procedure Checklist"
+                :title="$t('clinical360.workspace.navigation.pre_procedure')"
                 required
                 :columns="['Current admission']"
                 :rows="transferRows"
               />
               <FlowSection
-                title="Ticket to Ride - Procedure"
+                :title="$t('clinical360.workspace.navigation.ticket_procedure')"
                 :columns="['Status']"
                 :rows="ticketRows"
               />
               <FlowSection
-                title="Print Pre-Procedure Checklist, Med Rec Form, and Ticket to Ride"
+                :title="$t('clinical360.workspace.navigation.print_procedure_packet')"
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="transferPrintRows"
               />
               <FlowSection
-                title="Transfer to X-Ray"
+                :title="$t('clinical360.workspace.navigation.transfer_xray')"
                 :columns="['Status', 'Destination', 'Action']"
                 :rows="transferXrayRows"
               />
               <FlowSection
-                title="Ticket to Ride - X-Ray"
+                :title="$t('clinical360.workspace.navigation.ticket_xray')"
                 :columns="['Status', 'Destination', 'Action']"
                 :rows="ticketXrayRows"
               />
               <FlowSection
-                title="Upon Patient Return"
+                :title="$t('clinical360.workspace.navigation.patient_return')"
                 :columns="['Status', 'Owner', 'Action']"
                 :rows="patientReturnRows"
               />
               <FlowSection
-                title="Handoff"
+                :title="$t('clinical360.workspace.navigation.handoff')"
                 :columns="['Status', 'Owner', 'Concern']"
                 :rows="handoffRows"
               />
               <FlowSection
-                title="Vital Signs Monitoring"
+                :title="$t('clinical360.workspace.navigation.vitals_monitoring')"
                 required
                 :columns="patientVitals.length ? ['Last Filed'] : flowColumns"
                 :rows="visibleVitalRows"
@@ -1770,20 +1770,20 @@
             <section v-else-if="selectedNavigator === 'mar'" class="flowsheet">
               <div class="navigator-banner">
                 <div>
-                  <strong>Medication Administration Record</strong>
-                  <span>Scheduled, PRN, continuous and running infusion medication command</span>
+                  <strong>{{ $t('clinical360.workspace.mar_full') }}</strong>
+                  <span>{{ $t('clinical360.workspace.mar_navigator_detail') }}</span>
                 </div>
                 <v-btn x-small depressed color="#0f766e" dark @click="selectChartTab('MAR')">
-                  <v-icon x-small left>mdi-open-in-new</v-icon>Open full eMAR
+                  <v-icon x-small left>mdi-open-in-new</v-icon>{{ $t('clinical360.workspace.open_full_emar') }}
                 </v-btn>
               </div>
               <FlowSection
-                title="Medication Administration Record"
+                :title="$t('clinical360.workspace.navigation.mar')"
                 :columns="['0600', '1000', '1400', '1800']"
                 :rows="visibleMarRows"
               />
               <FlowSection
-                title="Medication Education"
+                :title="$t('clinical360.workspace.navigation.medication_education')"
                 :columns="['Status', 'Route', 'Instructions']"
                 :rows="medicationProfileRows"
               />
@@ -1791,13 +1791,13 @@
 
             <section v-else-if="selectedNavigator === 'vitals'" class="flowsheet">
               <FlowSection
-                title="Vital Signs and Pain"
+                :title="$t('clinical360.workspace.navigation.vitals_pain')"
                 required
                 :columns="patientVitals.length ? ['Last Filed'] : flowColumns"
                 :rows="visibleVitalRows"
               />
               <FlowSection
-                title="Nursing Assessment"
+                :title="$t('clinical360.workspace.navigation.nursing_assessment')"
                 :columns="latestVisit && latestVisit.assessment ? ['Last Filed'] : flowColumns"
                 :rows="visibleAssessmentRows"
               />
@@ -1805,7 +1805,7 @@
 
             <section v-else-if="selectedNavigator === 'careteam'" class="flowsheet">
               <FlowSection
-                title="Current Encounter Team"
+                :title="$t('clinical360.workspace.navigation.encounter_team')"
                 :columns="['Role', 'Shift', 'Contact']"
                 :rows="visibleCareTeamRows"
               />
@@ -1813,7 +1813,7 @@
 
             <section v-else-if="selectedNavigator === 'worklist'" class="flowsheet">
               <FlowSection
-                title="Work List"
+                :title="$t('clinical360.workspace.navigation.work_list')"
                 required
                 :columns="['Time', 'Priority', 'Status']"
                 :rows="visibleWorklistRows"
@@ -1853,7 +1853,7 @@
       <v-card class="chart-dialog">
         <v-card-title class="dialog-title">
           <div>
-            <span>Nursing encounter</span>
+            <span>{{ $t('clinical360.workspace.nursing_encounter') }}</span>
             <strong>{{ activePatient.name }}</strong>
           </div>
           <v-btn icon small @click="closeChartDialog('nurse')"><v-icon small>mdi-close</v-icon></v-btn>
@@ -1861,40 +1861,40 @@
         <v-card-text>
           <v-form ref="nurseFormRef" v-model="forms.nurseValid">
             <div class="dialog-grid three">
-              <v-text-field v-model="forms.nurse.vitals.bp" label="BP" dense outlined hide-details />
-              <v-text-field v-model.number="forms.nurse.vitals.hr" label="HR" type="number" dense outlined hide-details />
-              <v-text-field v-model.number="forms.nurse.vitals.rr" label="RR" type="number" dense outlined hide-details />
-              <v-text-field v-model.number="forms.nurse.vitals.temp" label="Temp C" type="number" step="0.1" dense outlined hide-details />
-              <v-text-field v-model.number="forms.nurse.vitals.spo2" label="SpO2 %" type="number" dense outlined hide-details />
-              <v-text-field v-model.number="forms.nurse.vitals.pain" label="Pain /10" type="number" min="0" max="10" dense outlined hide-details />
+              <v-text-field v-model="forms.nurse.vitals.bp" :label="$t('clinical360.workspace.fields.bp')" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.hr" :label="$t('clinical360.workspace.fields.hr')" type="number" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.rr" :label="$t('clinical360.workspace.fields.rr')" type="number" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.temp" :label="$t('clinical360.workspace.fields.temperature')" type="number" step="0.1" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.spo2" :label="$t('clinical360.workspace.fields.spo2')" type="number" dense outlined hide-details />
+              <v-text-field v-model.number="forms.nurse.vitals.pain" :label="$t('clinical360.workspace.fields.pain_10')" type="number" min="0" max="10" dense outlined hide-details />
             </div>
             <div class="dialog-grid three mt-3">
-              <v-select v-model.number="forms.nurse.vitals.gcsE" :items="gcsEyeOptions" item-text="text" item-value="value" label="GCS Eye" dense outlined hide-details />
-              <v-select v-model.number="forms.nurse.vitals.gcsV" :items="gcsVerbalOptions" item-text="text" item-value="value" label="GCS Verbal" dense outlined hide-details />
-              <v-select v-model.number="forms.nurse.vitals.gcsM" :items="gcsMotorOptions" item-text="text" item-value="value" label="GCS Motor" dense outlined hide-details />
+              <v-select v-model.number="forms.nurse.vitals.gcsE" :items="gcsEyeOptions" item-text="text" item-value="value" :label="$t('clinical360.workspace.fields.gcs_eye')" dense outlined hide-details />
+              <v-select v-model.number="forms.nurse.vitals.gcsV" :items="gcsVerbalOptions" item-text="text" item-value="value" :label="$t('clinical360.workspace.fields.gcs_verbal')" dense outlined hide-details />
+              <v-select v-model.number="forms.nurse.vitals.gcsM" :items="gcsMotorOptions" item-text="text" item-value="value" :label="$t('clinical360.workspace.fields.gcs_motor')" dense outlined hide-details />
             </div>
             <div class="dialog-grid two mt-3">
-              <v-text-field v-model="forms.nurse.encounter.chiefComplaint" label="Chief complaint" dense outlined :rules="[requiredRule]" />
-              <v-select v-model="forms.nurse.encounter.triageLevel" :items="triageLevels" label="Triage" dense outlined />
+              <v-text-field v-model="forms.nurse.encounter.chiefComplaint" :label="$t('clinical360.workspace.fields.chief_complaint')" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.nurse.encounter.triageLevel" :items="triageLevels" :label="$t('clinical360.workspace.fields.triage')" dense outlined />
             </div>
-            <v-textarea v-model="forms.nurse.encounter.historyOfIllness" label="History of illness" rows="2" dense outlined />
+            <v-textarea v-model="forms.nurse.encounter.historyOfIllness" :label="$t('clinical360.workspace.fields.history_illness')" rows="2" dense outlined />
             <div class="dialog-grid two">
-              <v-select v-model="forms.nurse.assessment.generalCondition" :items="generalConditionOptions" label="General condition" dense outlined />
-              <v-select v-model="forms.nurse.assessment.consciousness" :items="consciousnessOptions" label="Consciousness" dense outlined />
-              <v-select v-model="forms.nurse.assessment.respiratoryStatus" :items="respiratoryOptions" label="Respiratory status" dense outlined />
-              <v-select v-model="forms.nurse.assessment.nursingProblems" :items="nursingProblemsList" label="Nursing problems" multiple chips small-chips dense outlined />
+              <v-select v-model="forms.nurse.assessment.generalCondition" :items="generalConditionOptions" :label="$t('clinical360.workspace.fields.general_condition')" dense outlined />
+              <v-select v-model="forms.nurse.assessment.consciousness" :items="consciousnessOptions" :label="$t('clinical360.workspace.fields.consciousness')" dense outlined />
+              <v-select v-model="forms.nurse.assessment.respiratoryStatus" :items="respiratoryOptions" :label="$t('clinical360.workspace.fields.respiratory_status')" dense outlined />
+              <v-select v-model="forms.nurse.assessment.nursingProblems" :items="nursingProblemsList" :label="$t('clinical360.workspace.fields.nursing_problems')" multiple chips small-chips dense outlined />
             </div>
-            <v-select v-model="forms.nurse.note.actions" :items="nursingActionsList" label="Nursing actions" multiple chips small-chips dense outlined />
-            <v-textarea v-model="forms.nurse.note.observation" label="Observation" rows="2" dense outlined />
-            <v-textarea v-model="forms.nurse.note.response" label="Patient response / follow-up" rows="2" dense outlined />
+            <v-select v-model="forms.nurse.note.actions" :items="nursingActionsList" :label="$t('clinical360.workspace.fields.nursing_actions')" multiple chips small-chips dense outlined />
+            <v-textarea v-model="forms.nurse.note.observation" :label="$t('clinical360.workspace.fields.observation')" rows="2" dense outlined />
+            <v-textarea v-model="forms.nurse.note.response" :label="$t('clinical360.workspace.fields.patient_response_follow_up')" rows="2" dense outlined />
           </v-form>
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <span>GCS {{ nurseGcsScore }}/15</span>
           <v-spacer />
-          <v-btn text small @click="closeChartDialog('nurse')">Cancel</v-btn>
+          <v-btn text small @click="closeChartDialog('nurse')">{{ $t('clinical360.workspace.cancel') }}</v-btn>
           <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveNurseEncounter">
-            <v-icon x-small left>mdi-content-save</v-icon>File to 360
+            <v-icon x-small left>mdi-content-save</v-icon>{{ $t('clinical360.workspace.file_to_360') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1904,28 +1904,28 @@
       <v-card class="chart-dialog">
         <v-card-title class="dialog-title">
           <div>
-            <span>Medical note</span>
+            <span>{{ $t('clinical360.workspace.medical_note') }}</span>
             <strong>{{ activePatient.name }}</strong>
           </div>
           <v-btn icon small @click="closeChartDialog('medical')"><v-icon small>mdi-close</v-icon></v-btn>
         </v-card-title>
         <v-card-text>
           <v-form ref="medicalFormRef" v-model="forms.medicalValid">
-            <v-text-field v-model="forms.medical.chiefComplaint" label="Chief complaint" dense outlined :rules="[requiredRule]" />
-            <v-textarea v-model="forms.medical.clinicalFindings" label="Clinical findings" rows="3" dense outlined />
+            <v-text-field v-model="forms.medical.chiefComplaint" :label="$t('clinical360.workspace.fields.chief_complaint')" dense outlined :rules="[requiredRule]" />
+            <v-textarea v-model="forms.medical.clinicalFindings" :label="$t('clinical360.workspace.fields.clinical_findings')" rows="3" dense outlined />
             <div class="dialog-grid two">
-              <v-text-field v-model="forms.medical.diagnosis" label="Diagnosis" dense outlined :rules="[requiredRule]" />
-              <v-select v-model="forms.medical.severity" :items="severityOptions" label="Severity" dense outlined />
+              <v-text-field v-model="forms.medical.diagnosis" :label="$t('clinical360.workspace.fields.diagnosis')" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.medical.severity" :items="severityOptions" :label="$t('clinical360.workspace.fields.severity')" dense outlined />
             </div>
-            <v-textarea v-model="forms.medical.plan" label="Plan / orders / treatment" rows="3" dense outlined />
-            <v-textarea v-model="forms.medical.instructions" label="Patient instructions" rows="2" dense outlined />
+            <v-textarea v-model="forms.medical.plan" :label="$t('clinical360.workspace.fields.plan_treatment')" rows="3" dense outlined />
+            <v-textarea v-model="forms.medical.instructions" :label="$t('clinical360.workspace.fields.patient_instructions')" rows="2" dense outlined />
           </v-form>
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <v-spacer />
-          <v-btn text small @click="closeChartDialog('medical')">Cancel</v-btn>
+          <v-btn text small @click="closeChartDialog('medical')">{{ $t('clinical360.workspace.cancel') }}</v-btn>
           <v-btn depressed color="#1d4ed8" dark small :loading="savingDialog" @click="saveMedicalNote">
-            <v-icon x-small left>mdi-content-save</v-icon>File to 360
+            <v-icon x-small left>mdi-content-save</v-icon>{{ $t('clinical360.workspace.file_to_360') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1935,7 +1935,7 @@
       <v-card class="chart-dialog">
         <v-card-title class="dialog-title">
           <div>
-            <span>Laboratory order</span>
+            <span>{{ $t('clinical360.workspace.laboratory_order') }}</span>
             <strong>{{ activePatient.name }}</strong>
           </div>
           <v-btn icon small @click="closeChartDialog('lab')"><v-icon small>mdi-close</v-icon></v-btn>
@@ -1943,17 +1943,17 @@
         <v-card-text>
           <v-form ref="labFormRef" v-model="forms.orderValid">
             <div class="dialog-grid two">
-              <v-text-field v-model="forms.order.lab.testName" label="Lab test" dense outlined :rules="[requiredRule]" />
-              <v-select v-model="forms.order.lab.priority" :items="priorityOptions" label="Priority" dense outlined />
+              <v-text-field v-model="forms.order.lab.testName" :label="$t('clinical360.workspace.fields.lab_test')" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.order.lab.priority" :items="priorityOptions" :label="$t('clinical360.workspace.fields.priority')" dense outlined />
             </div>
-            <v-textarea v-model="forms.order.instructions" label="Clinical reason / specimen instructions" rows="2" dense outlined />
+            <v-textarea v-model="forms.order.instructions" :label="$t('clinical360.workspace.fields.specimen_instructions')" rows="2" dense outlined />
           </v-form>
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <v-spacer />
-          <v-btn text small @click="closeChartDialog('lab')">Cancel</v-btn>
+          <v-btn text small @click="closeChartDialog('lab')">{{ $t('clinical360.workspace.cancel') }}</v-btn>
           <v-btn depressed color="#0369a1" dark small :loading="savingDialog" @click="saveLabOrder">
-            <v-icon x-small left>mdi-flask</v-icon>Place lab order
+            <v-icon x-small left>mdi-flask</v-icon>{{ $t('clinical360.workspace.place_lab_order') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1963,7 +1963,7 @@
       <v-card class="chart-dialog">
         <v-card-title class="dialog-title">
           <div>
-            <span>Imaging order</span>
+            <span>{{ $t('clinical360.workspace.imaging_order') }}</span>
             <strong>{{ activePatient.name }}</strong>
           </div>
           <v-btn icon small @click="closeChartDialog('imaging')"><v-icon small>mdi-close</v-icon></v-btn>
@@ -1971,17 +1971,17 @@
         <v-card-text>
           <v-form ref="imagingFormRef" v-model="forms.orderValid">
             <div class="dialog-grid two">
-              <v-text-field v-model="forms.order.imaging.modality" label="Modality / exam" dense outlined :rules="[requiredRule]" />
-              <v-select v-model="forms.order.imaging.priority" :items="priorityOptions" label="Priority" dense outlined />
+              <v-text-field v-model="forms.order.imaging.modality" :label="$t('clinical360.workspace.fields.modality_exam')" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.order.imaging.priority" :items="priorityOptions" :label="$t('clinical360.workspace.fields.priority')" dense outlined />
             </div>
-            <v-textarea v-model="forms.order.instructions" label="Clinical indication / protocol notes" rows="2" dense outlined />
+            <v-textarea v-model="forms.order.instructions" :label="$t('clinical360.workspace.fields.protocol_notes')" rows="2" dense outlined />
           </v-form>
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <v-spacer />
-          <v-btn text small @click="closeChartDialog('imaging')">Cancel</v-btn>
+          <v-btn text small @click="closeChartDialog('imaging')">{{ $t('clinical360.workspace.cancel') }}</v-btn>
           <v-btn depressed color="#7c3aed" dark small :loading="savingDialog" @click="saveImagingOrder">
-            <v-icon x-small left>mdi-radiology-box</v-icon>Place imaging order
+            <v-icon x-small left>mdi-radiology-box</v-icon>{{ $t('clinical360.workspace.place_imaging_order') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1991,7 +1991,7 @@
       <v-card class="chart-dialog">
         <v-card-title class="dialog-title">
           <div>
-            <span>Medication order</span>
+            <span>{{ $t('clinical360.workspace.medication_order') }}</span>
             <strong>{{ activePatient.name }}</strong>
           </div>
           <v-btn icon small @click="closeChartDialog('medication')"><v-icon small>mdi-close</v-icon></v-btn>
@@ -2000,36 +2000,36 @@
           <v-form ref="medicationFormRef" v-model="forms.orderValid">
             <div class="dialog-grid two">
               <v-autocomplete v-model="forms.order.medication.medication" :items="orderDrugSuggestions" item-text="name" item-value="name"
-                label="Medication" dense outlined :disabled="!orderDrugSuggestions.length"
-                :placeholder="orderDrugSuggestions.length ? 'Select from the official price catalog...' : 'No priced drugs in this facility\'s catalog yet'"
+                :label="$t('clinical360.workspace.fields.medication')" dense outlined :disabled="!orderDrugSuggestions.length"
+                :placeholder="orderDrugSuggestions.length ? $t('clinical360.workspace.fields.select_catalog_medication') : $t('clinical360.workspace.fields.no_catalog_medication')"
                 :rules="[requiredRule, () => !!orderSelectedCatalogItem || 'Must be selected from the official price catalog']">
                 <template #append-outer>
-                  <v-btn v-if="currentRole === 'ADMIN'" icon small title="Add a drug to the price catalog" :to="'/admin/tarification'" target="_blank">
+                  <v-btn v-if="currentRole === 'ADMIN'" icon small :title="$t('clinical360.workspace.fields.add_catalog_drug')" :to="'/admin/tarification'" target="_blank">
                     <v-icon small>mdi-tag-plus-outline</v-icon>
                   </v-btn>
                 </template>
               </v-autocomplete>
-              <v-text-field v-model="forms.order.medication.dosage" label="Dose" dense outlined :rules="[requiredRule]" />
-              <v-select v-model="forms.order.medication.route" :items="medicationRoutes" label="Route" dense outlined :rules="[requiredRule]" />
-              <v-text-field v-model="forms.order.medication.frequency" label="Frequency" dense outlined :rules="[requiredRule]" />
-              <v-text-field v-model="forms.order.medication.medicationClass" label="Medication class" dense outlined readonly />
-              <v-text-field v-model="forms.order.medication.indication" label="Clinical indication / need" dense outlined />
-              <v-select v-model="forms.order.medication.form" :items="medicationForms" label="Form" dense outlined :rules="[requiredRule]" />
-              <v-select v-model="forms.order.medication.priority" :items="priorityOptions" label="Priority" dense outlined />
+              <v-text-field v-model="forms.order.medication.dosage" :label="$t('clinical360.workspace.fields.dose')" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.order.medication.route" :items="medicationRoutes" :label="$t('clinical360.workspace.fields.route')" dense outlined :rules="[requiredRule]" />
+              <v-text-field v-model="forms.order.medication.frequency" :label="$t('clinical360.workspace.fields.frequency')" dense outlined :rules="[requiredRule]" />
+              <v-text-field v-model="forms.order.medication.medicationClass" :label="$t('clinical360.workspace.fields.medication_class')" dense outlined readonly />
+              <v-text-field v-model="forms.order.medication.indication" :label="$t('clinical360.workspace.fields.clinical_indication')" dense outlined />
+              <v-select v-model="forms.order.medication.form" :items="medicationForms" :label="$t('clinical360.workspace.fields.form')" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.order.medication.priority" :items="priorityOptions" :label="$t('clinical360.workspace.fields.priority')" dense outlined />
             </div>
-            <v-textarea v-model="forms.order.instructions" label="Administration instructions" rows="2" dense outlined />
+            <v-textarea v-model="forms.order.instructions" :label="$t('clinical360.workspace.fields.administration_instructions')" rows="2" dense outlined />
             <div v-if="forms.order.medication.sideEffects || forms.order.medication.education || forms.order.medication.safetyWarnings" class="medication-order-support">
-              <div v-if="forms.order.medication.sideEffects"><strong>Common side effects</strong><span>{{ forms.order.medication.sideEffects }}</span></div>
-              <div v-if="forms.order.medication.education"><strong>Patient education</strong><span>{{ forms.order.medication.education }}</span></div>
-              <div v-if="forms.order.medication.safetyWarnings" class="warning"><strong>Safety verification</strong><span>{{ forms.order.medication.safetyWarnings }}</span></div>
+              <div v-if="forms.order.medication.sideEffects"><strong>{{ $t('clinical360.workspace.common_side_effects') }}</strong><span>{{ forms.order.medication.sideEffects }}</span></div>
+              <div v-if="forms.order.medication.education"><strong>{{ $t('clinical360.workspace.patient_education') }}</strong><span>{{ forms.order.medication.education }}</span></div>
+              <div v-if="forms.order.medication.safetyWarnings" class="warning"><strong>{{ $t('clinical360.workspace.safety_verification') }}</strong><span>{{ forms.order.medication.safetyWarnings }}</span></div>
             </div>
           </v-form>
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <v-spacer />
-          <v-btn text small @click="closeChartDialog('medication')">Cancel</v-btn>
+          <v-btn text small @click="closeChartDialog('medication')">{{ $t('clinical360.workspace.cancel') }}</v-btn>
           <v-btn depressed color="#0f766e" dark small :loading="savingDialog" :disabled="!orderSelectedCatalogItem" @click="saveMedicationOrder">
-            <v-icon x-small left>mdi-pill-plus</v-icon>Place medication order
+            <v-icon x-small left>mdi-pill-plus</v-icon>{{ $t('clinical360.workspace.place_medication_order') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -2039,7 +2039,7 @@
       <v-card class="chart-dialog">
         <v-card-title class="dialog-title">
           <div>
-            <span>eMAR documentation</span>
+            <span>{{ $t('clinical360.workspace.emar_documentation') }}</span>
             <strong>{{ selectedMarMedication ? selectedMarMedication.label : activePatient.name }}</strong>
           </div>
           <v-btn icon small @click="closeChartDialog('marAction')"><v-icon small>mdi-close</v-icon></v-btn>
@@ -2047,28 +2047,28 @@
         <v-card-text>
           <v-form ref="marActionFormRef" v-model="forms.marValid">
             <div class="dialog-grid three">
-              <v-select v-model="forms.mar.action" :items="marActionOptions" label="Action" dense outlined />
-              <v-select v-model="forms.mar.time" :items="marTimeColumns" label="Time" dense outlined />
-              <v-text-field v-model="forms.mar.barcode" label="Barcode / scan" dense outlined />
+              <v-select v-model="forms.mar.action" :items="marActionOptions" :label="$t('clinical360.workspace.fields.action')" dense outlined />
+              <v-select v-model="forms.mar.time" :items="marTimeColumns" :label="$t('clinical360.workspace.fields.time')" dense outlined />
+              <v-text-field v-model="forms.mar.barcode" :label="$t('clinical360.workspace.fields.barcode')" dense outlined />
             </div>
             <div class="dialog-grid two mt-3">
-              <v-text-field v-model="forms.mar.dose" label="Dose administered" dense outlined />
-              <v-text-field v-model="forms.mar.site" label="Site / line" dense outlined />
+              <v-text-field v-model="forms.mar.dose" :label="$t('clinical360.workspace.fields.dose_administered')" dense outlined />
+              <v-text-field v-model="forms.mar.site" :label="$t('clinical360.workspace.fields.site_line')" dense outlined />
             </div>
             <v-alert v-if="selectedMarMedication" dense text color="#0f766e" class="mb-3">
-              <strong>Administration instructions:</strong>
+              <strong>{{ $t('clinical360.workspace.administration_instructions') }}</strong>
               {{ selectedMarMedication.administrationInstructions }}
             </v-alert>
-            <v-textarea v-model="forms.mar.comment" label="Clinical comment / reason" rows="2" dense outlined />
-            <v-textarea v-model="forms.mar.patientResponse" label="Patient response / education" rows="2" dense outlined />
+            <v-textarea v-model="forms.mar.comment" :label="$t('clinical360.workspace.fields.clinical_comment')" rows="2" dense outlined />
+            <v-textarea v-model="forms.mar.patientResponse" :label="$t('clinical360.workspace.fields.patient_response_education')" rows="2" dense outlined />
           </v-form>
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <span>{{ selectedMarMedication ? selectedMarMedication.detail : 'Medication administration' }}</span>
           <v-spacer />
-          <v-btn text small @click="closeChartDialog('marAction')">Cancel</v-btn>
+          <v-btn text small @click="closeChartDialog('marAction')">{{ $t('clinical360.workspace.cancel') }}</v-btn>
           <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveMarAction">
-            <v-icon x-small left>mdi-content-save-check</v-icon>File eMAR action
+            <v-icon x-small left>mdi-content-save-check</v-icon>{{ $t('clinical360.workspace.file_emar_action') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -2078,7 +2078,7 @@
       <v-card class="chart-dialog">
         <v-card-title class="dialog-title">
           <div>
-            <span>Administration report</span>
+            <span>{{ $t('clinical360.workspace.administration_report') }}</span>
             <strong>{{ selectedMarMedication ? selectedMarMedication.label : '' }}</strong>
           </div>
           <v-btn icon small @click="dialogs.marReport = false"><v-icon small>mdi-close</v-icon></v-btn>
@@ -2098,7 +2098,7 @@
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <v-spacer />
-          <v-btn text small @click="dialogs.marReport = false">Close</v-btn>
+          <v-btn text small @click="dialogs.marReport = false">{{ $t('clinical360.workspace.close') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -2107,7 +2107,7 @@
       <v-card class="chart-dialog">
         <v-card-title class="dialog-title">
           <div>
-            <span>Clinical document</span>
+            <span>{{ $t('clinical360.workspace.clinical_document') }}</span>
             <strong>{{ activePatient.name }}</strong>
           </div>
           <v-btn icon small @click="closeChartDialog('document')"><v-icon small>mdi-close</v-icon></v-btn>
@@ -2115,17 +2115,17 @@
         <v-card-text>
           <v-form ref="documentFormRef" v-model="forms.documentValid">
             <div class="dialog-grid two">
-              <v-text-field v-model="forms.document.title" label="Document title" dense outlined :rules="[requiredRule]" />
-              <v-select v-model="forms.document.category" :items="documentCategories" label="Category" dense outlined />
+              <v-text-field v-model="forms.document.title" :label="$t('clinical360.workspace.fields.document_title')" dense outlined :rules="[requiredRule]" />
+              <v-select v-model="forms.document.category" :items="documentCategories" :label="$t('clinical360.workspace.fields.category')" dense outlined />
             </div>
-            <v-textarea v-model="forms.document.content" label="Document content" rows="6" dense outlined />
+            <v-textarea v-model="forms.document.content" :label="$t('clinical360.workspace.fields.document_content')" rows="6" dense outlined />
           </v-form>
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <v-spacer />
-          <v-btn text small @click="closeChartDialog('document')">Cancel</v-btn>
+          <v-btn text small @click="closeChartDialog('document')">{{ $t('clinical360.workspace.cancel') }}</v-btn>
           <v-btn depressed color="#0f766e" dark small :loading="savingDialog" @click="saveDocumentDialog">
-            <v-icon x-small left>mdi-file-check</v-icon>File document
+            <v-icon x-small left>mdi-file-check</v-icon>{{ $t('clinical360.workspace.file_document') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -2135,7 +2135,7 @@
       <v-card class="chart-dialog avatar-placement-dialog">
         <v-card-title class="dialog-title">
           <div>
-            <span>Avatar LDA / device map</span>
+            <span>{{ $t('clinical360.workspace.avatar_device_map') }}</span>
             <strong>{{ avatarPlacementDialogTitle }}</strong>
           </div>
           <v-btn icon small @click="closeAvatarPlacementDialog"><v-icon small>mdi-close</v-icon></v-btn>
@@ -2152,26 +2152,26 @@
               :items="avatarPlacementTools"
               item-text="label"
               item-value="key"
-              label="Element"
+              :label="$t('clinical360.workspace.fields.element')"
               dense
               outlined
               :disabled="avatarPlacementIsPersisted || isPatientDischarged"
               :rules="[requiredRule]"
               @change="syncAvatarPlacementType"
             />
-            <v-text-field v-model="forms.avatarPlacement.region" label="Detected anatomical region" dense outlined :readonly="isPatientDischarged" :rules="[requiredRule]" />
-            <v-select v-model="forms.avatarPlacement.status" :items="avatarPlacementStatusOptions" label="Clinical status" dense outlined :disabled="isPatientDischarged" :rules="[requiredRule]" />
-            <v-text-field v-model="forms.avatarPlacement.view" label="View" dense outlined readonly />
+            <v-text-field v-model="forms.avatarPlacement.region" :label="$t('clinical360.workspace.fields.anatomical_region')" dense outlined :readonly="isPatientDischarged" :rules="[requiredRule]" />
+            <v-select v-model="forms.avatarPlacement.status" :items="avatarPlacementStatusOptions" :label="$t('clinical360.workspace.fields.clinical_status')" dense outlined :disabled="isPatientDischarged" :rules="[requiredRule]" />
+            <v-text-field v-model="forms.avatarPlacement.view" :label="$t('clinical360.workspace.fields.view')" dense outlined readonly />
             <v-text-field v-model="forms.avatarPlacement.indication" :label="avatarPlacementIndicationLabel" dense outlined :readonly="isPatientDischarged" :rules="avatarPlacementRequiresIndication ? [requiredRule] : []" />
             <v-text-field v-model="forms.avatarPlacement.insertedAt" type="datetime-local" :label="avatarPlacementDateLabel" dense outlined :readonly="isPatientDischarged" />
-            <v-text-field v-model="forms.avatarPlacement.nextReviewAt" type="datetime-local" label="Next review due" dense outlined :readonly="isPatientDischarged" />
+            <v-text-field v-model="forms.avatarPlacement.nextReviewAt" type="datetime-local" :label="$t('clinical360.workspace.fields.next_review')" dense outlined :readonly="isPatientDischarged" />
             <v-text-field v-if="avatarPlacementShowsSize" v-model="forms.avatarPlacement.sizeGauge" :label="avatarPlacementSizeLabel" dense outlined :readonly="isPatientDischarged" />
             <v-text-field v-if="avatarPlacementShowsOutput" v-model="forms.avatarPlacement.output" :label="avatarPlacementOutputLabel" dense outlined :readonly="isPatientDischarged" />
-            <v-select v-if="forms.avatarPlacement.type === 'pain'" v-model="forms.avatarPlacement.painScore" :items="painScoreOptions" label="Pain score / 10" dense outlined :disabled="isPatientDischarged" />
-            <v-text-field v-model="forms.avatarPlacement.siteCondition" label="Site / skin condition" dense outlined :readonly="isPatientDischarged" />
+            <v-select v-if="forms.avatarPlacement.type === 'pain'" v-model="forms.avatarPlacement.painScore" :items="painScoreOptions" :label="$t('clinical360.workspace.fields.pain_score')" dense outlined :disabled="isPatientDischarged" />
+            <v-text-field v-model="forms.avatarPlacement.siteCondition" :label="$t('clinical360.workspace.fields.site_condition')" dense outlined :readonly="isPatientDischarged" />
             <v-text-field v-model="forms.avatarPlacement.siteCare" :label="avatarPlacementSiteCareLabel" dense outlined :readonly="isPatientDischarged" />
-            <v-text-field v-model="forms.avatarPlacement.dressing" label="Dressing / securement" dense outlined :readonly="isPatientDischarged" />
-            <v-text-field v-if="avatarPlacementIsEnding" v-model="forms.avatarPlacement.removalReason" label="Removal / resolution reason" dense outlined :readonly="isPatientDischarged" :rules="[requiredRule]" />
+            <v-text-field v-model="forms.avatarPlacement.dressing" :label="$t('clinical360.workspace.fields.dressing_securement')" dense outlined :readonly="isPatientDischarged" />
+            <v-text-field ref="avatarRemovalReason" v-if="avatarPlacementIsEnding" v-model="forms.avatarPlacement.removalReason" :label="$t('clinical360.workspace.fields.removal_reason')" dense outlined :readonly="isPatientDischarged" :rules="[requiredRule]" />
           </div>
           <v-textarea
             v-model="forms.avatarPlacement.notes"
@@ -2195,12 +2195,12 @@
             small
             @click="prepareAvatarPlacementRemoval"
           >
-            <v-icon x-small left>mdi-medical-bag</v-icon>End / remove
+            <v-icon x-small left>mdi-medical-bag</v-icon>{{ $t('clinical360.workspace.end_remove') }}
           </v-btn>
           <v-spacer />
           <v-btn text small @click="closeAvatarPlacementDialog">{{ isPatientDischarged ? 'Close' : 'Cancel' }}</v-btn>
           <v-btn v-if="!isPatientDischarged" depressed color="#0f766e" dark small :loading="savingDialog" @click="saveAvatarPlacement">
-            <v-icon x-small left>mdi-content-save</v-icon>Save location
+            <v-icon x-small left>mdi-content-save</v-icon>{{ $t('clinical360.workspace.save_location') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -2209,20 +2209,20 @@
     <v-dialog v-model="dialogs.clearAvatar" max-width="560" persistent>
       <v-card class="chart-dialog">
         <v-card-title class="dialog-title">
-          <div><span>Avatar safety action</span><strong>Clear active markers</strong></div>
+          <div><span>{{ $t('clinical360.workspace.avatar_safety_action') }}</span><strong>{{ $t('clinical360.workspace.clear_active_markers') }}</strong></div>
           <v-btn icon small @click="dialogs.clearAvatar = false"><v-icon small>mdi-close</v-icon></v-btn>
         </v-card-title>
         <v-card-text>
           <v-alert tile dense type="warning" text class="mb-4">
             This will remove {{ avatarPlacements.length }} marker(s) from the visible body map. Wounds, device records, notes and audit history will remain available.
           </v-alert>
-          <v-textarea v-model.trim="avatarClearReason" label="Clinical reason for clearing the avatar" rows="3" dense outlined :rules="[requiredRule]" placeholder="Example: end of encounter review; active sites reconciled and will be remapped." />
+          <v-textarea v-model.trim="avatarClearReason" :label="$t('clinical360.workspace.fields.clear_avatar_reason')" rows="3" dense outlined :rules="[requiredRule]" :placeholder="$t('clinical360.workspace.fields.clear_avatar_example')" />
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <v-spacer />
-          <v-btn text small @click="dialogs.clearAvatar = false">Cancel</v-btn>
+          <v-btn text small @click="dialogs.clearAvatar = false">{{ $t('clinical360.workspace.cancel') }}</v-btn>
           <v-btn depressed color="#b91c1c" dark small :disabled="!avatarClearReason" :loading="savingDialog" @click="clearAvatarMarkers">
-            <v-icon x-small left>mdi-eraser-variant</v-icon>Clear visible markers
+            <v-icon x-small left>mdi-eraser-variant</v-icon>{{ $t('clinical360.workspace.clear_visible_markers') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -2302,8 +2302,8 @@
       <v-card class="tab-manager-dialog">
         <v-card-title class="tab-manager-title">
           <div>
-            <span>Patient 360</span>
-            <strong>Tab manager</strong>
+            <span>{{ $t('clinical360.workspace.patient_360') }}</span>
+            <strong>{{ $t('clinical360.workspace.tab_manager') }}</strong>
           </div>
           <v-spacer></v-spacer>
           <v-btn icon small @click="dialogs.tabManager = false">
@@ -2312,8 +2312,8 @@
         </v-card-title>
         <v-card-text>
           <div class="tab-manager-summary">
-            <p>Reorder, hide, and restore chart tabs per user preference.</p>
-            <small>Role access still applies. Hidden tabs stay hidden until restored.</small>
+            <p>{{ $t('clinical360.workspace.tab_manager_hint') }}</p>
+            <small>{{ $t('clinical360.workspace.tab_manager_access') }}</small>
           </div>
           <div class="tab-manager-grid">
             <article v-for="tab in tabManagerItems" :key="tab.key" :class="['tab-manager-item', { hidden: tab.hidden }]">
@@ -2342,10 +2342,10 @@
         </v-card-text>
         <v-card-actions>
           <v-btn text color="#0f766e" @click="resetChartTabPreferences">
-            <v-icon x-small left>mdi-restore</v-icon>Reset default
+            <v-icon x-small left>mdi-restore</v-icon>{{ $t('clinical360.workspace.reset_default') }}
           </v-btn>
           <v-spacer></v-spacer>
-          <v-btn text @click="dialogs.tabManager = false">Done</v-btn>
+          <v-btn text @click="dialogs.tabManager = false">{{ $t('clinical360.workspace.done') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -2354,36 +2354,36 @@
     <v-dialog v-model="showTransferDialog" max-width="500" persistent>
       <v-card tile flat class="b-1 pa-0">
         <div class="pa-4 white--text font-weight-black text-caption uppercase d-flex align-center justify-space-between" style="background:#003366!important; color:white!important;">
-          <span>TRANSFER PATIENT CARE</span>
+          <span>{{ $t('clinical360.workspace.transfer_patient_care') }}</span>
           <v-btn icon x-small dark @click="showTransferDialog = false"><v-icon small color="white">mdi-close</v-icon></v-btn>
         </div>
         <div class="pa-6" style="background:white;">
           <div class="mb-4">
-            <span class="text-caption font-weight-black grey--text text-uppercase">Patient</span>
+            <span class="text-caption font-weight-black grey--text text-uppercase">{{ $t('clinical360.workspace.patient') }}</span>
             <div class="text-body-2 font-weight-black">{{ activePatient.name }} ({{ activePatientId }})</div>
-            <div class="text-caption grey--text">Current Department: <strong>{{ activePatientRecord ? (activePatientRecord.currentDepartment || 'General Medicine') : 'General Medicine' }}</strong></div>
+            <div class="text-caption grey--text">{{ $t('clinical360.workspace.current_department') }} : <strong>{{ activePatientRecord ? (activePatientRecord.currentDepartment || $t('clinical360.workspace.general_medicine')) : $t('clinical360.workspace.general_medicine') }}</strong></div>
           </div>
           <v-divider class="mb-4" />
           <v-select
             v-model="transferForm.targetDepartment"
             :items="availableTransferDepartments"
-            label="Target Department"
+            :label="$t('clinical360.workspace.fields.target_department')"
             outlined tile dense required
             class="mb-3"
           ></v-select>
           <v-textarea
             v-model="transferForm.reason"
-            label="Reason for Transfer / Clinical Handoff"
+            :label="$t('clinical360.workspace.fields.transfer_reason')"
             rows="3"
             outlined tile dense
             class="mb-4"
           ></v-textarea>
           <v-row dense>
             <v-col cols="6">
-              <v-btn color="#00A99D" dark block height="44" tile depressed :loading="transferLoading" @click="submitTransfer" class="font-weight-black text-caption">CONFIRM TRANSFER</v-btn>
+              <v-btn color="#00A99D" dark block height="44" tile depressed :loading="transferLoading" @click="submitTransfer" class="font-weight-black text-caption">{{ $t('clinical360.workspace.confirm_transfer') }}</v-btn>
             </v-col>
             <v-col cols="6">
-              <v-btn color="grey lighten-2" block height="44" tile depressed @click="showTransferDialog = false" class="font-weight-black text-caption">CANCEL</v-btn>
+              <v-btn color="grey lighten-2" block height="44" tile depressed @click="showTransferDialog = false" class="font-weight-black text-caption">{{ $t('clinical360.workspace.cancel') }}</v-btn>
             </v-col>
           </v-row>
         </div>
@@ -6219,7 +6219,8 @@ export default {
       this.forms.avatarPlacement.status = this.forms.avatarPlacement.type === 'wound' ? 'Resolved' : 'Removed'
       this.forms.avatarPlacement.removalReason = ''
       this.$nextTick(() => {
-        const input = this.$el.querySelector('.avatar-placement-dialog input[aria-label="Removal / resolution reason"]')
+        const field = this.$refs.avatarRemovalReason
+        const input = field && field.$refs && field.$refs.input
         if (input) input.focus()
       })
     },
