@@ -33,6 +33,7 @@
           :key="`${med.id}-${time}`"
           type="button"
           :class="['emar-time-cell', cellFor(med.id, time).statusClass, { focus: focusTime === time }]"
+          :title="cellFor(med.id, time).statusDetail || cellFor(med.id, time).text"
           @click="$emit('cell-click', { medication: med, administration: cellFor(med.id, time).administration, defaultAction: cellFor(med.id, time).defaultAction })"
         >
           <v-icon v-if="cellFor(med.id, time).icon" x-small>{{ cellFor(med.id, time).icon }}</v-icon>
@@ -117,10 +118,10 @@ export default {
         return { statusClass: 'given', text: 'Given', icon, badge: 'mdi-check-circle', administration, defaultAction: 'details' }
       }
       if (status === 'Held') {
-        return { statusClass: 'held', text: 'Held', icon: '', badge: '', administration, defaultAction: 'details' }
+        return { statusClass: 'held', text: 'Held', icon: 'mdi-pause-circle-outline', badge: 'mdi-information-outline', statusDetail: administration.comment || administration.refusalReason || 'Medication held', administration, defaultAction: 'details' }
       }
       if (status === 'Not Available') {
-        return { statusClass: 'held', text: 'N/A', icon: '', badge: '', administration, defaultAction: 'details' }
+        return { statusClass: 'held', text: 'N/A', icon: 'mdi-alert-circle-outline', badge: '', statusDetail: administration.comment || 'Medication not available', administration, defaultAction: 'details' }
       }
       // Due
       const isPast = new Date(administration.scheduledFor).getTime() <= Date.now()

@@ -49,7 +49,7 @@
   </section>
 </template>
 <script>
-const { nextOccurrenceAt, reminderState } = require('../../../../services/clinical/workflowEngine')
+const { nextOccurrenceAt, reminderState, localDayKey } = require('../../../../services/clinical/workflowEngine')
 
 export default {
   name:'Patient360WorkListTab',
@@ -59,10 +59,11 @@ export default {
     canCreateTask(){return ['ADMIN','DOCTOR','NP','NURSE','CNA','MIDWIFE','MAJOR_SERVICE','NURSING_SUPERVISOR','LAB','IMAGING','PHARMACY','SOCIAL_WORKER','PHYSIOTHERAPIST'].includes(this.role)},
     canUpdateTask(){return this.canCreateTask},
     reminderOptions(){return[[0,'reminder_at_due_time'],[15,'reminder_15_before'],[30,'reminder_30_before'],[60,'reminder_1h_before'],[240,'reminder_4h_before']].map(([value,key])=>({value,text:this.$t(`clinical360.work_list.tab.${key}`)}))},
-    metrics(){return[{key:'all',label:this.$t('clinical360.work_list.tab.metric_open'),value:this.tasks.length},{key:'overdue',label:this.$t('clinical360.work_list.tab.metric_overdue'),value:this.tasks.filter(this.isOverdue).length},{key:'urgent',label:this.$t('clinical360.work_list.tab.metric_urgent_stat'),value:this.tasks.filter(t=>/urgent|stat|high/i.test(String(t.priority||''))).length},{key:'mine',label:this.$t('clinical360.work_list.tab.metric_my_role'),value:this.tasks.filter(t=>this.ownerLabel(t)===this.role).length}]},
-    tasksNeedingAttention(){this.nowTick;return this.tasks.filter(this.isAttentionDue)},
+    metrics(){return[{key:'all',label:this.$t('clinical360.work_list.tab.metric_open'),value:this.currentDayTasks.length},{key:'overdue',label:this.$t('clinical360.work_list.tab.metric_overdue'),value:this.currentDayTasks.filter(this.isOverdue).length},{key:'urgent',label:this.$t('clinical360.work_list.tab.metric_urgent_stat'),value:this.currentDayTasks.filter(t=>/urgent|stat|high/i.test(String(t.priority||''))).length},{key:'mine',label:this.$t('clinical360.work_list.tab.metric_my_role'),value:this.currentDayTasks.filter(t=>this.ownerLabel(t)===this.role).length}]},
+    currentDayTasks(){const today=localDayKey(this.nowTick);return this.tasks.filter(task=>{if(!task.dueAt)return localDayKey(task.createdAt||this.nowTick)===today;return localDayKey(task.dueAt)>=today})},
+    tasksNeedingAttention(){this.nowTick;return this.currentDayTasks.filter(this.isAttentionDue)},
     canConfirmStatus(){return Boolean(this.statusNote&&(this.pendingStatus!=='done'||(this.nextTitle&&this.nextDueAt)))},
-    filteredTasks(){const q=this.search.toLowerCase();return this.tasks.filter(t=>{if(this.filter==='overdue'&&!this.isOverdue(t))return false;if(this.filter==='urgent'&&!/urgent|stat|high/i.test(String(t.priority||'')))return false;if(this.filter==='mine'&&this.ownerLabel(t)!==this.role)return false;return !q||`${t.title||t.label||''} ${this.ownerLabel(t)} ${t.instructions||''}`.toLowerCase().includes(q)}).sort((a,b)=>{const rank=t=>this.isOverdue(t)?0:/urgent|stat|high/i.test(String(t.priority||''))?1:2;const r=rank(a)-rank(b);return r!==0?r:new Date(a.dueAt||a.createdAt||0)-new Date(b.dueAt||b.createdAt||0)})}
+    filteredTasks(){const q=this.search.toLowerCase();return this.currentDayTasks.filter(t=>{if(this.filter==='overdue'&&!this.isOverdue(t))return false;if(this.filter==='urgent'&&!/urgent|stat|high/i.test(String(t.priority||'')))return false;if(this.filter==='mine'&&this.ownerLabel(t)!==this.role)return false;return !q||`${t.title||t.label||''} ${this.ownerLabel(t)} ${t.instructions||''}`.toLowerCase().includes(q)}).sort((a,b)=>{const rank=t=>this.isOverdue(t)?0:/urgent|stat|high/i.test(String(t.priority||''))?1:2;const r=rank(a)-rank(b);return r!==0?r:new Date(a.dueAt||a.createdAt||0)-new Date(b.dueAt||b.createdAt||0)})}
   },
   mounted(){this.refreshReminders();this.reminderTimer=setInterval(this.refreshReminders,60000)},
   beforeDestroy(){if(this.reminderTimer)clearInterval(this.reminderTimer)},

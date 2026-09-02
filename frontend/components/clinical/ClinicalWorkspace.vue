@@ -5078,7 +5078,7 @@ export default {
               'Not Available': { text: 'N/A', status: 'held', defaultAction: 'details' }
             }
             const resolved = map[administration.status] || { text: 'Due', status: 'due', defaultAction: 'given' }
-            return { time, ...resolved, administrationId: administration.id }
+            return { time, ...resolved, statusDetail: administration.comment || administration.refusalReason || '', administrationId: administration.id }
           })
         }
       })
@@ -7262,28 +7262,6 @@ export default {
             })
           }
         }
-        // This files the eMAR action as a closed history entry, not an open
-        // work-list item — the dose was already given/held/refused just now,
-        // so leaving it 'pending' with no dueAt made it pile up on the Work
-        // List forever (still showing days later, sorted by createdAt since
-        // it never had a due date to sort or expire by).
-        await this.$store.dispatch('clinical/createTask', {
-          patientId: this.activePatientId,
-          relatedType: 'emar',
-          relatedId: this.selectedMarMedication.id,
-          title: `eMAR ${action}: ${this.selectedMarMedication.label}`,
-          assignedToRole: 'NURSE',
-          priority: action === 'Held' || action === 'Refused' ? 'Today' : 'Routine',
-          status: 'done',
-          dueAt: new Date().toISOString(),
-          actionReason: [
-            `Time ${this.forms.mar.time}`,
-            this.forms.mar.dose ? `Dose ${this.forms.mar.dose}` : '',
-            this.forms.mar.site ? `Site ${this.forms.mar.site}` : '',
-            this.forms.mar.comment || '',
-            this.forms.mar.patientResponse || ''
-          ].filter(Boolean).join(' | ')
-        })
         this.closeChartDialog('marAction')
         this.toastSuccess(`eMAR action filed for ${this.selectedMarMedication.label}.`)
       } catch (e) {

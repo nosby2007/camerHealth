@@ -41,6 +41,12 @@ test('keeps only the current eMAR day and selects the newest matching slot', () 
   assert.equal(workflowEngine.latestAdministrationForSlot(today, 'med-1', '0800').id, 'today-new');
 });
 
+test('work-list day filtering identifies stale task occurrences', () => {
+  const today = workflowEngine.localDayKey(new Date(2026, 7, 31, 12));
+  assert.equal(workflowEngine.localDayKey(new Date(2026, 7, 30, 12)) < today, true);
+  assert.equal(workflowEngine.localDayKey(new Date(2026, 7, 31, 12)) >= today, true);
+});
+
 test('requires and links the next task when a work-list task is completed', () => {
   const next = workflowEngine.nextTaskFromCompletion({
     id: 'task-1', patientId: 'patient-1', title: 'Wound care', assignedToRole: 'NURSE', frequency: 'Daily', dueAt: '2026-08-29T08:00:00.000Z'
