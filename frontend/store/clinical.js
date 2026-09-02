@@ -909,7 +909,7 @@ export const actions = {
       ...task,
       id: 'TSK-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       ...tenantFields(rootState),
-      status: 'pending',
+      status: task.status || 'pending',
       seriesId: task.seriesId || null,
       parentTaskId: task.parentTaskId || null,
       occurrenceNumber: Number(task.occurrenceNumber || 1),

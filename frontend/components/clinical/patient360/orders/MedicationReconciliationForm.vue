@@ -306,13 +306,13 @@ export default {
     ...mapActions('nursing', ['completeMedicationReconciliation']),
     async submitForm() {
       if (!this.form.reconciledBy) {
-        alert('Please enter who performed the reconciliation')
+        alert(this.$t('clinical360.orders.med_reconciliation.alert_enter_reconciler'))
         return
       }
 
       const allSafetyChecks = Object.values(this.form.safetyChecks).every(v => v === true)
       if (!allSafetyChecks) {
-        alert('All safety checks must be completed')
+        alert(this.$t('clinical360.orders.med_reconciliation.alert_safety_checks_incomplete'))
         return
       }
 
@@ -326,7 +326,7 @@ export default {
         this.$emit('save', this.form)
       } catch (error) {
         console.error('Error completing medication reconciliation:', error)
-        alert('Error completing medication reconciliation')
+        alert(this.$t('clinical360.orders.med_reconciliation.alert_completion_error'))
       }
     }
   }

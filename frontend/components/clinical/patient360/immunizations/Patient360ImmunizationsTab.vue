@@ -1,25 +1,25 @@
 <template>
   <section class="module-shell">
     <header class="module-head">
-      <div><small>PREVENTION</small><h2>Immunization record</h2><p>Reconcile vaccines, source and next action.</p></div>
-      <v-btn v-if="canEdit" x-small depressed color="#0f766e" dark @click="openForm()"><v-icon x-small left>mdi-shield-plus-outline</v-icon>Document vaccine</v-btn>
+      <div><small>{{ $t('clinical360.immunizations.tab.section_label') }}</small><h2>{{ $t('clinical360.immunizations.tab.title') }}</h2><p>{{ $t('clinical360.immunizations.tab.subtitle') }}</p></div>
+      <v-btn v-if="canEdit" x-small depressed color="#0f766e" dark @click="openForm()"><v-icon x-small left>mdi-shield-plus-outline</v-icon>{{ $t('clinical360.immunizations.tab.document_vaccine') }}</v-btn>
     </header>
-    <div class="metrics"><span><b>{{ rows.length }}</b> reviewed</span><span><b>{{ dueCount }}</b> due / unknown</span><span><b>{{ completeCount }}</b> complete</span></div>
+    <div class="metrics"><span><b>{{ rows.length }}</b> {{ $t('clinical360.immunizations.tab.reviewed') }}</span><span><b>{{ dueCount }}</b> {{ $t('clinical360.immunizations.tab.due_unknown') }}</span><span><b>{{ completeCount }}</b> {{ $t('clinical360.immunizations.tab.complete') }}</span></div>
     <div class="record-table">
-      <div class="record-row heading"><span>Vaccine</span><span>Status</span><span>Date</span><span>Source</span><span></span></div>
+      <div class="record-row heading"><span>{{ $t('clinical360.immunizations.tab.col_vaccine') }}</span><span>{{ $t('clinical360.immunizations.tab.col_status') }}</span><span>{{ $t('clinical360.immunizations.tab.col_date') }}</span><span>{{ $t('clinical360.immunizations.tab.col_source') }}</span><span></span></div>
       <div v-for="row in rows" :key="row.key" class="record-row">
         <strong>{{ row.label }}</strong><span :class="['status', statusClass(row.status)]">{{ row.status }}</span><span>{{ row.date || '-' }}</span><span>{{ row.source }}</span>
-        <v-btn v-if="canEdit" icon x-small title="Update vaccine" @click="openForm(row)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
+        <v-btn v-if="canEdit" icon x-small :title="$t('clinical360.immunizations.tab.update_vaccine_title')" @click="openForm(row)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
       </div>
     </div>
     <v-dialog v-model="dialog" max-width="620" persistent>
-      <v-card><v-card-title class="dialog-title">Immunization documentation<v-spacer/><v-btn icon small @click="dialog=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title>
+      <v-card><v-card-title class="dialog-title">{{ $t('clinical360.immunizations.tab.dialog_title') }}<v-spacer/><v-btn icon small @click="dialog=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title>
         <v-card-text class="pt-4"><v-form ref="form">
-          <div class="form-grid"><v-select v-model="form.vaccine" :items="vaccines" label="Vaccine" dense outlined/><v-select v-model="form.status" :items="statuses" label="Status" dense outlined/></div>
-          <div class="form-grid"><v-text-field v-model="form.date" type="date" label="Date administered / verified" dense outlined/><v-select v-model="form.source" :items="sources" label="Source" dense outlined/></div>
-          <v-textarea v-model="form.note" label="Lot, site, reaction or reconciliation note" rows="3" dense outlined/>
+          <div class="form-grid"><v-select v-model="form.vaccine" :items="vaccines" :label="$t('clinical360.immunizations.tab.field_vaccine')" dense outlined/><v-select v-model="form.status" :items="statuses" :label="$t('clinical360.immunizations.tab.field_status')" dense outlined/></div>
+          <div class="form-grid"><v-text-field v-model="form.date" type="date" :label="$t('clinical360.immunizations.tab.field_date')" dense outlined/><v-select v-model="form.source" :items="sources" :label="$t('clinical360.immunizations.tab.field_source')" dense outlined/></div>
+          <v-textarea v-model="form.note" :label="$t('clinical360.immunizations.tab.field_note')" rows="3" dense outlined/>
         </v-form></v-card-text>
-        <v-card-actions><v-spacer/><v-btn text small @click="dialog=false">Cancel</v-btn><v-btn small depressed color="#0f766e" dark :loading="saving" @click="save">Save</v-btn></v-card-actions>
+        <v-card-actions><v-spacer/><v-btn text small @click="dialog=false">{{ $t('clinical360.immunizations.tab.cancel') }}</v-btn><v-btn small depressed color="#0f766e" dark :loading="saving" @click="save">{{ $t('clinical360.immunizations.tab.save') }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </section>

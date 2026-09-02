@@ -7262,6 +7262,11 @@ export default {
             })
           }
         }
+        // This files the eMAR action as a closed history entry, not an open
+        // work-list item — the dose was already given/held/refused just now,
+        // so leaving it 'pending' with no dueAt made it pile up on the Work
+        // List forever (still showing days later, sorted by createdAt since
+        // it never had a due date to sort or expire by).
         await this.$store.dispatch('clinical/createTask', {
           patientId: this.activePatientId,
           relatedType: 'emar',
@@ -7269,6 +7274,8 @@ export default {
           title: `eMAR ${action}: ${this.selectedMarMedication.label}`,
           assignedToRole: 'NURSE',
           priority: action === 'Held' || action === 'Refused' ? 'Today' : 'Routine',
+          status: 'done',
+          dueAt: new Date().toISOString(),
           actionReason: [
             `Time ${this.forms.mar.time}`,
             this.forms.mar.dose ? `Dose ${this.forms.mar.dose}` : '',

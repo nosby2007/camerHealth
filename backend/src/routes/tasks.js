@@ -24,7 +24,12 @@ const taskSchema = z.object({
   priority: z.string().nullable().optional(),
   dueAt: z.string().nullable().optional(),
   frequency: z.string().nullable().optional(),
-  actionReason: z.string().nullable().optional()
+  actionReason: z.string().nullable().optional(),
+  // Almost always omitted (defaults to 'pending', an open work-list item).
+  // Callers logging an action that already happened (e.g. an eMAR
+  // administration) pass 'done' so the entry files straight to history
+  // instead of sitting open on the work list forever.
+  status: z.enum(['pending', 'done']).nullable().optional()
 })
 
 // Union of the two task vocabularies in use: the department-wide worklist
@@ -63,6 +68,8 @@ router.post('/', authenticate, authorize(...TASK_ROLES), validate(taskSchema), a
   try {
     await requirePatientForFacility(req.body.patientId, req.user.facilityId, { select: { id: true } })
     const now = new Date()
+    const status = req.body.status || 'pending'
+    const reason = req.body.actionReason || 'Task created from clinical order'
     const task = await prisma.task.create({
       data: {
         patientId: req.body.patientId,
@@ -73,11 +80,11 @@ router.post('/', authenticate, authorize(...TASK_ROLES), validate(taskSchema), a
         assignedToRole: req.body.assignedToRole,
         assignedToId: req.body.assignedToId || null,
         priority: req.body.priority || 'Routine',
-        status: 'pending',
+        status,
         dueAt: req.body.dueAt ? new Date(req.body.dueAt) : null,
         frequency: req.body.frequency || null,
-        actionReason: req.body.actionReason || 'Task created from clinical order',
-        history: [{ action: 'CREATED', status: 'pending', actor: req.user.fullName || req.user.staffCode, at: now.toISOString(), reason: req.body.actionReason || 'Task created from clinical order' }],
+        actionReason: reason,
+        history: [{ action: 'CREATED', status, actor: req.user.fullName || req.user.staffCode, at: now.toISOString(), reason }],
         createdById: req.user.id
       }
     })

@@ -1,49 +1,49 @@
 <template>
   <section class="worklist-workspace">
-    <header class="module-header"><div><span>CARE DELIVERY</span><h2>Work List</h2><p>Prioritized care activities, ownership and completion for the current patient.</p></div><v-btn v-if="canCreateTask && !readOnly" x-small depressed color="#0f766e" dark @click="$emit('new-task')"><v-icon x-small left>mdi-plus</v-icon>New task</v-btn></header>
-    <div v-if="readOnly" class="read-only"><v-icon x-small>mdi-lock-outline</v-icon> Discharged chart. Work list is read only.</div>
-    <div v-if="tasksNeedingAttention.length" class="reminder-strip"><v-icon small color="#991b1b">mdi-bell-ring-outline</v-icon><strong>{{ tasksNeedingAttention.length }} task(s) due now or approaching</strong><span>The assigned care team must act or document a hold.</span></div>
+    <header class="module-header"><div><span>{{ $t('clinical360.work_list.tab.care_delivery') }}</span><h2>{{ $t('clinical360.work_list.tab.work_list') }}</h2><p>{{ $t('clinical360.work_list.tab.header_subtitle') }}</p></div><v-btn v-if="canCreateTask && !readOnly" x-small depressed color="#0f766e" dark @click="$emit('new-task')"><v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.work_list.tab.new_task') }}</v-btn></header>
+    <div v-if="readOnly" class="read-only"><v-icon x-small>mdi-lock-outline</v-icon> {{ $t('clinical360.work_list.tab.read_only_notice') }}</div>
+    <div v-if="tasksNeedingAttention.length" class="reminder-strip"><v-icon small color="#991b1b">mdi-bell-ring-outline</v-icon><strong>{{ $t('clinical360.work_list.tab.tasks_due_count', { count: tasksNeedingAttention.length }) }}</strong><span>{{ $t('clinical360.work_list.tab.reminder_strip_note') }}</span></div>
     <div class="worklist-tools">
       <div class="metrics">
         <button v-for="item in metrics" :key="item.key" :class="{active:filter===item.key}" @click="filter=item.key"><span>{{ item.label }}</span><strong>{{ item.value }}</strong></button>
       </div>
-      <label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="search" type="search" placeholder="Search task or owner" /></label>
+      <label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="search" type="search" :placeholder="$t('clinical360.work_list.tab.search_placeholder')" /></label>
     </div>
     <div class="task-board">
-      <div class="task-head"><span>Due</span><span>Care activity</span><span>Owner</span><span>Priority</span><span>Status</span><span>Actions</span></div>
+      <div class="task-head"><span>{{ $t('clinical360.work_list.tab.col_due') }}</span><span>{{ $t('clinical360.work_list.tab.col_care_activity') }}</span><span>{{ $t('clinical360.work_list.tab.col_owner') }}</span><span>{{ $t('clinical360.work_list.tab.col_priority') }}</span><span>{{ $t('clinical360.work_list.tab.col_status') }}</span><span>{{ $t('clinical360.work_list.tab.col_actions') }}</span></div>
       <div v-for="task in filteredTasks" :key="task.id || task.title" :class="['task-row',{attention:isAttentionDue(task)}]">
         <time :class="{overdue:isOverdue(task)}">{{ dueLabel(task) }}</time>
-        <div><strong>{{ task.title || task.label || 'Care task' }}</strong><small>{{ task.instructions || task.reason || task.relatedType || 'Patient care activity' }}</small></div>
-        <span><b>{{ ownerLabel(task) }}</b><small>{{ task.frequency || 'Once' }}</small></span>
-        <span><b :class="['priority',priorityClass(task)]">{{ task.priority || 'Routine' }}</b></span>
-        <span><b :class="['status',statusClass(task)]">{{ statusLabel(task) }}</b><small v-if="isAttentionDue(task)">Reminder active</small></span>
+        <div><strong>{{ task.title || task.label || $t('clinical360.work_list.tab.care_task') }}</strong><small>{{ task.instructions || task.actionReason || task.reason || task.relatedType || $t('clinical360.work_list.tab.patient_care_activity') }}</small></div>
+        <span><b>{{ ownerLabel(task) }}</b><small>{{ task.frequency || $t('clinical360.work_list.tab.once') }}</small></span>
+        <span><b :class="['priority',priorityClass(task)]">{{ task.priority || $t('clinical360.work_list.tab.routine') }}</b></span>
+        <span><b :class="['status',statusClass(task)]">{{ statusLabel(task) }}</b><small v-if="isAttentionDue(task)">{{ $t('clinical360.work_list.tab.reminder_active') }}</small></span>
         <div class="row-actions">
-          <v-btn v-if="canUpdateTask && !readOnly" x-small icon title="Complete task" @click="openStatusDialog(task,'done')"><v-icon small color="#15803d">mdi-check-circle-outline</v-icon></v-btn>
-          <v-btn v-if="canUpdateTask && !readOnly" x-small icon title="Place task on hold" @click="openStatusDialog(task,'hold')"><v-icon small color="#b45309">mdi-pause-circle-outline</v-icon></v-btn>
+          <v-btn v-if="canUpdateTask && !readOnly" x-small icon :title="$t('clinical360.work_list.tab.complete_task')" @click="openStatusDialog(task,'done')"><v-icon small color="#15803d">mdi-check-circle-outline</v-icon></v-btn>
+          <v-btn v-if="canUpdateTask && !readOnly" x-small icon :title="$t('clinical360.work_list.tab.place_task_on_hold')" @click="openStatusDialog(task,'hold')"><v-icon small color="#b45309">mdi-pause-circle-outline</v-icon></v-btn>
         </div>
       </div>
-      <div v-if="!filteredTasks.length" class="empty"><v-icon size="38" color="#94a3b8">mdi-clipboard-check-outline</v-icon><strong>No task in this view</strong><span>Create a task or change the selected filter.</span></div>
+      <div v-if="!filteredTasks.length" class="empty"><v-icon size="38" color="#94a3b8">mdi-clipboard-check-outline</v-icon><strong>{{ $t('clinical360.work_list.tab.no_task_title') }}</strong><span>{{ $t('clinical360.work_list.tab.no_task_hint') }}</span></div>
     </div>
     <v-dialog v-model="statusDialog" max-width="560" persistent>
       <v-card>
-        <v-card-title :class="['status-dialog-title', pendingStatus]"><div><span>WORK LIST</span><strong>{{ pendingStatus === 'done' ? 'Complete care task' : 'Place care task on hold' }}</strong></div><v-btn icon small @click="closeStatusDialog"><v-icon small>mdi-close</v-icon></v-btn></v-card-title>
+        <v-card-title :class="['status-dialog-title', pendingStatus]"><div><span>WORK LIST</span><strong>{{ pendingStatus === 'done' ? $t('clinical360.work_list.tab.complete_care_task') : $t('clinical360.work_list.tab.place_care_task_on_hold') }}</strong></div><v-btn icon small @click="closeStatusDialog"><v-icon small>mdi-close</v-icon></v-btn></v-card-title>
         <v-card-text class="pt-5">
-          <div class="selected-task"><small>Selected activity</small><strong>{{ pendingTask && (pendingTask.title || pendingTask.label) }}</strong></div>
-           <v-text-field v-model="performedAt" type="datetime-local" :label="pendingStatus === 'done' ? 'Completed date and time' : 'Status date and time'" dense outlined />
-           <v-textarea v-model.trim="statusNote" :label="pendingStatus === 'done' ? 'Care performed, outcome and patient response' : 'Reason for hold and follow-up needed'" rows="4" dense outlined :rules="[requiredRule]" />
+          <div class="selected-task"><small>{{ $t('clinical360.work_list.tab.selected_activity') }}</small><strong>{{ pendingTask && (pendingTask.title || pendingTask.label) }}</strong></div>
+           <v-text-field v-model="performedAt" type="datetime-local" :label="pendingStatus === 'done' ? $t('clinical360.work_list.tab.completed_date_time') : $t('clinical360.work_list.tab.status_date_time')" dense outlined />
+           <v-textarea v-model.trim="statusNote" :label="pendingStatus === 'done' ? $t('clinical360.work_list.tab.care_performed_label') : $t('clinical360.work_list.tab.hold_reason_label')" rows="4" dense outlined :rules="[requiredRule]" />
            <div v-if="pendingStatus === 'done'" class="next-task-panel">
-             <div class="next-task-heading"><v-icon small color="#0f766e">mdi-calendar-arrow-right</v-icon><div><strong>Schedule the next care task</strong><small>Completion closes only after the next longitudinal checkpoint is planned.</small></div></div>
-             <v-text-field v-model.trim="nextTitle" label="Next task" dense outlined :rules="[requiredRule]" />
+             <div class="next-task-heading"><v-icon small color="#0f766e">mdi-calendar-arrow-right</v-icon><div><strong>{{ $t('clinical360.work_list.tab.schedule_next_task') }}</strong><small>{{ $t('clinical360.work_list.tab.schedule_next_task_hint') }}</small></div></div>
+             <v-text-field v-model.trim="nextTitle" :label="$t('clinical360.work_list.tab.next_task')" dense outlined :rules="[requiredRule]" />
              <div class="next-task-grid">
-               <v-text-field v-model="nextDueAt" type="datetime-local" label="Next due date and time" dense outlined :rules="[requiredRule]" />
-               <v-select v-model="nextFrequency" :items="frequencies" label="Frequency" dense outlined />
-               <v-select v-model="nextAssignedToRole" :items="careRoles" label="Responsible discipline" dense outlined />
-               <v-select v-model="reminderMinutesBefore" :items="reminderOptions" item-text="text" item-value="value" label="Reminder" dense outlined />
+               <v-text-field v-model="nextDueAt" type="datetime-local" :label="$t('clinical360.work_list.tab.next_due_date_time')" dense outlined :rules="[requiredRule]" />
+               <v-select v-model="nextFrequency" :items="frequencies" :label="$t('clinical360.work_list.tab.frequency')" dense outlined />
+               <v-select v-model="nextAssignedToRole" :items="careRoles" :label="$t('clinical360.work_list.tab.responsible_discipline')" dense outlined />
+               <v-select v-model="reminderMinutesBefore" :items="reminderOptions" item-text="text" item-value="value" :label="$t('clinical360.work_list.tab.reminder')" dense outlined />
              </div>
-             <v-textarea v-model.trim="nextInstructions" label="Instructions / expected result for next occurrence" rows="2" dense outlined />
+             <v-textarea v-model.trim="nextInstructions" :label="$t('clinical360.work_list.tab.next_instructions')" rows="2" dense outlined />
            </div>
         </v-card-text>
-        <v-card-actions><v-spacer/><v-btn text small @click="closeStatusDialog">Cancel</v-btn><v-btn small depressed dark :color="pendingStatus === 'done' ? '#15803d' : '#b45309'" :disabled="!canConfirmStatus" @click="confirmStatus">{{ pendingStatus === 'done' ? 'Complete + schedule next' : 'Place on hold' }}</v-btn></v-card-actions>
+        <v-card-actions><v-spacer/><v-btn text small @click="closeStatusDialog">{{ $t('clinical360.work_list.tab.cancel') }}</v-btn><v-btn small depressed dark :color="pendingStatus === 'done' ? '#15803d' : '#b45309'" :disabled="!canConfirmStatus" @click="confirmStatus">{{ pendingStatus === 'done' ? $t('clinical360.work_list.tab.complete_and_schedule_next') : $t('clinical360.work_list.tab.place_on_hold') }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </section>
@@ -54,26 +54,28 @@ const { nextOccurrenceAt, reminderState } = require('../../../../services/clinic
 export default {
   name:'Patient360WorkListTab',
   props:{tasks:{type:Array,default:()=>[]},role:{type:String,default:''},readOnly:{type:Boolean,default:false}},
-  data:()=>({filter:'all',search:'',statusDialog:false,pendingTask:null,pendingStatus:'done',statusNote:'',performedAt:'',nextTitle:'',nextDueAt:'',nextFrequency:'Once',nextAssignedToRole:'NURSE',nextInstructions:'',reminderMinutesBefore:30,nowTick:Date.now(),reminderTimer:null,lastReminderSignature:'',frequencies:['Once','Each shift','Daily','BID','TID','QID','Every 4 hours','Every 8 hours','Weekly','PRN'],careRoles:['NURSE','DOCTOR','NP','CNA','MIDWIFE','LAB','IMAGING','PHARMACY','SOCIAL_WORKER','PHYSIOTHERAPIST','MAJOR_SERVICE'],reminderOptions:[{text:'At due time',value:0},{text:'15 minutes before',value:15},{text:'30 minutes before',value:30},{text:'1 hour before',value:60},{text:'4 hours before',value:240}],requiredRule:value=>Boolean(String(value||'').trim())||'Required'}),
+  data:()=>({filter:'all',search:'',statusDialog:false,pendingTask:null,pendingStatus:'done',statusNote:'',performedAt:'',nextTitle:'',nextDueAt:'',nextFrequency:'Once',nextAssignedToRole:'NURSE',nextInstructions:'',reminderMinutesBefore:30,nowTick:Date.now(),reminderTimer:null,lastReminderSignature:'',frequencies:['Once','Each shift','Daily','BID','TID','QID','Every 4 hours','Every 8 hours','Weekly','PRN'],careRoles:['NURSE','DOCTOR','NP','CNA','MIDWIFE','LAB','IMAGING','PHARMACY','SOCIAL_WORKER','PHYSIOTHERAPIST','MAJOR_SERVICE']}),
   computed:{
     canCreateTask(){return ['ADMIN','DOCTOR','NP','NURSE','CNA','MIDWIFE','MAJOR_SERVICE','NURSING_SUPERVISOR','LAB','IMAGING','PHARMACY','SOCIAL_WORKER','PHYSIOTHERAPIST'].includes(this.role)},
     canUpdateTask(){return this.canCreateTask},
-    metrics(){return[{key:'all',label:'Open',value:this.tasks.length},{key:'overdue',label:'Overdue',value:this.tasks.filter(this.isOverdue).length},{key:'urgent',label:'Urgent / STAT',value:this.tasks.filter(t=>/urgent|stat|high/i.test(String(t.priority||''))).length},{key:'mine',label:'My role',value:this.tasks.filter(t=>this.ownerLabel(t)===this.role).length}]},
+    reminderOptions(){return[[0,'reminder_at_due_time'],[15,'reminder_15_before'],[30,'reminder_30_before'],[60,'reminder_1h_before'],[240,'reminder_4h_before']].map(([value,key])=>({value,text:this.$t(`clinical360.work_list.tab.${key}`)}))},
+    metrics(){return[{key:'all',label:this.$t('clinical360.work_list.tab.metric_open'),value:this.tasks.length},{key:'overdue',label:this.$t('clinical360.work_list.tab.metric_overdue'),value:this.tasks.filter(this.isOverdue).length},{key:'urgent',label:this.$t('clinical360.work_list.tab.metric_urgent_stat'),value:this.tasks.filter(t=>/urgent|stat|high/i.test(String(t.priority||''))).length},{key:'mine',label:this.$t('clinical360.work_list.tab.metric_my_role'),value:this.tasks.filter(t=>this.ownerLabel(t)===this.role).length}]},
     tasksNeedingAttention(){this.nowTick;return this.tasks.filter(this.isAttentionDue)},
     canConfirmStatus(){return Boolean(this.statusNote&&(this.pendingStatus!=='done'||(this.nextTitle&&this.nextDueAt)))},
-    filteredTasks(){const q=this.search.toLowerCase();return this.tasks.filter(t=>{if(this.filter==='overdue'&&!this.isOverdue(t))return false;if(this.filter==='urgent'&&!/urgent|stat|high/i.test(String(t.priority||'')))return false;if(this.filter==='mine'&&this.ownerLabel(t)!==this.role)return false;return !q||`${t.title||t.label||''} ${this.ownerLabel(t)} ${t.instructions||''}`.toLowerCase().includes(q)}).sort((a,b)=>new Date(a.dueAt||a.createdAt||0)-new Date(b.dueAt||b.createdAt||0))}
+    filteredTasks(){const q=this.search.toLowerCase();return this.tasks.filter(t=>{if(this.filter==='overdue'&&!this.isOverdue(t))return false;if(this.filter==='urgent'&&!/urgent|stat|high/i.test(String(t.priority||'')))return false;if(this.filter==='mine'&&this.ownerLabel(t)!==this.role)return false;return !q||`${t.title||t.label||''} ${this.ownerLabel(t)} ${t.instructions||''}`.toLowerCase().includes(q)}).sort((a,b)=>{const rank=t=>this.isOverdue(t)?0:/urgent|stat|high/i.test(String(t.priority||''))?1:2;const r=rank(a)-rank(b);return r!==0?r:new Date(a.dueAt||a.createdAt||0)-new Date(b.dueAt||b.createdAt||0)})}
   },
   mounted(){this.refreshReminders();this.reminderTimer=setInterval(this.refreshReminders,60000)},
   beforeDestroy(){if(this.reminderTimer)clearInterval(this.reminderTimer)},
   methods:{
+    requiredRule(value){return Boolean(String(value||'').trim())||this.$t('clinical360.work_list.tab.required')},
     ownerLabel(t){return t.assignedToRole||t.assignedRole||t.owner||'CARE TEAM'},
     isOverdue(t){return Boolean(t.dueAt)&&new Date(t.dueAt)<new Date()&&!/done|complete|cancel/i.test(String(t.status||''))},
     isAttentionDue(t){return ['due','reminder'].includes(reminderState(t,new Date(this.nowTick)))},
-    dueLabel(t){if(!t.dueAt)return t.createdAt?new Date(t.createdAt).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'Not scheduled';return new Date(t.dueAt).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})},
-    statusLabel(t){return this.isOverdue(t)?'Overdue':(t.status||'Pending')},
+    dueLabel(t){if(!t.dueAt)return t.createdAt?new Date(t.createdAt).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):this.$t('clinical360.work_list.tab.not_scheduled');return new Date(t.dueAt).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})},
+    statusLabel(t){return this.isOverdue(t)?this.$t('clinical360.work_list.tab.overdue'):(t.status||this.$t('clinical360.work_list.tab.pending'))},
     statusClass(t){return this.isOverdue(t)?'overdue':/hold/i.test(String(t.status||''))?'hold':'open'},
     priorityClass(t){return /urgent|stat|high/i.test(String(t.priority||''))?'urgent':''},
-    openStatusDialog(task,status){this.pendingTask=task;this.pendingStatus=status;this.statusNote='';const now=new Date(Date.now()-new Date().getTimezoneOffset()*60000);this.performedAt=now.toISOString().slice(0,16);this.nextTitle=task.title||task.label||'Care task follow-up';this.nextFrequency=task.frequency||'Once';this.nextAssignedToRole=this.ownerLabel(task);this.nextInstructions=task.instructions||'';this.reminderMinutesBefore=Number(task.reminderMinutesBefore??30);const due=new Date(task.dueAt||0);const anchor=due>new Date()?due:new Date();const calculated=nextOccurrenceAt(task.frequency,anchor);const fallback=new Date(Date.now()+24*60*60*1000);const next=new Date(calculated||fallback);this.nextDueAt=new Date(next.getTime()-next.getTimezoneOffset()*60000).toISOString().slice(0,16);this.statusDialog=true},
+    openStatusDialog(task,status){this.pendingTask=task;this.pendingStatus=status;this.statusNote='';const now=new Date(Date.now()-new Date().getTimezoneOffset()*60000);this.performedAt=now.toISOString().slice(0,16);this.nextTitle=task.title||task.label||this.$t('clinical360.work_list.tab.care_task_follow_up');this.nextFrequency=task.frequency||'Once';this.nextAssignedToRole=this.ownerLabel(task);this.nextInstructions=task.instructions||'';this.reminderMinutesBefore=Number(task.reminderMinutesBefore??30);const due=new Date(task.dueAt||0);const anchor=due>new Date()?due:new Date();const calculated=nextOccurrenceAt(task.frequency,anchor);const fallback=new Date(Date.now()+24*60*60*1000);const next=new Date(calculated||fallback);this.nextDueAt=new Date(next.getTime()-next.getTimezoneOffset()*60000).toISOString().slice(0,16);this.statusDialog=true},
     closeStatusDialog(){this.statusDialog=false;this.pendingTask=null;this.statusNote=''},
     refreshReminders(){this.nowTick=Date.now();const signature=this.tasksNeedingAttention.map(task=>task.id).sort().join('|');if(signature&&signature!==this.lastReminderSignature)this.$emit('reminder',this.tasksNeedingAttention);this.lastReminderSignature=signature},
     confirmStatus(){if(!this.pendingTask||!this.canConfirmStatus)return;this.$emit('update-status',{task:this.pendingTask,status:this.pendingStatus,reason:this.statusNote,performedAt:new Date(this.performedAt).toISOString(),nextTitle:this.nextTitle,nextDueAt:this.nextDueAt?new Date(this.nextDueAt).toISOString():'',nextFrequency:this.nextFrequency,nextAssignedToRole:this.nextAssignedToRole,nextInstructions:this.nextInstructions,reminderMinutesBefore:this.reminderMinutesBefore});this.closeStatusDialog()}
