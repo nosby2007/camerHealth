@@ -37,7 +37,7 @@
       <div class="medication-table" role="table" :aria-label="$t('clinical360.medications.tab.aria_medication_list')">
         <div class="medication-head" role="row"><span>{{ $t('clinical360.medications.tab.col_medication') }}</span><span>{{ $t('clinical360.medications.tab.col_dose_route') }}</span><span>{{ $t('clinical360.medications.tab.col_schedule') }}</span><span>{{ $t('clinical360.medications.tab.col_pharmacy') }}</span><span>{{ $t('clinical360.medications.tab.col_education') }}</span></div>
         <article v-for="med in filteredMedications" :key="med.id" class="medication-row">
-          <span><strong>{{ medicationName(med) }}</strong><small>{{ med.medicationClass || catalogFor(med)?.medicationClass || $t('clinical360.medications.tab.class_not_labelled') }}</small></span>
+          <span><ClinicalHoverCard :title="medicationName(med)" :eyebrow="$t('clinical360.medications.tab.section_label')" :subtitle="med.frequency || $t('clinical360.medications.tab.not_scheduled')" :details="medicationHoverDetails(med)"><template #activator><strong class="detail-trigger">{{ medicationName(med) }}</strong></template></ClinicalHoverCard><small>{{ med.medicationClass || catalogFor(med)?.medicationClass || $t('clinical360.medications.tab.class_not_labelled') }}</small></span>
           <span><strong>{{ med.dose || med.dosage || $t('clinical360.medications.tab.per_order') }}</strong><small>{{ med.route || $t('clinical360.medications.tab.route_not_filed') }}</small></span>
           <span><strong>{{ med.frequency || $t('clinical360.medications.tab.not_scheduled') }}</strong><small>{{ med.status || $t('clinical360.medications.tab.status_active') }}</small></span>
           <span><b :class="['status', pharmacyStatusClass(med)]">{{ pharmacyStatusLabel(med) }}</b><small>{{ med.stockAction || med.dispenseLocation || $t('clinical360.medications.tab.hospital_pharmacy') }}</small></span>
@@ -82,10 +82,13 @@
 </template>
 
 <script>
+import ClinicalHoverCard from '../../ClinicalHoverCard.vue'
+
 const { MEDICATION_CATALOG, findMedicationCatalogItem } = require('../../../../util/medication-catalog.cjs')
 
 export default {
   name: 'Patient360MedicationTab',
+  components: { ClinicalHoverCard },
   props: {
     medications: { type: Array, default: () => [] },
     patient: { type: Object, default: () => ({}) },
@@ -129,6 +132,15 @@ export default {
       return status
     },
     pharmacyStatusClass(med) { const value = this.pharmacyStatus(med).toLowerCase(); return value.includes('out of stock') ? 'stockout' : value.includes('dispensed') && !value.includes('partial') ? 'complete' : value.includes('partial') ? 'partial' : 'pending' },
+    medicationHoverDetails(med) {
+      return [
+        { label: this.$t('clinical360.medications.tab.col_dose_route'), value: [med.dose || med.dosage, med.route].filter(Boolean).join(' · ') || this.$t('clinical360.medications.tab.per_order') },
+        { label: this.$t('clinical360.medications.tab.col_schedule'), value: med.frequency || this.$t('clinical360.medications.tab.not_scheduled') },
+        { label: this.$t('clinical360.medications.tab.col_pharmacy'), value: this.pharmacyStatusLabel(med) },
+        { label: this.$t('clinical360.medications.tab.col_education'), value: this.educationFor(med) },
+        { label: this.$t('clinical360.medications.tab.common_side_effects'), value: this.sideEffectsFor(med) }
+      ]
+    },
     printMedicationList() {
       if (!process.client) return
       const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]))

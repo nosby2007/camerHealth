@@ -42,7 +42,7 @@
           <span>{{ mode === 'lab' ? $t('clinical360.labs.tab.col_test_specimen') : $t('clinical360.labs.tab.col_exam_region') }}</span><span>{{ $t('clinical360.labs.tab.col_priority') }}</span><span>{{ $t('clinical360.labs.tab.col_status') }}</span><span>{{ mode === 'lab' ? $t('clinical360.labs.tab.col_result') : $t('clinical360.labs.tab.col_impression') }}</span><span>{{ mode === 'lab' ? $t('clinical360.labs.tab.col_collected_resulted') : $t('clinical360.labs.tab.col_ordered_reported') }}</span>
         </div>
         <button v-for="order in filteredOrders" :key="order.id" type="button" class="result-row" :class="{ selected: selectedId === order.id }" @click="selectedId = order.id">
-          <span><strong>{{ testName(order) }}</strong><small>{{ specimen(order) }}</small></span>
+          <span><ClinicalHoverCard :title="testName(order)" :eyebrow="mode === 'lab' ? $t('clinical360.labs.tab.laboratory') : $t('clinical360.labs.tab.imaging')" :subtitle="order.status || $t('clinical360.labs.tab.requested')" :details="orderHoverDetails(order)"><template #activator><strong class="detail-trigger">{{ testName(order) }}</strong></template></ClinicalHoverCard><small>{{ specimen(order) }}</small></span>
           <span><b :class="['priority', priorityClass(order.priority)]">{{ order.priority || $t('clinical360.labs.tab.routine') }}</b></span>
           <span><b :class="['status', statusClass(order)]">{{ order.status || $t('clinical360.labs.tab.requested') }}</b></span>
           <span><strong :class="flagClass(order)">{{ resultText(order) }}</strong><small>{{ referenceText(order) }}</small></span>
@@ -76,8 +76,11 @@
 </template>
 
 <script>
+import ClinicalHoverCard from '../../ClinicalHoverCard.vue'
+
 export default {
   name: 'Patient360LabResultsTab',
+  components: { ClinicalHoverCard },
   props: {
     orders: { type: Array, default: () => [] },
     imagingOrders: { type: Array, default: () => [] },
@@ -127,6 +130,15 @@ export default {
     priorityClass(priority) { return /stat|urgent/i.test(String(priority || '')) ? 'urgent' : '' },
     newOrder() { this.$emit(this.mode === 'lab' ? 'new-order' : 'new-imaging-order') },
     recordSelected() { this.$emit(this.mode === 'lab' ? 'record-result' : 'record-imaging-result', { orderId: this.selectedOrder?.id || '' }) }
+    ,orderHoverDetails(order) {
+      return [
+        { label: this.$t('clinical360.labs.tab.order_status'), value: order.status || this.$t('clinical360.labs.tab.requested') },
+        { label: this.mode === 'lab' ? this.$t('clinical360.labs.tab.specimen') : this.$t('clinical360.labs.tab.body_region'), value: this.specimen(order) },
+        { label: this.$t('clinical360.labs.tab.col_priority'), value: order.priority || this.$t('clinical360.labs.tab.routine') },
+        { label: this.mode === 'lab' ? this.$t('clinical360.labs.tab.col_result') : this.$t('clinical360.labs.tab.col_impression'), value: this.resultText(order) },
+        { label: this.$t('clinical360.labs.tab.comment'), value: this.detailText(order) }
+      ]
+    }
   }
 }
 </script>
