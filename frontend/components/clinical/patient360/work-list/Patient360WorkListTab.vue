@@ -13,7 +13,7 @@
       <div class="task-head"><span>{{ $t('clinical360.work_list.tab.col_due') }}</span><span>{{ $t('clinical360.work_list.tab.col_care_activity') }}</span><span>{{ $t('clinical360.work_list.tab.col_owner') }}</span><span>{{ $t('clinical360.work_list.tab.col_priority') }}</span><span>{{ $t('clinical360.work_list.tab.col_status') }}</span><span>{{ $t('clinical360.work_list.tab.col_actions') }}</span></div>
       <div v-for="task in filteredTasks" :key="task.id || task.title" :class="['task-row',{attention:isAttentionDue(task)}]">
         <time :class="{overdue:isOverdue(task)}">{{ dueLabel(task) }}</time>
-        <div><strong>{{ task.title || task.label || $t('clinical360.work_list.tab.care_task') }}</strong><small>{{ task.instructions || task.actionReason || task.reason || task.relatedType || $t('clinical360.work_list.tab.patient_care_activity') }}</small></div>
+        <div><ClinicalHoverCard :title="task.title || task.label || $t('clinical360.work_list.tab.care_task')" :eyebrow="$t('clinical360.work_list.tab.care_task')" :subtitle="dueLabel(task)" :details="taskHoverDetails(task)"><template #activator><strong class="detail-trigger">{{ task.title || task.label || $t('clinical360.work_list.tab.care_task') }}</strong></template></ClinicalHoverCard><small>{{ task.instructions || task.actionReason || task.reason || task.relatedType || $t('clinical360.work_list.tab.patient_care_activity') }}</small></div>
         <span><b>{{ ownerLabel(task) }}</b><small>{{ task.frequency || $t('clinical360.work_list.tab.once') }}</small></span>
         <span><b :class="['priority',priorityClass(task)]">{{ task.priority || $t('clinical360.work_list.tab.routine') }}</b></span>
         <span><b :class="['status',statusClass(task)]">{{ statusLabel(task) }}</b><small v-if="isAttentionDue(task)">{{ $t('clinical360.work_list.tab.reminder_active') }}</small></span>
@@ -50,9 +50,11 @@
 </template>
 <script>
 const { nextOccurrenceAt, reminderState, localDayKey } = require('../../../../services/clinical/workflowEngine')
+import ClinicalHoverCard from '../../ClinicalHoverCard.vue'
 
 export default {
   name:'Patient360WorkListTab',
+  components:{ClinicalHoverCard},
   props:{tasks:{type:Array,default:()=>[]},role:{type:String,default:''},readOnly:{type:Boolean,default:false}},
   data:()=>({filter:'all',search:'',statusDialog:false,pendingTask:null,pendingStatus:'done',statusNote:'',performedAt:'',nextTitle:'',nextDueAt:'',nextFrequency:'Once',nextAssignedToRole:'NURSE',nextInstructions:'',reminderMinutesBefore:30,nowTick:Date.now(),reminderTimer:null,lastReminderSignature:'',frequencies:['Once','Each shift','Daily','BID','TID','QID','Every 4 hours','Every 8 hours','Weekly','PRN'],careRoles:['NURSE','DOCTOR','NP','CNA','MIDWIFE','LAB','IMAGING','PHARMACY','SOCIAL_WORKER','PHYSIOTHERAPIST','MAJOR_SERVICE']}),
   computed:{
@@ -79,6 +81,7 @@ export default {
     openStatusDialog(task,status){this.pendingTask=task;this.pendingStatus=status;this.statusNote='';const now=new Date(Date.now()-new Date().getTimezoneOffset()*60000);this.performedAt=now.toISOString().slice(0,16);this.nextTitle=task.title||task.label||this.$t('clinical360.work_list.tab.care_task_follow_up');this.nextFrequency=task.frequency||'Once';this.nextAssignedToRole=this.ownerLabel(task);this.nextInstructions=task.instructions||'';this.reminderMinutesBefore=Number(task.reminderMinutesBefore??30);const due=new Date(task.dueAt||0);const anchor=due>new Date()?due:new Date();const calculated=nextOccurrenceAt(task.frequency,anchor);const fallback=new Date(Date.now()+24*60*60*1000);const next=new Date(calculated||fallback);this.nextDueAt=new Date(next.getTime()-next.getTimezoneOffset()*60000).toISOString().slice(0,16);this.statusDialog=true},
     closeStatusDialog(){this.statusDialog=false;this.pendingTask=null;this.statusNote=''},
     refreshReminders(){this.nowTick=Date.now();const signature=this.tasksNeedingAttention.map(task=>task.id).sort().join('|');if(signature&&signature!==this.lastReminderSignature)this.$emit('reminder',this.tasksNeedingAttention);this.lastReminderSignature=signature},
+    taskHoverDetails(task){return[{label:this.$t('clinical360.work_list.tab.col_owner'),value:this.ownerLabel(task)},{label:this.$t('clinical360.work_list.tab.col_priority'),value:task.priority||this.$t('clinical360.work_list.tab.routine')},{label:this.$t('clinical360.work_list.tab.col_status'),value:this.statusLabel(task)},{label:this.$t('clinical360.work_list.tab.frequency'),value:task.frequency||this.$t('clinical360.work_list.tab.once')},{label:this.$t('clinical360.work_list.tab.next_instructions'),value:task.instructions||task.actionReason||task.reason}]},
     confirmStatus(){if(!this.pendingTask||!this.canConfirmStatus)return;this.$emit('update-status',{task:this.pendingTask,status:this.pendingStatus,reason:this.statusNote,performedAt:new Date(this.performedAt).toISOString(),nextTitle:this.nextTitle,nextDueAt:this.nextDueAt?new Date(this.nextDueAt).toISOString():'',nextFrequency:this.nextFrequency,nextAssignedToRole:this.nextAssignedToRole,nextInstructions:this.nextInstructions,reminderMinutesBefore:this.reminderMinutesBefore});this.closeStatusDialog()}
   }
 }

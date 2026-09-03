@@ -12,7 +12,7 @@
       <div class="emar-medication">
         <div>
           <v-icon small :color="med.color">{{ med.icon }}</v-icon>
-          <strong>{{ med.label }}</strong>
+          <ClinicalHoverCard :title="med.label" :eyebrow="med.route" :subtitle="med.frequency" :details="medHoverDetails(med)"><template #activator><strong class="detail-trigger">{{ med.label }}</strong></template></ClinicalHoverCard>
         </div>
         <p>{{ med.detail }}</p>
         <div class="emar-med-meta">
@@ -70,6 +70,7 @@
 </template>
 
 <script>
+import ClinicalHoverCard from '../ClinicalHoverCard.vue'
 // Icon shown once a dose has actually been GIVEN, by dosage form — the user
 // asked specifically for this: what was administered should be visible at a
 // glance, not just a colored square. mdi has no dedicated feeding-tube icon,
@@ -85,6 +86,7 @@ const GIVEN_FORM_ICONS = {
 
 export default {
   name: 'EmarGrid',
+  components: { ClinicalHoverCard },
   props: {
     medications: { type: Array, default: () => [] }, // each: { id, label, detail, route, frequency, dispense, administrationInstructions, education, icon, color, statusClass, form }
     administrations: { type: Array, default: () => [] }, // raw MedicationAdministration rows for the visible patient
@@ -93,6 +95,14 @@ export default {
     showEducation: { type: Boolean, default: false }
   },
   methods: {
+    medHoverDetails(med) {
+      return [
+        { label: 'Dose', value: med.detail },
+        { label: 'Dispense', value: med.dispense },
+        { label: 'Instructions', value: med.administrationInstructions },
+        { label: 'Education', value: med.education }
+      ]
+    },
     formatDisplayTime(time) {
       return time
     },

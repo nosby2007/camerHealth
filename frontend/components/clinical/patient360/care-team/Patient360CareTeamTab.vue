@@ -12,7 +12,7 @@
     <div class="team-list">
       <article v-for="member in filteredMembers" :key="member.label">
         <div class="avatar">{{ initials(member.label) }}</div>
-        <div class="identity"><strong>{{ member.label }}</strong><span>{{ member.values.Role || $t('clinical360.care_team.tab.member.role_fallback') }}</span></div>
+        <div class="identity"><ClinicalHoverCard :title="member.label" :eyebrow="$t('clinical360.care_team.tab.eyebrow')" :details="memberHoverDetails(member)"><template #activator><strong class="detail-trigger">{{ member.label }}</strong></template></ClinicalHoverCard><span>{{ member.values.Role || $t('clinical360.care_team.tab.member.role_fallback') }}</span></div>
         <div><small>{{ $t('clinical360.care_team.tab.member.coverage_label') }}</small><strong>{{ member.values.Shift || $t('clinical360.care_team.tab.member.current_fallback') }}</strong></div>
         <div><small>{{ $t('clinical360.care_team.tab.member.contact_label') }}</small><strong>{{ member.values.Contact || $t('clinical360.care_team.tab.member.not_listed') }}</strong></div>
         <b :class="['team-status',memberStatus(member)]">{{ statusLabel(member) }}</b>
@@ -22,8 +22,10 @@
   </section>
 </template>
 <script>
+import ClinicalHoverCard from '../../ClinicalHoverCard.vue'
 export default {
   name:'Patient360CareTeamTab',
+  components:{ClinicalHoverCard},
   props:{members:{type:Array,default:()=>[]},patient:{type:Object,default:()=>({})},role:{type:String,default:''},readOnly:{type:Boolean,default:false}},
   data:()=>({filter:'all',search:''}),
   computed:{
@@ -35,7 +37,7 @@ export default {
     filters(){return[{key:'all',label:this.$t('clinical360.care_team.tab.filters.all'),count:this.members.length},{key:'bedside',label:this.$t('clinical360.care_team.tab.filters.bedside'),count:this.bedsideCount},{key:'consults',label:this.$t('clinical360.care_team.tab.filters.consults'),count:this.consultCount},{key:'on-call',label:this.$t('clinical360.care_team.tab.filters.on_call'),count:this.members.filter(m=>/on call|requested/i.test(String(m.values?.Shift||''))).length}]},
     filteredMembers(){const q=this.search.toLowerCase();return this.members.filter(m=>{const role=String(m.values?.Role||'');const shift=String(m.values?.Shift||'');if(this.filter==='bedside'&&!/nurse|midwife|cna|bedside|aide/i.test(role))return false;if(this.filter==='consults'&&!/consult|lab|imaging|pharmacy|diet|social|physio|diagnostic/i.test(role))return false;if(this.filter==='on-call'&&!/on call|requested/i.test(shift))return false;return !q||`${m.label} ${role} ${m.values?.Contact||''}`.toLowerCase().includes(q)})}
   },
-  methods:{initials(name){return String(name||'?').split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase()},memberStatus(member){return /completed|inactive/i.test(String(member.values?.Shift||''))?'inactive':/on call|requested/i.test(String(member.values?.Shift||''))?'on-call':'active'},statusLabel(member){const state=this.memberStatus(member);return state==='on-call'?this.$t('clinical360.care_team.tab.statuses.on_call'):state==='inactive'?this.$t('clinical360.care_team.tab.statuses.completed'):this.$t('clinical360.care_team.tab.statuses.active')}}
+  methods:{initials(name){return String(name||'?').split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase()},memberStatus(member){return /completed|inactive/i.test(String(member.values?.Shift||''))?'inactive':/on call|requested/i.test(String(member.values?.Shift||''))?'on-call':'active'},statusLabel(member){const state=this.memberStatus(member);return state==='on-call'?this.$t('clinical360.care_team.tab.statuses.on_call'):state==='inactive'?this.$t('clinical360.care_team.tab.statuses.completed'):this.$t('clinical360.care_team.tab.statuses.active')},memberHoverDetails(member){return[{label:this.$t('clinical360.care_team.tab.member.role_fallback'),value:member.values?.Role},{label:this.$t('clinical360.care_team.tab.member.coverage_label'),value:member.values?.Shift},{label:this.$t('clinical360.care_team.tab.member.contact_label'),value:member.values?.Contact},{label:this.$t('clinical360.care_team.tab.member.not_listed'),value:this.statusLabel(member)}]}}
 }
 </script>
 <style scoped>

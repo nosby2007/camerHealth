@@ -61,7 +61,13 @@
       </div>
       <div class="story-section compact">
         <span>{{ $t('clinical360.nursing.patient_context.admitted') }}</span>
-        <strong>{{ patient.admitted }}</strong>
+        <ClinicalHoverCard
+          :title="`${$t('clinical360.nursing.patient_context.admitted')} ${patient.admitted}`"
+          :eyebrow="$t('clinical360.nursing.patient_context.admitted')"
+          :details="[{ label: $t('clinical360.nursing.patient_context.patient_class'), value: patient.patientClass }, { label: $t('clinical360.nursing.patient_context.bed'), value: patient.bed }, { label: $t('clinical360.nursing.patient_context.expected_discharge'), value: patient.expectedDischarge }, { label: $t('clinical360.nursing.patient_context.admission_reason'), value: patient.admissionReason }]"
+        >
+          <template #activator><strong class="detail-trigger">{{ patient.admitted }}</strong></template>
+        </ClinicalHoverCard>
         <small>{{ patient.patientClass }}</small>
       </div>
       <div class="story-section compact">
@@ -122,8 +128,11 @@
 </template>
 
 <script>
+import ClinicalHoverCard from '../ClinicalHoverCard.vue'
+
 export default {
   name: 'LeftPatientPanel',
+  components: { ClinicalHoverCard },
   props: {
     patient: { type: Object, required: true },
     accessProfile: { type: Object, required: true },
