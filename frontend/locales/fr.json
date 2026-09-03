@@ -2687,6 +2687,24 @@
           "review_results": { "title": "Revoir les résultats et prescriptions", "instructions": "Revoir les nouveaux résultats et prescriptions; documenter l’interprétation clinique et le suivi requis." },
           "medication_reconciliation": { "title": "Rapprochement médicamenteux", "instructions": "Comparer la liste des médicaments aux prescriptions en cours et résoudre les écarts avec l’équipe soignante." },
           "specimen_follow_up": { "title": "Suivi des prélèvements", "instructions": "Vérifier les prélèvements en attente, leur statut et les exigences de communication des résultats critiques." }
+          ,"wound_assessment": { "title": "Évaluation de la plaie", "instructions": "Évaluer l’aspect, l’écoulement, la douleur et la peau environnante; documenter les mesures et l’escalade nécessaire." }
+          ,"discharge_teaching": { "title": "Éducation avant la sortie", "instructions": "Revoir les médicaments, signes d’alerte, rendez-vous et la reformulation par le patient avant la sortie." }
+          ,"skin_check": { "title": "Vérification de l’intégrité cutanée", "instructions": "Inspecter les zones de pression pendant les soins; documenter les constats et les mesures de prévention." }
+          ,"discharge_readiness": { "title": "Vérifier la préparation à la sortie", "instructions": "Revoir la stabilité clinique, les résultats en attente, les médicaments, le suivi et les obstacles à la sortie." }
+          ,"np_daily_assessment": { "title": "Évaluation quotidienne avancée", "instructions": "Réaliser l’évaluation ciblée, revoir la réponse au traitement et actualiser le plan de soins." }
+          ,"maternal_vitals": { "title": "Observations maternelles et fœtales", "instructions": "Relever les observations maternelles et l’évaluation fœtale selon le plan de maternité; signaler les anomalies." }
+          ,"postpartum_check": { "title": "Vérification du bien-être post-partum", "instructions": "Évaluer les saignements, la douleur, les signes vitaux, l’alimentation et le bien-être émotionnel; documenter les besoins." }
+          ,"medication_order_review": { "title": "Revue des prescriptions médicamenteuses", "instructions": "Vérifier les nouvelles prescriptions et modifications: dose, voie, interactions, allergies et horaires." }
+          ,"result_verification": { "title": "Validation d’un résultat de laboratoire", "instructions": "Vérifier l’exhaustivité, les valeurs de référence, les alertes critiques et la communication au clinicien responsable." }
+          ,"imaging_exam_preparation": { "title": "Préparation d’un examen d’imagerie", "instructions": "Confirmer l’identité, la préparation, le consentement, les allergies et le transport requis." }
+          ,"imaging_report_follow_up": { "title": "Suivi d’un compte rendu d’imagerie", "instructions": "Revoir les comptes rendus en attente et assurer la communication et le suivi des résultats urgents ou critiques." }
+          ,"mobility_session": { "title": "Séance de rééducation à la mobilité", "instructions": "Réaliser l’intervention prévue, évaluer la tolérance et documenter le niveau d’aide et les progrès." }
+          ,"exercise_plan_review": { "title": "Revue du programme d’exercices", "instructions": "Revoir les exercices, confirmer la technique sécuritaire et actualiser les objectifs ou précautions." }
+          ,"discharge_barrier_follow_up": { "title": "Suivi d’un obstacle à la sortie", "instructions": "Contacter le patient ou l’équipe au sujet des obstacles sociaux et documenter la prochaine action." }
+          ,"family_support_contact": { "title": "Contact de soutien familial", "instructions": "Évaluer le soutien de l’aidant, les besoins de communication et les ressources; documenter les orientations." }
+          ,"safety_huddle": { "title": "Briefing sécurité de l’unité", "instructions": "Revoir les risques, les effectifs, les chutes, l’isolement, les médicaments à haut risque et les escalades du quart." }
+          ,"staff_handoff_review": { "title": "Revue de la relève", "instructions": "Revoir la couverture des affectations, les patients à risque, les tâches en attente et les éléments non résolus." }
+          ,"overdue_task_review": { "title": "Revue des tâches en retard", "instructions": "Revoir les tâches cliniques en retard, désigner un responsable et documenter les obstacles ou l’escalade." }
         },
         "safety_type_allergies": "Allergies",
         "safety_type_precautions": "Précautions / isolement",

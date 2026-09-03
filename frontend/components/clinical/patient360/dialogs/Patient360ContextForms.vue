@@ -622,12 +622,30 @@ export default {
         ['pain', 'NURSE', 'pain_reassessment', 'Each shift'],
         ['intake-output', 'NURSE', 'intake_output', 'Each shift'],
         ['fall-safety', 'NURSE', 'fall_safety', 'Daily'],
+        ['wound-check', 'NURSE', 'wound_assessment', 'Daily'],
+        ['discharge-teaching', 'NURSE', 'discharge_teaching', 'Daily'],
         ['adl', 'CNA', 'activities_daily_living', 'Daily'],
         ['repositioning', 'CNA', 'repositioning', 'Every 4 hours'],
+        ['skin-check', 'CNA', 'skin_check', 'Each shift'],
         ['progress-note', 'DOCTOR', 'daily_progress_note', 'Daily'],
         ['review-results', 'DOCTOR', 'review_results', 'Daily'],
+        ['discharge-readiness', 'DOCTOR', 'discharge_readiness', 'Daily'],
+        ['np-assessment', 'NP', 'np_daily_assessment', 'Daily'],
+        ['maternal-vitals', 'MIDWIFE', 'maternal_vitals', 'Each shift'],
+        ['postpartum-check', 'MIDWIFE', 'postpartum_check', 'Daily'],
         ['med-reconciliation', 'PHARMACY', 'medication_reconciliation', 'Daily'],
-        ['specimen-follow-up', 'LAB', 'specimen_follow_up', 'Each shift']
+        ['med-order-review', 'PHARMACY', 'medication_order_review', 'Each shift'],
+        ['specimen-follow-up', 'LAB', 'specimen_follow_up', 'Each shift'],
+        ['result-verification', 'LAB', 'result_verification', 'Daily'],
+        ['exam-prep', 'IMAGING', 'imaging_exam_preparation', 'Each shift'],
+        ['report-follow-up', 'IMAGING', 'imaging_report_follow_up', 'Daily'],
+        ['mobility-session', 'PHYSIOTHERAPIST', 'mobility_session', 'Daily'],
+        ['exercise-plan', 'PHYSIOTHERAPIST', 'exercise_plan_review', 'Daily'],
+        ['discharge-barrier', 'SOCIAL_WORKER', 'discharge_barrier_follow_up', 'Daily'],
+        ['family-support', 'SOCIAL_WORKER', 'family_support_contact', 'Each shift'],
+        ['safety-huddle', 'MAJOR_SERVICE', 'safety_huddle', 'Each shift'],
+        ['staff-handoff', 'NURSING_SUPERVISOR', 'staff_handoff_review', 'Each shift'],
+        ['overdue-review', 'NURSING_SUPERVISOR', 'overdue_task_review', 'Daily']
       ]
       return templates
         .filter(([, role]) => role === this.forms.task.assignedToRole)

@@ -2687,6 +2687,24 @@
           "review_results": { "title": "Review results and orders", "instructions": "Review new results and orders; document clinical interpretation and required follow-up." },
           "medication_reconciliation": { "title": "Medication reconciliation", "instructions": "Compare the medication list with current orders and resolve discrepancies with the care team." },
           "specimen_follow_up": { "title": "Specimen follow-up", "instructions": "Check pending specimens, collection status and critical-result communication requirements." }
+          ,"wound_assessment": { "title": "Wound assessment", "instructions": "Assess wound appearance, drainage, pain and surrounding skin; document measurements and escalation needs." }
+          ,"discharge_teaching": { "title": "Discharge teaching", "instructions": "Review medications, warning signs, follow-up appointments and teach-back before discharge." }
+          ,"skin_check": { "title": "Skin integrity check", "instructions": "Inspect pressure areas and skin integrity during care; document findings and prevention actions." }
+          ,"discharge_readiness": { "title": "Review discharge readiness", "instructions": "Review clinical stability, pending results, medications, follow-up and barriers to discharge." }
+          ,"np_daily_assessment": { "title": "Daily advanced practice assessment", "instructions": "Complete focused assessment, review response to treatment and update the plan of care." }
+          ,"maternal_vitals": { "title": "Maternal and fetal observations", "instructions": "Record maternal observations and fetal assessment according to the maternity care plan; escalate abnormalities." }
+          ,"postpartum_check": { "title": "Postpartum wellbeing check", "instructions": "Assess bleeding, pain, vital signs, feeding and emotional wellbeing; document support needs." }
+          ,"medication_order_review": { "title": "Medication order review", "instructions": "Verify new and changed medication orders for dose, route, interactions, allergies and timing." }
+          ,"result_verification": { "title": "Laboratory result verification", "instructions": "Verify result completeness, reference range, critical flags and communication to the responsible clinician." }
+          ,"imaging_exam_preparation": { "title": "Imaging exam preparation", "instructions": "Confirm patient identity, preparation, consent, allergies and transport requirements for the exam." }
+          ,"imaging_report_follow_up": { "title": "Imaging report follow-up", "instructions": "Review pending reports and ensure urgent or critical findings are communicated and tracked." }
+          ,"mobility_session": { "title": "Mobility therapy session", "instructions": "Complete the planned mobility intervention, assess tolerance and document assistance level and progress." }
+          ,"exercise_plan_review": { "title": "Exercise plan review", "instructions": "Review exercises with the patient, confirm safe technique and update goals or precautions." }
+          ,"discharge_barrier_follow_up": { "title": "Discharge barrier follow-up", "instructions": "Contact the patient or care team about identified social barriers and document the next action." }
+          ,"family_support_contact": { "title": "Family support contact", "instructions": "Assess caregiver support, communication needs and available resources; document referrals or follow-up." }
+          ,"safety_huddle": { "title": "Unit safety huddle", "instructions": "Review safety risks, staffing, falls, isolation, high-alert medications and escalation items for the shift." }
+          ,"staff_handoff_review": { "title": "Staff handoff review", "instructions": "Review assignment coverage, high-risk patients, pending tasks and unresolved handoff items." }
+          ,"overdue_task_review": { "title": "Overdue task review", "instructions": "Review overdue clinical tasks, assign follow-up owners and document barriers or escalation." }
         },
         "safety_type_allergies": "Allergies",
         "safety_type_precautions": "Precautions / isolation",
