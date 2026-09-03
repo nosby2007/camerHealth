@@ -2589,6 +2589,8 @@
         "frequency": "Frequency",
         "reminder": "Reminder",
         "task_instructions": "Instructions and expected result",
+        "task_template": "Standard task template",
+        "task_template_placeholder": "Choose a standard task or leave blank for a new task",
         "cancel": "Cancel",
         "create_task_btn": "Create task",
         "safety_watch": "Safety watch",
@@ -2673,6 +2675,19 @@
           "response": { "verbalizes_understanding": "Verbalizes understanding", "demonstrated_understanding": "Demonstrated understanding", "needs_reinforcement": "Needs reinforcement", "refused_teaching": "Refused teaching" }
         },
         "required": "Required",
+        "templates": {
+          "hourly_rounding": { "title": "Patient rounding", "instructions": "Round on the assigned schedule; assess safety, comfort, call bell and immediate needs." },
+          "vital_signs": { "title": "Record vital signs", "instructions": "Measure and document vital signs; escalate values outside the ordered parameters." },
+          "pain_reassessment": { "title": "Reassess pain", "instructions": "Reassess pain after intervention and document response, functional impact and escalation needs." },
+          "intake_output": { "title": "Document intake and output", "instructions": "Measure and document oral, IV and urinary output; report significant changes." },
+          "fall_safety": { "title": "Fall safety check", "instructions": "Verify fall precautions, environment, mobility assistance and patient understanding." },
+          "activities_daily_living": { "title": "Activities of daily living", "instructions": "Assist with hygiene, toileting, nutrition and comfort according to the care plan." },
+          "repositioning": { "title": "Reposition patient", "instructions": "Reposition according to the care plan; inspect pressure areas and document tolerance." },
+          "daily_progress_note": { "title": "Daily progress note", "instructions": "Review interval events, assessment, response to treatment and the plan for the next day." },
+          "review_results": { "title": "Review results and orders", "instructions": "Review new results and orders; document clinical interpretation and required follow-up." },
+          "medication_reconciliation": { "title": "Medication reconciliation", "instructions": "Compare the medication list with current orders and resolve discrepancies with the care team." },
+          "specimen_follow_up": { "title": "Specimen follow-up", "instructions": "Check pending specimens, collection status and critical-result communication requirements." }
+        },
         "safety_type_allergies": "Allergies",
         "safety_type_precautions": "Precautions / isolation",
         "safety_type_fall": "Fall and mobility risk",

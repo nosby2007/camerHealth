@@ -21,6 +21,27 @@
           <v-btn icon small @click="close('task')"><v-icon small>mdi-close</v-icon></v-btn>
         </v-card-title>
         <v-card-text>
+          <v-autocomplete
+            v-model="selectedTaskTemplate"
+            :items="taskTemplateOptions"
+            :label="$t('clinical360.dialogs.context_forms.task_template')"
+            :placeholder="$t('clinical360.dialogs.context_forms.task_template_placeholder')"
+            item-text="label"
+            item-value="id"
+            return-object
+            clearable
+            hide-details="auto"
+            dense
+            outlined
+            @change="applyTaskTemplate"
+          >
+            <template v-slot:item="{ item }">
+              <div class="task-template-option">
+                <strong>{{ item.label }}</strong>
+                <small>{{ item.frequencyLabel }} · {{ item.roleLabel }}</small>
+              </div>
+            </template>
+          </v-autocomplete>
           <v-text-field v-model="forms.task.title" :label="$t('clinical360.dialogs.context_forms.task_title')" dense outlined :rules="[requiredRule]" />
           <div class="form-grid two">
             <v-select v-model="forms.task.assignedToRole" :items="careRoles" :label="$t('clinical360.dialogs.context_forms.responsible_role')" dense outlined />
@@ -540,6 +561,7 @@ export default {
     return {
       saving: false,
       selectedCareTeamStaff: null,
+      selectedTaskTemplate: null,
       dialogs: { order: false, task: false, safety: false, labResult: false, imagingResult: false, careTeam: false, social: false, education: false },
       forms: freshForms(),
       requiredRule: value => Boolean(value) || this.$t('clinical360.dialogs.context_forms.required'),
@@ -592,6 +614,32 @@ export default {
         ['Every 8 hours', this.$t('clinical360.dialogs.context_forms.options.frequency.every_8_hours')],
         ['PRN', this.$t('clinical360.dialogs.context_forms.options.frequency.prn')]
       ].map(([value, text]) => ({ value, text }))
+    },
+    taskTemplateOptions() {
+      const templates = [
+        ['rounding', 'NURSE', 'hourly_rounding', 'Each shift'],
+        ['vitals', 'NURSE', 'vital_signs', 'Daily'],
+        ['pain', 'NURSE', 'pain_reassessment', 'Each shift'],
+        ['intake-output', 'NURSE', 'intake_output', 'Each shift'],
+        ['fall-safety', 'NURSE', 'fall_safety', 'Daily'],
+        ['adl', 'CNA', 'activities_daily_living', 'Daily'],
+        ['repositioning', 'CNA', 'repositioning', 'Every 4 hours'],
+        ['progress-note', 'DOCTOR', 'daily_progress_note', 'Daily'],
+        ['review-results', 'DOCTOR', 'review_results', 'Daily'],
+        ['med-reconciliation', 'PHARMACY', 'medication_reconciliation', 'Daily'],
+        ['specimen-follow-up', 'LAB', 'specimen_follow_up', 'Each shift']
+      ]
+      return templates
+        .filter(([, role]) => role === this.forms.task.assignedToRole)
+        .map(([id, role, key, frequency]) => ({
+          id,
+          role,
+          label: this.$t(`clinical360.dialogs.context_forms.templates.${key}.title`),
+          instructions: this.$t(`clinical360.dialogs.context_forms.templates.${key}.instructions`),
+          frequency,
+          frequencyLabel: this.taskFrequencyOptions.find(item => item.value === frequency)?.text || frequency,
+          roleLabel: this.roleLabel(role)
+        }))
     },
     reminderOptions() {
       return [
@@ -760,6 +808,7 @@ export default {
       }
       this.forms = freshForms()
       this.selectedCareTeamStaff = null
+      this.selectedTaskTemplate = null
       if (kind === 'careTeam') {
         const directory = this.$store.getters['facility/getAllStaff'] || []
         const activeSummary = this.$store.getters['facility/getActiveStaff'] || []
@@ -803,6 +852,12 @@ export default {
       this.forms.careTeam.role = member.role || this.forms.careTeam.role
       this.forms.careTeam.service = member.service || ''
       this.forms.careTeam.contact = member.contact || ''
+    },
+    applyTaskTemplate(template) {
+      if (!template) return
+      this.forms.task.title = template.label
+      this.forms.task.instructions = template.instructions
+      this.forms.task.frequency = template.frequency
     },
     canOpen(kind) {
       const permissions = {
@@ -954,5 +1009,8 @@ export default {
 .staff-option { display: flex; min-width: 0; flex-direction: column; padding: 2px 0; }
 .staff-option strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .staff-option small { color: #64748b; font-size: 10px; }
+.task-template-option { display: flex; min-width: 0; flex-direction: column; padding: 2px 0; }
+.task-template-option strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-template-option small { color: #64748b; font-size: 10px; }
 @media (max-width: 700px) { .form-grid.two, .order-choice-grid { grid-template-columns: 1fr; } }
 </style>

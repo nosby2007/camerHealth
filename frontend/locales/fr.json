@@ -2589,6 +2589,8 @@
         "frequency": "Fréquence",
         "reminder": "Rappel",
         "task_instructions": "Instructions et résultat attendu",
+        "task_template": "Modèle de tâche standard",
+        "task_template_placeholder": "Choisir une tâche standard ou laisser vide pour une nouvelle tâche",
         "cancel": "Annuler",
         "create_task_btn": "Créer la tâche",
         "safety_watch": "Surveillance de sécurité",
@@ -2673,6 +2675,19 @@
           "response": { "verbalizes_understanding": "Verbalise sa compréhension", "demonstrated_understanding": "Démontre sa compréhension", "needs_reinforcement": "Nécessite un renforcement", "refused_teaching": "A refusé l'enseignement" }
         },
         "required": "Obligatoire",
+        "templates": {
+          "hourly_rounding": { "title": "Ronde auprès du patient", "instructions": "Effectuer la ronde selon l’horaire; vérifier la sécurité, le confort, l’appel malade et les besoins immédiats." },
+          "vital_signs": { "title": "Relever les signes vitaux", "instructions": "Mesurer et documenter les signes vitaux; signaler toute valeur hors des paramètres prescrits." },
+          "pain_reassessment": { "title": "Réévaluer la douleur", "instructions": "Réévaluer la douleur après l’intervention et documenter la réponse, l’impact fonctionnel et l’escalade nécessaire." },
+          "intake_output": { "title": "Documenter les entrées et sorties", "instructions": "Mesurer et documenter les apports oraux, IV et la diurèse; signaler les changements importants." },
+          "fall_safety": { "title": "Vérification de la prévention des chutes", "instructions": "Vérifier les précautions de chute, l’environnement, l’aide à la mobilité et la compréhension du patient." },
+          "activities_daily_living": { "title": "Activités de la vie quotidienne", "instructions": "Aider à l’hygiène, aux toilettes, à la nutrition et au confort selon le plan de soins." },
+          "repositioning": { "title": "Repositionner le patient", "instructions": "Repositionner selon le plan de soins; inspecter les zones de pression et documenter la tolérance." },
+          "daily_progress_note": { "title": "Note d’évolution quotidienne", "instructions": "Revoir les événements récents, l’évaluation, la réponse au traitement et le plan du lendemain." },
+          "review_results": { "title": "Revoir les résultats et prescriptions", "instructions": "Revoir les nouveaux résultats et prescriptions; documenter l’interprétation clinique et le suivi requis." },
+          "medication_reconciliation": { "title": "Rapprochement médicamenteux", "instructions": "Comparer la liste des médicaments aux prescriptions en cours et résoudre les écarts avec l’équipe soignante." },
+          "specimen_follow_up": { "title": "Suivi des prélèvements", "instructions": "Vérifier les prélèvements en attente, leur statut et les exigences de communication des résultats critiques." }
+        },
         "safety_type_allergies": "Allergies",
         "safety_type_precautions": "Précautions / isolement",
         "safety_type_fall": "Risque de chute et de mobilité",
