@@ -670,7 +670,11 @@ export default {
       ].map(([value, text]) => ({ value, text }))
     },
     careTeamStaffOptions() {
-      const staff = this.$store.getters['facility/getAllStaff'] || []
+      // The full staff directory is admin-scoped. Clinical users receive the
+      // facility-scoped active summary, so use it as the normal fallback.
+      const directory = this.$store.getters['facility/getAllStaff'] || []
+      const activeSummary = this.$store.getters['facility/getActiveStaff'] || []
+      const staff = directory.length ? directory : activeSummary
       return staff
         .filter(member => member && member.status !== 'inactive')
         .map(member => {
@@ -756,8 +760,12 @@ export default {
       }
       this.forms = freshForms()
       this.selectedCareTeamStaff = null
-      if (kind === 'careTeam' && !(this.$store.getters['facility/getAllStaff'] || []).length) {
-        this.$store.dispatch('facility/fetchStaff').catch(() => {})
+      if (kind === 'careTeam') {
+        const directory = this.$store.getters['facility/getAllStaff'] || []
+        const activeSummary = this.$store.getters['facility/getActiveStaff'] || []
+        if (!directory.length && !activeSummary.length) {
+          this.$store.dispatch('facility/fetchActiveStaffSummary').catch(() => {})
+        }
       }
       if (kind === 'task') this.forms.task.dueAt = this.toLocalDateTime(new Date(Date.now() + 60 * 60 * 1000))
       if (kind === 'safety') {
