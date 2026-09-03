@@ -700,8 +700,20 @@ export const actions = {
     assertPatientWritable(state, note.patientId)
     const now = new Date().toISOString()
     const actor = note.recordedBy || rootState.auth.fullName || 'Unknown user'
+    // Structured nursing forms often provide actions/observation/response
+    // without a pre-built body. The API requires a non-empty human-readable
+    // body, so flatten those fields once at the store boundary.
+    const body = note.body || note.note || note.text || [
+      Array.isArray(note.actions) && note.actions.length ? `Actions performed: ${note.actions.join(', ')}` : '',
+      note.observation ? `Observation: ${note.observation}` : '',
+      note.response ? `Patient response: ${note.response}` : '',
+      note.orientation ? `Next steps: ${note.orientation}` : ''
+    ].filter(Boolean).join('\n') || 'Nursing care documented.'
+    const title = note.title || 'Nursing Note'
     const local = {
       ...note,
+      title,
+      body,
       id: 'NNT-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
       ...tenantFields(rootState),
       createdBy: actor,
@@ -728,8 +740,8 @@ export const actions = {
         patientId: note.patientId,
         encounterId: note.encounterId,
         noteType: 'nursing',
-        title: note.title,
-        body: note.body || note.note || note.text || '',
+        title,
+        body,
         structuredData: note.structuredData || undefined
       })
       local.id = (data.note && data.note.id) || local.id
@@ -740,8 +752,8 @@ export const actions = {
           patientId: note.patientId,
           encounterId: note.encounterId,
           noteType: 'nursing',
-          title: note.title,
-          body: note.body || note.note || note.text || '',
+          title,
+          body,
           structuredData: note.structuredData || undefined
         })
         await dispatch('offlineQueue/refreshPendingCount', null, { root: true })
