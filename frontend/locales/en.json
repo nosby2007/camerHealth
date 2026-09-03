@@ -2627,6 +2627,7 @@
         "care_coordination": "Care coordination",
         "add_care_team_member": "Add care-team member",
         "staff_member": "Staff member",
+        "staff_member_placeholder": "Search active staff by name or role",
         "role_discipline": "Role / discipline",
         "service_department": "Service / department",
         "phone_extension": "Phone / extension",

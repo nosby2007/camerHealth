@@ -317,7 +317,32 @@
         </v-card-title>
         <v-card-text>
           <div class="form-grid two">
-            <v-text-field v-model="forms.careTeam.name" :label="$t('clinical360.dialogs.context_forms.staff_member')" dense outlined :rules="[requiredRule]" />
+            <v-autocomplete
+              v-model="selectedCareTeamStaff"
+              :items="careTeamStaffOptions"
+              :label="$t('clinical360.dialogs.context_forms.staff_member')"
+              :placeholder="$t('clinical360.dialogs.context_forms.staff_member_placeholder')"
+              item-text="label"
+              item-value="id"
+              return-object
+              clearable
+              hide-no-data
+              hide-details="auto"
+              dense
+              outlined
+              :rules="[requiredRule]"
+              @change="selectCareTeamStaff"
+            >
+              <template v-slot:item="{ item }">
+                <div class="staff-option">
+                  <strong>{{ item.name }}</strong>
+                  <small>{{ item.roleLabel }}<span v-if="item.service"> · {{ item.service }}</span></small>
+                </div>
+              </template>
+              <template v-slot:selection="{ item }">
+                <span>{{ item.name }}</span>
+              </template>
+            </v-autocomplete>
             <v-select v-model="forms.careTeam.role" :items="careRoles" :label="$t('clinical360.dialogs.context_forms.role_discipline')" dense outlined />
             <v-text-field v-model="forms.careTeam.service" :label="$t('clinical360.dialogs.context_forms.service_department')" dense outlined />
             <v-text-field v-model="forms.careTeam.contact" :label="$t('clinical360.dialogs.context_forms.phone_extension')" dense outlined />
@@ -514,6 +539,7 @@ export default {
   data() {
     return {
       saving: false,
+      selectedCareTeamStaff: null,
       dialogs: { order: false, task: false, safety: false, labResult: false, imagingResult: false, careTeam: false, social: false, education: false },
       forms: freshForms(),
       requiredRule: value => Boolean(value) || this.$t('clinical360.dialogs.context_forms.required'),
@@ -643,6 +669,26 @@ export default {
         ['Completed', this.$t('clinical360.dialogs.context_forms.options.care_team_status.completed')]
       ].map(([value, text]) => ({ value, text }))
     },
+    careTeamStaffOptions() {
+      const staff = this.$store.getters['facility/getAllStaff'] || []
+      return staff
+        .filter(member => member && member.status !== 'inactive')
+        .map(member => {
+          const name = member.fullName || member.full_name || member.name || member.staffCode || member.id
+          const role = member.role || member.discipline || ''
+          const roleLabel = this.roleLabel(role)
+          return {
+            id: member.id || member.staffCode || name,
+            name,
+            role,
+            roleLabel,
+            label: `${name} · ${roleLabel}`,
+            service: member.service || member.department || '',
+            contact: member.phone || member.phoneNumber || member.extension || member.contact || ''
+          }
+        })
+        .sort((a, b) => a.name.localeCompare(b.name))
+    },
     socialDomainOptions() {
       return [
         ['Food security', this.$t('clinical360.dialogs.context_forms.options.social_domain.food_security')],
@@ -709,6 +755,10 @@ export default {
         return false
       }
       this.forms = freshForms()
+      this.selectedCareTeamStaff = null
+      if (kind === 'careTeam' && !(this.$store.getters['facility/getAllStaff'] || []).length) {
+        this.$store.dispatch('facility/fetchStaff').catch(() => {})
+      }
       if (kind === 'task') this.forms.task.dueAt = this.toLocalDateTime(new Date(Date.now() + 60 * 60 * 1000))
       if (kind === 'safety') {
         this.forms.safety.type = options.type || 'allergies'
@@ -731,6 +781,21 @@ export default {
       return true
     },
     close(kind) { this.$set(this.dialogs, kind, false) },
+    roleLabel(role) {
+      const labels = {
+        ADMIN: 'Administrator', DOCTOR: 'Doctor', NP: 'Nurse practitioner', NURSE: 'Nurse', CNA: 'Care assistant',
+        MIDWIFE: 'Midwife', LAB: 'Laboratory', IMAGING: 'Imaging', PHARMACY: 'Pharmacy', SOCIAL_WORKER: 'Social worker',
+        PHYSIOTHERAPIST: 'Physiotherapist', MAJOR_SERVICE: 'Major service', NURSING_SUPERVISOR: 'Nursing supervisor'
+      }
+      return labels[role] || role || this.$t('clinical360.dialogs.context_forms.staff_member')
+    },
+    selectCareTeamStaff(member) {
+      if (!member) return
+      this.forms.careTeam.name = member.name
+      this.forms.careTeam.role = member.role || this.forms.careTeam.role
+      this.forms.careTeam.service = member.service || ''
+      this.forms.careTeam.contact = member.contact || ''
+    },
     canOpen(kind) {
       const permissions = {
         order: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'],
@@ -878,5 +943,8 @@ export default {
 .order-choice-grid button { display: flex; min-height: 126px; flex-direction: column; align-items: flex-start; gap: 7px; padding: 14px; border: 1px solid #cbd5e1; background: #fff; color: #0f172a; cursor: pointer; text-align: left; }
 .order-choice-grid button:hover { border-color: #0f766e; background: #f0fdfa; }
 .order-choice-grid span { color: #64748b; font-size: 11px; }
+.staff-option { display: flex; min-width: 0; flex-direction: column; padding: 2px 0; }
+.staff-option strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.staff-option small { color: #64748b; font-size: 10px; }
 @media (max-width: 700px) { .form-grid.two, .order-choice-grid { grid-template-columns: 1fr; } }
 </style>
