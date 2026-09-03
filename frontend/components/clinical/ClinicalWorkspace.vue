@@ -7836,11 +7836,18 @@ export default {
       }
     },
     findPatientRecord(id) {
-      if (this.patientRecord && this.patientRecord.id === id) return this.patientRecord
+      // Prefer the reactive Vuex record when available. The route can provide
+      // an initial patient snapshot, but mutations (for example adding an
+      // allergy from the Safety Watch dialog) update Vuex first. Returning the
+      // prop snapshot here made the save succeed while the banner still showed
+      // the old value until a full page reload.
       const all = this.$store.getters['clinical/patientDirectoryAll'] || []
       const directory = this.$store.getters['clinical/patientDirectory'] || []
       const patients = this.$store.getters['clinical/getPatients'] || []
-      return all.find(item => item.id === id) || directory.find(item => item.id === id) || patients.find(item => item.id === id) || null
+      return all.find(item => item.id === id)
+        || directory.find(item => item.id === id)
+        || patients.find(item => item.id === id)
+        || (this.patientRecord && this.patientRecord.id === id ? this.patientRecord : null)
     },
     normalizeVisibleSelection() {
       if (!this.visibleChartTabs.includes(this.selectedChartTab)) {
