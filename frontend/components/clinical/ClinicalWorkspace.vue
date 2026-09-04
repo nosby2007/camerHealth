@@ -5959,6 +5959,11 @@ export default {
       this.$store.dispatch('clinical/fetchPatientMessages', this.activePatientId)
     }
     this.$store.commit('clinical/LOAD_FROM_STORAGE')
+    // LOAD_FROM_STORAGE restores legacy local collections and can overwrite a
+    // fast API response. Refresh diagnostics after hydration so the 360 always
+    // displays the server-authoritative lab and imaging orders.
+    this.$store.dispatch('clinical/fetchLabOrders')
+    this.$store.dispatch('clinical/fetchImagingOrders')
     if (this.$store.hasModule && this.$store.hasModule('nursing')) {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
     }
