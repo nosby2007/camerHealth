@@ -38,13 +38,34 @@
         <section class="work-section">
           <header><div><span>{{ copy.workQueue }}</span><strong>{{ copy.workQueueTitle }}</strong></div><button type="button" @click="$emit('open-tab', 'Work List')">{{ copy.viewAll }}</button></header>
           <div class="work-head"><span>{{ copy.item }}</span><span>{{ copy.owner }}</span><span>{{ copy.due }}</span><span>{{ copy.status }}</span></div>
-          <div v-for="task in scopedTasks.slice(0, 7)" :key="task.id" class="work-row">
+          <div v-for="task in openScopedTasks.slice(0, 7)" :key="task.id" class="work-row">
             <div><strong>{{ task.title }}</strong><small>{{ task.actionReason || task.instructions || copy.noDetail }}</small></div>
             <span>{{ task.assignedToRole || task.assignedRole || copy.team }}</span>
             <span>{{ formatDate(task.dueAt) }}</span>
             <b :class="taskState(task)">{{ task.status || 'pending' }}</b>
           </div>
-          <div v-if="!scopedTasks.length" class="empty-state"><v-icon>mdi-clipboard-check-outline</v-icon><span>{{ copy.noTasks }}</span></div>
+          <div v-if="!openScopedTasks.length" class="empty-state"><v-icon>mdi-clipboard-check-outline</v-icon><span>{{ copy.noTasks }}</span></div>
+        </section>
+
+        <section v-if="mode !== 'social'" class="work-section audit-section">
+          <header><div><span>{{ copy.auditEyebrow }}</span><strong>{{ copy.auditTitle }}</strong></div><span class="audit-count">{{ completedTasks.length }}</span></header>
+          <div class="audit-head"><span>{{ copy.item }}</span><span>{{ copy.completedBy }}</span><span>{{ copy.completedAt }}</span><span>{{ copy.status }}</span></div>
+          <div v-for="task in completedTasks.slice(0, 12)" :key="`completed-${task.id}`" class="audit-row">
+            <div><strong>{{ task.title || task.task || copy.task }}</strong><small>{{ task.completionDocumentation || task.actionReason || copy.noDetail }}</small></div>
+            <span>{{ task.updatedBy || task.completedBy || task.assignedToRole || copy.team }}</span>
+            <span>{{ formatDate(task.completedAt || task.updatedAt) }}</span>
+            <b class="good">{{ task.status || 'done' }}</b>
+          </div>
+          <div v-if="!completedTasks.length" class="empty-state"><v-icon>mdi-clipboard-text-clock-outline</v-icon><span>{{ copy.noCompleted }}</span></div>
+        </section>
+
+        <section v-if="mode !== 'social'" class="work-section reports-section">
+          <header><div><span>{{ copy.reportEyebrow }}</span><strong>{{ copy.reportTitle }}</strong></div><span class="audit-count">{{ filedReports.length }}</span></header>
+          <article v-for="record in filedReports.slice(0, 8)" :key="`report-${record.id}`" class="report-row">
+            <v-icon small color="#0f766e">mdi-file-document-check-outline</v-icon>
+            <div><strong>{{ record.title || record.category || copy.report }}</strong><small>{{ record.createdBy || record.updatedBy || copy.team }} · {{ formatDate(record.createdAt || record.updatedAt) }}</small></div>
+          </article>
+          <div v-if="!filedReports.length" class="empty-state"><v-icon>mdi-file-alert-outline</v-icon><span>{{ copy.noReports }}</span></div>
         </section>
 
         <section class="work-section meeting-section">
@@ -191,6 +212,16 @@ export default {
         noDetail: t('no_detail'),
         team: t('team'),
         noTasks: t('no_tasks'),
+        auditEyebrow: this.isFrench ? 'TRAÇABILITÉ' : 'AUDIT TRAIL',
+        auditTitle: this.isFrench ? 'Tâches effectuées' : 'Completed work',
+        completedBy: this.isFrench ? 'Effectué par' : 'Completed by',
+        completedAt: this.isFrench ? 'Date / heure' : 'Date / time',
+        noCompleted: this.isFrench ? 'Aucune tâche terminée enregistrée.' : 'No completed task recorded.',
+        reportEyebrow: this.isFrench ? 'RAPPORTS' : 'REPORTS',
+        reportTitle: this.isFrench ? 'Rapports déposés' : 'Filed reports',
+        report: this.isFrench ? 'Rapport clinique' : 'Clinical report',
+        noReports: this.isFrench ? 'Aucun rapport déposé.' : 'No filed report.',
+        task: this.isFrench ? 'Tâche de soins' : 'Care task',
         governance: t('governance_eyebrow'),
         meetingsTitle: t('meetings_title'),
         add: t('add'),
@@ -268,7 +299,10 @@ export default {
       if (this.mode === 'social') return this.tasks.filter(item => /social|family|transport|housing|financial|discharge barrier/i.test(`${item.relatedType || ''} ${item.assignedToRole || item.assignedRole || ''} ${item.title || ''}`))
       return this.tasks.filter(item => /nurse|cna|midwife|major|supervisor|care team|safety|quality|handoff/i.test(`${item.assignedToRole || item.assignedRole || ''} ${item.title || ''} ${item.relatedType || ''}`) || !item.assignedToRole)
     },
-    openTasks() { return this.scopedTasks.filter(item => !/done|complete|cancel|resolved/i.test(item.status || '')).length },
+    openScopedTasks() { return this.scopedTasks.filter(item => !/done|complete|cancel|resolved/i.test(item.status || '')) },
+    completedTasks() { return this.scopedTasks.filter(item => /done|complete|resolved/i.test(item.status || '')).sort((a, b) => new Date(b.completedAt || b.updatedAt || 0) - new Date(a.completedAt || a.updatedAt || 0)) },
+    openTasks() { return this.openScopedTasks.length },
+    filedReports() { return this.documents.filter(item => !/conference|meeting|quality|idt|safety huddle/i.test(`${item.category || ''} ${item.title || ''}`)).sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0)) },
     meetingRecords() { return this.documents.filter(item => /conference|meeting|quality|idt|safety huddle/i.test(`${item.category || ''} ${item.title || ''}`)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) },
     metrics() {
       return [
@@ -328,4 +362,5 @@ export default {
 
 <style scoped>
 .coordination-workspace{height:100%;display:flex;flex-direction:column;overflow:hidden;background:#f3f7f6;color:#17383a}.module-header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 16px;background:#fff;border-bottom:1px solid #cbd9d8}.module-header span,.work-section header span,.staff-section header span,.team-section header span{display:block;font-size:9px;font-weight:900;color:#587473;letter-spacing:.6px}.module-header h2{margin:1px 0;font-size:18px}.module-header p{margin:0;font-size:11px;color:#607877}.header-actions{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end}.read-only{padding:7px 14px;background:#f1f5f9;border-bottom:1px solid #cbd5e1;font-size:11px;font-weight:700}.metric-strip{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-bottom:1px solid #cfdcdb}.metric-strip article{display:grid;grid-template-columns:34px 1fr;align-items:center;min-height:70px;padding:9px 14px;border-right:1px solid #e0e8e7}.metric-strip article.warning{background:#fffaf0}.metric-strip span,.metric-strip strong,.metric-strip small{display:block}.metric-strip span{font-size:9px;font-weight:800;text-transform:uppercase;color:#627b79}.metric-strip strong{font-size:20px}.metric-strip small{font-size:10px;color:#617a78}.coordination-layout{display:grid;grid-template-columns:minmax(620px,1fr) 310px;min-height:0;flex:1}.coordination-layout main{overflow:auto;border-right:1px solid #cfdddc}.coordination-layout aside{overflow:auto;background:#f8fbfa}.work-section{background:#fff;border-bottom:8px solid #edf3f2}.work-section>header{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:#e8f0ef;border-bottom:1px solid #ccd9d8}.work-section header strong,.staff-section header strong,.team-section header strong{display:block;font-size:12px}.work-section header button,.team-section>button{border:0;background:transparent;color:#0f766e;font-size:10px;font-weight:800}.work-head,.work-row{display:grid;grid-template-columns:minmax(250px,1.6fr) 130px 105px 82px;gap:10px;align-items:center}.work-head{padding:6px 13px;background:#f5f8f8;border-bottom:1px solid #dce5e4;font-size:9px;font-weight:800;text-transform:uppercase}.work-row{min-height:56px;padding:7px 13px;border-bottom:1px solid #e1e8e7}.work-row strong,.work-row small{display:block}.work-row strong{font-size:11px}.work-row small,.work-row>span{font-size:10px;color:#657c7a}.work-row b{justify-self:start;padding:3px 6px;font-size:9px;text-transform:uppercase}.work-row b.good{background:#dcfce7;color:#166534}.work-row b.warning{background:#fef3c7;color:#92400e}.work-row b.danger{background:#fee2e2;color:#b91c1c}.meeting-row{display:grid;grid-template-columns:30px 1fr 135px;gap:8px;align-items:center;min-height:54px;padding:7px 13px;border-bottom:1px solid #e1e8e7}.meeting-row strong,.meeting-row small{display:block}.meeting-row strong{font-size:11px}.meeting-row small,.meeting-row>span{font-size:10px;color:#657c7a}.staff-section,.team-section{background:#fff;border-bottom:8px solid #edf3f2}.staff-section>header,.team-section>header{padding:9px 12px;background:#e8f0ef;border-bottom:1px solid #ccd9d8}.staff-row{display:grid;grid-template-columns:32px 1fr;gap:8px;align-items:center;min-height:54px;padding:7px 12px;border-bottom:1px solid #e1e8e7}.staff-row>span:last-child{grid-column:2;font-size:9px;color:#607877;margin-top:-8px}.staff-row strong,.staff-row small{display:block}.staff-row strong{font-size:10px}.staff-row small{font-size:9px;color:#657c7a}.staff-avatar{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#d9eeea;color:#075f59;font-size:10px;font-weight:900}.team-row{padding:7px 12px;border-bottom:1px solid #e1e8e7}.team-row strong,.team-row span{display:block}.team-row strong{font-size:10px}.team-row span{font-size:9px;color:#657c7a}.team-section>button{width:100%;padding:9px;text-align:left}.empty-state{display:flex;min-height:90px;align-items:center;justify-content:center;gap:7px;color:#6b807e;font-size:10px}.empty-state.compact{min-height:60px}.dialog-title{font-size:16px!important;font-weight:800;border-bottom:1px solid #d7e2e1}.dialog-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:1100px){.coordination-layout{grid-template-columns:1fr}.coordination-layout aside{display:grid;grid-template-columns:1fr 1fr}.metric-strip{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.module-header{align-items:flex-start;flex-direction:column}.header-actions{justify-content:flex-start}.coordination-layout aside{grid-template-columns:1fr}.work-head,.work-row{grid-template-columns:minmax(180px,1fr) 90px 75px}.work-head span:nth-child(3),.work-row>span:nth-child(3){display:none}.metric-strip{grid-template-columns:1fr 1fr}.dialog-grid{grid-template-columns:1fr}}
+.audit-section{border-left:4px solid #0f766e}.reports-section{border-left:4px solid #0369a1}.audit-count{font-size:12px;font-weight:900;color:#0f766e}.audit-head,.audit-row{display:grid;grid-template-columns:minmax(250px,1.6fr) 130px 105px 82px;gap:10px;align-items:center}.audit-head{padding:6px 13px;background:#f5f8f8;border-bottom:1px solid #dce5e4;font-size:9px;font-weight:800;text-transform:uppercase}.audit-row{min-height:56px;padding:7px 13px;border-bottom:1px solid #e1e8e7}.audit-row strong,.audit-row small,.report-row strong,.report-row small{display:block}.audit-row strong,.report-row strong{font-size:11px}.audit-row small,.audit-row>span,.report-row small{font-size:10px;color:#657c7a}.audit-row b{justify-self:start;padding:3px 6px;font-size:9px;text-transform:uppercase}.audit-row b.good{background:#dcfce7;color:#166534}.report-row{display:grid;grid-template-columns:30px 1fr;gap:8px;align-items:center;min-height:54px;padding:7px 13px;border-bottom:1px solid #e1e8e7}@media(max-width:720px){.audit-head,.audit-row{grid-template-columns:minmax(180px,1fr) 90px 75px}.audit-head span:nth-child(3),.audit-row>span:nth-child(3){display:none}}
 </style>

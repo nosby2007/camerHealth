@@ -1281,7 +1281,7 @@
               :patient="findPatientRecord(activePatientId) || activePatient"
               :role="currentRole"
               :workspace-tab="selectedChartTab"
-              :tasks="patientTasks"
+              :tasks="coordinationTasks"
               :documents="patientDocuments"
               :members="visibleCareTeamRows"
               :read-only="isPatientDischarged"
@@ -3558,6 +3558,10 @@ export default {
     patientTasks() {
       const all = this.$store.getters['clinical/getTasks'] || []
       return all.filter(item => item.patientId === this.activePatientId && !['done', 'cancel', 'completed', 'cancelled'].includes(String(item.status || '').toLowerCase()))
+    },
+    coordinationTasks() {
+      const all = this.$store.getters['clinical/getTasks'] || []
+      return all.filter(item => item.patientId === this.activePatientId)
     },
     patientWounds() {
       const all = this.$store.getters['nursing/getWounds'] || []
