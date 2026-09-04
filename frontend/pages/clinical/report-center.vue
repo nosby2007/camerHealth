@@ -65,8 +65,10 @@
 </template>
 
 <script>
+import { vitalsApi, clinicalNotesApi } from '~/services/api'
+
 export default {
-  data: () => ({ patientId: '', reportType: 'admission', recordId: '', loadError: '' }),
+  data: () => ({ patientId: '', reportType: 'admission', recordId: '', loadError: '', remoteVitals: [], remoteNotes: [] }),
   computed: {
     isFrench() { return this.$i18n.locale === 'fr' },
     institution() { return this.$store.state.auth.institution || 'CameroHealth' },
@@ -76,6 +78,11 @@ export default {
     documents() { return this.$store.getters['clinical/getDocuments'] || [] },
     nursingNotes() { return this.$store.getters['clinical/getNursingNotes'] || [] },
     medicalNotes() { return this.$store.getters['clinical/getMedicalNotes'] || [] },
+    medications() { return (this.$store.getters['clinical/getMedications'] || []).filter(item => item.patientId === this.patientId) },
+    tasks() { return (this.$store.getters['clinical/getTasks'] || []).filter(item => item.patientId === this.patientId) },
+    labOrders() { return (this.$store.getters['clinical/getLabOrders'] || []).filter(item => item.patientId === this.patientId) },
+    imagingOrders() { return (this.$store.getters['clinical/getImagingOrders'] || []).filter(item => item.patientId === this.patientId) },
+    careTeam() { return this.$store.getters['clinical/patientCareTeam']?.(this.patientId) || [] },
     visits() { return this.$store.getters['clinical/getVisits'] || [] },
     patientItems() { return this.patients.map(patient => ({ id: patient.id, label: `${patient.mrn || '-'} - ${this.nameOf(patient)}` })) },
     selectedPatient() { return this.patients.find(patient => patient.id === this.patientId) || null },
@@ -83,6 +90,7 @@ export default {
     reportTypes() {
       return [
         { value: 'admission', label: 'Admission' },
+        { value: 'transfer-packet', label: this.isFrench ? 'Dossier global de transfert' : 'Global transfer packet' },
         { value: 'transfer', label: this.isFrench ? 'Transfert' : 'Transfer' },
         { value: 'discharge', label: this.isFrench ? 'Sortie' : 'Discharge' },
         { value: 'nursing-note', label: this.isFrench ? 'Note infirmière' : 'Nursing note' },
@@ -107,6 +115,7 @@ export default {
     reportSections() {
       if (!this.selectedPatient) return []
       if (this.reportType === 'admission') return this.admissionSections()
+      if (this.reportType === 'transfer-packet') return this.transferPacketSections()
       if (this.reportType === 'transfer') return this.documentSections('Transfer details')
       if (this.reportType === 'discharge') return this.dischargeSections()
       if (this.reportType === 'nursing-note') return this.noteSections('Nursing documentation')
@@ -114,18 +123,37 @@ export default {
       return this.documentSections('Document details')
     }
   },
-  watch: { patientId() { this.recordId = '' }, reportType() { this.recordId = '' } },
+  watch: {
+    patientId() { this.recordId = ''; this.loadPatientRecords() },
+    reportType() { this.recordId = '' }
+  },
   async mounted() {
     const results = await Promise.allSettled([
       this.$store.dispatch('clinical/fetchPatients'),
       this.$store.dispatch('clinical/fetchInpatients', { status: 'all' }),
       this.$store.dispatch('clinical/fetchVisits')
+      ,this.$store.dispatch('clinical/fetchMedications')
+      ,this.$store.dispatch('clinical/fetchTasks')
     ])
     if (results.every(result => result.status === 'rejected')) this.loadError = this.isFrench ? 'Impossible de charger les données du serveur.' : 'Unable to load server data.'
     const routePatient = this.$route.query.patientId
     if (routePatient && this.patients.some(patient => patient.id === routePatient)) this.patientId = routePatient
   },
   methods: {
+    async loadPatientRecords() {
+      if (!this.patientId) { this.remoteVitals = []; this.remoteNotes = []; return }
+      try {
+        const [vitalsResponse, notesResponse] = await Promise.all([
+          vitalsApi.list(this.patientId),
+          clinicalNotesApi.list(this.patientId)
+        ])
+        this.remoteVitals = vitalsResponse.data.vitalSigns || []
+        this.remoteNotes = notesResponse.data.notes || []
+      } catch (error) {
+        this.remoteVitals = []
+        this.remoteNotes = []
+      }
+    },
     nameOf(patient) { return patient.name || patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ') || patient.id },
     display(value) { return value === null || value === undefined || value === '' ? '-' : value },
     formatDate(value) { return value ? new Date(value).toLocaleDateString(this.isFrench ? 'fr-CM' : 'en-US') : '-' },
@@ -183,6 +211,36 @@ export default {
         { label: this.isFrench ? 'Auteur' : 'Author', value: note.recordedBy || note.createdBy },
         { label: this.isFrench ? 'Statut' : 'Status', value: note.status || 'Filed' }
       ], content: [note.observation, note.assessment, note.actions, note.response, note.plan, note.content].filter(Boolean).join('\n\n') }]
+    },
+    transferPacketSections() {
+      const vitals = (this.remoteVitals.length ? this.remoteVitals : (this.$store.getters['clinical/getVitalSigns'] || []).filter(item => item.patientId === this.patientId))
+        .slice().sort((a, b) => new Date(this.recordDate(b)) - new Date(this.recordDate(a))).slice(0, 5)
+      const notes = (this.remoteNotes.length ? this.remoteNotes : [...this.nursingNotes, ...this.medicalNotes].filter(item => item.patientId === this.patientId)).slice(0, 8)
+      const openTasks = this.tasks.filter(item => !/done|complete|cancel/i.test(item.status || ''))
+      const medicationRows = this.medications.map(item => ({
+        label: item.medication || item.name || 'Medication',
+        value: [item.dosage || item.dose, item.route, item.frequency, item.status].filter(Boolean).join(' · ') || 'Active'
+      }))
+      const diagnosticRows = [...this.labOrders, ...this.imagingOrders]
+        .filter(item => !/completed|cancel/i.test(item.status || ''))
+        .map(item => ({ label: item.testName || item.examName || item.name || item.type || 'Diagnostic order', value: item.status || 'Pending' }))
+      return [
+        { title: this.isFrench ? 'Résumé clinique et sécurité' : 'Clinical summary and safety', rows: [
+          { label: 'Allergies', value: this.selectedPatient.allergies || (this.isFrench ? 'Aucune allergie connue' : 'No known allergies') },
+          { label: this.isFrench ? 'Précautions' : 'Precautions', value: this.selectedPatient.precautions },
+          { label: this.isFrench ? 'Infection / isolement' : 'Infection / isolation', value: this.selectedPatient.infectionStatus },
+          { label: this.isFrench ? 'Diagnostic / motif' : 'Diagnosis / reason', value: this.selectedPatient.diagnosis || this.selectedPatient.visitReason }
+        ] },
+        { title: this.isFrench ? 'Constantes récentes' : 'Recent vital signs', rows: vitals.map(item => ({
+          label: this.formatDateTime(item.recordedAt),
+          value: [item.bp && `BP ${item.bp}`, item.hr && `HR ${item.hr}`, item.rr && `RR ${item.rr}`, item.temp && `Temp ${item.temp}`, item.spo2 && `SpO₂ ${item.spo2}`, item.pain !== undefined && `Pain ${item.pain}/10`].filter(Boolean).join(' · ')
+        })) },
+        { title: this.isFrench ? 'Prescriptions / médicaments' : 'Orders / medications', rows: medicationRows.length ? medicationRows : [{ label: this.isFrench ? 'Médicaments' : 'Medications', value: this.isFrench ? 'Aucun médicament enregistré' : 'No medication recorded' }] },
+        { title: this.isFrench ? 'Notes cliniques récentes' : 'Recent clinical notes', rows: notes.map(note => ({ label: `${this.formatDateTime(note.recordedAt || note.createdAt)} · ${note.title || note.noteType || 'Note'}`, value: note.body || note.content || note.observation || note.note })) },
+        { title: this.isFrench ? 'Tâches et points à transmettre' : 'Tasks and handoff items', rows: openTasks.length ? openTasks.map(item => ({ label: item.title || item.task || 'Care task', value: `${item.status || 'Pending'}${item.dueAt ? ` · ${this.formatDateTime(item.dueAt)}` : ''}` })) : [{ label: this.isFrench ? 'Tâches ouvertes' : 'Open tasks', value: this.isFrench ? 'Aucune' : 'None' }] },
+        { title: this.isFrench ? 'Équipe de soins' : 'Care team', rows: this.careTeam.length ? this.careTeam.map(item => ({ label: item.name, value: [item.role || item.responsibility, item.service, item.contact].filter(Boolean).join(' · ') })) : [{ label: this.isFrench ? 'Équipe' : 'Care team', value: this.isFrench ? 'Non documentée' : 'Not documented' }] },
+        { title: this.isFrench ? 'Examens en cours' : 'Open diagnostics', rows: diagnosticRows }
+      ].filter(section => section.rows && section.rows.length)
     },
     printReport() {
       const source = document.getElementById('clinical-report-preview')

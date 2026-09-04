@@ -749,6 +749,9 @@
         "admission_wound": "Évaluation des plaies à l'admission",
         "attending": "Médecin responsable",
         "admitted": "Admission",
+        "patient_class": "Classe du patient",
+        "admission_reason": "Motif d'admission",
+        "expected_discharge": "Sortie prévue",
         "vitals": "Constantes",
         "acknowledge_orders": "Prescriptions à valider",
         "collapsed": "Contexte patient réduit",
@@ -2179,6 +2182,13 @@
         "add_education_title": "Ajouter un titre d'éducation",
         "title_label": "Titre",
         "category": "Catégorie",
+        "category_general": "Général",
+        "category_infection": "Prévention des infections",
+        "category_safety": "Sécurité",
+        "category_wound": "Soins des plaies",
+        "category_discharge": "Préparation de la sortie",
+        "category_pain": "Gestion de la douleur",
+        "category_nutrition": "Nutrition",
         "cancel": "Annuler",
         "add": "Ajouter",
         "add_education_point": "Ajouter un point d'éducation",
@@ -2579,6 +2589,8 @@
         "frequency": "Fréquence",
         "reminder": "Rappel",
         "task_instructions": "Instructions et résultat attendu",
+        "task_template": "Modèle de tâche standard",
+        "task_template_placeholder": "Choisir une tâche standard ou laisser vide pour une nouvelle tâche",
         "cancel": "Annuler",
         "create_task_btn": "Créer la tâche",
         "safety_watch": "Surveillance de sécurité",
@@ -2617,6 +2629,7 @@
         "care_coordination": "Coordination des soins",
         "add_care_team_member": "Ajouter un membre de l'équipe soignante",
         "staff_member": "Membre du personnel",
+        "staff_member_placeholder": "Rechercher un membre actif par nom ou rôle",
         "role_discipline": "Rôle / discipline",
         "service_department": "Service / département",
         "phone_extension": "Téléphone / poste",
@@ -2662,6 +2675,37 @@
           "response": { "verbalizes_understanding": "Verbalise sa compréhension", "demonstrated_understanding": "Démontre sa compréhension", "needs_reinforcement": "Nécessite un renforcement", "refused_teaching": "A refusé l'enseignement" }
         },
         "required": "Obligatoire",
+        "templates": {
+          "hourly_rounding": { "title": "Ronde auprès du patient", "instructions": "Effectuer la ronde selon l’horaire; vérifier la sécurité, le confort, l’appel malade et les besoins immédiats." },
+          "vital_signs": { "title": "Relever les signes vitaux", "instructions": "Mesurer et documenter les signes vitaux; signaler toute valeur hors des paramètres prescrits." },
+          "pain_reassessment": { "title": "Réévaluer la douleur", "instructions": "Réévaluer la douleur après l’intervention et documenter la réponse, l’impact fonctionnel et l’escalade nécessaire." },
+          "intake_output": { "title": "Documenter les entrées et sorties", "instructions": "Mesurer et documenter les apports oraux, IV et la diurèse; signaler les changements importants." },
+          "fall_safety": { "title": "Vérification de la prévention des chutes", "instructions": "Vérifier les précautions de chute, l’environnement, l’aide à la mobilité et la compréhension du patient." },
+          "activities_daily_living": { "title": "Activités de la vie quotidienne", "instructions": "Aider à l’hygiène, aux toilettes, à la nutrition et au confort selon le plan de soins." },
+          "repositioning": { "title": "Repositionner le patient", "instructions": "Repositionner selon le plan de soins; inspecter les zones de pression et documenter la tolérance." },
+          "daily_progress_note": { "title": "Note d’évolution quotidienne", "instructions": "Revoir les événements récents, l’évaluation, la réponse au traitement et le plan du lendemain." },
+          "review_results": { "title": "Revoir les résultats et prescriptions", "instructions": "Revoir les nouveaux résultats et prescriptions; documenter l’interprétation clinique et le suivi requis." },
+          "medication_reconciliation": { "title": "Rapprochement médicamenteux", "instructions": "Comparer la liste des médicaments aux prescriptions en cours et résoudre les écarts avec l’équipe soignante." },
+          "specimen_follow_up": { "title": "Suivi des prélèvements", "instructions": "Vérifier les prélèvements en attente, leur statut et les exigences de communication des résultats critiques." }
+          ,"wound_assessment": { "title": "Évaluation de la plaie", "instructions": "Évaluer l’aspect, l’écoulement, la douleur et la peau environnante; documenter les mesures et l’escalade nécessaire." }
+          ,"discharge_teaching": { "title": "Éducation avant la sortie", "instructions": "Revoir les médicaments, signes d’alerte, rendez-vous et la reformulation par le patient avant la sortie." }
+          ,"skin_check": { "title": "Vérification de l’intégrité cutanée", "instructions": "Inspecter les zones de pression pendant les soins; documenter les constats et les mesures de prévention." }
+          ,"discharge_readiness": { "title": "Vérifier la préparation à la sortie", "instructions": "Revoir la stabilité clinique, les résultats en attente, les médicaments, le suivi et les obstacles à la sortie." }
+          ,"np_daily_assessment": { "title": "Évaluation quotidienne avancée", "instructions": "Réaliser l’évaluation ciblée, revoir la réponse au traitement et actualiser le plan de soins." }
+          ,"maternal_vitals": { "title": "Observations maternelles et fœtales", "instructions": "Relever les observations maternelles et l’évaluation fœtale selon le plan de maternité; signaler les anomalies." }
+          ,"postpartum_check": { "title": "Vérification du bien-être post-partum", "instructions": "Évaluer les saignements, la douleur, les signes vitaux, l’alimentation et le bien-être émotionnel; documenter les besoins." }
+          ,"medication_order_review": { "title": "Revue des prescriptions médicamenteuses", "instructions": "Vérifier les nouvelles prescriptions et modifications: dose, voie, interactions, allergies et horaires." }
+          ,"result_verification": { "title": "Validation d’un résultat de laboratoire", "instructions": "Vérifier l’exhaustivité, les valeurs de référence, les alertes critiques et la communication au clinicien responsable." }
+          ,"imaging_exam_preparation": { "title": "Préparation d’un examen d’imagerie", "instructions": "Confirmer l’identité, la préparation, le consentement, les allergies et le transport requis." }
+          ,"imaging_report_follow_up": { "title": "Suivi d’un compte rendu d’imagerie", "instructions": "Revoir les comptes rendus en attente et assurer la communication et le suivi des résultats urgents ou critiques." }
+          ,"mobility_session": { "title": "Séance de rééducation à la mobilité", "instructions": "Réaliser l’intervention prévue, évaluer la tolérance et documenter le niveau d’aide et les progrès." }
+          ,"exercise_plan_review": { "title": "Revue du programme d’exercices", "instructions": "Revoir les exercices, confirmer la technique sécuritaire et actualiser les objectifs ou précautions." }
+          ,"discharge_barrier_follow_up": { "title": "Suivi d’un obstacle à la sortie", "instructions": "Contacter le patient ou l’équipe au sujet des obstacles sociaux et documenter la prochaine action." }
+          ,"family_support_contact": { "title": "Contact de soutien familial", "instructions": "Évaluer le soutien de l’aidant, les besoins de communication et les ressources; documenter les orientations." }
+          ,"safety_huddle": { "title": "Briefing sécurité de l’unité", "instructions": "Revoir les risques, les effectifs, les chutes, l’isolement, les médicaments à haut risque et les escalades du quart." }
+          ,"staff_handoff_review": { "title": "Revue de la relève", "instructions": "Revoir la couverture des affectations, les patients à risque, les tâches en attente et les éléments non résolus." }
+          ,"overdue_task_review": { "title": "Revue des tâches en retard", "instructions": "Revoir les tâches cliniques en retard, désigner un responsable et documenter les obstacles ou l’escalade." }
+        },
         "safety_type_allergies": "Allergies",
         "safety_type_precautions": "Précautions / isolement",
         "safety_type_fall": "Risque de chute et de mobilité",

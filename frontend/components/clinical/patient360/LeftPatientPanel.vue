@@ -31,18 +31,18 @@
         <div><span>{{ $t('clinical360.nursing.patient_context.bed') }}</span><strong>{{ patient.bed }}</strong></div>
       </div>
 
-      <div class="alert-block code-alert">
-        {{ $t('clinical360.nursing.patient_context.code') }} : {{ patient.codeStatus }}
-      </div>
-      <div class="alert-block critical">
-        {{ $t('clinical360.nursing.patient_context.precautions') }} : {{ patient.precautions }}
-      </div>
-      <div class="alert-block infection">
-        {{ $t('clinical360.nursing.patient_context.infection') }} : {{ patient.infectionStatus }}
-      </div>
-      <div class="alert-block wound">
-        {{ $t('clinical360.nursing.patient_context.admission_wound') }}
-      </div>
+      <ClinicalHoverCard :title="$t('clinical360.nursing.patient_context.code')" :eyebrow="$t('clinical360.nursing.patient_context.safety_banner')" :details="[{ label: $t('clinical360.nursing.patient_context.code_status'), value: patient.codeStatus }, { label: $t('clinical360.nursing.patient_context.patient_class'), value: patient.patientClass }, { label: $t('clinical360.nursing.patient_context.bed'), value: patient.bed }]">
+        <template #activator><div class="alert-block code-alert">{{ $t('clinical360.nursing.patient_context.code') }} : {{ patient.codeStatus }}</div></template>
+      </ClinicalHoverCard>
+      <ClinicalHoverCard :title="$t('clinical360.nursing.patient_context.precautions')" :eyebrow="$t('clinical360.nursing.patient_context.safety_banner')" :details="[{ label: $t('clinical360.nursing.patient_context.precautions'), value: patient.precautions }, { label: $t('clinical360.nursing.patient_context.infection'), value: patient.infectionStatus }, { label: $t('clinical360.nursing.allergies'), value: patient.allergies }]">
+        <template #activator><div class="alert-block critical">{{ $t('clinical360.nursing.patient_context.precautions') }} : {{ patient.precautions }}</div></template>
+      </ClinicalHoverCard>
+      <ClinicalHoverCard :title="$t('clinical360.nursing.patient_context.infection')" :eyebrow="$t('clinical360.nursing.patient_context.safety_banner')" :details="[{ label: $t('clinical360.nursing.patient_context.infection'), value: patient.infectionStatus }, { label: $t('clinical360.nursing.patient_context.precautions'), value: patient.precautions }, { label: $t('clinical360.nursing.patient_context.bed'), value: patient.bed }]">
+        <template #activator><div class="alert-block infection">{{ $t('clinical360.nursing.patient_context.infection') }} : {{ patient.infectionStatus }}</div></template>
+      </ClinicalHoverCard>
+      <ClinicalHoverCard :title="$t('clinical360.nursing.patient_context.admission_wound')" :eyebrow="$t('clinical360.nursing.patient_context.safety_banner')" :details="[{ label: $t('clinical360.nursing.patient_context.admission_wound'), value: patient.admissionWound || patient.admissionReason }, { label: $t('clinical360.nursing.patient_context.admitted'), value: patient.admitted }, { label: $t('clinical360.nursing.patient_context.admission_reason'), value: patient.admissionReason }]">
+        <template #activator><div class="alert-block wound">{{ $t('clinical360.nursing.patient_context.admission_wound') }}</div></template>
+      </ClinicalHoverCard>
 
       <div v-if="accessProfile.restrictedNotice" class="restricted-notice">
         <v-icon x-small color="#92400e">
@@ -51,17 +51,21 @@
         {{ accessProfile.restrictedNotice }}
       </div>
 
-      <div class="story-section">
-        <span>{{ $t('clinical360.nursing.patient_context.attending') }}</span>
-        <strong>{{ patient.attending }}</strong>
-      </div>
-      <div class="story-section">
-        <span>{{ $t('clinical360.nursing.allergies') }}</span>
-        <strong>{{ patient.allergies }}</strong>
-      </div>
+      <ClinicalHoverCard :title="patient.attending" :eyebrow="$t('clinical360.nursing.patient_context.attending')" :details="[{ label: $t('clinical360.nursing.patient_context.patient_class'), value: patient.patientClass }, { label: $t('clinical360.nursing.patient_context.admission_reason'), value: patient.admissionReason }, { label: $t('clinical360.nursing.patient_context.bed'), value: patient.bed }]">
+        <template #activator><div class="story-section"><span>{{ $t('clinical360.nursing.patient_context.attending') }}</span><strong class="detail-trigger">{{ patient.attending }}</strong></div></template>
+      </ClinicalHoverCard>
+      <ClinicalHoverCard :title="patient.allergies" :eyebrow="$t('clinical360.nursing.allergies')" :details="[{ label: $t('clinical360.nursing.allergies'), value: patient.allergies }, { label: $t('clinical360.nursing.patient_context.precautions'), value: patient.precautions }, { label: $t('clinical360.nursing.patient_context.infection'), value: patient.infectionStatus }]">
+        <template #activator><div class="story-section"><span>{{ $t('clinical360.nursing.allergies') }}</span><strong class="detail-trigger">{{ patient.allergies }}</strong></div></template>
+      </ClinicalHoverCard>
       <div class="story-section compact">
         <span>{{ $t('clinical360.nursing.patient_context.admitted') }}</span>
-        <strong>{{ patient.admitted }}</strong>
+        <ClinicalHoverCard
+          :title="`${$t('clinical360.nursing.patient_context.admitted')} ${patient.admitted}`"
+          :eyebrow="$t('clinical360.nursing.patient_context.admitted')"
+          :details="[{ label: $t('clinical360.nursing.patient_context.patient_class'), value: patient.patientClass }, { label: $t('clinical360.nursing.patient_context.bed'), value: patient.bed }, { label: $t('clinical360.nursing.patient_context.expected_discharge'), value: patient.expectedDischarge }, { label: $t('clinical360.nursing.patient_context.admission_reason'), value: patient.admissionReason }]"
+        >
+          <template #activator><strong class="detail-trigger">{{ patient.admitted }}</strong></template>
+        </ClinicalHoverCard>
         <small>{{ patient.patientClass }}</small>
       </div>
       <div class="story-section compact">
@@ -122,8 +126,11 @@
 </template>
 
 <script>
+import ClinicalHoverCard from '../ClinicalHoverCard.vue'
+
 export default {
   name: 'LeftPatientPanel',
+  components: { ClinicalHoverCard },
   props: {
     patient: { type: Object, required: true },
     accessProfile: { type: Object, required: true },

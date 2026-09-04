@@ -2,28 +2,28 @@
   <section class="wound-shell">
     <header class="workspace-head">
       <div>
-        <small>SKIN INTEGRITY</small>
-        <h2>Wound Management</h2>
-        <p>Assessment, treatment documentation and discharge continuity for every wound.</p>
+        <small>{{ $t('clinical360.wounds.tab.skin_integrity') }}</small>
+        <h2>{{ $t('clinical360.wounds.tab.wound_management') }}</h2>
+        <p>{{ $t('clinical360.wounds.tab.header_subtitle') }}</p>
       </div>
       <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="$emit('open-wound')">
-        <v-icon x-small left>mdi-bandage</v-icon>New wound
+        <v-icon x-small left>mdi-bandage</v-icon>{{ $t('clinical360.wounds.tab.new_wound') }}
       </v-btn>
     </header>
 
-    <div class="metric-strip" aria-label="Wound status summary">
-      <span><b>{{ wounds.length }}</b><small>Total wounds</small></span>
-      <span><b>{{ activeCount }}</b><small>Active</small></span>
-      <span :class="{ alert: worseningCount }"><b>{{ worseningCount }}</b><small>Worsening</small></span>
-      <span><b>{{ photoCount }}</b><small>Photos</small></span>
-      <span><b>{{ dischargeReadiness }}%</b><small>Discharge ready</small></span>
+    <div class="metric-strip" :aria-label="$t('clinical360.wounds.tab.wound_status_summary')">
+      <span><b>{{ wounds.length }}</b><small>{{ $t('clinical360.wounds.tab.total_wounds') }}</small></span>
+      <span><b>{{ activeCount }}</b><small>{{ $t('clinical360.wounds.tab.active') }}</small></span>
+      <span :class="{ alert: worseningCount }"><b>{{ worseningCount }}</b><small>{{ $t('clinical360.wounds.tab.worsening') }}</small></span>
+      <span><b>{{ photoCount }}</b><small>{{ $t('clinical360.wounds.tab.photos') }}</small></span>
+      <span><b>{{ dischargeReadiness }}%</b><small>{{ $t('clinical360.wounds.tab.discharge_ready') }}</small></span>
     </div>
 
     <div class="wound-workspace-grid">
-      <nav class="wound-rail" aria-label="Wound management sections">
+      <nav class="wound-rail" :aria-label="$t('clinical360.wounds.tab.wound_management_sections')">
         <button type="button" :class="['milestone-link', { active: activeSection === 'milestones' }]" @click="selectSection('milestones')">
           <v-icon x-small>mdi-flag-checkered</v-icon>
-          <span><strong>Discharge Milestones</strong><small>and delays</small></span>
+          <span><strong>{{ $t('clinical360.wounds.tab.discharge_milestones') }}</strong><small>{{ $t('clinical360.wounds.tab.and_delays') }}</small></span>
           <em>{{ completedMilestones }}/{{ dischargeMilestones.length }}</em>
         </button>
         <div v-for="group in navigationGroups" :key="group.label" class="rail-group">
@@ -38,18 +38,18 @@
         <header class="content-head">
           <div><small>{{ sectionMeta.eyebrow }}</small><h3>{{ sectionMeta.title }}</h3><p>{{ sectionMeta.description }}</p></div>
           <v-btn v-if="activeSection === 'documentation' && !readOnly" x-small depressed color="#0f766e" dark @click="$emit('open-wound', selectedWound)">
-            <v-icon x-small left>mdi-note-plus</v-icon>File assessment
+            <v-icon x-small left>mdi-note-plus</v-icon>{{ $t('clinical360.wounds.tab.file_assessment') }}
           </v-btn>
         </header>
 
         <template v-if="activeSection === 'milestones'">
           <section class="readiness-band">
-            <div><span>Wound discharge readiness</span><strong>{{ dischargeReadiness }}%</strong></div>
+            <div><span>{{ $t('clinical360.wounds.tab.wound_discharge_readiness') }}</span><strong>{{ dischargeReadiness }}%</strong></div>
             <div class="readiness-track"><i :style="{ width: dischargeReadiness + '%' }"></i></div>
-            <small>{{ activeCount ? activeCount + ' active wound(s) require continuity planning' : 'No active wound prevents discharge' }}</small>
+            <small>{{ activeCount ? $t('clinical360.wounds.tab.active_wounds_require_continuity', { count: activeCount }) : $t('clinical360.wounds.tab.no_active_wound_prevents_discharge') }}</small>
           </section>
           <section class="row-panel">
-            <header><strong>Milestones</strong><span>Required before discharge</span></header>
+            <header><strong>{{ $t('clinical360.wounds.tab.milestones') }}</strong><span>{{ $t('clinical360.wounds.tab.required_before_discharge') }}</span></header>
             <button v-for="milestone in dischargeMilestones" :key="milestone.key" type="button" class="clinical-row" @click="selectSection(milestone.target)">
               <v-icon small :color="statusColor(milestone.status)">{{ statusIcon(milestone.status) }}</v-icon>
               <span><strong>{{ milestone.label }}</strong><small>{{ milestone.detail }}</small></span>
@@ -57,8 +57,8 @@
             </button>
           </section>
           <section class="row-panel delay-panel">
-            <header><strong>Delays and blockers</strong><span>{{ dischargeDelays.length }} open</span></header>
-            <div v-if="!dischargeDelays.length" class="clear-state"><v-icon small color="#047857">mdi-check-circle</v-icon>No wound-related discharge delay identified.</div>
+            <header><strong>{{ $t('clinical360.wounds.tab.delays_and_blockers') }}</strong><span>{{ $t('clinical360.wounds.tab.open_count', { count: dischargeDelays.length }) }}</span></header>
+            <div v-if="!dischargeDelays.length" class="clear-state"><v-icon small color="#047857">mdi-check-circle</v-icon>{{ $t('clinical360.wounds.tab.no_discharge_delay') }}</div>
             <div v-for="delay in dischargeDelays" :key="delay" class="delay-row"><v-icon small color="#b45309">mdi-alert-outline</v-icon>{{ delay }}</div>
           </section>
         </template>
@@ -67,82 +67,82 @@
           <section v-if="wounds.length" class="wound-list">
             <button v-for="wound in wounds" :key="wound.id" type="button" :class="['wound-list-row', { active: selectedWound && selectedWound.id === wound.id }]" @click="selectWound(wound)">
               <span class="wound-number">{{ woundSequence(wound) }}</span>
-              <span><strong>{{ wound.woundType || 'Wound' }}</strong><small>{{ wound.anatomicalLocation || 'Location not documented' }}</small></span>
-              <span><small>Latest measurement</small><strong>{{ measurement(wound) }}</strong></span>
-              <span><small>Last assessment</small><strong>{{ lastDate(wound) }}</strong></span>
-              <em :class="statusClass(wound.status)">{{ wound.status || 'active' }}</em>
+              <span><strong>{{ wound.woundType || $t('clinical360.wounds.tab.wound') }}</strong><small>{{ wound.anatomicalLocation || $t('clinical360.wounds.tab.location_not_documented') }}</small></span>
+              <span><small>{{ $t('clinical360.wounds.tab.latest_measurement') }}</small><strong>{{ measurement(wound) }}</strong></span>
+              <span><small>{{ $t('clinical360.wounds.tab.last_assessment') }}</small><strong>{{ lastDate(wound) }}</strong></span>
+              <em :class="statusClass(wound.status)">{{ wound.status || $t('clinical360.wounds.tab.status_active') }}</em>
             </button>
           </section>
-          <div v-else class="empty-state"><v-icon size="42" color="#94a3b8">mdi-bandage</v-icon><strong>No wound documented</strong><span>Place a wound marker on the Avatar or create a wound record here.</span></div>
+          <div v-else class="empty-state"><v-icon size="42" color="#94a3b8">mdi-bandage</v-icon><strong>{{ $t('clinical360.wounds.tab.no_wound_documented') }}</strong><span>{{ $t('clinical360.wounds.tab.no_wound_documented_hint') }}</span></div>
         </template>
 
         <template v-else-if="activeSection === 'documentation'">
           <div class="documentation-filter">
-            <label>Wound
+            <label>{{ $t('clinical360.wounds.tab.wound') }}
               <select v-model="documentationWoundId">
-                <option value="all">All wounds</option>
-                <option v-for="wound in wounds" :key="wound.id" :value="wound.id">{{ wound.woundType || 'Wound' }} - {{ wound.anatomicalLocation || 'Unknown location' }}</option>
+                <option value="all">{{ $t('clinical360.wounds.tab.all_wounds') }}</option>
+                <option v-for="wound in wounds" :key="wound.id" :value="wound.id">{{ wound.woundType || $t('clinical360.wounds.tab.wound') }} - {{ wound.anatomicalLocation || $t('clinical360.wounds.tab.unknown_location') }}</option>
               </select>
             </label>
-            <span>{{ documentationRows.length }} assessment(s)</span>
+            <span>{{ $t('clinical360.wounds.tab.assessment_count', { count: documentationRows.length }) }}</span>
           </div>
           <section v-if="documentationRows.length" class="assessment-table">
-            <div class="assessment-row heading"><span>Date / clinician</span><span>Wound</span><span>Dimensions</span><span>Drainage / dressing</span><span>Pain</span></div>
+            <div class="assessment-row heading"><span>{{ $t('clinical360.wounds.tab.col_date_clinician') }}</span><span>{{ $t('clinical360.wounds.tab.wound') }}</span><span>{{ $t('clinical360.wounds.tab.col_dimensions') }}</span><span>{{ $t('clinical360.wounds.tab.col_drainage_dressing') }}</span><span>{{ $t('clinical360.wounds.tab.col_pain') }}</span></div>
             <button v-for="row in documentationRows" :key="row.id" type="button" class="assessment-row" @click="openAssessment(row)">
-              <span><strong>{{ formatDate(row.recordedAt || row.assessedAt || row.createdAt) }}</strong><small>{{ row.createdBy || 'Clinician' }}</small></span>
-              <span><strong>{{ woundLabel(row.woundId) }}</strong><small>{{ row.woundStatus || 'Status not filed' }}</small></span>
+              <span><strong>{{ formatDate(row.recordedAt || row.assessedAt || row.createdAt) }}</strong><small>{{ row.createdBy || $t('clinical360.wounds.tab.clinician') }}</small></span>
+              <span><strong>{{ woundLabel(row.woundId) }}</strong><small>{{ row.woundStatus || $t('clinical360.wounds.tab.status_not_filed') }}</small></span>
               <span>{{ assessmentMeasurement(row) }}</span>
-              <span>{{ row.drainageAmount || 'Not filed' }}<small>{{ row.dressingType || 'Dressing not filed' }}</small></span>
+              <span>{{ row.drainageAmount || $t('clinical360.wounds.tab.not_filed') }}<small>{{ row.dressingType || $t('clinical360.wounds.tab.dressing_not_filed') }}</small></span>
               <span>{{ row.painScore !== undefined && row.painScore !== null ? row.painScore + '/10' : '-' }}</span>
             </button>
           </section>
-          <div v-else class="empty-state"><v-icon size="38" color="#94a3b8">mdi-clipboard-text-outline</v-icon><strong>No assessment in this view</strong><span>Select another wound or file a wound assessment.</span></div>
+          <div v-else class="empty-state"><v-icon size="38" color="#94a3b8">mdi-clipboard-text-outline</v-icon><strong>{{ $t('clinical360.wounds.tab.no_assessment_in_view') }}</strong><span>{{ $t('clinical360.wounds.tab.no_assessment_in_view_hint') }}</span></div>
         </template>
 
         <template v-else>
           <section class="discharge-summary">
-            <div><small>ACTIVE WOUNDS</small><strong>{{ activeCount }}</strong><span>{{ activeCount ? 'Continuity plan required' : 'No active wound' }}</span></div>
-            <div><small>DOCUMENTATION</small><strong>{{ completedMilestones }}/{{ dischargeMilestones.length }}</strong><span>Milestones complete</span></div>
-            <div><small>READINESS</small><strong>{{ dischargeReadiness }}%</strong><span>Wound discharge readiness</span></div>
+            <div><small>{{ $t('clinical360.wounds.tab.active_wounds_label') }}</small><strong>{{ activeCount }}</strong><span>{{ activeCount ? $t('clinical360.wounds.tab.continuity_plan_required') : $t('clinical360.wounds.tab.no_active_wound') }}</span></div>
+            <div><small>{{ $t('clinical360.wounds.tab.documentation_label') }}</small><strong>{{ completedMilestones }}/{{ dischargeMilestones.length }}</strong><span>{{ $t('clinical360.wounds.tab.milestones_complete') }}</span></div>
+            <div><small>{{ $t('clinical360.wounds.tab.readiness_label') }}</small><strong>{{ dischargeReadiness }}%</strong><span>{{ $t('clinical360.wounds.tab.wound_discharge_readiness') }}</span></div>
           </section>
           <section class="row-panel">
-            <header><strong>Discharge documentation</strong><span>Review every active wound</span></header>
+            <header><strong>{{ $t('clinical360.wounds.tab.discharge_documentation') }}</strong><span>{{ $t('clinical360.wounds.tab.review_every_active_wound') }}</span></header>
             <div v-for="item in dischargeRequirements" :key="item.label" class="requirement-row">
               <v-icon small :color="item.complete ? '#047857' : '#b45309'">{{ item.complete ? 'mdi-check-circle' : 'mdi-clock-alert-outline' }}</v-icon>
               <span><strong>{{ item.label }}</strong><small>{{ item.detail }}</small></span>
-              <em :class="item.complete ? 'complete' : 'pending'">{{ item.complete ? 'Complete' : 'Required' }}</em>
+              <em :class="item.complete ? 'complete' : 'pending'">{{ item.complete ? $t('clinical360.wounds.tab.complete') : $t('clinical360.wounds.tab.required') }}</em>
             </div>
           </section>
-          <v-alert v-if="activeCount" dense tile outlined color="#b45309" class="mt-3 mb-0 wound-alert">Active wounds remain visible in the discharge handoff. Document dressing instructions, supplies, warning signs and follow-up ownership before completing discharge.</v-alert>
+          <v-alert v-if="activeCount" dense tile outlined color="#b45309" class="mt-3 mb-0 wound-alert">{{ $t('clinical360.wounds.tab.discharge_handoff_notice') }}</v-alert>
         </template>
       </main>
 
       <aside class="wound-context">
         <template v-if="selectedWound">
-          <header><small>SELECTED WOUND</small><strong>{{ selectedWound.woundType || 'Wound' }}</strong><span>{{ selectedWound.anatomicalLocation || 'Location not documented' }}</span></header>
+          <header><small>{{ $t('clinical360.wounds.tab.selected_wound') }}</small><strong>{{ selectedWound.woundType || $t('clinical360.wounds.tab.wound') }}</strong><span>{{ selectedWound.anatomicalLocation || $t('clinical360.wounds.tab.location_not_documented') }}</span></header>
           <dl>
-            <div><dt>Status</dt><dd :class="statusClass(selectedWound.status)">{{ selectedWound.status || 'active' }}</dd></div>
-            <div><dt>Acquired</dt><dd>{{ cleanLabel(selectedWound.acquiredLocation || 'unknown') }}</dd></div>
-            <div><dt>Last measured</dt><dd>{{ measurement(selectedWound) }}</dd></div>
-            <div><dt>Last assessed</dt><dd>{{ lastDate(selectedWound) }}</dd></div>
-            <div><dt>Photos</dt><dd>{{ woundPhotoCount(selectedWound) }}</dd></div>
+            <div><dt>{{ $t('clinical360.wounds.tab.status') }}</dt><dd :class="statusClass(selectedWound.status)">{{ selectedWound.status || $t('clinical360.wounds.tab.status_active') }}</dd></div>
+            <div><dt>{{ $t('clinical360.wounds.tab.acquired') }}</dt><dd>{{ cleanLabel(selectedWound.acquiredLocation || $t('clinical360.wounds.tab.unknown')) }}</dd></div>
+            <div><dt>{{ $t('clinical360.wounds.tab.last_measured') }}</dt><dd>{{ measurement(selectedWound) }}</dd></div>
+            <div><dt>{{ $t('clinical360.wounds.tab.last_assessed') }}</dt><dd>{{ lastDate(selectedWound) }}</dd></div>
+            <div><dt>{{ $t('clinical360.wounds.tab.photos') }}</dt><dd>{{ woundPhotoCount(selectedWound) }}</dd></div>
           </dl>
           <section class="latest-assessment">
-            <strong>Latest assessment</strong>
+            <strong>{{ $t('clinical360.wounds.tab.latest_assessment') }}</strong>
             <template v-if="latest(selectedWound).id">
-              <p><span>Drainage</span>{{ cleanLabel(latest(selectedWound).drainageAmount || 'not filed') }}</p>
-              <p><span>Dressing</span>{{ latest(selectedWound).dressingType || 'Not filed' }}</p>
-              <p><span>Pain</span>{{ latest(selectedWound).painScore !== undefined ? latest(selectedWound).painScore + '/10' : 'Not filed' }}</p>
-              <p><span>Plan</span>{{ latest(selectedWound).treatmentPlan || 'Not filed' }}</p>
+              <p><span>{{ $t('clinical360.wounds.tab.drainage') }}</span>{{ cleanLabel(latest(selectedWound).drainageAmount || $t('clinical360.wounds.tab.not_filed_lower')) }}</p>
+              <p><span>{{ $t('clinical360.wounds.tab.dressing') }}</span>{{ latest(selectedWound).dressingType || $t('clinical360.wounds.tab.not_filed') }}</p>
+              <p><span>{{ $t('clinical360.wounds.tab.pain') }}</span>{{ latest(selectedWound).painScore !== undefined ? latest(selectedWound).painScore + '/10' : $t('clinical360.wounds.tab.not_filed') }}</p>
+              <p><span>{{ $t('clinical360.wounds.tab.plan') }}</span>{{ latest(selectedWound).treatmentPlan || $t('clinical360.wounds.tab.not_filed') }}</p>
             </template>
-            <p v-else>No assessment filed.</p>
+            <p v-else>{{ $t('clinical360.wounds.tab.no_assessment_filed') }}</p>
           </section>
-          <v-alert v-if="latest(selectedWound).warningAreaIncreased" dense tile color="#fff1f2" class="trend-alert"><v-icon small color="#be123c">mdi-trending-up</v-icon>Wound surface area increased.</v-alert>
+          <v-alert v-if="latest(selectedWound).warningAreaIncreased" dense tile color="#fff1f2" class="trend-alert"><v-icon small color="#be123c">mdi-trending-up</v-icon>{{ $t('clinical360.wounds.tab.surface_area_increased') }}</v-alert>
           <v-btn block small depressed :color="readOnly ? '#475569' : '#0f766e'" dark @click="$emit('open-wound', selectedWound)">
-            <v-icon small left>{{ readOnly ? 'mdi-eye-outline' : 'mdi-clipboard-edit-outline' }}</v-icon>{{ readOnly ? 'Review record' : 'Document assessment' }}
+            <v-icon small left>{{ readOnly ? 'mdi-eye-outline' : 'mdi-clipboard-edit-outline' }}</v-icon>{{ readOnly ? $t('clinical360.wounds.tab.review_record') : $t('clinical360.wounds.tab.document_assessment') }}
           </v-btn>
         </template>
-        <div v-else class="context-empty"><v-icon size="34" color="#94a3b8">mdi-cursor-default-click-outline</v-icon><strong>Select a wound</strong><span>Its measurements, status and latest treatment plan will appear here.</span></div>
+        <div v-else class="context-empty"><v-icon size="34" color="#94a3b8">mdi-cursor-default-click-outline</v-icon><strong>{{ $t('clinical360.wounds.tab.select_a_wound') }}</strong><span>{{ $t('clinical360.wounds.tab.select_a_wound_hint') }}</span></div>
       </aside>
     </div>
   </section>
@@ -164,34 +164,34 @@ export default {
     photoCount() { return this.wounds.reduce((total, wound) => total + this.woundPhotoCount(wound), 0) },
     selectedWound() { return this.wounds.find(item => item.id === this.selectedWoundId) || this.wounds[0] || null },
     navigationGroups() { return [
-      { label: 'OVERVIEW', items: [{ key: 'overview', label: 'Skin / Wound Overview', icon: 'mdi-view-dashboard-outline', count: this.wounds.length }] },
-      { label: 'DOCUMENTATION', items: [{ key: 'documentation', label: 'Assessments and Photos', icon: 'mdi-clipboard-text-outline', count: this.allAssessments.length }] },
-      { label: 'DISCHARGE', items: [{ key: 'discharge', label: 'Continuity and Instructions', icon: 'mdi-exit-run', count: this.dischargeDelays.length }] }
+      { label: this.$t('clinical360.wounds.tab.nav_overview'), items: [{ key: 'overview', label: this.$t('clinical360.wounds.tab.nav_skin_wound_overview'), icon: 'mdi-view-dashboard-outline', count: this.wounds.length }] },
+      { label: this.$t('clinical360.wounds.tab.nav_documentation'), items: [{ key: 'documentation', label: this.$t('clinical360.wounds.tab.nav_assessments_and_photos'), icon: 'mdi-clipboard-text-outline', count: this.allAssessments.length }] },
+      { label: this.$t('clinical360.wounds.tab.nav_discharge'), items: [{ key: 'discharge', label: this.$t('clinical360.wounds.tab.nav_continuity_and_instructions'), icon: 'mdi-exit-run', count: this.dischargeDelays.length }] }
     ] },
     sectionMeta() { return {
-      milestones: { eyebrow: 'DISCHARGE MILESTONES AND DELAYS', title: 'Wound readiness at a glance', description: 'Identify incomplete wound work before it delays transfer or discharge.' },
-      overview: { eyebrow: 'OVERVIEW', title: 'Skin and wound overview', description: 'Review every wound, current status, location and latest measurement.' },
-      documentation: { eyebrow: 'DOCUMENTATION', title: 'Longitudinal wound documentation', description: 'Assessments, dimensions, drainage, dressing, pain and photos in chronological context.' },
-      discharge: { eyebrow: 'DISCHARGE', title: 'Wound continuity plan', description: 'Confirm removal decisions, instructions, supplies, follow-up and warning signs.' }
+      milestones: { eyebrow: this.$t('clinical360.wounds.tab.eyebrow_milestones'), title: this.$t('clinical360.wounds.tab.title_milestones'), description: this.$t('clinical360.wounds.tab.description_milestones') },
+      overview: { eyebrow: this.$t('clinical360.wounds.tab.nav_overview'), title: this.$t('clinical360.wounds.tab.title_overview'), description: this.$t('clinical360.wounds.tab.description_overview') },
+      documentation: { eyebrow: this.$t('clinical360.wounds.tab.nav_documentation'), title: this.$t('clinical360.wounds.tab.title_documentation'), description: this.$t('clinical360.wounds.tab.description_documentation') },
+      discharge: { eyebrow: this.$t('clinical360.wounds.tab.nav_discharge'), title: this.$t('clinical360.wounds.tab.title_discharge'), description: this.$t('clinical360.wounds.tab.description_discharge') }
     }[this.activeSection] },
     allAssessments() { return Object.keys(this.assessments).reduce((rows, woundId) => rows.concat((this.assessments[woundId] || []).map(item => ({ ...item, woundId: item.woundId || woundId }))), []).sort((a, b) => new Date(b.recordedAt || b.assessedAt || b.createdAt || 0) - new Date(a.recordedAt || a.assessedAt || a.createdAt || 0)) },
     documentationRows() { return this.documentationWoundId === 'all' ? this.allAssessments : this.allAssessments.filter(item => item.woundId === this.documentationWoundId) },
     dischargeRequirements() {
       const active = this.wounds.filter(item => !this.isResolved(item)); const assessments = active.map(item => this.latest(item))
       return [
-        { label: 'Wound status and LDA review', complete: !active.length || active.every(item => item.status && item.anatomicalLocation), detail: active.length ? `${active.length} active wound(s) require a documented disposition` : 'All wounds healed, closed or resolved' },
-        { label: 'Current wound assessment', complete: !active.length || assessments.every(item => item.id), detail: 'Dimensions, wound bed, drainage, pain and surrounding skin' },
-        { label: 'Photo documentation', complete: !active.length || active.every(item => this.woundPhotoCount(item) > 0), detail: 'Most recent wound image filed with the assessment' },
-        { label: 'Dressing and treatment instructions', complete: !active.length || assessments.every(item => item.dressingType && item.treatmentPlan), detail: 'Product, frequency, cleansing and escalation instructions' },
-        { label: 'Follow-up ownership and supplies', complete: !active.length || assessments.every(item => item.followUpOwner && item.supplyPlan && item.dischargeInstructions), detail: 'Receiving clinician, appointment, supplies, teaching and warning signs' }
+        { label: this.$t('clinical360.wounds.tab.req_status_lda_review'), complete: !active.length || active.every(item => item.status && item.anatomicalLocation), detail: active.length ? this.$t('clinical360.wounds.tab.req_status_lda_review_detail_active', { count: active.length }) : this.$t('clinical360.wounds.tab.req_status_lda_review_detail_resolved') },
+        { label: this.$t('clinical360.wounds.tab.req_current_assessment'), complete: !active.length || assessments.every(item => item.id), detail: this.$t('clinical360.wounds.tab.req_current_assessment_detail') },
+        { label: this.$t('clinical360.wounds.tab.req_photo_documentation'), complete: !active.length || active.every(item => this.woundPhotoCount(item) > 0), detail: this.$t('clinical360.wounds.tab.req_photo_documentation_detail') },
+        { label: this.$t('clinical360.wounds.tab.req_dressing_treatment_instructions'), complete: !active.length || assessments.every(item => item.dressingType && item.treatmentPlan), detail: this.$t('clinical360.wounds.tab.req_dressing_treatment_instructions_detail') },
+        { label: this.$t('clinical360.wounds.tab.req_followup_ownership_supplies'), complete: !active.length || assessments.every(item => item.followUpOwner && item.supplyPlan && item.dischargeInstructions), detail: this.$t('clinical360.wounds.tab.req_followup_ownership_supplies_detail') }
       ]
     },
     dischargeMilestones() { return this.dischargeRequirements.map((item, index) => ({ key: `milestone-${index}`, label: item.label, detail: item.detail, status: item.complete ? 'complete' : (index === 0 && this.worseningCount ? 'blocked' : 'pending'), target: index === 0 ? 'overview' : (index < 4 ? 'documentation' : 'discharge') })) },
     completedMilestones() { return this.dischargeMilestones.filter(item => item.status === 'complete').length },
     dischargeReadiness() { return Math.round((this.completedMilestones / Math.max(this.dischargeMilestones.length, 1)) * 100) },
     dischargeDelays() {
-      const delays = []; if (this.worseningCount) delays.push(`${this.worseningCount} worsening wound(s) need provider review`)
-      this.wounds.filter(item => !this.isResolved(item)).forEach(wound => { const assessment = this.latest(wound); const label = `${wound.woundType || 'Wound'} - ${wound.anatomicalLocation || 'unknown location'}`; if (!assessment.id) delays.push(`${label}: no current assessment`); else if (!assessment.treatmentPlan || !assessment.dressingType) delays.push(`${label}: treatment or dressing instructions incomplete`); else if (!assessment.followUpOwner || !assessment.supplyPlan || !assessment.dischargeInstructions) delays.push(`${label}: discharge continuity instructions incomplete`); if (!this.woundPhotoCount(wound)) delays.push(`${label}: current photo not filed`) })
+      const delays = []; if (this.worseningCount) delays.push(this.$t('clinical360.wounds.tab.delay_worsening_wounds', { count: this.worseningCount }))
+      this.wounds.filter(item => !this.isResolved(item)).forEach(wound => { const assessment = this.latest(wound); const label = `${wound.woundType || this.$t('clinical360.wounds.tab.wound')} - ${wound.anatomicalLocation || this.$t('clinical360.wounds.tab.unknown_location')}`; if (!assessment.id) delays.push(this.$t('clinical360.wounds.tab.delay_no_current_assessment', { label })); else if (!assessment.treatmentPlan || !assessment.dressingType) delays.push(this.$t('clinical360.wounds.tab.delay_treatment_dressing_incomplete', { label })); else if (!assessment.followUpOwner || !assessment.supplyPlan || !assessment.dischargeInstructions) delays.push(this.$t('clinical360.wounds.tab.delay_discharge_continuity_incomplete', { label })); if (!this.woundPhotoCount(wound)) delays.push(this.$t('clinical360.wounds.tab.delay_photo_not_filed', { label })) })
       return delays
     }
   },
@@ -202,15 +202,15 @@ export default {
     isResolved(wound) { return /healed|closed|resolved/i.test(wound.status || '') },
     latest(wound) { const list = this.assessments[wound.id] || []; return [...list].sort((a, b) => new Date(b.recordedAt || b.assessedAt || b.createdAt || 0) - new Date(a.recordedAt || a.assessedAt || a.createdAt || 0))[0] || {} },
     measurement(wound) { return this.assessmentMeasurement(this.latest(wound)) },
-    assessmentMeasurement(item) { return [item.lengthCm, item.widthCm, item.depthCm].every(value => value !== undefined && value !== null) ? `${item.lengthCm} x ${item.widthCm} x ${item.depthCm} cm` : 'Not measured' },
-    lastDate(wound) { const item = this.latest(wound); return item.id ? this.formatDate(item.recordedAt || item.assessedAt || item.createdAt) : 'No assessment' },
-    formatDate(value) { if (!value) return 'Not filed'; const date = new Date(value); return Number.isNaN(date.getTime()) ? 'Not filed' : date.toLocaleString() },
+    assessmentMeasurement(item) { return [item.lengthCm, item.widthCm, item.depthCm].every(value => value !== undefined && value !== null) ? `${item.lengthCm} x ${item.widthCm} x ${item.depthCm} cm` : this.$t('clinical360.wounds.tab.not_measured') },
+    lastDate(wound) { const item = this.latest(wound); return item.id ? this.formatDate(item.recordedAt || item.assessedAt || item.createdAt) : this.$t('clinical360.wounds.tab.no_assessment') },
+    formatDate(value) { if (!value) return this.$t('clinical360.wounds.tab.not_filed'); const date = new Date(value); return Number.isNaN(date.getTime()) ? this.$t('clinical360.wounds.tab.not_filed') : date.toLocaleString() },
     woundPhotoCount(wound) {
       const embedded = (this.assessments[wound.id] || []).reduce((total, item) => total + (item.photos || []).length, 0)
       const stored = this.photos.filter(item => item.woundId === wound.id).length
       return Math.max(embedded, stored)
     },
-    woundLabel(woundId) { const wound = this.wounds.find(item => item.id === woundId); return wound ? `${wound.woundType || 'Wound'} - ${wound.anatomicalLocation || 'Unknown location'}` : 'Wound record' },
+    woundLabel(woundId) { const wound = this.wounds.find(item => item.id === woundId); return wound ? `${wound.woundType || this.$t('clinical360.wounds.tab.wound')} - ${wound.anatomicalLocation || this.$t('clinical360.wounds.tab.unknown_location')}` : this.$t('clinical360.wounds.tab.wound_record') },
     woundSequence(wound) { return String(this.wounds.findIndex(item => item.id === wound.id) + 1).padStart(2, '0') }, cleanLabel(value) { return String(value).replace(/_/g, ' ') },
     statusClass(value) { return /worsen|blocked/i.test(value) ? 'danger' : /heal|closed|resolved|complete/i.test(value) ? 'good' : 'warning' },
     statusColor(status) { return status === 'complete' ? '#047857' : status === 'blocked' ? '#be123c' : '#b45309' }, statusIcon(status) { return status === 'complete' ? 'mdi-check-circle' : status === 'blocked' ? 'mdi-alert-circle' : 'mdi-clock-outline' }

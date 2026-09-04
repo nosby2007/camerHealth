@@ -1281,7 +1281,7 @@
               :patient="findPatientRecord(activePatientId) || activePatient"
               :role="currentRole"
               :workspace-tab="selectedChartTab"
-              :tasks="patientTasks"
+              :tasks="coordinationTasks"
               :documents="patientDocuments"
               :members="visibleCareTeamRows"
               :read-only="isPatientDischarged"
@@ -3559,6 +3559,10 @@ export default {
       const all = this.$store.getters['clinical/getTasks'] || []
       return all.filter(item => item.patientId === this.activePatientId && !['done', 'cancel', 'completed', 'cancelled'].includes(String(item.status || '').toLowerCase()))
     },
+    coordinationTasks() {
+      const all = this.$store.getters['clinical/getTasks'] || []
+      return all.filter(item => item.patientId === this.activePatientId)
+    },
     patientWounds() {
       const all = this.$store.getters['nursing/getWounds'] || []
       return all.filter(item => item.patientId === this.activePatientId)
@@ -5078,7 +5082,7 @@ export default {
               'Not Available': { text: 'N/A', status: 'held', defaultAction: 'details' }
             }
             const resolved = map[administration.status] || { text: 'Due', status: 'due', defaultAction: 'given' }
-            return { time, ...resolved, administrationId: administration.id }
+            return { time, ...resolved, statusDetail: administration.comment || administration.refusalReason || '', administrationId: administration.id }
           })
         }
       })
@@ -5929,6 +5933,8 @@ export default {
       this.loadAvatarPlacements()
       this.loadCareCoordinationData(newId)
       if (newId) {
+        this.$store.dispatch('clinical/fetchLabOrders')
+        this.$store.dispatch('clinical/fetchImagingOrders')
         this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: newId })
         this.$store.dispatch('clinical/fetchPatientMessages', newId)
       }
@@ -5944,11 +5950,20 @@ export default {
     // patient opened directly (only pharmacy/medications.vue populated the
     // former as a side effect of its own unrelated view).
     this.$store.dispatch('clinical/fetchMedications')
+    // Load diagnostics when a chart is opened directly, not only after using
+    // the standalone laboratory or imaging screens.
+    this.$store.dispatch('clinical/fetchLabOrders')
+    this.$store.dispatch('clinical/fetchImagingOrders')
     if (this.activePatientId) {
       this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: this.activePatientId })
       this.$store.dispatch('clinical/fetchPatientMessages', this.activePatientId)
     }
     this.$store.commit('clinical/LOAD_FROM_STORAGE')
+    // LOAD_FROM_STORAGE restores legacy local collections and can overwrite a
+    // fast API response. Refresh diagnostics after hydration so the 360 always
+    // displays the server-authoritative lab and imaging orders.
+    this.$store.dispatch('clinical/fetchLabOrders')
+    this.$store.dispatch('clinical/fetchImagingOrders')
     if (this.$store.hasModule && this.$store.hasModule('nursing')) {
       this.$store.commit('nursing/LOAD_FROM_STORAGE')
     }
@@ -7262,21 +7277,6 @@ export default {
             })
           }
         }
-        await this.$store.dispatch('clinical/createTask', {
-          patientId: this.activePatientId,
-          relatedType: 'emar',
-          relatedId: this.selectedMarMedication.id,
-          title: `eMAR ${action}: ${this.selectedMarMedication.label}`,
-          assignedToRole: 'NURSE',
-          priority: action === 'Held' || action === 'Refused' ? 'Today' : 'Routine',
-          actionReason: [
-            `Time ${this.forms.mar.time}`,
-            this.forms.mar.dose ? `Dose ${this.forms.mar.dose}` : '',
-            this.forms.mar.site ? `Site ${this.forms.mar.site}` : '',
-            this.forms.mar.comment || '',
-            this.forms.mar.patientResponse || ''
-          ].filter(Boolean).join(' | ')
-        })
         this.closeChartDialog('marAction')
         this.toastSuccess(`eMAR action filed for ${this.selectedMarMedication.label}.`)
       } catch (e) {
@@ -7851,11 +7851,18 @@ export default {
       }
     },
     findPatientRecord(id) {
-      if (this.patientRecord && this.patientRecord.id === id) return this.patientRecord
+      // Prefer the reactive Vuex record when available. The route can provide
+      // an initial patient snapshot, but mutations (for example adding an
+      // allergy from the Safety Watch dialog) update Vuex first. Returning the
+      // prop snapshot here made the save succeed while the banner still showed
+      // the old value until a full page reload.
       const all = this.$store.getters['clinical/patientDirectoryAll'] || []
       const directory = this.$store.getters['clinical/patientDirectory'] || []
       const patients = this.$store.getters['clinical/getPatients'] || []
-      return all.find(item => item.id === id) || directory.find(item => item.id === id) || patients.find(item => item.id === id) || null
+      return all.find(item => item.id === id)
+        || directory.find(item => item.id === id)
+        || patients.find(item => item.id === id)
+        || (this.patientRecord && this.patientRecord.id === id ? this.patientRecord : null)
     },
     normalizeVisibleSelection() {
       if (!this.visibleChartTabs.includes(this.selectedChartTab)) {

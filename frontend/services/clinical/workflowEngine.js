@@ -120,7 +120,7 @@ function nextTaskFromCompletion(task, completion = {}) {
     parentTaskId: task.id,
     occurrenceNumber: Number(task.occurrenceNumber || 1) + 1,
     automationSource: task.automationSource || 'provider-completion',
-    actionReason: `Next occurrence scheduled after ${task.id || 'care task'} completion`
+    actionReason: 'Next occurrence scheduled after the prior task was completed'
   };
 }
 
