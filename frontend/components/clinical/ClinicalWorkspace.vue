@@ -5933,6 +5933,8 @@ export default {
       this.loadAvatarPlacements()
       this.loadCareCoordinationData(newId)
       if (newId) {
+        this.$store.dispatch('clinical/fetchLabOrders')
+        this.$store.dispatch('clinical/fetchImagingOrders')
         this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: newId })
         this.$store.dispatch('clinical/fetchPatientMessages', newId)
       }
@@ -5948,6 +5950,10 @@ export default {
     // patient opened directly (only pharmacy/medications.vue populated the
     // former as a side effect of its own unrelated view).
     this.$store.dispatch('clinical/fetchMedications')
+    // Load diagnostics when a chart is opened directly, not only after using
+    // the standalone laboratory or imaging screens.
+    this.$store.dispatch('clinical/fetchLabOrders')
+    this.$store.dispatch('clinical/fetchImagingOrders')
     if (this.activePatientId) {
       this.$store.dispatch('clinical/fetchMedicationAdministrations', { patientId: this.activePatientId })
       this.$store.dispatch('clinical/fetchPatientMessages', this.activePatientId)
