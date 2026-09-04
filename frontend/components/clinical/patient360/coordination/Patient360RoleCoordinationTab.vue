@@ -54,7 +54,7 @@
             <div><strong>{{ task.title || task.task || copy.task }}</strong><small>{{ task.completionDocumentation || task.actionReason || copy.noDetail }}</small></div>
             <span>{{ task.updatedBy || task.completedBy || task.assignedToRole || copy.team }}</span>
             <span>{{ formatDate(task.completedAt || task.updatedAt) }}</span>
-            <b class="good">{{ task.status || 'done' }}</b>
+            <div class="audit-actions"><b class="good">{{ task.status || 'done' }}</b><v-btn v-if="canReview" x-small outlined color="#0f766e" @click="openReview(task)">{{ copy.review }}</v-btn></div>
           </div>
           <div v-if="!completedTasks.length" class="empty-state"><v-icon>mdi-clipboard-text-clock-outline</v-icon><span>{{ copy.noCompleted }}</span></div>
         </section>
@@ -151,6 +151,18 @@
         <v-card-actions><v-spacer /><v-btn text @click="dialogs.assignment=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="readOnly || !assignmentForm.title || !assignmentForm.assignedRole" @click="saveAssignment">{{ copy.assign }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog v-model="dialogs.review" max-width="680" persistent>
+      <v-card tile>
+        <v-card-title class="dialog-title"><v-icon left color="#0f766e">mdi-clipboard-check-outline</v-icon>{{ copy.reviewDialog }}</v-card-title>
+        <v-card-text class="pt-5">
+          <div class="review-summary"><span>{{ copy.reviewTask }}</span><strong>{{ reviewTask && (reviewTask.title || reviewTask.task || copy.task) }}</strong><p>{{ reviewTask && (reviewTask.completionDocumentation || reviewTask.actionReason || copy.noDetail) }}</p><small>{{ reviewTask && (reviewTask.updatedBy || reviewTask.completedBy || copy.team) }} · {{ reviewTask && formatDate(reviewTask.completedAt || reviewTask.updatedAt) }}</small></div>
+          <v-select v-model="reviewForm.decision" :items="reviewDecisions" item-text="text" item-value="value" :label="copy.reviewDecision" dense outlined />
+          <v-textarea v-model.trim="reviewForm.comment" :label="copy.reviewComment" rows="4" dense outlined :rules="[requiredRule]" />
+        </v-card-text>
+        <v-card-actions><v-spacer /><v-btn text @click="dialogs.review=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="!reviewForm.comment" @click="saveReview">{{ copy.validateReview }}</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
   </section>
 </template>
 
@@ -175,7 +187,9 @@ export default {
   },
   data: () => ({
     saving: false,
-    dialogs: { note: false, meeting: false, assignment: false },
+    dialogs: { note: false, meeting: false, assignment: false, review: false },
+    reviewTask: null,
+    reviewForm: { decision: 'Approved', comment: '' },
     noteForm: { title: '', body: '', status: 'draft', share: false },
     meetingForm: { type: 'IDT Conference', scheduledAt: '', attendees: '', agenda: '', decisions: '', followUp: '', assignedRole: 'NURSE', dueAt: '' },
     assignmentForm: { title: '', assignedRole: 'NURSE', priority: 'Today', dueAt: '', reason: '' }
@@ -253,6 +267,12 @@ export default {
         assign: t('assign'),
         cancel: t('cancel'),
         save: t('save'),
+        review: this.isFrench ? 'Revoir' : 'Review',
+        reviewDialog: this.isFrench ? 'Validation de gouvernance' : 'Governance review',
+        reviewTask: this.isFrench ? 'Tâche effectuée' : 'Completed task',
+        reviewDecision: this.isFrench ? 'Décision du superviseur' : 'Supervisor decision',
+        reviewComment: this.isFrench ? 'Commentaire de validation' : 'Review comment',
+        validateReview: this.isFrench ? 'Valider la revue' : 'Validate review',
         saveError: t('save_error')
       }
     },
@@ -301,6 +321,8 @@ export default {
     },
     openScopedTasks() { return this.scopedTasks.filter(item => !/done|complete|cancel|resolved/i.test(item.status || '')) },
     completedTasks() { return this.scopedTasks.filter(item => /done|complete|resolved/i.test(item.status || '')).sort((a, b) => new Date(b.completedAt || b.updatedAt || 0) - new Date(a.completedAt || a.updatedAt || 0)) },
+    canReview() { return ['MAJOR_SERVICE', 'NURSING_SUPERVISOR'].includes(this.role) && this.mode !== 'social' },
+    reviewDecisions() { return [{ value: 'Approved', text: this.isFrench ? 'Validée' : 'Approved' }, { value: 'Needs follow-up', text: this.isFrench ? 'Suivi requis' : 'Needs follow-up' }] },
     openTasks() { return this.openScopedTasks.length },
     filedReports() { return this.documents.filter(item => !/conference|meeting|quality|idt|safety huddle/i.test(`${item.category || ''} ${item.title || ''}`)).sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0)) },
     meetingRecords() { return this.documents.filter(item => /conference|meeting|quality|idt|safety huddle/i.test(`${item.category || ''} ${item.title || ''}`)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) },
@@ -319,6 +341,24 @@ export default {
     initials(name) { return String(name || '?').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() },
     roleLabel(role) { return ROLE_LABELS[role] ? this.$t(`clinical360.coordination.tab.roles.${String(role).toLowerCase()}`) : role },
     taskState(task) { const value = String(task.status || '').toLowerCase(); return /done|complete|resolved/.test(value) ? 'good' : /urgent|missed|overdue/.test(`${value} ${task.priority || ''}`.toLowerCase()) ? 'danger' : 'warning' },
+    requiredRule(value) { return Boolean(String(value || '').trim()) || (this.isFrench ? 'Requis' : 'Required') },
+    openReview(task) { this.reviewTask = task; this.reviewForm = { decision: 'Approved', comment: '', }; this.dialogs.review = true },
+    async saveReview() {
+      if (!this.reviewTask || !this.reviewForm.comment) return
+      this.saving = true
+      try {
+        const task = this.reviewTask
+        await this.$store.dispatch('clinical/createDocument', {
+          patientId: this.patientId,
+          title: `${this.copy.reviewDialog}: ${task.title || task.task || this.copy.task}`,
+          category: 'Governance Review',
+          status: 'Filed',
+          content: [`Task: ${task.title || task.task || this.copy.task}`, `Completed by: ${task.updatedBy || task.completedBy || task.assignedToRole || this.copy.team}`, `Completed at: ${this.formatDate(task.completedAt || task.updatedAt)}`, `Decision: ${this.reviewForm.decision}`, `Reviewer: ${this.$store.state.auth.fullName || this.$store.state.auth.staffId || this.role}`, `Comment: ${this.reviewForm.comment}`].join('\n')
+        })
+        this.dialogs.review = false
+        this.$emit('saved', this.isFrench ? 'Revue de gouvernance enregistrée.' : 'Governance review filed.')
+      } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
+    },
     openNote() { this.noteForm = { title: this.copy.title, body: '', status: 'draft', share: false }; this.dialogs.note = true },
     openMeeting() { this.meetingForm = { type: 'IDT Conference', scheduledAt: this.nowLocal(), attendees: '', agenda: '', decisions: '', followUp: '', assignedRole: this.mode === 'social' ? 'SOCIAL_WORKER' : 'NURSE', dueAt: '' }; this.dialogs.meeting = true },
     openAssignment() { this.assignmentForm = { title: '', assignedRole: this.mode === 'social' ? 'SOCIAL_WORKER' : 'NURSE', priority: 'Today', dueAt: '', reason: '' }; this.dialogs.assignment = true },
