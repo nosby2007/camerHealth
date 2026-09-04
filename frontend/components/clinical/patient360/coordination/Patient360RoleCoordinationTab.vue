@@ -51,9 +51,9 @@
           <header><div><span>{{ copy.auditEyebrow }}</span><strong>{{ copy.auditTitle }}</strong></div><span class="audit-count">{{ completedTasks.length }}</span></header>
           <div class="audit-head"><span>{{ copy.item }}</span><span>{{ copy.completedBy }}</span><span>{{ copy.completedAt }}</span><span>{{ copy.status }}</span></div>
           <div v-for="task in completedTasks.slice(0, 12)" :key="`completed-${task.id}`" class="audit-row">
-            <div><strong>{{ task.title || task.task || copy.task }}</strong><small>{{ task.completionDocumentation || task.actionReason || copy.noDetail }}</small></div>
-            <span>{{ task.updatedBy || task.completedBy || task.assignedToRole || copy.team }}</span>
-            <span>{{ formatDate(task.completedAt || task.updatedAt) }}</span>
+            <div><strong>{{ task.title || task.task || copy.task }}</strong><small>{{ taskDetail(task) }}</small></div>
+            <span>{{ actorName(task) }}</span>
+            <span>{{ formatDate(completedAt(task) || task.updatedAt) }}</span>
             <div class="audit-actions"><b class="good">{{ task.status || 'done' }}</b><v-btn v-if="canReview" x-small outlined color="#0f766e" @click="openReview(task)">{{ copy.review }}</v-btn></div>
           </div>
           <div v-if="!completedTasks.length" class="empty-state"><v-icon>mdi-clipboard-text-clock-outline</v-icon><span>{{ copy.noCompleted }}</span></div>
@@ -156,7 +156,7 @@
       <v-card tile>
         <v-card-title class="dialog-title"><v-icon left color="#0f766e">mdi-clipboard-check-outline</v-icon>{{ copy.reviewDialog }}</v-card-title>
         <v-card-text class="pt-5">
-          <div class="review-summary"><span>{{ copy.reviewTask }}</span><strong>{{ reviewTask && (reviewTask.title || reviewTask.task || copy.task) }}</strong><p>{{ reviewTask && (reviewTask.completionDocumentation || reviewTask.actionReason || copy.noDetail) }}</p><small>{{ reviewTask && (reviewTask.updatedBy || reviewTask.completedBy || copy.team) }} · {{ reviewTask && formatDate(reviewTask.completedAt || reviewTask.updatedAt) }}</small></div>
+          <div class="review-summary"><span>{{ copy.reviewTask }}</span><strong>{{ reviewTask && (reviewTask.title || reviewTask.task || copy.task) }}</strong><p>{{ reviewTask && taskDetail(reviewTask) }}</p><small>{{ reviewTask && actorName(reviewTask) }} · {{ reviewTask && formatDate(completedAt(reviewTask) || reviewTask.updatedAt) }}</small></div>
           <v-select v-model="reviewForm.decision" :items="reviewDecisions" item-text="text" item-value="value" :label="copy.reviewDecision" dense outlined />
           <v-textarea v-model.trim="reviewForm.comment" :label="copy.reviewComment" rows="4" dense outlined :rules="[requiredRule]" />
         </v-card-text>
@@ -338,7 +338,10 @@ export default {
   methods: {
     nowLocal() { const date = new Date(Date.now() - new Date().getTimezoneOffset() * 60000); return date.toISOString().slice(0, 16) },
     formatDate(value) { return value ? new Date(value).toLocaleString(this.isFrench ? 'fr-CM' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) : '-' },
-    taskDetail(task) { return String(task.instructions || task.actionReason || task.reason || this.copy.noDetail).replace(/\s+after\s+[a-f0-9-]{20,}\s+completion\.?/i, ' after the prior task was completed.') },
+    latestCompletionEvent(task) { return Array.isArray(task && task.history) ? task.history.slice().reverse().find(item => /done|complete|resolved/i.test(`${item.status || ''} ${item.action || ''}`)) : null },
+    taskDetail(task) { const event = this.latestCompletionEvent(task); return String(task.completionDocumentation || (event && event.reason) || task.instructions || task.actionReason || task.reason || this.copy.noDetail).replace(/\s+after\s+[a-f0-9-]{20,}\s+completion\.?/i, ' after the prior task was completed.') },
+    completedAt(task) { const event = this.latestCompletionEvent(task); return task.completedAt || (event && event.at) || '' },
+    actorName(task) { const actor = task && (task.updatedBy || task.completedBy || task.updatedByName); if (actor) return typeof actor === 'object' ? (actor.fullName || actor.staffCode || this.copy.team) : actor; const event = this.latestCompletionEvent(task); return (event && event.actor) || task.assignedToRole || this.copy.team },
     initials(name) { return String(name || '?').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() },
     roleLabel(role) { return ROLE_LABELS[role] ? this.$t(`clinical360.coordination.tab.roles.${String(role).toLowerCase()}`) : role },
     taskState(task) { const value = String(task.status || '').toLowerCase(); return /done|complete|resolved/.test(value) ? 'good' : /urgent|missed|overdue/.test(`${value} ${task.priority || ''}`.toLowerCase()) ? 'danger' : 'warning' },
@@ -354,7 +357,7 @@ export default {
           title: `${this.copy.reviewDialog}: ${task.title || task.task || this.copy.task}`,
           category: 'Governance Review',
           status: 'Filed',
-          content: [`Task: ${task.title || task.task || this.copy.task}`, `Completed by: ${task.updatedBy || task.completedBy || task.assignedToRole || this.copy.team}`, `Completed at: ${this.formatDate(task.completedAt || task.updatedAt)}`, `Decision: ${this.reviewForm.decision}`, `Reviewer: ${this.$store.state.auth.fullName || this.$store.state.auth.staffId || this.role}`, `Comment: ${this.reviewForm.comment}`].join('\n')
+          content: [`Task: ${task.title || task.task || this.copy.task}`, `Completed by: ${this.actorName(task)}`, `Completed at: ${this.formatDate(this.completedAt(task) || task.updatedAt)}`, `Decision: ${this.reviewForm.decision}`, `Reviewer: ${this.$store.state.auth.fullName || this.$store.state.auth.staffId || this.role}`, `Comment: ${this.reviewForm.comment}`].join('\n')
         })
         this.dialogs.review = false
         this.$emit('saved', this.isFrench ? 'Revue de gouvernance enregistrée.' : 'Governance review filed.')
