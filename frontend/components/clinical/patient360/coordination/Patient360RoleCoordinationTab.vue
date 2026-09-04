@@ -39,7 +39,7 @@
           <header><div><span>{{ copy.workQueue }}</span><strong>{{ copy.workQueueTitle }}</strong></div><button type="button" @click="$emit('open-tab', 'Work List')">{{ copy.viewAll }}</button></header>
           <div class="work-head"><span>{{ copy.item }}</span><span>{{ copy.owner }}</span><span>{{ copy.due }}</span><span>{{ copy.status }}</span></div>
           <div v-for="task in openScopedTasks.slice(0, 7)" :key="task.id" class="work-row">
-            <div><strong>{{ task.title }}</strong><small>{{ task.actionReason || task.instructions || copy.noDetail }}</small></div>
+            <div><strong>{{ task.title }}</strong><small>{{ taskDetail(task) }}</small></div>
             <span>{{ task.assignedToRole || task.assignedRole || copy.team }}</span>
             <span>{{ formatDate(task.dueAt) }}</span>
             <b :class="taskState(task)">{{ task.status || 'pending' }}</b>
@@ -338,6 +338,7 @@ export default {
   methods: {
     nowLocal() { const date = new Date(Date.now() - new Date().getTimezoneOffset() * 60000); return date.toISOString().slice(0, 16) },
     formatDate(value) { return value ? new Date(value).toLocaleString(this.isFrench ? 'fr-CM' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) : '-' },
+    taskDetail(task) { return String(task.instructions || task.actionReason || task.reason || this.copy.noDetail).replace(/\s+after\s+[a-f0-9-]{20,}\s+completion\.?/i, ' after the prior task was completed.') },
     initials(name) { return String(name || '?').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() },
     roleLabel(role) { return ROLE_LABELS[role] ? this.$t(`clinical360.coordination.tab.roles.${String(role).toLowerCase()}`) : role },
     taskState(task) { const value = String(task.status || '').toLowerCase(); return /done|complete|resolved/.test(value) ? 'good' : /urgent|missed|overdue/.test(`${value} ${task.priority || ''}`.toLowerCase()) ? 'danger' : 'warning' },

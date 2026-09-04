@@ -13,7 +13,7 @@
       <div class="task-head"><span>{{ $t('clinical360.work_list.tab.col_due') }}</span><span>{{ $t('clinical360.work_list.tab.col_care_activity') }}</span><span>{{ $t('clinical360.work_list.tab.col_owner') }}</span><span>{{ $t('clinical360.work_list.tab.col_priority') }}</span><span>{{ $t('clinical360.work_list.tab.col_status') }}</span><span>{{ $t('clinical360.work_list.tab.col_actions') }}</span></div>
       <div v-for="task in filteredTasks" :key="task.id || task.title" :class="['task-row',{attention:isAttentionDue(task)}]">
         <time :class="{overdue:isOverdue(task)}">{{ dueLabel(task) }}</time>
-        <div><ClinicalHoverCard :title="task.title || task.label || $t('clinical360.work_list.tab.care_task')" :eyebrow="$t('clinical360.work_list.tab.care_task')" :subtitle="dueLabel(task)" :details="taskHoverDetails(task)"><template #activator><strong class="detail-trigger">{{ task.title || task.label || $t('clinical360.work_list.tab.care_task') }}</strong></template></ClinicalHoverCard><small>{{ task.instructions || task.actionReason || task.reason || task.relatedType || $t('clinical360.work_list.tab.patient_care_activity') }}</small></div>
+        <div><ClinicalHoverCard :title="task.title || task.label || $t('clinical360.work_list.tab.care_task')" :eyebrow="$t('clinical360.work_list.tab.care_task')" :subtitle="dueLabel(task)" :details="taskHoverDetails(task)"><template #activator><strong class="detail-trigger">{{ task.title || task.label || $t('clinical360.work_list.tab.care_task') }}</strong></template></ClinicalHoverCard><small>{{ taskDetail(task) }}</small></div>
         <span><b>{{ ownerLabel(task) }}</b><small>{{ task.frequency || $t('clinical360.work_list.tab.once') }}</small></span>
         <span><b :class="['priority',priorityClass(task)]">{{ task.priority || $t('clinical360.work_list.tab.routine') }}</b></span>
         <span><b :class="['status',statusClass(task)]">{{ statusLabel(task) }}</b><small v-if="isAttentionDue(task)">{{ $t('clinical360.work_list.tab.reminder_active') }}</small></span>
@@ -74,6 +74,7 @@ export default {
     ownerLabel(t){return t.assignedToRole||t.assignedRole||t.owner||'CARE TEAM'},
     isOverdue(t){return Boolean(t.dueAt)&&new Date(t.dueAt)<new Date()&&!/done|complete|cancel/i.test(String(t.status||''))},
     isAttentionDue(t){return ['due','reminder'].includes(reminderState(t,new Date(this.nowTick)))},
+    taskDetail(t){const value=t.instructions||t.actionReason||t.reason||t.relatedType||this.$t('clinical360.work_list.tab.patient_care_activity');return String(value).replace(/\s+after\s+[a-f0-9-]{20,}\s+completion\.?/i,' after the prior task was completed.')},
     dueLabel(t){if(!t.dueAt)return t.createdAt?new Date(t.createdAt).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):this.$t('clinical360.work_list.tab.not_scheduled');return new Date(t.dueAt).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})},
     statusLabel(t){return this.isOverdue(t)?this.$t('clinical360.work_list.tab.overdue'):(t.status||this.$t('clinical360.work_list.tab.pending'))},
     statusClass(t){return this.isOverdue(t)?'overdue':/hold/i.test(String(t.status||''))?'hold':'open'},
