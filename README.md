@@ -200,3 +200,4 @@ Le projet ne possédait aucun `.gitignore`. Tous les fichiers `.env*` (sauf `.en
 This software is developed for the **Ministry of Public Health of Cameroon (MINSANTE)**. It adheres to standard data privacy guidelines for anonymized health reporting.
 
 **Copyright © 2024 CameroHealth / Innovtech Services.** All Rights Reserved.
+"# camerHealth" 
