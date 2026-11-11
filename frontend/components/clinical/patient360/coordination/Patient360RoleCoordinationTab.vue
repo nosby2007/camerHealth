@@ -38,13 +38,34 @@
         <section class="work-section">
           <header><div><span>{{ copy.workQueue }}</span><strong>{{ copy.workQueueTitle }}</strong></div><button type="button" @click="$emit('open-tab', 'Work List')">{{ copy.viewAll }}</button></header>
           <div class="work-head"><span>{{ copy.item }}</span><span>{{ copy.owner }}</span><span>{{ copy.due }}</span><span>{{ copy.status }}</span></div>
-          <div v-for="task in scopedTasks.slice(0, 7)" :key="task.id" class="work-row">
-            <div><strong>{{ task.title }}</strong><small>{{ task.actionReason || task.instructions || copy.noDetail }}</small></div>
+          <div v-for="task in openScopedTasks.slice(0, 7)" :key="task.id" class="work-row">
+            <div><strong>{{ task.title }}</strong><small>{{ taskDetail(task) }}</small></div>
             <span>{{ task.assignedToRole || task.assignedRole || copy.team }}</span>
             <span>{{ formatDate(task.dueAt) }}</span>
             <b :class="taskState(task)">{{ task.status || 'pending' }}</b>
           </div>
-          <div v-if="!scopedTasks.length" class="empty-state"><v-icon>mdi-clipboard-check-outline</v-icon><span>{{ copy.noTasks }}</span></div>
+          <div v-if="!openScopedTasks.length" class="empty-state"><v-icon>mdi-clipboard-check-outline</v-icon><span>{{ copy.noTasks }}</span></div>
+        </section>
+
+        <section v-if="mode !== 'social'" class="work-section audit-section">
+          <header><div><span>{{ copy.auditEyebrow }}</span><strong>{{ copy.auditTitle }}</strong></div><span class="audit-count">{{ completedTasks.length }}</span></header>
+          <div class="audit-head"><span>{{ copy.item }}</span><span>{{ copy.completedBy }}</span><span>{{ copy.completedAt }}</span><span>{{ copy.status }}</span></div>
+          <div v-for="task in completedTasks.slice(0, 12)" :key="`completed-${task.id}`" class="audit-row">
+            <div><strong>{{ task.title || task.task || copy.task }}</strong><small>{{ taskDetail(task) }}</small></div>
+            <span>{{ actorName(task) }}</span>
+            <span>{{ formatDate(completedAt(task) || task.updatedAt) }}</span>
+            <div class="audit-actions"><b class="good">{{ task.status || 'done' }}</b><v-btn v-if="canReview" x-small outlined color="#0f766e" @click="openReview(task)">{{ copy.review }}</v-btn></div>
+          </div>
+          <div v-if="!completedTasks.length" class="empty-state"><v-icon>mdi-clipboard-text-clock-outline</v-icon><span>{{ copy.noCompleted }}</span></div>
+        </section>
+
+        <section v-if="mode !== 'social'" class="work-section reports-section">
+          <header><div><span>{{ copy.reportEyebrow }}</span><strong>{{ copy.reportTitle }}</strong></div><span class="audit-count">{{ filedReports.length }}</span></header>
+          <article v-for="record in filedReports.slice(0, 8)" :key="`report-${record.id}`" class="report-row">
+            <v-icon small color="#0f766e">mdi-file-document-check-outline</v-icon>
+            <div><strong>{{ record.title || record.category || copy.report }}</strong><small>{{ record.createdBy || record.updatedBy || copy.team }} · {{ formatDate(record.createdAt || record.updatedAt) }}</small></div>
+          </article>
+          <div v-if="!filedReports.length" class="empty-state"><v-icon>mdi-file-alert-outline</v-icon><span>{{ copy.noReports }}</span></div>
         </section>
 
         <section class="work-section meeting-section">
@@ -86,7 +107,7 @@
           <v-text-field v-model.trim="noteForm.title" :label="copy.noteTitle" dense outlined />
           <v-textarea v-model.trim="noteForm.body" :label="copy.noteBody" rows="6" dense outlined />
           <div class="dialog-grid">
-            <v-select v-model="noteForm.status" :items="noteStatuses" :label="copy.noteStatus" dense outlined />
+            <v-select v-model="noteForm.status" :items="noteStatuses" item-text="text" item-value="value" :label="copy.noteStatus" dense outlined />
             <v-checkbox v-model="noteForm.share" :disabled="noteForm.status !== 'signed'" :label="copy.shareTeam" dense />
           </div>
         </v-card-text>
@@ -99,7 +120,7 @@
         <v-card-title class="dialog-title"><v-icon left color="#0f766e">mdi-account-voice</v-icon>{{ copy.meetingDialog }}</v-card-title>
         <v-card-text class="pt-5">
           <div class="dialog-grid">
-            <v-select v-model="meetingForm.type" :items="meetingTypes" :label="copy.meetingType" dense outlined />
+            <v-select v-model="meetingForm.type" :items="meetingTypes" item-text="text" item-value="value" :label="copy.meetingType" dense outlined />
             <v-text-field v-model="meetingForm.scheduledAt" type="datetime-local" :label="copy.date" dense outlined />
           </div>
           <v-text-field v-model.trim="meetingForm.attendees" :label="copy.attendees" dense outlined />
@@ -122,12 +143,24 @@
           <v-text-field v-model.trim="assignmentForm.title" :label="copy.taskTitle" dense outlined />
           <div class="dialog-grid">
             <v-select v-model="assignmentForm.assignedRole" :items="assignmentRoles" item-text="text" item-value="value" :label="copy.owner" dense outlined />
-            <v-select v-model="assignmentForm.priority" :items="priorities" :label="copy.priority" dense outlined />
+            <v-select v-model="assignmentForm.priority" :items="priorities" item-text="text" item-value="value" :label="copy.priority" dense outlined />
           </div>
           <v-text-field v-model="assignmentForm.dueAt" type="datetime-local" :label="copy.due" dense outlined />
           <v-textarea v-model.trim="assignmentForm.reason" :label="copy.instructions" rows="3" dense outlined />
         </v-card-text>
         <v-card-actions><v-spacer /><v-btn text @click="dialogs.assignment=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="readOnly || !assignmentForm.title || !assignmentForm.assignedRole" @click="saveAssignment">{{ copy.assign }}</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="dialogs.review" max-width="680" persistent>
+      <v-card tile>
+        <v-card-title class="dialog-title"><v-icon left color="#0f766e">mdi-clipboard-check-outline</v-icon>{{ copy.reviewDialog }}</v-card-title>
+        <v-card-text class="pt-5">
+          <div class="review-summary"><span>{{ copy.reviewTask }}</span><strong>{{ reviewTask && (reviewTask.title || reviewTask.task || copy.task) }}</strong><p>{{ reviewTask && taskDetail(reviewTask) }}</p><small>{{ reviewTask && actorName(reviewTask) }} · {{ reviewTask && formatDate(completedAt(reviewTask) || reviewTask.updatedAt) }}</small></div>
+          <v-select v-model="reviewForm.decision" :items="reviewDecisions" item-text="text" item-value="value" :label="copy.reviewDecision" dense outlined />
+          <v-textarea v-model.trim="reviewForm.comment" :label="copy.reviewComment" rows="4" dense outlined :rules="[requiredRule]" />
+        </v-card-text>
+        <v-card-actions><v-spacer /><v-btn text @click="dialogs.review=false">{{ copy.cancel }}</v-btn><v-btn depressed color="#0f766e" dark :loading="saving" :disabled="!reviewForm.comment" @click="saveReview">{{ copy.validateReview }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </section>
@@ -154,14 +187,16 @@ export default {
   },
   data: () => ({
     saving: false,
-    dialogs: { note: false, meeting: false, assignment: false },
+    dialogs: { note: false, meeting: false, assignment: false, review: false },
+    reviewTask: null,
+    reviewForm: { decision: 'Approved', comment: '' },
     noteForm: { title: '', body: '', status: 'draft', share: false },
     meetingForm: { type: 'IDT Conference', scheduledAt: '', attendees: '', agenda: '', decisions: '', followUp: '', assignedRole: 'NURSE', dueAt: '' },
-    assignmentForm: { title: '', assignedRole: 'NURSE', priority: 'Today', dueAt: '', reason: '' },
-    priorities: ['Routine', 'Today', 'Urgent', 'STAT'],
-    noteStatuses: [{ text: 'Draft / Brouillon', value: 'draft' }, { text: 'Sign now / Signer', value: 'signed' }],
-    assignmentRoles: Object.keys(ROLE_LABELS).map(value => ({ value, text: ROLE_LABELS[value] }))
+    assignmentForm: { title: '', assignedRole: 'NURSE', priority: 'Today', dueAt: '', reason: '' }
   }),
+  created() {
+    if (!this.activeStaff.length) this.$store.dispatch('facility/fetchActiveStaffSummary')
+  },
   computed: {
     isFrench() { return this.$i18n && this.$i18n.locale === 'fr' },
     mode() {
@@ -171,20 +206,105 @@ export default {
       return this.role === 'SOCIAL_WORKER' ? 'social' : this.role === 'MAJOR_SERVICE' ? 'unit' : 'supervision'
     },
     copy() {
-      const fr = {
-        social: { eyebrow: 'CONTINUITE ET ACCOMPAGNEMENT', title: 'Service social', subtitle: 'Evaluation sociale, obstacles a la sortie, ressources et coordination familiale.' },
-        unit: { eyebrow: 'PILOTAGE OPERATIONNEL', title: 'Pilotage du service', subtitle: 'Couverture du personnel, charge de travail, securite et coordination du service.' },
-        supervision: { eyebrow: 'GOUVERNANCE DES SOINS', title: 'Supervision infirmiere', subtitle: 'Surveillance transversale des services, qualite, effectifs et escalades cliniques.' },
-        careTeam: 'Equipe de soins', note: 'Rediger une note', assignment: 'Affecter', conference: 'Conference', readOnly: 'Patient sorti : cet espace est en lecture seule.', workQueue: 'TRAVAIL ACTIF', workQueueTitle: 'Actions et suivis', viewAll: 'Voir la liste', item: 'Element', owner: 'Responsable', due: 'Echeance', status: 'Statut', noDetail: 'Aucun detail', team: 'Equipe', noTasks: 'Aucune action ouverte dans ce perimetre.', governance: 'COORDINATION', meetingsTitle: 'IDT, qualite et reunions cliniques', add: 'Ajouter', noMeetings: 'Aucun compte rendu de reunion pour ce patient.', coverage: 'COUVERTURE', staffTitle: 'Personnel disponible', available: 'Disponible', noStaff: 'Aucun membre actif trouve.', interdisciplinary: 'INTERDISCIPLINAIRE', patientTeam: 'Equipe du patient', openCareTeam: 'Ouvrir toute l equipe', noteDialog: 'Nouvelle note professionnelle', noteTitle: 'Titre de la note', noteBody: 'Evaluation, constat et plan', noteStatus: 'Statut', shareTeam: 'Partager avec l equipe de soins', meetingDialog: 'Conference et compte rendu', meetingType: 'Type de reunion', date: 'Date et heure', attendees: 'Participants', agenda: 'Ordre du jour', decisions: 'Decisions et recommandations', followUp: 'Action de suivi', priority: 'Priorite', instructions: 'Instructions / justification', fileMinutes: 'Classer le compte rendu', assignmentDialog: 'Nouvelle affectation', taskTitle: 'Tache ou intervention', assign: 'Affecter', cancel: 'Annuler', save: 'Enregistrer', saveError: 'Enregistrement impossible. Verifiez vos droits et le statut du patient.' }
-      const en = {
-        social: { eyebrow: 'CONTINUITY AND SUPPORT', title: 'Social Services', subtitle: 'Social assessment, discharge barriers, resources and family coordination.' },
-        unit: { eyebrow: 'UNIT OPERATIONS', title: 'Unit Management', subtitle: 'Staff coverage, workload, safety and service coordination.' },
-        supervision: { eyebrow: 'NURSING GOVERNANCE', title: 'Nursing Supervision', subtitle: 'Cross-unit oversight, quality, staffing and clinical escalation.' },
-        careTeam: 'Care team', note: 'Write note', assignment: 'Assign', conference: 'Conference', readOnly: 'Discharged patient: this workspace is read only.', workQueue: 'ACTIVE WORK', workQueueTitle: 'Actions and follow-up', viewAll: 'View work list', item: 'Item', owner: 'Owner', due: 'Due', status: 'Status', noDetail: 'No detail', team: 'Team', noTasks: 'No open action in this scope.', governance: 'COORDINATION', meetingsTitle: 'IDT, quality and clinical meetings', add: 'Add', noMeetings: 'No meeting minutes filed for this patient.', coverage: 'COVERAGE', staffTitle: 'Available staff', available: 'Available', noStaff: 'No active staff member found.', interdisciplinary: 'INTERDISCIPLINARY', patientTeam: 'Patient care team', openCareTeam: 'Open full care team', noteDialog: 'New professional note', noteTitle: 'Note title', noteBody: 'Assessment, findings and plan', noteStatus: 'Status', shareTeam: 'Share with care team', meetingDialog: 'Conference and meeting minutes', meetingType: 'Meeting type', date: 'Date and time', attendees: 'Attendees', agenda: 'Agenda', decisions: 'Decisions and recommendations', followUp: 'Follow-up action', priority: 'Priority', instructions: 'Instructions / rationale', fileMinutes: 'File meeting minutes', assignmentDialog: 'New assignment', taskTitle: 'Task or intervention', assign: 'Assign', cancel: 'Cancel', save: 'Save', saveError: 'Unable to save. Check your access and the patient chart status.' }
-      const source = this.isFrench ? fr : en
-      return { ...source, ...source[this.mode] }
+      const t = key => this.$t(`clinical360.coordination.tab.${key}`)
+      return {
+        eyebrow: this.$t(`clinical360.coordination.tab.${this.mode}.eyebrow`),
+        title: this.$t(`clinical360.coordination.tab.${this.mode}.title`),
+        subtitle: this.$t(`clinical360.coordination.tab.${this.mode}.subtitle`),
+        careTeam: t('care_team'),
+        note: t('write_note'),
+        assignment: t('assign'),
+        conference: t('conference'),
+        readOnly: t('read_only_banner'),
+        workQueue: t('work_queue_eyebrow'),
+        workQueueTitle: t('work_queue_title'),
+        viewAll: t('view_all'),
+        item: t('item'),
+        owner: t('owner'),
+        due: t('due'),
+        status: t('status'),
+        noDetail: t('no_detail'),
+        team: t('team'),
+        noTasks: t('no_tasks'),
+        auditEyebrow: this.isFrench ? 'TRAÇABILITÉ' : 'AUDIT TRAIL',
+        auditTitle: this.isFrench ? 'Tâches effectuées' : 'Completed work',
+        completedBy: this.isFrench ? 'Effectué par' : 'Completed by',
+        completedAt: this.isFrench ? 'Date / heure' : 'Date / time',
+        noCompleted: this.isFrench ? 'Aucune tâche terminée enregistrée.' : 'No completed task recorded.',
+        reportEyebrow: this.isFrench ? 'RAPPORTS' : 'REPORTS',
+        reportTitle: this.isFrench ? 'Rapports déposés' : 'Filed reports',
+        report: this.isFrench ? 'Rapport clinique' : 'Clinical report',
+        noReports: this.isFrench ? 'Aucun rapport déposé.' : 'No filed report.',
+        task: this.isFrench ? 'Tâche de soins' : 'Care task',
+        governance: t('governance_eyebrow'),
+        meetingsTitle: t('meetings_title'),
+        add: t('add'),
+        noMeetings: t('no_meetings'),
+        coverage: t('coverage_eyebrow'),
+        staffTitle: t('staff_title'),
+        available: t('available'),
+        noStaff: t('no_staff'),
+        interdisciplinary: t('interdisciplinary_eyebrow'),
+        patientTeam: t('patient_team'),
+        openCareTeam: t('open_care_team'),
+        noteDialog: t('note_dialog_title'),
+        noteTitle: t('note_title_label'),
+        noteBody: t('note_body_label'),
+        noteStatus: t('note_status_label'),
+        shareTeam: t('share_team'),
+        meetingDialog: t('meeting_dialog_title'),
+        meetingType: t('meeting_type_label'),
+        date: t('date_label'),
+        attendees: t('attendees_label'),
+        agenda: t('agenda_label'),
+        decisions: t('decisions_label'),
+        followUp: t('follow_up_label'),
+        priority: t('priority_label'),
+        instructions: t('instructions_label'),
+        fileMinutes: t('file_minutes'),
+        assignmentDialog: t('assignment_dialog_title'),
+        taskTitle: t('task_title_label'),
+        assign: t('assign'),
+        cancel: t('cancel'),
+        save: t('save'),
+        review: this.isFrench ? 'Revoir' : 'Review',
+        reviewDialog: this.isFrench ? 'Validation de gouvernance' : 'Governance review',
+        reviewTask: this.isFrench ? 'Tâche effectuée' : 'Completed task',
+        reviewDecision: this.isFrench ? 'Décision du superviseur' : 'Supervisor decision',
+        reviewComment: this.isFrench ? 'Commentaire de validation' : 'Review comment',
+        validateReview: this.isFrench ? 'Valider la revue' : 'Validate review',
+        saveError: t('save_error')
+      }
     },
-    meetingTypes() { return ['IDT Conference', 'Quality Assurance Review', 'Clinical Meeting', 'Safety Huddle', 'Discharge Planning Conference'] },
+    noteStatuses() {
+      return [
+        { value: 'draft', text: this.$t('clinical360.coordination.tab.note_statuses.draft') },
+        { value: 'signed', text: this.$t('clinical360.coordination.tab.note_statuses.signed') }
+      ]
+    },
+    priorities() {
+      return [
+        { value: 'Routine', text: this.$t('clinical360.coordination.tab.priorities.routine') },
+        { value: 'Today', text: this.$t('clinical360.coordination.tab.priorities.today') },
+        { value: 'Urgent', text: this.$t('clinical360.coordination.tab.priorities.urgent') },
+        { value: 'STAT', text: this.$t('clinical360.coordination.tab.priorities.stat') }
+      ]
+    },
+    assignmentRoles() {
+      return Object.keys(ROLE_LABELS).map(value => ({
+        value,
+        text: this.$t(`clinical360.coordination.tab.roles.${value.toLowerCase()}`)
+      }))
+    },
+    meetingTypes() {
+      return [
+        { value: 'IDT Conference', text: this.$t('clinical360.coordination.tab.meeting_types.idt_conference') },
+        { value: 'Quality Assurance Review', text: this.$t('clinical360.coordination.tab.meeting_types.quality_assurance_review') },
+        { value: 'Clinical Meeting', text: this.$t('clinical360.coordination.tab.meeting_types.clinical_meeting') },
+        { value: 'Safety Huddle', text: this.$t('clinical360.coordination.tab.meeting_types.safety_huddle') },
+        { value: 'Discharge Planning Conference', text: this.$t('clinical360.coordination.tab.meeting_types.discharge_planning_conference') }
+      ]
+    },
     activeStaff() { return this.$store.getters['facility/getActiveStaff'] || [] },
     scopedStaff() {
       if (this.mode === 'social') return this.activeStaff.filter(item => item.role === 'SOCIAL_WORKER')
@@ -199,24 +319,50 @@ export default {
       if (this.mode === 'social') return this.tasks.filter(item => /social|family|transport|housing|financial|discharge barrier/i.test(`${item.relatedType || ''} ${item.assignedToRole || item.assignedRole || ''} ${item.title || ''}`))
       return this.tasks.filter(item => /nurse|cna|midwife|major|supervisor|care team|safety|quality|handoff/i.test(`${item.assignedToRole || item.assignedRole || ''} ${item.title || ''} ${item.relatedType || ''}`) || !item.assignedToRole)
     },
-    openTasks() { return this.scopedTasks.filter(item => !/done|complete|cancel|resolved/i.test(item.status || '')).length },
+    openScopedTasks() { return this.scopedTasks.filter(item => !/done|complete|cancel|resolved/i.test(item.status || '')) },
+    completedTasks() { return this.scopedTasks.filter(item => /done|complete|resolved/i.test(item.status || '')).sort((a, b) => new Date(b.completedAt || b.updatedAt || 0) - new Date(a.completedAt || a.updatedAt || 0)) },
+    canReview() { return ['MAJOR_SERVICE', 'NURSING_SUPERVISOR'].includes(this.role) && this.mode !== 'social' },
+    reviewDecisions() { return [{ value: 'Approved', text: this.isFrench ? 'Validée' : 'Approved' }, { value: 'Needs follow-up', text: this.isFrench ? 'Suivi requis' : 'Needs follow-up' }] },
+    openTasks() { return this.openScopedTasks.length },
+    filedReports() { return this.documents.filter(item => !/conference|meeting|quality|idt|safety huddle/i.test(`${item.category || ''} ${item.title || ''}`)).sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0)) },
     meetingRecords() { return this.documents.filter(item => /conference|meeting|quality|idt|safety huddle/i.test(`${item.category || ''} ${item.title || ''}`)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) },
     metrics() {
-      const staffLabel = this.isFrench ? 'Personnel' : 'Staff coverage'
       return [
-        { label: this.isFrench ? 'Actions ouvertes' : 'Open actions', value: this.openTasks, detail: this.copy.workQueueTitle, icon: 'mdi-clipboard-alert-outline', color: this.openTasks ? '#c2410c' : '#15803d', state: this.openTasks ? 'warning' : 'good' },
-        { label: staffLabel, value: this.scopedStaff.length, detail: this.copy.staffTitle, icon: 'mdi-account-multiple-check-outline', color: '#0369a1', state: 'neutral' },
-        { label: this.isFrench ? 'Conferences' : 'Conferences', value: this.meetingRecords.length, detail: 'IDT / QA / Clinical', icon: 'mdi-account-voice', color: '#7c3aed', state: 'neutral' },
-        { label: this.isFrench ? 'Equipe patient' : 'Patient team', value: this.members.length, detail: this.copy.interdisciplinary, icon: 'mdi-account-group-outline', color: '#0f766e', state: 'neutral' }
+        { label: this.$t('clinical360.coordination.tab.metric_open_actions'), value: this.openTasks, detail: this.copy.workQueueTitle, icon: 'mdi-clipboard-alert-outline', color: this.openTasks ? '#c2410c' : '#15803d', state: this.openTasks ? 'warning' : 'good' },
+        { label: this.$t('clinical360.coordination.tab.metric_staff_coverage'), value: this.scopedStaff.length, detail: this.copy.staffTitle, icon: 'mdi-account-multiple-check-outline', color: '#0369a1', state: 'neutral' },
+        { label: this.$t('clinical360.coordination.tab.metric_conferences'), value: this.meetingRecords.length, detail: this.$t('clinical360.coordination.tab.metric_conferences_detail'), icon: 'mdi-account-voice', color: '#7c3aed', state: 'neutral' },
+        { label: this.$t('clinical360.coordination.tab.metric_patient_team'), value: this.members.length, detail: this.copy.interdisciplinary, icon: 'mdi-account-group-outline', color: '#0f766e', state: 'neutral' }
       ]
     }
   },
   methods: {
     nowLocal() { const date = new Date(Date.now() - new Date().getTimezoneOffset() * 60000); return date.toISOString().slice(0, 16) },
     formatDate(value) { return value ? new Date(value).toLocaleString(this.isFrench ? 'fr-CM' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) : '-' },
+    latestCompletionEvent(task) { return Array.isArray(task && task.history) ? task.history.slice().reverse().find(item => /done|complete|resolved/i.test(`${item.status || ''} ${item.action || ''}`)) : null },
+    taskDetail(task) { const event = this.latestCompletionEvent(task); return String(task.completionDocumentation || (event && event.reason) || task.instructions || task.actionReason || task.reason || this.copy.noDetail).replace(/\s+after\s+[a-f0-9-]{20,}\s+completion\.?/i, ' after the prior task was completed.') },
+    completedAt(task) { const event = this.latestCompletionEvent(task); return task.completedAt || (event && event.at) || '' },
+    actorName(task) { const actor = task && (task.updatedBy || task.completedBy || task.updatedByName); if (actor) return typeof actor === 'object' ? (actor.fullName || actor.staffCode || this.copy.team) : actor; const event = this.latestCompletionEvent(task); return (event && event.actor) || task.assignedToRole || this.copy.team },
     initials(name) { return String(name || '?').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() },
-    roleLabel(role) { return ROLE_LABELS[role] || role },
+    roleLabel(role) { return ROLE_LABELS[role] ? this.$t(`clinical360.coordination.tab.roles.${String(role).toLowerCase()}`) : role },
     taskState(task) { const value = String(task.status || '').toLowerCase(); return /done|complete|resolved/.test(value) ? 'good' : /urgent|missed|overdue/.test(`${value} ${task.priority || ''}`.toLowerCase()) ? 'danger' : 'warning' },
+    requiredRule(value) { return Boolean(String(value || '').trim()) || (this.isFrench ? 'Requis' : 'Required') },
+    openReview(task) { this.reviewTask = task; this.reviewForm = { decision: 'Approved', comment: '', }; this.dialogs.review = true },
+    async saveReview() {
+      if (!this.reviewTask || !this.reviewForm.comment) return
+      this.saving = true
+      try {
+        const task = this.reviewTask
+        await this.$store.dispatch('clinical/createDocument', {
+          patientId: this.patientId,
+          title: `${this.copy.reviewDialog}: ${task.title || task.task || this.copy.task}`,
+          category: 'Governance Review',
+          status: 'Filed',
+          content: [`Task: ${task.title || task.task || this.copy.task}`, `Completed by: ${this.actorName(task)}`, `Completed at: ${this.formatDate(this.completedAt(task) || task.updatedAt)}`, `Decision: ${this.reviewForm.decision}`, `Reviewer: ${this.$store.state.auth.fullName || this.$store.state.auth.staffId || this.role}`, `Comment: ${this.reviewForm.comment}`].join('\n')
+        })
+        this.dialogs.review = false
+        this.$emit('saved', this.isFrench ? 'Revue de gouvernance enregistrée.' : 'Governance review filed.')
+      } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
+    },
     openNote() { this.noteForm = { title: this.copy.title, body: '', status: 'draft', share: false }; this.dialogs.note = true },
     openMeeting() { this.meetingForm = { type: 'IDT Conference', scheduledAt: this.nowLocal(), attendees: '', agenda: '', decisions: '', followUp: '', assignedRole: this.mode === 'social' ? 'SOCIAL_WORKER' : 'NURSE', dueAt: '' }; this.dialogs.meeting = true },
     openAssignment() { this.assignmentForm = { title: '', assignedRole: this.mode === 'social' ? 'SOCIAL_WORKER' : 'NURSE', priority: 'Today', dueAt: '', reason: '' }; this.dialogs.assignment = true },
@@ -230,7 +376,7 @@ export default {
           if (this.noteForm.share) await this.$store.dispatch('nursing/shareClinicalNote', note.id)
         }
         this.dialogs.note = false
-        this.$emit('saved', this.isFrench ? 'Note enregistree.' : 'Note saved.')
+        this.$emit('saved', this.$t('clinical360.coordination.tab.note_saved'))
       } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
     },
     async saveMeeting() {
@@ -241,7 +387,7 @@ export default {
         await this.$store.dispatch('clinical/createDocument', { patientId: this.patientId, title: `${form.type} - ${this.patient.fullName || this.patient.name || this.patientId}`, category: 'Care Team Conference', status: 'Filed', content: [`Scheduled: ${form.scheduledAt}`, `Attendees: ${form.attendees || '-'}`, `Agenda: ${form.agenda || '-'}`, `Decisions: ${form.decisions}`, `Follow-up: ${form.followUp || '-'}`].join('\n') })
         if (form.followUp) await this.$store.dispatch('clinical/createTask', { patientId: this.patientId, title: form.followUp, assignedToRole: form.assignedRole, priority: 'Today', dueAt: form.dueAt || null, relatedType: 'care-team-conference', actionReason: `${form.type}: ${form.decisions}` })
         this.dialogs.meeting = false
-        this.$emit('saved', this.isFrench ? 'Compte rendu classe.' : 'Meeting minutes filed.')
+        this.$emit('saved', this.$t('clinical360.coordination.tab.meeting_filed'))
       } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
     },
     async saveAssignment() {
@@ -251,7 +397,7 @@ export default {
         const form = this.assignmentForm
         await this.$store.dispatch('clinical/createTask', { patientId: this.patientId, title: form.title, assignedToRole: form.assignedRole, priority: form.priority, dueAt: form.dueAt || null, relatedType: `${this.mode}-coordination`, actionReason: form.reason || `${this.copy.title} assignment` })
         this.dialogs.assignment = false
-        this.$emit('saved', this.isFrench ? 'Tache affectee.' : 'Task assigned.')
+        this.$emit('saved', this.$t('clinical360.coordination.tab.task_assigned'))
       } catch (error) { this.$emit('error', this.copy.saveError) } finally { this.saving = false }
     }
   }
@@ -260,4 +406,5 @@ export default {
 
 <style scoped>
 .coordination-workspace{height:100%;display:flex;flex-direction:column;overflow:hidden;background:#f3f7f6;color:#17383a}.module-header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 16px;background:#fff;border-bottom:1px solid #cbd9d8}.module-header span,.work-section header span,.staff-section header span,.team-section header span{display:block;font-size:9px;font-weight:900;color:#587473;letter-spacing:.6px}.module-header h2{margin:1px 0;font-size:18px}.module-header p{margin:0;font-size:11px;color:#607877}.header-actions{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end}.read-only{padding:7px 14px;background:#f1f5f9;border-bottom:1px solid #cbd5e1;font-size:11px;font-weight:700}.metric-strip{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-bottom:1px solid #cfdcdb}.metric-strip article{display:grid;grid-template-columns:34px 1fr;align-items:center;min-height:70px;padding:9px 14px;border-right:1px solid #e0e8e7}.metric-strip article.warning{background:#fffaf0}.metric-strip span,.metric-strip strong,.metric-strip small{display:block}.metric-strip span{font-size:9px;font-weight:800;text-transform:uppercase;color:#627b79}.metric-strip strong{font-size:20px}.metric-strip small{font-size:10px;color:#617a78}.coordination-layout{display:grid;grid-template-columns:minmax(620px,1fr) 310px;min-height:0;flex:1}.coordination-layout main{overflow:auto;border-right:1px solid #cfdddc}.coordination-layout aside{overflow:auto;background:#f8fbfa}.work-section{background:#fff;border-bottom:8px solid #edf3f2}.work-section>header{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:#e8f0ef;border-bottom:1px solid #ccd9d8}.work-section header strong,.staff-section header strong,.team-section header strong{display:block;font-size:12px}.work-section header button,.team-section>button{border:0;background:transparent;color:#0f766e;font-size:10px;font-weight:800}.work-head,.work-row{display:grid;grid-template-columns:minmax(250px,1.6fr) 130px 105px 82px;gap:10px;align-items:center}.work-head{padding:6px 13px;background:#f5f8f8;border-bottom:1px solid #dce5e4;font-size:9px;font-weight:800;text-transform:uppercase}.work-row{min-height:56px;padding:7px 13px;border-bottom:1px solid #e1e8e7}.work-row strong,.work-row small{display:block}.work-row strong{font-size:11px}.work-row small,.work-row>span{font-size:10px;color:#657c7a}.work-row b{justify-self:start;padding:3px 6px;font-size:9px;text-transform:uppercase}.work-row b.good{background:#dcfce7;color:#166534}.work-row b.warning{background:#fef3c7;color:#92400e}.work-row b.danger{background:#fee2e2;color:#b91c1c}.meeting-row{display:grid;grid-template-columns:30px 1fr 135px;gap:8px;align-items:center;min-height:54px;padding:7px 13px;border-bottom:1px solid #e1e8e7}.meeting-row strong,.meeting-row small{display:block}.meeting-row strong{font-size:11px}.meeting-row small,.meeting-row>span{font-size:10px;color:#657c7a}.staff-section,.team-section{background:#fff;border-bottom:8px solid #edf3f2}.staff-section>header,.team-section>header{padding:9px 12px;background:#e8f0ef;border-bottom:1px solid #ccd9d8}.staff-row{display:grid;grid-template-columns:32px 1fr;gap:8px;align-items:center;min-height:54px;padding:7px 12px;border-bottom:1px solid #e1e8e7}.staff-row>span:last-child{grid-column:2;font-size:9px;color:#607877;margin-top:-8px}.staff-row strong,.staff-row small{display:block}.staff-row strong{font-size:10px}.staff-row small{font-size:9px;color:#657c7a}.staff-avatar{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#d9eeea;color:#075f59;font-size:10px;font-weight:900}.team-row{padding:7px 12px;border-bottom:1px solid #e1e8e7}.team-row strong,.team-row span{display:block}.team-row strong{font-size:10px}.team-row span{font-size:9px;color:#657c7a}.team-section>button{width:100%;padding:9px;text-align:left}.empty-state{display:flex;min-height:90px;align-items:center;justify-content:center;gap:7px;color:#6b807e;font-size:10px}.empty-state.compact{min-height:60px}.dialog-title{font-size:16px!important;font-weight:800;border-bottom:1px solid #d7e2e1}.dialog-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:1100px){.coordination-layout{grid-template-columns:1fr}.coordination-layout aside{display:grid;grid-template-columns:1fr 1fr}.metric-strip{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.module-header{align-items:flex-start;flex-direction:column}.header-actions{justify-content:flex-start}.coordination-layout aside{grid-template-columns:1fr}.work-head,.work-row{grid-template-columns:minmax(180px,1fr) 90px 75px}.work-head span:nth-child(3),.work-row>span:nth-child(3){display:none}.metric-strip{grid-template-columns:1fr 1fr}.dialog-grid{grid-template-columns:1fr}}
+.audit-section{border-left:4px solid #0f766e}.reports-section{border-left:4px solid #0369a1}.audit-count{font-size:12px;font-weight:900;color:#0f766e}.audit-head,.audit-row{display:grid;grid-template-columns:minmax(250px,1.6fr) 130px 105px 82px;gap:10px;align-items:center}.audit-head{padding:6px 13px;background:#f5f8f8;border-bottom:1px solid #dce5e4;font-size:9px;font-weight:800;text-transform:uppercase}.audit-row{min-height:56px;padding:7px 13px;border-bottom:1px solid #e1e8e7}.audit-row strong,.audit-row small,.report-row strong,.report-row small{display:block}.audit-row strong,.report-row strong{font-size:11px}.audit-row small,.audit-row>span,.report-row small{font-size:10px;color:#657c7a}.audit-row b{justify-self:start;padding:3px 6px;font-size:9px;text-transform:uppercase}.audit-row b.good{background:#dcfce7;color:#166534}.report-row{display:grid;grid-template-columns:30px 1fr;gap:8px;align-items:center;min-height:54px;padding:7px 13px;border-bottom:1px solid #e1e8e7}@media(max-width:720px){.audit-head,.audit-row{grid-template-columns:minmax(180px,1fr) 90px 75px}.audit-head span:nth-child(3),.audit-row>span:nth-child(3){display:none}}
 </style>

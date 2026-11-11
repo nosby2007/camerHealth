@@ -11,10 +11,10 @@ const router = Router()
 const appointmentSchema = z.object({
   patientId: z.string().uuid(),
   date: z.string().min(1),
-  time: z.string().optional(),
+  time: z.string().nullable().optional(),
   type: z.string().min(1),
-  notes: z.string().optional(),
-  providerId: z.string().optional()
+  notes: z.string().nullable().optional(),
+  providerId: z.string().nullable().optional()
 })
 
 const appointmentUpdateSchema = z.object({

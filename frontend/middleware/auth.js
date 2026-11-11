@@ -126,7 +126,14 @@ export default function ({ store, redirect, route }) {
     store.commit('facility/RELOAD_FROM_STORAGE')
   }
 
-  const path            = route.path
+  // nuxt generate emits each route as a directory (e.g. login/index.html), and
+  // the static-file nginx 301s a bare "/login" to "/login/" to serve it —
+  // so route.path can arrive with a trailing slash on a fresh page load.
+  // Strip it before any comparison below, or "/login/" fails the OPEN_ROUTES
+  // check, gets redirect()'d back to "/login", and — since Vue Router treats
+  // the two as the same route — that redirect is rejected as a duplicate
+  // navigation, leaving the loading bar stuck.
+  const path            = route.path.length > 1 ? route.path.replace(/\/+$/, '') : route.path
   const isAuthenticated = store.state.auth.isAuthenticated
   const role            = store.state.auth.role
   const setupComplete   = store.state.facility ? store.state.facility.setupComplete : false

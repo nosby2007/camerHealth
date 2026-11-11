@@ -32,21 +32,23 @@ model Facility {
   organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   organizationUnit OrganizationUnit? @relation(fields: [organizationUnitId], references: [id], onDelete: SetNull)
 
-  staffProfiles StaffProfile[]
-  patients      Patient[]
-  visits        Visit[]
-  labOrders     LabOrder[]
-  imagingOrders ImagingOrder[]
-  medications   Medication[]
-  invoices      Invoice[]
-  charges       Charge[]
-  payments      Payment[]
-  clearances    Clearance[]
-  appointments  Appointment[]
-  inpatients    Inpatient[]
-  auditLogs     AuditLog[]
-  departments   Department[]
-  priceCatalog  PriceCatalog[]
+  staffProfiles             StaffProfile[]
+  patients                  Patient[]
+  visits                    Visit[]
+  labOrders                 LabOrder[]
+  imagingOrders             ImagingOrder[]
+  medications               Medication[]
+  medicationAdministrations MedicationAdministration[]
+  patientMessages           PatientMessage[]
+  invoices                  Invoice[]
+  charges                   Charge[]
+  payments                  Payment[]
+  clearances                Clearance[]
+  appointments              Appointment[]
+  inpatients                Inpatient[]
+  auditLogs                 AuditLog[]
+  departments               Department[]
+  priceCatalog              PriceCatalog[]
 
   wounds                 Wound[]
   carePlans              CarePlan[]
@@ -56,6 +58,9 @@ model Facility {
   clinicalNotes          ClinicalNote[]
   flowsheetColumns       FlowsheetColumn[]
   monthlyActivityReports MonthlyActivityReport[]
+  tasks                  Task[]
+  careTeamMembers        CareTeamMember[]
+  socialAssessments      SocialAssessment[]
 
   @@index([organizationId])
   @@index([organizationUnitId])
@@ -82,20 +87,27 @@ model StaffProfile {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  facility            Facility          @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  patientsCreated     Patient[]         @relation("PatientCreatedBy")
-  visitsRecorded      Visit[]           @relation("VisitRecordedBy")
-  visitsAttending     Visit[]           @relation("VisitAttendingDoctor")
-  labRequests         LabOrder[]        @relation("LabRequestedBy")
-  labCompletions      LabOrder[]        @relation("LabCompletedBy")
-  imagingRequests     ImagingOrder[]    @relation("ImagingRequestedBy")
-  imagingCompletions  ImagingOrder[]    @relation("ImagingCompletedBy")
-  prescriptions       Medication[]      @relation("MedicationPrescribedBy")
-  appointmentsCreated Appointment[]     @relation("AppointmentCreatedBy")
-  admissions          Inpatient[]       @relation("InpatientAdmittedBy")
-  inpatientsAttending Inpatient[]       @relation("InpatientAttendingDoctor")
-  invoicesIssued      Invoice[]         @relation("InvoiceIssuedBy")
-  staffAssignments    StaffAssignment[]
+  facility                Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  patientsCreated         Patient[]                  @relation("PatientCreatedBy")
+  visitsRecorded          Visit[]                    @relation("VisitRecordedBy")
+  visitsAttending         Visit[]                    @relation("VisitAttendingDoctor")
+  labRequests             LabOrder[]                 @relation("LabRequestedBy")
+  labCompletions          LabOrder[]                 @relation("LabCompletedBy")
+  imagingRequests         ImagingOrder[]             @relation("ImagingRequestedBy")
+  imagingCompletions      ImagingOrder[]             @relation("ImagingCompletedBy")
+  prescriptions           Medication[]               @relation("MedicationPrescribedBy")
+  administrationsGiven    MedicationAdministration[] @relation("MedicationAdministeredBy")
+  patientMessagesAuthored PatientMessage[]           @relation("PatientMessageAuthor")
+  appointmentsCreated     Appointment[]              @relation("AppointmentCreatedBy")
+  appointmentsAsProvider  Appointment[]              @relation("AppointmentProvider")
+  admissions              Inpatient[]                @relation("InpatientAdmittedBy")
+  inpatientsAttending     Inpatient[]                @relation("InpatientAttendingDoctor")
+  invoicesIssued          Invoice[]                  @relation("InvoiceIssuedBy")
+  staffAssignments        StaffAssignment[]
+  tasksCreated            Task[]                     @relation("TaskCreatedBy")
+  tasksAssigned           Task[]                     @relation("TaskAssignedTo")
+  careTeamMembersAdded    CareTeamMember[]           @relation("CareTeamMemberAddedBy")
+  socialAssessmentsFiled  SocialAssessment[]         @relation("SocialAssessmentAssessedBy")
 
   @@unique([staffCode, facilityId])
   @@index([facilityId])
@@ -136,6 +148,12 @@ model Patient {
   phiAccessBasis    String? @map("phi_access_basis")
   consentStatus     String? @map("consent_status")
 
+  // ── Discharge ─────────────────────────────────────────────────────────────
+  dischargedAt         DateTime? @map("discharged_at")
+  dischargeDisposition String?   @map("discharge_disposition") // Home / Transfer / AMA / Deceased
+  dischargeReason      String?   @map("discharge_reason")
+  dischargedBy         String?   @map("discharged_by")
+
   // ── Insurance & Emergency Contact ────────────────────────────────────────────
   insuranceProvider            String? @map("insurance_provider")
   policyNumber                 String? @map("policy_number")
@@ -151,26 +169,31 @@ model Patient {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  facility      Facility       @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  createdBy     StaffProfile   @relation("PatientCreatedBy", fields: [createdById], references: [id])
-  visits        Visit[]
-  labOrders     LabOrder[]
-  imagingOrders ImagingOrder[]
-  medications   Medication[]
-  invoices      Invoice[]
-  charges       Charge[]
-  payments      Payment[]
-  clearances    Clearance[]
-  appointments  Appointment[]
-  inpatients    Inpatient[]
+  facility                  Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdBy                 StaffProfile               @relation("PatientCreatedBy", fields: [createdById], references: [id])
+  visits                    Visit[]
+  labOrders                 LabOrder[]
+  imagingOrders             ImagingOrder[]
+  medications               Medication[]
+  medicationAdministrations MedicationAdministration[]
+  patientMessages           PatientMessage[]
+  invoices                  Invoice[]
+  charges                   Charge[]
+  payments                  Payment[]
+  clearances                Clearance[]
+  appointments              Appointment[]
+  inpatients                Inpatient[]
 
-  wounds           Wound[]
-  carePlans        CarePlan[]
-  educationTitles  EducationTitle[]
-  dischargePlans   DischargePlan[]
-  vitalSigns       VitalSigns[]
-  clinicalNotes    ClinicalNote[]
-  flowsheetColumns FlowsheetColumn[]
+  wounds            Wound[]
+  carePlans         CarePlan[]
+  educationTitles   EducationTitle[]
+  dischargePlans    DischargePlan[]
+  vitalSigns        VitalSigns[]
+  clinicalNotes     ClinicalNote[]
+  flowsheetColumns  FlowsheetColumn[]
+  tasks             Task[]
+  careTeamMembers   CareTeamMember[]
+  socialAssessments SocialAssessment[]
 
   @@unique([mrn, facilityId])
   @@index([facilityId])
@@ -309,14 +332,75 @@ model Medication {
   prescribedAt     DateTime  @default(now()) @map("prescribed_at")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
+  // ── eMAR: order-level clinical detail for point-of-care nursing reference ──
+  form             String?   @map("form") // tablet | syrup | iv | g-tube | injection | inhaler...
+  medicationClass  String?   @map("medication_class")
+  education        String?
+  sideEffects      String?   @map("side_effects")
+  priority         String?   @default("Routine") // Routine | Today | Urgent | STAT
 
-  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  facility     Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  prescribedBy StaffProfile @relation("MedicationPrescribedBy", fields: [prescribedById], references: [id])
+  patient         Patient                    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility        Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  prescribedBy    StaffProfile               @relation("MedicationPrescribedBy", fields: [prescribedById], references: [id])
+  administrations MedicationAdministration[]
 
   @@index([patientId])
   @@index([facilityId])
   @@map("medications")
+}
+
+// ─── Medication Administration (eMAR) ────────────────────────────────────────
+// One row per scheduled/actual dose event — the normalized history that backs
+// the eMAR grid and the administration report. Distinct from Medication (the
+// order/prescription itself) so administering one dose never overwrites the
+// record of another.
+model MedicationAdministration {
+  id               String    @id @default(uuid())
+  medicationId     String    @map("medication_id")
+  patientId        String    @map("patient_id")
+  facilityId       String    @map("facility_id")
+  scheduledFor     DateTime  @map("scheduled_for")
+  administeredAt   DateTime? @map("administered_at")
+  administeredById String?   @map("administered_by_id")
+  status           String    @default("Due") // Due | Given | Held | Refused | Not Available
+  route            String?
+  doseGiven        String?   @map("dose_given")
+  site             String?
+  lotNumber        String?   @map("lot_number")
+  patientResponse  String?   @map("patient_response")
+  refusalReason    String?   @map("refusal_reason")
+  comment          String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  medication     Medication    @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility       Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  administeredBy StaffProfile? @relation("MedicationAdministeredBy", fields: [administeredById], references: [id])
+
+  @@index([medicationId])
+  @@index([patientId])
+  @@index([facilityId])
+  @@index([scheduledFor])
+  @@map("medication_administrations")
+}
+
+// ─── Patient Chat (internal, async care-team discussion) ────────────────────
+model PatientMessage {
+  id         String   @id @default(uuid())
+  patientId  String   @map("patient_id")
+  facilityId String   @map("facility_id")
+  authorId   String   @map("author_id")
+  body       String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  patient  Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  author   StaffProfile @relation("PatientMessageAuthor", fields: [authorId], references: [id])
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@map("patient_messages")
 }
 
 // ─── Appointment ─────────────────────────────────────────────────────────────
@@ -334,9 +418,10 @@ model Appointment {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  patient   Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  facility  Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  createdBy StaffProfile @relation("AppointmentCreatedBy", fields: [createdById], references: [id])
+  patient   Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility  Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdBy StaffProfile  @relation("AppointmentCreatedBy", fields: [createdById], references: [id])
+  provider  StaffProfile? @relation("AppointmentProvider", fields: [providerId], references: [id])
 
   @@index([patientId])
   @@index([facilityId])
@@ -1062,20 +1147,33 @@ model VitalSigns {
 
 // noteType: 'nursing' | 'medical' | 'plan_of_care'
 model ClinicalNote {
-  id          String    @id @default(uuid())
-  patientId   String    @map("patient_id")
-  facilityId  String    @map("facility_id")
-  encounterId String?   @map("encounter_id")
-  noteType    String    @map("note_type")
-  title       String?
-  body        String
-  status      String    @default("draft")
-  authorRole  String?   @map("author_role")
-  createdById String    @map("created_by_id")
-  signedAt    DateTime? @map("signed_at")
-  signedById  String?   @map("signed_by_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id                 String    @id @default(uuid())
+  patientId          String    @map("patient_id")
+  facilityId         String    @map("facility_id")
+  encounterId        String?   @map("encounter_id")
+  noteType           String    @map("note_type")
+  title              String?
+  body               String
+  // Full structured form data for note types authored from a rich form
+  // (e.g. noteType 'medical' from the Medical Encounter page) — `body` stays
+  // a human-readable plain-text summary for list previews and notes with no
+  // structured form behind them; this carries everything needed to re-render
+  // an exact, formatted, printable copy of the original consultation note.
+  structuredData     Json?     @map("structured_data")
+  status             String    @default("draft")
+  authorRole         String?   @map("author_role")
+  createdById        String    @map("created_by_id")
+  signedAt           DateTime? @map("signed_at")
+  signedById         String?   @map("signed_by_id")
+  sharedWithCareTeam Boolean   @default(false) @map("shared_with_care_team")
+  sharedAt           DateTime? @map("shared_at")
+  sharedById         String?   @map("shared_by_id")
+  // Addenda filed after a note is signed — a signed note's own body/title
+  // stay immutable (see the 409 in PATCH /clinical-notes/:id), but a
+  // clinician can still attach a dated, attributed amendment.
+  amendments         Json?
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   patient  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
@@ -1321,4 +1419,90 @@ model MobileMoneyRequest {
   @@index([facilityId])
   @@index([externalReferenceId])
   @@map("mobile_money_requests")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Care coordination — Task (work list), CareTeamMember and SocialAssessment
+// were previously local-only Vuex state (never persisted server-side, so a
+// task or care-team entry only ever existed in the browser that created it).
+// These give them a real, shared, facility-scoped source of truth.
+// ═══════════════════════════════════════════════════════════════════════════
+model Task {
+  id             String    @id @default(uuid())
+  patientId      String    @map("patient_id")
+  facilityId     String    @map("facility_id")
+  relatedType    String?   @map("related_type")
+  relatedId      String?   @map("related_id")
+  title          String
+  assignedToRole String    @map("assigned_to_role")
+  // A task can also be delegated to one specific staff member rather than
+  // "whoever is on the role" — e.g. the Nurse Command Center's per-nurse
+  // task list, distinct from the department-wide worklist assignment.
+  assignedToId   String?   @map("assigned_to_id")
+  priority       String    @default("Routine")
+  status         String    @default("pending")
+  dueAt          DateTime? @map("due_at")
+  frequency      String?
+  actionReason   String?   @map("action_reason")
+  history        Json?
+  createdById    String    @map("created_by_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedById    String?   @map("updated_by_id")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  patient    Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility   Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdBy  StaffProfile  @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  assignedTo StaffProfile? @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@index([assignedToRole])
+  @@index([status])
+  @@map("tasks")
+}
+
+model CareTeamMember {
+  id             String    @id @default(uuid())
+  patientId      String    @map("patient_id")
+  facilityId     String    @map("facility_id")
+  name           String
+  role           String
+  service        String?
+  contact        String?
+  responsibility String?
+  status         String    @default("Active")
+  note           String?
+  addedById      String    @map("added_by_id")
+  addedAt        DateTime  @default(now()) @map("added_at")
+  removedAt      DateTime? @map("removed_at")
+
+  patient  Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  addedBy  StaffProfile @relation("CareTeamMemberAddedBy", fields: [addedById], references: [id])
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@map("care_team_members")
+}
+
+model SocialAssessment {
+  id           String    @id @default(uuid())
+  patientId    String    @map("patient_id")
+  facilityId   String    @map("facility_id")
+  domain       String
+  finding      String?
+  intervention String?
+  status       String    @default("Open")
+  followUpAt   DateTime? @map("follow_up_at")
+  assessedById String    @map("assessed_by_id")
+  assessedAt   DateTime  @default(now()) @map("assessed_at")
+
+  patient    Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility   Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  assessedBy StaffProfile @relation("SocialAssessmentAssessedBy", fields: [assessedById], references: [id])
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@map("social_assessments")
 }

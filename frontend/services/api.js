@@ -98,7 +98,9 @@ export const facilityApi = {
 export const staffApi = {
   list: () => api.get('/staff'),
   create: (data) => api.post('/staff', data),
-  update: (id, data) => api.patch(`/staff/${id}`, data)
+  update: (id, data) => api.patch(`/staff/${id}`, data),
+  getProviders: () => api.get('/staff/providers'),
+  getActiveSummary: () => api.get('/staff/active-summary')
 }
 
 // ─── Patient endpoints ──────────────────────────────────────────────────────
@@ -126,7 +128,14 @@ export const clinicalApi = {
   // Medications
   getMedications: () => api.get('/clinical/medications'),
   createMedication: (data) => api.post('/clinical/medications', data),
-  updateMedication: (id, data) => api.patch(`/clinical/medications/${id}`, data)
+  updateMedication: (id, data) => api.patch(`/clinical/medications/${id}`, data),
+  // eMAR — per-dose administration history, distinct from the order itself
+  getMedicationAdministrations: (params) => api.get('/medication-administrations', { params }),
+  createMedicationAdministration: (data) => api.post('/medication-administrations', data),
+  administerMedication: (id, data) => api.patch(`/medication-administrations/${id}`, data),
+  // Internal patient chat — async care-team discussion thread
+  getPatientMessages: (patientId) => api.get('/patient-chat', { params: { patientId } }),
+  sendPatientMessage: (data) => api.post('/patient-chat', data)
 }
 
 // ─── Appointment endpoints ──────────────────────────────────────────────────
@@ -156,6 +165,7 @@ export const billingApi = {
   // Clearances
   issueClearance:   (data)    => api.post('/billing/clearances', data),
   getClearances:    (pid)     => api.get(`/billing/clearances/${pid}`),
+  getActiveClearances: (department) => api.get('/billing/clearances', { params: department ? { department } : {} }),
   revokeClearance:  (id)      => api.delete(`/billing/clearances/${id}`),
   // Legacy list
   list:   (params)            => api.get('/billing', { params }),
@@ -193,12 +203,53 @@ export const vitalsApi = {
   record: (data) => api.post('/vitals', data)
 }
 
+// ─── Care team work list (Task) endpoints ───────────────────────────────────
+export const taskApi = {
+  list: (params) => api.get('/tasks', { params }),
+  create: (data) => api.post('/tasks', data),
+  updateStatus: (id, data) => api.patch(`/tasks/${id}`, data)
+}
+
+// ─── Care team & social assessment endpoints ────────────────────────────────
+export const careTeamApi = {
+  list: (patientId) => api.get('/care-team', { params: { patientId } }),
+  addMember: (data) => api.post('/care-team', data),
+  updateMember: (id, data) => api.patch(`/care-team/${id}`, data),
+  listSocialAssessments: (patientId) => api.get('/social-assessments', { params: { patientId } }),
+  addSocialAssessment: (data) => api.post('/social-assessments', data)
+}
+
+// ─── Discharge planning endpoints ───────────────────────────────────────────
+export const dischargeApi = {
+  overview: (patientId) => api.get('/discharge/overview', { params: { patientId } }),
+  addMilestone: (data) => api.post('/discharge/milestones', data),
+  updateMilestone: (id, data) => api.patch(`/discharge/milestones/${id}`, data),
+  addFollowUp: (data) => api.post('/discharge/follow-ups', data),
+  updateFollowUp: (id, data) => api.patch(`/discharge/follow-ups/${id}`, data)
+}
+
+// ─── Patient education endpoints ────────────────────────────────────────────
+export const educationApi = {
+  overview: (patientId) => api.get('/education', { params: { patientId } }),
+  addTitle: (data) => api.post('/education/titles', data),
+  addPoint: (data) => api.post('/education/points', data),
+  updatePoint: (id, data) => api.patch(`/education/points/${id}`, data),
+  addDocumentation: (data) => api.post('/education/documentation', data),
+  updateDocumentation: (id, data) => api.patch(`/education/documentation/${id}`, data),
+  addMaterial: (data) => api.post('/education/materials', data),
+  addAssignment: (data) => api.post('/education/material-assignments', data),
+  removeAssignment: (id) => api.patch(`/education/material-assignments/${id}`, {}),
+  addComment: (data) => api.post('/education/comments', data)
+}
+
 // ─── Clinical notes endpoints ───────────────────────────────────────────────
 export const clinicalNotesApi = {
   list: (patientId, noteType) => api.get('/clinical-notes', { params: { patientId, noteType } }),
   create: (data) => api.post('/clinical-notes', data),
   update: (id, data) => api.patch(`/clinical-notes/${id}`, data),
-  sign: (id) => api.patch(`/clinical-notes/${id}/sign`)
+  sign: (id) => api.patch(`/clinical-notes/${id}/sign`),
+  share: (id) => api.patch(`/clinical-notes/${id}/share`),
+  amend: (id, body) => api.post(`/clinical-notes/${id}/amend`, { body })
 }
 
 // ─── Phase 13: Organization hierarchy endpoints ─────────────────────────────

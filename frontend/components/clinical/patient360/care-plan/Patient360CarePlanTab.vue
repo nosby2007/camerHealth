@@ -2,11 +2,11 @@
   <div class="care-plan-workspace">
     <div class="care-plan-toolbar">
       <div>
-        <strong>Patient Care Plan</strong>
-        <span>Prebuilt clinical plans, individualized goals and documented progress</span>
+        <strong>{{ $t('clinical360.care_plan.tab.patient_care_plan') }}</strong>
+        <span>{{ $t('clinical360.care_plan.tab.subtitle') }}</span>
       </div>
       <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="openTemplateSelector">
-        <v-icon x-small left>mdi-plus</v-icon>New care plan
+        <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.care_plan.tab.new_care_plan') }}
       </v-btn>
     </div>
 
@@ -17,7 +17,7 @@
 
     <div v-if="readOnly" class="read-only-notice">
       <v-icon x-small>mdi-lock-outline</v-icon>
-      Discharged chart. Care plan history is available in read-only mode.
+      {{ $t('clinical360.care_plan.tab.discharged_read_only_notice') }}
     </div>
 
     <div :class="['care-plan-content', { 'read-only': readOnly }]">

@@ -1,8 +1,8 @@
 <template>
   <div class="flowsheet-grid" :style="{ minWidth: gridMinWidth }">
     <div :class="['grid-header', 'sticky', { 'without-last-filed': !showLastFiled }]">
-      <div class="row-label-col">Row</div>
-      <div v-if="showLastFiled" class="last-filed-col">Last Filed</div>
+      <div class="row-label-col">{{ $t('clinical360.flowsheets.grid.row') }}</div>
+      <div v-if="showLastFiled" class="last-filed-col">{{ $t('clinical360.flowsheets.grid.last_filed') }}</div>
       <div class="time-columns">
         <div v-for="col in columns" :key="col.id" class="time-column">
           <div class="column-time">{{ col.label }}</div>

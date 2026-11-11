@@ -1,45 +1,45 @@
 <template>
   <div class="right-panel">
     <div v-if="!rowId" class="empty-state">
-      <p>Select a row to view details</p>
+      <p>{{ $t('clinical360.flowsheets.right_panel.select_row_prompt') }}</p>
     </div>
 
     <div v-else class="panel-content">
       <div class="panel-section">
         <h4>{{ row?.label }}</h4>
-        <p v-if="row?.unit" class="unit">Unit: {{ row.unit }}</p>
+        <p v-if="row?.unit" class="unit">{{ $t('clinical360.flowsheets.right_panel.unit_label', { unit: row.unit }) }}</p>
       </div>
 
       <div class="panel-section">
-        <h5>Information</h5>
+        <h5>{{ $t('clinical360.flowsheets.right_panel.information') }}</h5>
         <p v-if="row?.rowType" class="info-item">
-          <strong>Type:</strong> {{ row.rowType }}
+          <strong>{{ $t('clinical360.flowsheets.right_panel.type') }}</strong> {{ row.rowType }}
         </p>
         <p v-if="row?.calculation" class="info-item">
-          <strong>Calculation:</strong> {{ row.calculation }}
+          <strong>{{ $t('clinical360.flowsheets.right_panel.calculation') }}</strong> {{ row.calculation }}
         </p>
         <p v-if="row?.required" class="info-item">
-          <strong>Required:</strong> Yes
+          <strong>{{ $t('clinical360.flowsheets.right_panel.required') }}</strong> {{ $t('clinical360.flowsheets.right_panel.yes') }}
         </p>
       </div>
 
       <div v-if="lastFiled" class="panel-section">
-        <h5>Last Filed Value</h5>
+        <h5>{{ $t('clinical360.flowsheets.right_panel.last_filed_value') }}</h5>
         <div class="last-filed-info">
-          <p><strong>Value:</strong> {{ lastFiled.displayValue }}</p>
-          <p><strong>Date:</strong> {{ formatDate(lastFiled.documentedAt) }}</p>
-          <p><strong>By:</strong> {{ lastFiled.documentedBy }}</p>
+          <p><strong>{{ $t('clinical360.flowsheets.right_panel.value') }}</strong> {{ lastFiled.displayValue }}</p>
+          <p><strong>{{ $t('clinical360.flowsheets.right_panel.date') }}</strong> {{ formatDate(lastFiled.documentedAt) }}</p>
+          <p><strong>{{ $t('clinical360.flowsheets.right_panel.by') }}</strong> {{ lastFiled.documentedBy }}</p>
         </div>
       </div>
 
       <div class="panel-section">
-        <h5>Definition</h5>
-        <p class="definition">Clinical reference definition and normal ranges would appear here.</p>
+        <h5>{{ $t('clinical360.flowsheets.right_panel.definition') }}</h5>
+        <p class="definition">{{ $t('clinical360.flowsheets.right_panel.definition_placeholder') }}</p>
       </div>
 
       <div class="panel-section">
-        <h5>Clinical Instructions</h5>
-        <p class="instructions">Clinical charting instructions and guidelines would appear here.</p>
+        <h5>{{ $t('clinical360.flowsheets.right_panel.clinical_instructions') }}</h5>
+        <p class="instructions">{{ $t('clinical360.flowsheets.right_panel.instructions_placeholder') }}</p>
       </div>
     </div>
   </div>

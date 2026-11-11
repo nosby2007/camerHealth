@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-heart-pulse</v-icon>
-        <span>Vital Signs Assessment</span>
+        <span>{{ $t('clinical360.flowsheets.forms.vitals.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -15,10 +15,10 @@
       <v-card-text class="form-body">
         <form @submit.prevent="submitForm">
           <section class="form-section">
-            <h3 class="section-title">Temperature</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.vitals.section_temperature') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Temperature (°C) *</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_temperature') }} *</label>
                 <v-text-field
                   v-model="form.temperature"
                   type="number"
@@ -31,10 +31,12 @@
                 />
               </div>
               <div class="form-group">
-                <label>Site</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_temperature_site') }}</label>
                 <v-select
                   v-model="form.temperatureSite"
-                  :items="['Oral', 'Axillary', 'Tympanic', 'Temporal']"
+                  :items="temperatureSiteOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
@@ -43,10 +45,10 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Cardiovascular</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.vitals.section_cardiovascular') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Heart Rate (bpm) *</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_heart_rate') }} *</label>
                 <v-text-field
                   v-model="form.heartRate"
                   type="number"
@@ -58,16 +60,18 @@
                 />
               </div>
               <div class="form-group">
-                <label>HR Rhythm</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_hr_rhythm') }}</label>
                 <v-select
                   v-model="form.heartRateRhythm"
-                  :items="['Regular', 'Irregular', 'Rapid', 'Slow']"
+                  :items="hrRhythmOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
               <div class="form-group">
-                <label>Systolic BP (mmHg) *</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_bp_systolic') }} *</label>
                 <v-text-field
                   v-model="form.bpSystolic"
                   type="number"
@@ -79,7 +83,7 @@
                 />
               </div>
               <div class="form-group">
-                <label>Diastolic BP (mmHg) *</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_bp_diastolic') }} *</label>
                 <v-text-field
                   v-model="form.bpDiastolic"
                   type="number"
@@ -94,10 +98,10 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Respiratory</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.vitals.section_respiratory') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Respiratory Rate (breaths/min) *</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_respiratory_rate') }} *</label>
                 <v-text-field
                   v-model="form.respiratoryRate"
                   type="number"
@@ -109,16 +113,18 @@
                 />
               </div>
               <div class="form-group">
-                <label>Breathing Pattern</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_breathing_pattern') }}</label>
                 <v-select
                   v-model="form.breathingPattern"
-                  :items="['Regular', 'Labored', 'Shallow', 'Deep', 'Irregular']"
+                  :items="breathingPatternOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
               <div class="form-group">
-                <label>SpO2 (%) *</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_spo2') }} *</label>
                 <v-text-field
                   v-model="form.spo2"
                   type="number"
@@ -130,10 +136,12 @@
                 />
               </div>
               <div class="form-group">
-                <label>O2 Source</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_oxygen_source') }}</label>
                 <v-select
                   v-model="form.oxygenSource"
-                  :items="['Room Air', 'Nasal Cannula', 'Face Mask', 'Non-rebreather', 'Ventilator']"
+                  :items="oxygenSourceOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
@@ -142,10 +150,10 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Additional Vitals</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.vitals.section_additional_vitals') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Blood Glucose (mg/dL)</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_glucose') }}</label>
                 <v-text-field
                   v-model="form.glucose"
                   type="number"
@@ -156,7 +164,7 @@
                 />
               </div>
               <div class="form-group">
-                <label>Weight (kg)</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_weight') }}</label>
                 <v-text-field
                   v-model="form.weight"
                   type="number"
@@ -166,7 +174,7 @@
                 />
               </div>
               <div class="form-group">
-                <label>Pain Level (0-10)</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_pain_level') }}</label>
                 <v-slider
                   v-model="form.painLevel"
                   min="0"
@@ -176,10 +184,12 @@
                 />
               </div>
               <div class="form-group">
-                <label>Mental Status</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_mental_status') }}</label>
                 <v-select
                   v-model="form.mentalStatus"
-                  :items="['Alert', 'Oriented x3', 'Confused', 'Lethargic', 'Unresponsive']"
+                  :items="mentalStatusOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
@@ -188,13 +198,13 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Assessment Notes</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.vitals.section_assessment_notes') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Clinical Observations</label>
+                <label>{{ $t('clinical360.flowsheets.forms.vitals.label_observations') }}</label>
                 <v-textarea
                   v-model="form.observations"
-                  placeholder="Any significant findings or concerns..."
+                  :placeholder="$t('clinical360.flowsheets.forms.vitals.placeholder_observations')"
                   outlined
                   dense
                   rows="3"
@@ -205,10 +215,10 @@
 
           <div class="form-actions">
             <v-btn type="button" outlined @click="$emit('close')">
-              Cancel
+              {{ $t('clinical360.flowsheets.forms.vitals.cancel') }}
             </v-btn>
             <v-btn type="submit" color="primary" dark>
-              Save Vital Signs
+              {{ $t('clinical360.flowsheets.forms.vitals.save') }}
             </v-btn>
           </div>
         </form>
@@ -230,28 +240,63 @@ export default {
     return {
       form: {
         temperature: '',
-        temperatureSite: 'Oral',
+        temperatureSite: '',
         heartRate: '',
-        heartRateRhythm: 'Regular',
+        heartRateRhythm: '',
         bpSystolic: '',
         bpDiastolic: '',
         respiratoryRate: '',
-        breathingPattern: 'Regular',
+        breathingPattern: '',
         spo2: '',
-        oxygenSource: 'Room Air',
+        oxygenSource: '',
         glucose: '',
         weight: '',
         painLevel: 0,
-        mentalStatus: 'Alert',
+        mentalStatus: '',
         observations: ''
       }
     }
+  },
+  computed: {
+    temperatureSiteOptions() {
+      return [
+        ['oral', 'Oral'], ['axillary', 'Axillary'], ['tympanic', 'Tympanic'], ['temporal', 'Temporal']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.vitals.options.temperature_site.${k}`) }))
+    },
+    hrRhythmOptions() {
+      return [
+        ['regular', 'Regular'], ['irregular', 'Irregular'], ['rapid', 'Rapid'], ['slow', 'Slow']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.vitals.options.hr_rhythm.${k}`) }))
+    },
+    breathingPatternOptions() {
+      return [
+        ['regular', 'Regular'], ['labored', 'Labored'], ['shallow', 'Shallow'], ['deep', 'Deep'], ['irregular', 'Irregular']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.vitals.options.breathing_pattern.${k}`) }))
+    },
+    oxygenSourceOptions() {
+      return [
+        ['room_air', 'Room Air'], ['nasal_cannula', 'Nasal Cannula'], ['face_mask', 'Face Mask'],
+        ['non_rebreather', 'Non-rebreather'], ['ventilator', 'Ventilator']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.vitals.options.oxygen_source.${k}`) }))
+    },
+    mentalStatusOptions() {
+      return [
+        ['alert', 'Alert'], ['oriented_x3', 'Oriented x3'], ['confused', 'Confused'], ['lethargic', 'Lethargic'], ['unresponsive', 'Unresponsive']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.vitals.options.mental_status.${k}`) }))
+    }
+  },
+  created() {
+    this.form.temperatureSite = 'Oral'
+    this.form.heartRateRhythm = 'Regular'
+    this.form.breathingPattern = 'Regular'
+    this.form.oxygenSource = 'Room Air'
+    this.form.mentalStatus = 'Alert'
   },
   methods: {
     ...mapActions('flowsheets', ['createFlowsheetEntry']),
     async submitForm() {
       if (!this.form.temperature || !this.form.heartRate || !this.form.bpSystolic || !this.form.bpDiastolic || !this.form.respiratoryRate || !this.form.spo2) {
-        alert('Please fill in all required vital signs')
+        alert(this.$t('clinical360.flowsheets.forms.vitals.required_fields_error'))
         return
       }
 
@@ -282,7 +327,7 @@ export default {
         this.$emit('save', this.form)
       } catch (error) {
         console.error('Error saving vitals:', error)
-        alert('Error saving vital signs')
+        alert(this.$t('clinical360.flowsheets.forms.vitals.save_error'))
       }
     }
   }

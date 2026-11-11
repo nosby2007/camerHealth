@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-calendar-multiple-check</v-icon>
-        <span>Appointment Scheduling & Coordination</span>
+        <span>{{ $t('clinical360.discharge.appointment_form.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -16,26 +16,28 @@
         <form @submit.prevent="submitForm">
           <!-- Primary Care Follow-up -->
           <section class="form-section">
-            <h3 class="section-title">🏥 Primary Care Physician Follow-up *</h3>
+            <h3 class="section-title">🏥 {{ $t('clinical360.discharge.appointment_form.section_pcp_title') }} *</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>PCP Name *</label>
-                <v-text-field v-model="form.pcpName" placeholder="Dr. Name" outlined dense required />
+                <label>{{ $t('clinical360.discharge.appointment_form.pcp_name_label') }} *</label>
+                <v-text-field v-model="form.pcpName" :placeholder="$t('clinical360.discharge.appointment_form.pcp_name_placeholder')" outlined dense required />
               </div>
               <div class="form-group">
-                <label>PCP Contact Phone *</label>
-                <v-text-field v-model="form.pcpPhone" placeholder="(555) 123-4567" outlined dense required />
+                <label>{{ $t('clinical360.discharge.appointment_form.pcp_phone_label') }} *</label>
+                <v-text-field v-model="form.pcpPhone" :placeholder="$t('clinical360.discharge.appointment_form.pcp_phone_placeholder')" outlined dense required />
               </div>
               <div class="form-group">
-                <label>Preferred Appointment Window *</label>
+                <label>{{ $t('clinical360.discharge.appointment_form.appointment_window_label') }} *</label>
                 <v-select
                   v-model="form.pcpAppointmentWindow"
-                  :items="['1 week', '2 weeks', '3 weeks', '4 weeks', 'Within 24 hours']"
+                  :items="appointmentWindowOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined dense required
                 />
               </div>
               <div class="form-group">
-                <label>Appointment Scheduled</label>
+                <label>{{ $t('clinical360.discharge.appointment_form.appointment_scheduled_label') }}</label>
                 <v-text-field v-model="form.pcpAppointmentDate" type="date" outlined dense />
               </div>
             </div>
@@ -44,9 +46,9 @@
           <!-- Specialist Appointments -->
           <section class="form-section">
             <div class="section-header">
-              <h3 class="section-title">🩺 Specialist Appointments</h3>
+              <h3 class="section-title">🩺 {{ $t('clinical360.discharge.appointment_form.section_specialist_title') }}</h3>
               <v-btn small text color="primary" @click="addSpecialist">
-                <v-icon small>mdi-plus</v-icon>Add Specialist
+                <v-icon small>mdi-plus</v-icon>{{ $t('clinical360.discharge.appointment_form.add_specialist_btn') }}
               </v-btn>
             </div>
 
@@ -57,25 +59,27 @@
                     <v-select
                       v-model="form.specialists[idx].specialty"
                       :items="specialtyOptions"
-                      label="Specialty *"
+                      item-value="value"
+                      item-text="text"
+                      :label="$t('clinical360.discharge.appointment_form.specialty_label') + ' *'"
                       outlined dense
                       required
                     />
                     <v-text-field
                       v-model="form.specialists[idx].providerName"
-                      label="Provider Name"
+                      :label="$t('clinical360.discharge.appointment_form.provider_name_label')"
                       outlined dense
                     />
                   </div>
                   <div class="specialist-row">
                     <v-text-field
                       v-model="form.specialists[idx].phone"
-                      label="Phone"
+                      :label="$t('clinical360.discharge.appointment_form.phone_label')"
                       outlined dense
                     />
                     <v-text-field
                       v-model="form.specialists[idx].location"
-                      label="Location/Office"
+                      :label="$t('clinical360.discharge.appointment_form.location_label')"
                       outlined dense
                     />
                   </div>
@@ -83,20 +87,20 @@
                     <v-text-field
                       v-model="form.specialists[idx].dueBy"
                       type="date"
-                      label="Appointment due by"
+                      :label="$t('clinical360.discharge.appointment_form.due_by_label')"
                       outlined dense
                     />
                     <v-text-field
                       v-model="form.specialists[idx].appointmentDate"
                       type="date"
-                      label="Scheduled date"
+                      :label="$t('clinical360.discharge.appointment_form.scheduled_date_label')"
                       outlined dense
                     />
                   </div>
                   <v-text-field
                     v-model="form.specialists[idx].reason"
-                    label="Reason for referral"
-                    placeholder="Why this specialist?"
+                    :label="$t('clinical360.discharge.appointment_form.reason_label')"
+                    :placeholder="$t('clinical360.discharge.appointment_form.reason_placeholder')"
                     outlined dense
                   />
                 </div>
@@ -110,9 +114,9 @@
           <!-- Lab/Imaging Follow-up -->
           <section class="form-section">
             <div class="section-header">
-              <h3 class="section-title">🔬 Lab/Imaging Follow-up</h3>
+              <h3 class="section-title">🔬 {{ $t('clinical360.discharge.appointment_form.section_lab_title') }}</h3>
               <v-btn small text color="primary" @click="addLabTest">
-                <v-icon small>mdi-plus</v-icon>Add Test
+                <v-icon small>mdi-plus</v-icon>{{ $t('clinical360.discharge.appointment_form.add_test_btn') }}
               </v-btn>
             </div>
 
@@ -122,26 +126,28 @@
                   <v-combobox
                     v-model="form.labTests[idx].testName"
                     :items="labTestOptions"
-                    label="Test Name *"
+                    :label="$t('clinical360.discharge.appointment_form.test_name_label') + ' *'"
                     outlined dense required
                   />
                   <div class="test-row">
                     <v-text-field
                       v-model="form.labTests[idx].dueDate"
                       type="date"
-                      label="Due date"
+                      :label="$t('clinical360.discharge.appointment_form.due_date_label')"
                       outlined dense
                     />
                     <v-text-field
                       v-model="form.labTests[idx].completedDate"
                       type="date"
-                      label="Completed"
+                      :label="$t('clinical360.discharge.appointment_form.completed_label')"
                       outlined dense
                     />
                     <v-select
                       v-model="form.labTests[idx].status"
-                      :items="['Ordered', 'Scheduled', 'Completed', 'Pending results']"
-                      label="Status"
+                      :items="labTestStatusOptions"
+                      item-value="value"
+                      item-text="text"
+                      :label="$t('clinical360.discharge.appointment_form.status_label')"
                       outlined dense
                     />
                   </div>
@@ -155,75 +161,77 @@
 
           <!-- Therapy Appointments -->
           <section class="form-section">
-            <h3 class="section-title">💪 Therapy Appointments</h3>
+            <h3 class="section-title">💪 {{ $t('clinical360.discharge.appointment_form.section_therapy_title') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Physical Therapy</label>
-                <v-text-field v-model="form.physicalTherapy" placeholder="Provider and frequency" outlined dense />
+                <label>{{ $t('clinical360.discharge.appointment_form.physical_therapy_label') }}</label>
+                <v-text-field v-model="form.physicalTherapy" :placeholder="$t('clinical360.discharge.appointment_form.therapy_placeholder')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Occupational Therapy</label>
-                <v-text-field v-model="form.occupationalTherapy" placeholder="Provider and frequency" outlined dense />
+                <label>{{ $t('clinical360.discharge.appointment_form.occupational_therapy_label') }}</label>
+                <v-text-field v-model="form.occupationalTherapy" :placeholder="$t('clinical360.discharge.appointment_form.therapy_placeholder')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Speech Therapy</label>
-                <v-text-field v-model="form.speechTherapy" placeholder="Provider and frequency" outlined dense />
+                <label>{{ $t('clinical360.discharge.appointment_form.speech_therapy_label') }}</label>
+                <v-text-field v-model="form.speechTherapy" :placeholder="$t('clinical360.discharge.appointment_form.therapy_placeholder')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Mental Health/Counseling</label>
-                <v-text-field v-model="form.mentalHealthTherapy" placeholder="Provider and frequency" outlined dense />
+                <label>{{ $t('clinical360.discharge.appointment_form.mental_health_label') }}</label>
+                <v-text-field v-model="form.mentalHealthTherapy" :placeholder="$t('clinical360.discharge.appointment_form.therapy_placeholder')" outlined dense />
               </div>
             </div>
           </section>
 
           <!-- Patient Notification -->
           <section class="form-section">
-            <h3 class="section-title">📞 Patient Notification</h3>
+            <h3 class="section-title">📞 {{ $t('clinical360.discharge.appointment_form.section_notification_title') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Patient Notified</label>
-                <v-checkbox v-model="form.patientNotified" label="Yes" />
+                <label>{{ $t('clinical360.discharge.appointment_form.patient_notified_label') }}</label>
+                <v-checkbox v-model="form.patientNotified" :label="$t('clinical360.discharge.appointment_form.notified_yes')" />
               </div>
               <div class="form-group">
-                <label>Notification Date/Time</label>
+                <label>{{ $t('clinical360.discharge.appointment_form.notification_datetime_label') }}</label>
                 <v-text-field v-model="form.notificationDate" type="datetime-local" outlined dense />
               </div>
               <div class="form-group">
-                <label>Notification Method</label>
+                <label>{{ $t('clinical360.discharge.appointment_form.notification_method_label') }}</label>
                 <v-select
                   v-model="form.notificationMethod"
-                  :items="['Phone call', 'Text/SMS', 'Email', 'Patient portal', 'In-person']"
+                  :items="notificationMethodOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined dense
                 />
               </div>
             </div>
             <v-text-field
               v-model="form.notificationNotes"
-              label="Notification notes"
-              placeholder="Who was notified, what was communicated..."
+              :label="$t('clinical360.discharge.appointment_form.notification_notes_label')"
+              :placeholder="$t('clinical360.discharge.appointment_form.notification_notes_placeholder')"
               outlined dense multi-line rows="2"
             />
           </section>
 
           <!-- Appointment Reminders -->
           <section class="form-section">
-            <h3 class="section-title">⏰ Appointment Reminders</h3>
+            <h3 class="section-title">⏰ {{ $t('clinical360.discharge.appointment_form.section_reminders_title') }}</h3>
             <div class="checklist">
-              <v-checkbox v-model="form.reminders.dayBefore" label="Send reminder 1 day before appointment" />
-              <v-checkbox v-model="form.reminders.twoDaysBefore" label="Send reminder 2 days before appointment" />
-              <v-checkbox v-model="form.reminders.phoneReminder" label="Phone reminder needed" />
+              <v-checkbox v-model="form.reminders.dayBefore" :label="$t('clinical360.discharge.appointment_form.reminder_day_before')" />
+              <v-checkbox v-model="form.reminders.twoDaysBefore" :label="$t('clinical360.discharge.appointment_form.reminder_two_days_before')" />
+              <v-checkbox v-model="form.reminders.phoneReminder" :label="$t('clinical360.discharge.appointment_form.reminder_phone_needed')" />
             </div>
             <v-text-field
               v-model="form.reminders.reminderPhoneNumber"
-              label="Reminder phone number"
-              placeholder="Contact number for reminders"
+              :label="$t('clinical360.discharge.appointment_form.reminder_phone_label')"
+              :placeholder="$t('clinical360.discharge.appointment_form.reminder_phone_placeholder')"
               outlined dense
             />
           </section>
 
           <div class="form-actions">
-            <v-btn type="button" outlined @click="$emit('close')">Cancel</v-btn>
-            <v-btn type="submit" color="primary" dark>Save Appointments</v-btn>
+            <v-btn type="button" outlined @click="$emit('close')">{{ $t('clinical360.discharge.appointment_form.cancel_btn') }}</v-btn>
+            <v-btn type="submit" color="primary" dark>{{ $t('clinical360.discharge.appointment_form.save_btn') }}</v-btn>
           </div>
         </form>
       </v-card-text>
@@ -250,14 +258,38 @@ export default {
         patientNotified: false, notificationDate: '', notificationMethod: 'Phone call', notificationNotes: '',
         reminders: { dayBefore: true, twoDaysBefore: false, phoneReminder: false, reminderPhoneNumber: '' }
       },
-      specialtyOptions: [
-        'Cardiology', 'Oncology', 'Orthopedics', 'Neurology', 'Endocrinology',
-        'Nephrology', 'Gastroenterology', 'Pulmonology', 'Dermatology', 'Urology', 'Other'
-      ],
       labTestOptions: [
         'CBC', 'CMP', 'BMP', 'Troponin', 'INR/PT', 'aPTT', 'Glucose', 'HbA1c',
         'TSH', 'Lipid panel', 'LFTs', 'Urinalysis', 'Blood cultures', 'Other'
       ]
+    }
+  },
+  computed: {
+    appointmentWindowOptions() {
+      return [
+        ['window_1_week', '1 week'], ['window_2_weeks', '2 weeks'], ['window_3_weeks', '3 weeks'],
+        ['window_4_weeks', '4 weeks'], ['window_within_24_hours', 'Within 24 hours']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.discharge.appointment_form.${k}`) }))
+    },
+    specialtyOptions() {
+      return [
+        ['specialty_cardiology', 'Cardiology'], ['specialty_oncology', 'Oncology'], ['specialty_orthopedics', 'Orthopedics'],
+        ['specialty_neurology', 'Neurology'], ['specialty_endocrinology', 'Endocrinology'], ['specialty_nephrology', 'Nephrology'],
+        ['specialty_gastroenterology', 'Gastroenterology'], ['specialty_pulmonology', 'Pulmonology'],
+        ['specialty_dermatology', 'Dermatology'], ['specialty_urology', 'Urology'], ['specialty_other', 'Other']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.discharge.appointment_form.${k}`) }))
+    },
+    labTestStatusOptions() {
+      return [
+        ['status_ordered', 'Ordered'], ['status_scheduled', 'Scheduled'],
+        ['status_completed', 'Completed'], ['status_pending_results', 'Pending results']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.discharge.appointment_form.${k}`) }))
+    },
+    notificationMethodOptions() {
+      return [
+        ['method_phone_call', 'Phone call'], ['method_text_sms', 'Text/SMS'], ['method_email', 'Email'],
+        ['method_patient_portal', 'Patient portal'], ['method_in_person', 'In-person']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.discharge.appointment_form.${k}`) }))
     }
   },
   methods: {
@@ -280,7 +312,7 @@ export default {
     },
     async submitForm() {
       if (!this.form.pcpName || !this.form.pcpPhone) {
-        alert('Please fill in PCP information')
+        alert(this.$t('clinical360.discharge.appointment_form.error_pcp_required'))
         return
       }
       try {
@@ -292,7 +324,7 @@ export default {
         })
         this.$emit('save', this.form)
       } catch (error) {
-        alert('Error saving appointments')
+        alert(this.$t('clinical360.discharge.appointment_form.error_save_failed'))
       }
     }
   }

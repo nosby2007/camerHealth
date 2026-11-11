@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-book-open</v-icon>
-        <span>Patient Education Record</span>
+        <span>{{ $t('clinical360.education.patient_form.record_title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -16,13 +16,15 @@
         <form @submit.prevent="submitForm">
           <!-- Education Session Info -->
           <section class="form-section">
-            <h3 class="section-title">Session Information</h3>
+            <h3 class="section-title">{{ $t('clinical360.education.patient_form.session_information') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Education Topic *</label>
+                <label>{{ $t('clinical360.education.patient_form.education_topic') }}</label>
                 <v-combobox
                   v-model="form.topic"
                   :items="educationTopics"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                   required
@@ -30,7 +32,7 @@
               </div>
 
               <div class="form-group">
-                <label>Date/Time of Session</label>
+                <label>{{ $t('clinical360.education.patient_form.session_datetime') }}</label>
                 <v-text-field
                   v-model="form.sessionDateTime"
                   type="datetime-local"
@@ -40,7 +42,7 @@
               </div>
 
               <div class="form-group">
-                <label>Duration (minutes)</label>
+                <label>{{ $t('clinical360.education.patient_form.duration_minutes') }}</label>
                 <v-text-field
                   v-model="form.duration"
                   type="number"
@@ -51,10 +53,10 @@
               </div>
 
               <div class="form-group">
-                <label>Educator Name</label>
+                <label>{{ $t('clinical360.education.patient_form.educator_name') }}</label>
                 <v-text-field
                   v-model="form.educatorName"
-                  placeholder="Nurse/Educator name"
+                  :placeholder="$t('clinical360.education.patient_form.educator_name_placeholder')"
                   outlined
                   dense
                 />
@@ -64,12 +66,12 @@
 
           <!-- Learning Objectives -->
           <section class="form-section">
-            <h3 class="section-title">Learning Objectives</h3>
+            <h3 class="section-title">{{ $t('clinical360.education.patient_form.learning_objectives') }}</h3>
             <div class="objectives-checklist">
               <div v-for="(objective, idx) in form.objectives" :key="idx" class="objective-item">
                 <v-checkbox
                   v-model="form.objectives[idx].covered"
-                  :label="form.objectives[idx].text"
+                  :label="objectiveLabels[idx]"
                 />
               </div>
             </div>
@@ -77,7 +79,7 @@
 
           <!-- Education Materials Provided -->
           <section class="form-section">
-            <h3 class="section-title">Education Materials Provided</h3>
+            <h3 class="section-title">{{ $t('clinical360.education.patient_form.materials_provided') }}</h3>
             <div class="materials-checklist">
               <label v-for="material in educationMaterials" :key="material.id" class="material-item">
                 <v-checkbox v-model="form.materials[material.id]" />
@@ -87,10 +89,10 @@
 
             <div class="form-grid" style="margin-top: 16px">
               <div class="form-group">
-                <label>Other Materials</label>
+                <label>{{ $t('clinical360.education.patient_form.other_materials') }}</label>
                 <v-text-field
                   v-model="form.otherMaterials"
-                  placeholder="List any other materials provided..."
+                  :placeholder="$t('clinical360.education.patient_form.other_materials_placeholder')"
                   outlined
                   dense
                 />
@@ -100,13 +102,13 @@
 
           <!-- Content Covered -->
           <section class="form-section">
-            <h3 class="section-title">Content Summary</h3>
+            <h3 class="section-title">{{ $t('clinical360.education.patient_form.content_summary') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Key Topics Discussed</label>
+                <label>{{ $t('clinical360.education.patient_form.key_topics_discussed') }}</label>
                 <v-textarea
                   v-model="form.topicsCovered"
-                  placeholder="Summarize main topics covered in education..."
+                  :placeholder="$t('clinical360.education.patient_form.topics_covered_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -114,10 +116,10 @@
               </div>
 
               <div class="form-group">
-                <label>Special Emphasis</label>
+                <label>{{ $t('clinical360.education.patient_form.special_emphasis') }}</label>
                 <v-textarea
                   v-model="form.specialEmphasis"
-                  placeholder="Any special areas of focus or repeated topics..."
+                  :placeholder="$t('clinical360.education.patient_form.special_emphasis_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -128,33 +130,39 @@
 
           <!-- Patient Response & Understanding -->
           <section class="form-section">
-            <h3 class="section-title">Patient Response & Comprehension</h3>
+            <h3 class="section-title">{{ $t('clinical360.education.patient_form.response_comprehension') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Patient Engagement Level</label>
+                <label>{{ $t('clinical360.education.patient_form.engagement_level') }}</label>
                 <v-select
                   v-model="form.engagementLevel"
-                  :items="['Poor', 'Fair', 'Good', 'Excellent']"
+                  :items="engagementLevelOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Comprehension Level</label>
+                <label>{{ $t('clinical360.education.patient_form.comprehension_level') }}</label>
                 <v-select
                   v-model="form.comprehensionLevel"
-                  :items="['Minimal', 'Partial', 'Good', 'Full', 'Unable to assess']"
+                  :items="comprehensionLevelOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Learning Barriers Identified</label>
+                <label>{{ $t('clinical360.education.patient_form.learning_barriers') }}</label>
                 <v-combobox
                   v-model="form.learningBarriers"
-                  :items="['Language', 'Vision', 'Hearing', 'Cognitive', 'Motivation', 'Literacy', 'Pain', 'Other']"
+                  :items="learningBarrierOptions"
+                  item-value="value"
+                  item-text="text"
                   multiple
                   outlined
                   dense
@@ -163,10 +171,10 @@
               </div>
 
               <div class="form-group">
-                <label>Barriers Addressed</label>
+                <label>{{ $t('clinical360.education.patient_form.barriers_addressed') }}</label>
                 <v-textarea
                   v-model="form.barriersAddressed"
-                  placeholder="How were learning barriers addressed..."
+                  :placeholder="$t('clinical360.education.patient_form.barriers_addressed_placeholder')"
                   outlined
                   dense
                   rows="2"
@@ -177,23 +185,25 @@
 
           <!-- Patient Knowledge Demonstration -->
           <section class="form-section">
-            <h3 class="section-title">Knowledge Demonstration (Teach-Back Method)</h3>
+            <h3 class="section-title">{{ $t('clinical360.education.patient_form.knowledge_demonstration') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Teach-Back Assessment</label>
+                <label>{{ $t('clinical360.education.patient_form.teach_back_assessment') }}</label>
                 <v-select
                   v-model="form.teachBackResult"
-                  :items="['Accurate understanding', 'Partial understanding', 'Misunderstandings present', 'Unable to demonstrate', 'Not attempted']"
+                  :items="teachBackResultOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Patient Explanation</label>
+                <label>{{ $t('clinical360.education.patient_form.patient_explanation') }}</label>
                 <v-textarea
                   v-model="form.patientExplanation"
-                  placeholder="How patient explained back the content..."
+                  :placeholder="$t('clinical360.education.patient_form.patient_explanation_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -201,10 +211,10 @@
               </div>
 
               <div class="form-group">
-                <label>Corrections/Clarifications Needed</label>
+                <label>{{ $t('clinical360.education.patient_form.corrections_needed') }}</label>
                 <v-textarea
                   v-model="form.corrections"
-                  placeholder="Any corrections or clarifications made..."
+                  :placeholder="$t('clinical360.education.patient_form.corrections_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -215,38 +225,42 @@
 
           <!-- Family/Caregiver Participation -->
           <section class="form-section">
-            <h3 class="section-title">Family/Caregiver Involvement</h3>
+            <h3 class="section-title">{{ $t('clinical360.education.patient_form.family_involvement') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Family/Caregiver Present</label>
+                <label>{{ $t('clinical360.education.patient_form.family_present') }}</label>
                 <v-checkbox v-model="form.familyPresent" />
               </div>
 
               <div class="form-group">
-                <label>Family/Caregiver Name(s)</label>
+                <label>{{ $t('clinical360.education.patient_form.family_names') }}</label>
                 <v-text-field
                   v-model="form.familyNames"
-                  placeholder="Names of those present"
+                  :placeholder="$t('clinical360.education.patient_form.family_names_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Family Understanding</label>
+                <label>{{ $t('clinical360.education.patient_form.family_understanding') }}</label>
                 <v-select
                   v-model="form.familyUnderstanding"
-                  :items="['Poor', 'Fair', 'Good', 'Excellent', 'N/A']"
+                  :items="familyUnderstandingOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Role in Care</label>
+                <label>{{ $t('clinical360.education.patient_form.role_in_care') }}</label>
                 <v-combobox
                   v-model="form.familyRole"
-                  :items="['Medication reminders', 'Diet monitoring', 'Exercise support', 'Appointment scheduling', 'Transportation', 'Other']"
+                  :items="familyRoleOptions"
+                  item-value="value"
+                  item-text="text"
                   multiple
                   outlined
                   dense
@@ -258,18 +272,18 @@
 
           <!-- Follow-up Plan -->
           <section class="form-section">
-            <h3 class="section-title">Follow-up Plan</h3>
+            <h3 class="section-title">{{ $t('clinical360.education.patient_form.follow_up_plan') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Follow-up Education Needed</label>
+                <label>{{ $t('clinical360.education.patient_form.follow_up_needed') }}</label>
                 <v-checkbox v-model="form.followUpNeeded" />
               </div>
 
               <div class="form-group">
-                <label>Recommended Topics for Follow-up</label>
+                <label>{{ $t('clinical360.education.patient_form.follow_up_topics') }}</label>
                 <v-textarea
                   v-model="form.followUpTopics"
-                  placeholder="Topics to reinforce or revisit..."
+                  :placeholder="$t('clinical360.education.patient_form.follow_up_topics_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -277,10 +291,12 @@
               </div>
 
               <div class="form-group">
-                <label>Referrals Made</label>
+                <label>{{ $t('clinical360.education.patient_form.referrals_made') }}</label>
                 <v-combobox
                   v-model="form.referrals"
-                  :items="['Diabetes educator', 'Nutritionist', 'Physical therapy', 'Social work', 'Chaplain', 'Other']"
+                  :items="referralOptions"
+                  item-value="value"
+                  item-text="text"
                   multiple
                   outlined
                   dense
@@ -289,10 +305,10 @@
               </div>
 
               <div class="form-group">
-                <label>Resources Provided</label>
+                <label>{{ $t('clinical360.education.patient_form.resources_provided') }}</label>
                 <v-text-field
                   v-model="form.resourcesProvided"
-                  placeholder="Contact info for support organizations, websites, etc."
+                  :placeholder="$t('clinical360.education.patient_form.resources_provided_placeholder')"
                   outlined
                   dense
                 />
@@ -302,10 +318,10 @@
 
           <div class="form-actions">
             <v-btn type="button" outlined @click="$emit('close')">
-              Cancel
+              {{ $t('clinical360.education.patient_form.cancel') }}
             </v-btn>
             <v-btn type="submit" color="primary" dark>
-              Document Education
+              {{ $t('clinical360.education.patient_form.document_education') }}
             </v-btn>
           </div>
         </form>
@@ -363,37 +379,101 @@ export default {
         followUpTopics: '',
         referrals: [],
         resourcesProvided: ''
-      },
-      educationTopics: [
-        'Disease process',
-        'Medication management',
-        'Diet and nutrition',
-        'Exercise and activity',
-        'Stress management',
-        'Warning signs/symptoms',
-        'When to seek help',
-        'Lifestyle modifications',
-        'Follow-up appointments',
-        'Support resources',
-        'Wound care',
-        'Pain management'
-      ],
-      educationMaterials: [
-        { id: 'pamphlet', label: 'Educational pamphlet' },
-        { id: 'video', label: 'Educational video' },
-        { id: 'diagram', label: 'Diagram/picture' },
-        { id: 'handout', label: 'Handout materials' },
-        { id: 'website', label: 'Website/online resources' },
-        { id: 'demonstration', label: 'Demonstration/practice' },
-        { id: 'discussion', label: 'Group discussion' }
+      }
+    }
+  },
+  computed: {
+    objectiveLabels() {
+      return [
+        this.$t('clinical360.education.patient_form.objective_disease_process'),
+        this.$t('clinical360.education.patient_form.objective_medication_administration'),
+        this.$t('clinical360.education.patient_form.objective_warning_signs'),
+        this.$t('clinical360.education.patient_form.objective_lifestyle_modifications')
       ]
+    },
+    educationTopics() {
+      return [
+        ['disease_process', 'Disease process'],
+        ['medication_management', 'Medication management'],
+        ['diet_and_nutrition', 'Diet and nutrition'],
+        ['exercise_and_activity', 'Exercise and activity'],
+        ['stress_management', 'Stress management'],
+        ['warning_signs_symptoms', 'Warning signs/symptoms'],
+        ['when_to_seek_help', 'When to seek help'],
+        ['lifestyle_modifications', 'Lifestyle modifications'],
+        ['follow_up_appointments', 'Follow-up appointments'],
+        ['support_resources', 'Support resources'],
+        ['wound_care', 'Wound care'],
+        ['pain_management', 'Pain management']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.patient_form.topic_${k}`) }))
+    },
+    educationMaterials() {
+      return [
+        { id: 'pamphlet', label: this.$t('clinical360.education.patient_form.material_pamphlet') },
+        { id: 'video', label: this.$t('clinical360.education.patient_form.material_video') },
+        { id: 'diagram', label: this.$t('clinical360.education.patient_form.material_diagram') },
+        { id: 'handout', label: this.$t('clinical360.education.patient_form.material_handout') },
+        { id: 'website', label: this.$t('clinical360.education.patient_form.material_website') },
+        { id: 'demonstration', label: this.$t('clinical360.education.patient_form.material_demonstration') },
+        { id: 'discussion', label: this.$t('clinical360.education.patient_form.material_discussion') }
+      ]
+    },
+    engagementLevelOptions() {
+      return [
+        ['poor', 'Poor'], ['fair', 'Fair'], ['good', 'Good'], ['excellent', 'Excellent']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.patient_form.level_${k}`) }))
+    },
+    comprehensionLevelOptions() {
+      return [
+        ['minimal', 'Minimal'], ['partial', 'Partial'], ['good', 'Good'], ['full', 'Full'], ['unable_to_assess', 'Unable to assess']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.patient_form.level_${k}`) }))
+    },
+    learningBarrierOptions() {
+      return [
+        ['language', 'Language'], ['vision', 'Vision'], ['hearing', 'Hearing'], ['cognitive', 'Cognitive'],
+        ['motivation', 'Motivation'], ['literacy', 'Literacy'], ['pain', 'Pain'], ['other', 'Other']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.patient_form.barrier_${k}`) }))
+    },
+    teachBackResultOptions() {
+      return [
+        ['accurate_understanding', 'Accurate understanding'],
+        ['partial_understanding', 'Partial understanding'],
+        ['misunderstandings_present', 'Misunderstandings present'],
+        ['unable_to_demonstrate', 'Unable to demonstrate'],
+        ['not_attempted', 'Not attempted']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.patient_form.teach_back_${k}`) }))
+    },
+    familyUnderstandingOptions() {
+      return [
+        ['poor', 'Poor'], ['fair', 'Fair'], ['good', 'Good'], ['excellent', 'Excellent'], ['na', 'N/A']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.patient_form.level_${k}`) }))
+    },
+    familyRoleOptions() {
+      return [
+        ['medication_reminders', 'Medication reminders'],
+        ['diet_monitoring', 'Diet monitoring'],
+        ['exercise_support', 'Exercise support'],
+        ['appointment_scheduling', 'Appointment scheduling'],
+        ['transportation', 'Transportation'],
+        ['other', 'Other']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.patient_form.family_role_${k}`) }))
+    },
+    referralOptions() {
+      return [
+        ['diabetes_educator', 'Diabetes educator'],
+        ['nutritionist', 'Nutritionist'],
+        ['physical_therapy', 'Physical therapy'],
+        ['social_work', 'Social work'],
+        ['chaplain', 'Chaplain'],
+        ['other', 'Other']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.patient_form.referral_${k}`) }))
     }
   },
   methods: {
     ...mapActions('education', ['recordEducation']),
     async submitForm() {
       if (!this.form.topic) {
-        alert('Please select an education topic')
+        alert(this.$t('clinical360.education.patient_form.alert_select_topic'))
         return
       }
 
@@ -407,7 +487,7 @@ export default {
         this.$emit('save', this.form)
       } catch (error) {
         console.error('Error recording education:', error)
-        alert('Error recording education')
+        alert(this.$t('clinical360.education.patient_form.alert_record_error'))
       }
     }
   }

@@ -4,11 +4,11 @@
       <div>
         <v-icon x-small color="#0f766e">mdi-table</v-icon>
         <strong>{{ title }}</strong>
-        <span v-if="required" class="required-dot">Required Documentation</span>
+        <span v-if="required" class="required-dot">{{ $t('clinical360.shell.flow_section.required_documentation') }}</span>
       </div>
       <button v-if="action" type="button" class="flow-action" @click="$emit('action', action)">
         <v-icon x-small>mdi-pencil-outline</v-icon>
-        Open form
+        {{ $t('clinical360.shell.flow_section.open_form') }}
       </button>
     </header>
 

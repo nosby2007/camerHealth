@@ -39,7 +39,10 @@ export default {
     patient() { return (this.$store.getters['clinical/patientDirectory'] || []).find(item => item.id === this.patientId) || {} },
     chart() { return this.$store.getters['nursing/patientNursing360'](this.patientId) }
   },
-  mounted() { this.$store.commit('nursing/LOAD_FROM_STORAGE') },
+  mounted() {
+    this.$store.commit('nursing/LOAD_FROM_STORAGE')
+    this.$store.dispatch('nursing/loadPatientChart', this.patientId)
+  },
   methods: {
     assessmentsFor(woundId) { return this.chart.woundAssessments.filter(item => item.woundId === woundId) },
     saveWound() { this.$store.dispatch('nursing/createWound', { ...this.form, patientId: this.patientId }); this.form = { woundType: '', anatomicalLocation: '', acquiredLocation: 'unknown', status: 'active' } }

@@ -1,20 +1,22 @@
 <template>
   <v-dialog :value="show" max-width="600" persistent @input="$emit('update:show', $event)">
     <v-card>
-      <v-card-title>Import Device Data</v-card-title>
+      <v-card-title>{{ $t('clinical360.flowsheets.device_data_dialog.title') }}</v-card-title>
       <v-card-text>
-        <p class="subtitle">Select device data to import into eligible flowsheet rows.</p>
+        <p class="subtitle">{{ $t('clinical360.flowsheets.device_data_dialog.subtitle') }}</p>
 
         <v-select
           v-model="selectedDevice"
-          label="Select Device"
+          :label="$t('clinical360.flowsheets.device_data_dialog.select_device')"
           :items="deviceOptions"
+          item-text="text"
+          item-value="value"
           outlined
           dense
         />
 
         <div v-if="selectedDevice" class="device-data-preview">
-          <h4>Available Data Points</h4>
+          <h4>{{ $t('clinical360.flowsheets.device_data_dialog.available_data_points') }}</h4>
           <div class="data-points">
             <div v-for="point in availableDataPoints" :key="point.id" class="data-point">
               <v-checkbox
@@ -29,9 +31,9 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text small @click="$emit('update:show', false)">Cancel</v-btn>
+        <v-btn text small @click="$emit('update:show', false)">{{ $t('clinical360.flowsheets.device_data_dialog.cancel') }}</v-btn>
         <v-btn depressed color="#0f766e" dark small @click="importData" :disabled="!selectedDevice || !selectedPoints.length">
-          Import
+          {{ $t('clinical360.flowsheets.device_data_dialog.import') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -49,21 +51,33 @@ export default {
   data() {
     return {
       selectedDevice: null,
-      selectedPoints: [],
-      deviceOptions: [
-        { text: 'Vitals Monitor', value: 'vitals' },
-        { text: 'Ventilator', value: 'vent' },
-        { text: 'Wound VAC', value: 'vac' },
-        { text: 'Glucose Meter', value: 'glucose' }
-      ],
-      availableDataPoints: [
-        { id: 'temp', label: 'Temperature' },
-        { id: 'hr', label: 'Heart Rate' },
-        { id: 'rr', label: 'Respiratory Rate' },
-        { id: 'sbp', label: 'Systolic BP' },
-        { id: 'dbp', label: 'Diastolic BP' },
-        { id: 'spo2', label: 'SpO2' }
-      ]
+      selectedPoints: []
+    }
+  },
+  computed: {
+    deviceOptions() {
+      return [
+        ['vitals', 'devices.vitals'],
+        ['vent', 'devices.vent'],
+        ['vac', 'devices.vac'],
+        ['glucose', 'devices.glucose']
+      ].map(([value, key]) => ({
+        value,
+        text: this.$t(`clinical360.flowsheets.device_data_dialog.${key}`)
+      }))
+    },
+    availableDataPoints() {
+      return [
+        ['temp', 'data_points.temperature'],
+        ['hr', 'data_points.heart_rate'],
+        ['rr', 'data_points.respiratory_rate'],
+        ['sbp', 'data_points.systolic_bp'],
+        ['dbp', 'data_points.diastolic_bp'],
+        ['spo2', 'data_points.spo2']
+      ].map(([id, key]) => ({
+        id,
+        label: this.$t(`clinical360.flowsheets.device_data_dialog.${key}`)
+      }))
     }
   },
   watch: {

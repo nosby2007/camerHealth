@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-file-document</v-icon>
-        <span>Create Care Plan<span v-if="template"> from {{ template.title }}</span></span>
+        <span>{{ $t('clinical360.care_plan.form.title') }}<span v-if="template"> {{ $t('clinical360.care_plan.form.from_template', { name: template.title }) }}</span></span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -16,13 +16,13 @@
         <form @submit.prevent="submitForm">
           <!-- Care Plan Header -->
           <section class="form-section">
-            <h3 class="section-title">Care Plan Information</h3>
+            <h3 class="section-title">{{ $t('clinical360.care_plan.form.care_plan_information') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Care Plan Title *</label>
+                <label>{{ $t('clinical360.care_plan.form.care_plan_title') }} *</label>
                 <v-text-field
                   v-model="form.title"
-                  placeholder="e.g., Hypertension Management Plan"
+                  :placeholder="$t('clinical360.care_plan.form.care_plan_title_placeholder')"
                   outlined
                   dense
                   required
@@ -30,10 +30,10 @@
               </div>
 
               <div class="form-group">
-                <label>Primary Diagnosis *</label>
+                <label>{{ $t('clinical360.care_plan.form.primary_diagnosis') }} *</label>
                 <v-text-field
                   v-model="form.diagnosis"
-                  placeholder="e.g., Essential Hypertension"
+                  :placeholder="$t('clinical360.care_plan.form.primary_diagnosis_placeholder')"
                   outlined
                   dense
                   required
@@ -41,7 +41,7 @@
               </div>
 
               <div class="form-group">
-                <label>Start Date *</label>
+                <label>{{ $t('clinical360.care_plan.form.start_date') }} *</label>
                 <v-text-field
                   v-model="form.startDate"
                   type="date"
@@ -52,7 +52,7 @@
               </div>
 
               <div class="form-group">
-                <label>Target Completion Date</label>
+                <label>{{ $t('clinical360.care_plan.form.target_completion_date') }}</label>
                 <v-text-field
                   v-model="form.targetDate"
                   type="date"
@@ -62,20 +62,24 @@
               </div>
 
               <div class="form-group">
-                <label>Care Plan Status</label>
+                <label>{{ $t('clinical360.care_plan.form.care_plan_status') }}</label>
                 <v-select
                   v-model="form.status"
-                  :items="['Draft', 'Active', 'On Hold', 'Completed', 'Revised']"
+                  :items="statusItems"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Priority Level</label>
+                <label>{{ $t('clinical360.care_plan.form.priority_level') }}</label>
                 <v-select
                   v-model="form.priority"
-                  :items="['Low', 'Medium', 'High', 'Critical']"
+                  :items="priorityItems"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
@@ -86,9 +90,9 @@
           <!-- Clinical Problems -->
           <section class="form-section">
             <div class="section-header">
-              <h3 class="section-title">Clinical Problems/Diagnoses</h3>
+              <h3 class="section-title">{{ $t('clinical360.care_plan.form.clinical_problems') }}</h3>
               <v-btn small text color="primary" @click="addProblem">
-                <v-icon small>mdi-plus</v-icon>Add Problem
+                <v-icon small>mdi-plus</v-icon>{{ $t('clinical360.care_plan.form.add_problem') }}
               </v-btn>
             </div>
 
@@ -97,7 +101,7 @@
                 <div class="problem-content">
                   <v-text-field
                     v-model="form.problems[idx]"
-                    placeholder="e.g., Elevated blood pressure, Risk of stroke"
+                    :placeholder="$t('clinical360.care_plan.form.problem_placeholder')"
                     outlined
                     dense
                   />
@@ -112,9 +116,9 @@
           <!-- Goals -->
           <section class="form-section">
             <div class="section-header">
-              <h3 class="section-title">Goals/Expected Outcomes</h3>
+              <h3 class="section-title">{{ $t('clinical360.care_plan.form.goals_expected_outcomes') }}</h3>
               <v-btn small text color="primary" @click="addGoal">
-                <v-icon small>mdi-plus</v-icon>Add Goal
+                <v-icon small>mdi-plus</v-icon>{{ $t('clinical360.care_plan.form.add_goal') }}
               </v-btn>
             </div>
 
@@ -123,20 +127,22 @@
                 <div class="goal-content">
                   <v-text-field
                     v-model="form.goals[idx].description"
-                    placeholder="Goal description"
+                    :placeholder="$t('clinical360.care_plan.form.goal_description_placeholder')"
                     outlined
                     dense
                   />
                   <v-select
                     v-model="form.goals[idx].timeline"
-                    :items="['24 hours', '48 hours', '1 week', '2 weeks', 'Ongoing']"
-                    label="Timeline"
+                    :items="timelineItems"
+                    item-value="value"
+                    item-text="text"
+                    :label="$t('clinical360.care_plan.form.timeline')"
                     outlined
                     dense
                   />
                   <v-checkbox
                     v-model="form.goals[idx].achieved"
-                    label="Goal Achieved"
+                    :label="$t('clinical360.care_plan.form.goal_achieved')"
                   />
                 </div>
                 <v-btn small icon @click="removeGoal(idx)">
@@ -149,9 +155,9 @@
           <!-- Interventions -->
           <section class="form-section">
             <div class="section-header">
-              <h3 class="section-title">Nursing Interventions</h3>
+              <h3 class="section-title">{{ $t('clinical360.care_plan.form.nursing_interventions') }}</h3>
               <v-btn small text color="primary" @click="addIntervention">
-                <v-icon small>mdi-plus</v-icon>Add Intervention
+                <v-icon small>mdi-plus</v-icon>{{ $t('clinical360.care_plan.form.add_intervention') }}
               </v-btn>
             </div>
 
@@ -160,22 +166,26 @@
                 <div class="intervention-content">
                   <v-text-field
                     v-model="form.interventions[idx].action"
-                    placeholder="e.g., Monitor blood pressure every 4 hours"
+                    :placeholder="$t('clinical360.care_plan.form.intervention_placeholder')"
                     outlined
                     dense
                   />
                   <div class="intervention-row">
                     <v-select
                       v-model="form.interventions[idx].frequency"
-                      :items="['Once', 'Every 2H', 'Every 4H', 'Every 6H', 'Every 8H', 'Daily', 'As needed']"
-                      label="Frequency"
+                      :items="frequencyItems"
+                      item-value="value"
+                      item-text="text"
+                      :label="$t('clinical360.care_plan.form.frequency')"
                       outlined
                       dense
                     />
                     <v-select
                       v-model="form.interventions[idx].status"
-                      :items="['Not started', 'In progress', 'Completed']"
-                      label="Status"
+                      :items="interventionStatusItems"
+                      item-value="value"
+                      item-text="text"
+                      :label="$t('clinical360.care_plan.form.status')"
                       outlined
                       dense
                     />
@@ -190,13 +200,16 @@
 
           <!-- Education -->
           <section class="form-section">
-            <h3 class="section-title">Patient Education</h3>
+            <h3 class="section-title">{{ $t('clinical360.care_plan.form.patient_education') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Education Topics</label>
+                <label>{{ $t('clinical360.care_plan.form.education_topics') }}</label>
                 <v-combobox
                   v-model="form.educationTopics"
                   :items="educationSuggestions"
+                  item-value="value"
+                  item-text="text"
+                  :return-object="false"
                   multiple
                   outlined
                   dense
@@ -205,25 +218,27 @@
               </div>
 
               <div class="form-group">
-                <label>Education Completed</label>
+                <label>{{ $t('clinical360.care_plan.form.education_completed') }}</label>
                 <v-checkbox v-model="form.educationCompleted" />
               </div>
 
               <div class="form-group">
-                <label>Patient Understanding Level</label>
+                <label>{{ $t('clinical360.care_plan.form.patient_understanding_level') }}</label>
                 <v-select
                   v-model="form.patientUnderstanding"
-                  :items="['Poor', 'Fair', 'Good', 'Excellent']"
+                  :items="understandingItems"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Education Notes</label>
+                <label>{{ $t('clinical360.care_plan.form.education_notes') }}</label>
                 <v-textarea
                   v-model="form.educationNotes"
-                  placeholder="Notes on patient education..."
+                  :placeholder="$t('clinical360.care_plan.form.education_notes_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -234,40 +249,40 @@
 
           <!-- Responsible Parties -->
           <section class="form-section">
-            <h3 class="section-title">Responsible Parties</h3>
+            <h3 class="section-title">{{ $t('clinical360.care_plan.form.responsible_parties') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Primary Nurse</label>
+                <label>{{ $t('clinical360.care_plan.form.primary_nurse') }}</label>
                 <v-text-field
                   v-model="form.primaryNurse"
-                  placeholder="Nurse name/ID"
+                  :placeholder="$t('clinical360.care_plan.form.primary_nurse_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Care Coordinator</label>
+                <label>{{ $t('clinical360.care_plan.form.care_coordinator') }}</label>
                 <v-text-field
                   v-model="form.caseManager"
-                  placeholder="Coordinator name"
+                  :placeholder="$t('clinical360.care_plan.form.care_coordinator_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Physician/Provider</label>
+                <label>{{ $t('clinical360.care_plan.form.physician_provider') }}</label>
                 <v-text-field
                   v-model="form.provider"
-                  placeholder="Provider name"
+                  :placeholder="$t('clinical360.care_plan.form.physician_provider_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Family/Caregiver Involved</label>
+                <label>{{ $t('clinical360.care_plan.form.family_caregiver_involved') }}</label>
                 <v-checkbox v-model="form.familyInvolved" />
               </div>
             </div>
@@ -275,13 +290,13 @@
 
           <!-- General Notes -->
           <section class="form-section">
-            <h3 class="section-title">General Notes</h3>
+            <h3 class="section-title">{{ $t('clinical360.care_plan.form.general_notes') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Additional Comments</label>
+                <label>{{ $t('clinical360.care_plan.form.additional_comments') }}</label>
                 <v-textarea
                   v-model="form.notes"
-                  placeholder="Any additional notes or observations..."
+                  :placeholder="$t('clinical360.care_plan.form.additional_comments_placeholder')"
                   outlined
                   dense
                   rows="4"
@@ -292,10 +307,10 @@
 
           <div class="form-actions">
             <v-btn type="button" outlined @click="$emit('close')">
-              Cancel
+              {{ $t('clinical360.care_plan.form.cancel') }}
             </v-btn>
             <v-btn type="submit" color="primary" dark>
-              Save Care Plan
+              {{ $t('clinical360.care_plan.form.save_care_plan') }}
             </v-btn>
           </div>
         </form>
@@ -344,19 +359,75 @@ export default {
         provider: '',
         familyInvolved: false,
         notes: ''
-      },
-      educationSuggestions: [
-        'Disease process',
-        'Medication management',
-        'Diet and nutrition',
-        'Exercise and activity',
-        'Stress management',
-        'Warning signs/symptoms',
-        'When to seek help',
-        'Lifestyle modifications',
-        'Follow-up appointments',
-        'Support resources'
-      ]
+      }
+    }
+  },
+  computed: {
+    statusItems() {
+      return [
+        ['Draft', 'status_draft'],
+        ['Active', 'status_active'],
+        ['On Hold', 'status_on_hold'],
+        ['Completed', 'status_completed'],
+        ['Revised', 'status_revised']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.care_plan.form.${key}`) }))
+    },
+    priorityItems() {
+      return [
+        ['Low', 'priority_low'],
+        ['Medium', 'priority_medium'],
+        ['High', 'priority_high'],
+        ['Critical', 'priority_critical']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.care_plan.form.${key}`) }))
+    },
+    timelineItems() {
+      return [
+        ['24 hours', 'timeline_24_hours'],
+        ['48 hours', 'timeline_48_hours'],
+        ['1 week', 'timeline_1_week'],
+        ['2 weeks', 'timeline_2_weeks'],
+        ['Ongoing', 'timeline_ongoing']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.care_plan.form.${key}`) }))
+    },
+    frequencyItems() {
+      return [
+        ['Once', 'frequency_once'],
+        ['Every 2H', 'frequency_every_2h'],
+        ['Every 4H', 'frequency_every_4h'],
+        ['Every 6H', 'frequency_every_6h'],
+        ['Every 8H', 'frequency_every_8h'],
+        ['Daily', 'frequency_daily'],
+        ['As needed', 'frequency_as_needed']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.care_plan.form.${key}`) }))
+    },
+    interventionStatusItems() {
+      return [
+        ['Not started', 'intervention_status_not_started'],
+        ['In progress', 'intervention_status_in_progress'],
+        ['Completed', 'intervention_status_completed']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.care_plan.form.${key}`) }))
+    },
+    understandingItems() {
+      return [
+        ['Poor', 'understanding_poor'],
+        ['Fair', 'understanding_fair'],
+        ['Good', 'understanding_good'],
+        ['Excellent', 'understanding_excellent']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.care_plan.form.${key}`) }))
+    },
+    educationSuggestions() {
+      return [
+        ['Disease process', 'education_disease_process'],
+        ['Medication management', 'education_medication_management'],
+        ['Diet and nutrition', 'education_diet_nutrition'],
+        ['Exercise and activity', 'education_exercise_activity'],
+        ['Stress management', 'education_stress_management'],
+        ['Warning signs/symptoms', 'education_warning_signs'],
+        ['When to seek help', 'education_when_to_seek_help'],
+        ['Lifestyle modifications', 'education_lifestyle_modifications'],
+        ['Follow-up appointments', 'education_follow_up_appointments'],
+        ['Support resources', 'education_support_resources']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.care_plan.form.${key}`) }))
     }
   },
   methods: {
@@ -389,7 +460,7 @@ export default {
     },
     async submitForm() {
       if (!this.form.title || !this.form.diagnosis) {
-        this.$emit('error', 'Care plan title and primary diagnosis are required.')
+        this.$emit('error', this.$t('clinical360.care_plan.form.title_diagnosis_required'))
         return
       }
 
@@ -405,8 +476,8 @@ export default {
         this.$emit('save', record)
       } catch (error) {
         this.$emit('error', error && error.message === 'PATIENT_DISCHARGED_READ_ONLY'
-          ? 'Discharged charts are read-only.'
-          : 'Unable to create the care plan.')
+          ? this.$t('clinical360.care_plan.form.discharged_read_only')
+          : this.$t('clinical360.care_plan.form.create_failed'))
       }
     }
   }

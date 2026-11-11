@@ -1,19 +1,19 @@
 <template>
   <v-dialog :value="show" max-width="800" persistent @input="$emit('update:show', $event)">
     <v-card>
-      <v-card-title>Flowsheet History</v-card-title>
+      <v-card-title>{{ $t('clinical360.flowsheets.history_dialog.title') }}</v-card-title>
       <v-card-text>
         <div class="history-filters">
           <v-text-field
             v-model="filterRow"
-            label="Filter by row"
+            :label="$t('clinical360.flowsheets.history_dialog.filter_by_row')"
             outlined
             dense
             small
           />
           <v-select
             v-model="filterUser"
-            label="Filter by user"
+            :label="$t('clinical360.flowsheets.history_dialog.filter_by_user')"
             :items="users"
             outlined
             dense
@@ -24,7 +24,7 @@
 
         <div class="history-timeline">
           <div v-if="filteredHistory.length === 0" class="no-history">
-            No history found.
+            {{ $t('clinical360.flowsheets.history_dialog.no_history_found') }}
           </div>
 
           <div v-for="event in filteredHistory" :key="event.id" class="history-event">
@@ -39,7 +39,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text small @click="$emit('update:show', false)">Close</v-btn>
+        <v-btn text small @click="$emit('update:show', false)">{{ $t('clinical360.flowsheets.history_dialog.close') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

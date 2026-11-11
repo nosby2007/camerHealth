@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-walk</v-icon>
-        <span>Mobility & Functional Assessment</span>
+        <span>{{ $t('clinical360.flowsheets.forms.mobility.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -15,13 +15,15 @@
       <v-card-text class="form-body">
         <form @submit.prevent="submitForm">
           <section class="form-section">
-            <h3 class="section-title">Mobility Status</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.mobility.section_mobility_status') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Mobility Level *</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_mobility_level') }} *</label>
                 <v-select
                   v-model="form.mobilityLevel"
                   :items="mobilityLevels"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                   required
@@ -29,20 +31,24 @@
               </div>
 
               <div class="form-group">
-                <label>Assistance Required</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_assistance_required') }}</label>
                 <v-select
                   v-model="form.assistanceRequired"
-                  :items="['None', 'Supervision', 'Contact Guard', 'Minimal Assist', 'Moderate Assist', 'Maximal Assist', 'Dependent']"
+                  :items="assistanceRequiredOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Assistive Devices Used</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_assistive_devices') }}</label>
                 <v-combobox
                   v-model="form.assistiveDevices"
-                  :items="['Cane', 'Walker', 'Crutches', 'Wheelchair', 'Bed', 'Other']"
+                  :items="assistiveDevicesOptions"
+                  item-value="value"
+                  item-text="text"
                   multiple
                   outlined
                   dense
@@ -50,10 +56,12 @@
               </div>
 
               <div class="form-group">
-                <label>Ambulation Distance</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_ambulation_distance') }}</label>
                 <v-select
                   v-model="form.ambulationDistance"
-                  :items="['Bedbound', 'Chairbound', 'Room', '10-50 ft', '50-150 ft', '>150 ft', 'Unlimited']"
+                  :items="ambulationDistanceOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
@@ -62,13 +70,15 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Functional Abilities</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.mobility.section_functional_abilities') }}</h3>
             <div class="function-grid">
               <div v-for="activity in functionalActivities" :key="activity.id" class="function-item">
                 <label>{{ activity.label }}</label>
                 <v-select
                   :value="form.functionStatus[activity.id]"
-                  :items="['Independent', 'Supervision', 'Assistance', 'Dependent', 'N/A']"
+                  :items="functionStatusOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                   @change="form.functionStatus[activity.id] = $event"
@@ -78,7 +88,7 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Barriers to Mobility</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.mobility.section_barriers') }}</h3>
             <div class="checklist">
               <label v-for="barrier in mobilityBarriers" :key="barrier.id" class="checklist-item">
                 <v-checkbox v-model="form.barriers[barrier.id]" />
@@ -88,23 +98,27 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Fall Risk Assessment</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.mobility.section_fall_risk') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Fall Risk Level</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_fall_risk_level') }}</label>
                 <v-select
                   v-model="form.fallRiskLevel"
-                  :items="['Low', 'Medium', 'High', 'Very High']"
+                  :items="fallRiskOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Fall Prevention Measures Implemented</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_fall_prevention') }}</label>
                 <v-combobox
                   v-model="form.fallPrevention"
-                  :items="['Bed alarm', 'Fall mat', 'Frequent checks', 'Bed rail', 'Assist with ambulation', 'Adequate lighting', 'Clear pathways', 'Call bell accessible']"
+                  :items="fallPreventionOptions"
+                  item-value="value"
+                  item-text="text"
                   multiple
                   outlined
                   dense
@@ -114,23 +128,23 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Exercise & Therapy</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.mobility.section_exercise_therapy') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Physical Therapy Ordered</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_pt_ordered') }}</label>
                 <v-checkbox v-model="form.ptOrdered" />
               </div>
 
               <div class="form-group">
-                <label>Occupational Therapy Ordered</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_ot_ordered') }}</label>
                 <v-checkbox v-model="form.otOrdered" />
               </div>
 
               <div class="form-group">
-                <label>Exercise Performed Today</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_exercise_performed') }}</label>
                 <v-textarea
                   v-model="form.exercisePerformed"
-                  placeholder="e.g., ROM exercises, walking, therapy session..."
+                  :placeholder="$t('clinical360.flowsheets.forms.mobility.placeholder_exercise_performed')"
                   outlined
                   dense
                   rows="3"
@@ -138,10 +152,10 @@
               </div>
 
               <div class="form-group">
-                <label>Patient Response to Activity</label>
+                <label>{{ $t('clinical360.flowsheets.forms.mobility.label_activity_response') }}</label>
                 <v-textarea
                   v-model="form.activityResponse"
-                  placeholder="How did patient tolerate activity? Any symptoms?"
+                  :placeholder="$t('clinical360.flowsheets.forms.mobility.placeholder_activity_response')"
                   outlined
                   dense
                   rows="3"
@@ -152,10 +166,10 @@
 
           <div class="form-actions">
             <v-btn type="button" outlined @click="$emit('close')">
-              Cancel
+              {{ $t('clinical360.flowsheets.forms.mobility.cancel') }}
             </v-btn>
             <v-btn type="submit" color="primary" dark>
-              Save Mobility Assessment
+              {{ $t('clinical360.flowsheets.forms.mobility.save') }}
             </v-btn>
           </div>
         </form>
@@ -177,17 +191,17 @@ export default {
     return {
       form: {
         mobilityLevel: '',
-        assistanceRequired: 'None',
+        assistanceRequired: '',
         assistiveDevices: [],
         ambulationDistance: '',
         functionStatus: {
-          bed_transfer: 'Independent',
-          wheelchair_transfer: 'Independent',
-          toileting: 'Independent',
-          dressing: 'Independent',
-          grooming: 'Independent',
-          feeding: 'Independent',
-          bathing: 'Independent'
+          bed_transfer: '',
+          wheelchair_transfer: '',
+          toileting: '',
+          dressing: '',
+          grooming: '',
+          feeding: '',
+          bathing: ''
         },
         barriers: {
           pain: false,
@@ -199,40 +213,80 @@ export default {
           depression: false,
           medication: false
         },
-        fallRiskLevel: 'Low',
+        fallRiskLevel: '',
         fallPrevention: [],
         ptOrdered: false,
         otOrdered: false,
         exercisePerformed: '',
         activityResponse: ''
       },
-      mobilityLevels: [
-        'Independent',
-        'Walks with assistance',
-        'Wheelchair dependent',
-        'Bedbound',
-        'Chairbound'
-      ],
-      functionalActivities: [
-        { id: 'bed_transfer', label: 'Bed Transfer' },
-        { id: 'wheelchair_transfer', label: 'Wheelchair Transfer' },
-        { id: 'toileting', label: 'Toileting' },
-        { id: 'dressing', label: 'Dressing' },
-        { id: 'grooming', label: 'Grooming' },
-        { id: 'feeding', label: 'Feeding' },
-        { id: 'bathing', label: 'Bathing' }
-      ],
-      mobilityBarriers: [
-        { id: 'pain', label: 'Pain' },
-        { id: 'weakness', label: 'Weakness/Fatigue' },
-        { id: 'contractures', label: 'Contractures' },
-        { id: 'casts_splints', label: 'Casts/Splints' },
-        { id: 'obesity', label: 'Obesity' },
-        { id: 'cognitive', label: 'Cognitive Impairment' },
-        { id: 'depression', label: 'Depression' },
-        { id: 'medication', label: 'Medication Side Effects' }
-      ]
+      functionalActivityIds: ['bed_transfer', 'wheelchair_transfer', 'toileting', 'dressing', 'grooming', 'feeding', 'bathing'],
+      mobilityBarrierIds: ['pain', 'weakness', 'contractures', 'casts_splints', 'obesity', 'cognitive', 'depression', 'medication']
     }
+  },
+  computed: {
+    mobilityLevels() {
+      return [
+        ['independent', 'Independent'], ['walks_with_assistance', 'Walks with assistance'],
+        ['wheelchair_dependent', 'Wheelchair dependent'], ['bedbound', 'Bedbound'], ['chairbound', 'Chairbound']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.mobility.options.mobility_level.${k}`) }))
+    },
+    assistanceRequiredOptions() {
+      return [
+        ['none', 'None'], ['supervision', 'Supervision'], ['contact_guard', 'Contact Guard'],
+        ['minimal_assist', 'Minimal Assist'], ['moderate_assist', 'Moderate Assist'],
+        ['maximal_assist', 'Maximal Assist'], ['dependent', 'Dependent']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.mobility.options.assistance_required.${k}`) }))
+    },
+    assistiveDevicesOptions() {
+      return [
+        ['cane', 'Cane'], ['walker', 'Walker'], ['crutches', 'Crutches'], ['wheelchair', 'Wheelchair'], ['bed', 'Bed'], ['other', 'Other']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.mobility.options.assistive_devices.${k}`) }))
+    },
+    ambulationDistanceOptions() {
+      return [
+        ['bedbound', 'Bedbound'], ['chairbound', 'Chairbound'], ['room', 'Room'], ['ten_to_fifty_ft', '10-50 ft'],
+        ['fifty_to_150_ft', '50-150 ft'], ['over_150_ft', '>150 ft'], ['unlimited', 'Unlimited']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.mobility.options.ambulation_distance.${k}`) }))
+    },
+    functionStatusOptions() {
+      return [
+        ['independent', 'Independent'], ['supervision', 'Supervision'], ['assistance', 'Assistance'],
+        ['dependent', 'Dependent'], ['na', 'N/A']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.mobility.options.function_status.${k}`) }))
+    },
+    fallRiskOptions() {
+      return [
+        ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['very_high', 'Very High']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.mobility.options.fall_risk.${k}`) }))
+    },
+    fallPreventionOptions() {
+      return [
+        ['bed_alarm', 'Bed alarm'], ['fall_mat', 'Fall mat'], ['frequent_checks', 'Frequent checks'],
+        ['bed_rail', 'Bed rail'], ['assist_with_ambulation', 'Assist with ambulation'],
+        ['adequate_lighting', 'Adequate lighting'], ['clear_pathways', 'Clear pathways'],
+        ['call_bell_accessible', 'Call bell accessible']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.mobility.options.fall_prevention.${k}`) }))
+    },
+    functionalActivities() {
+      return this.functionalActivityIds.map(id => ({
+        id,
+        label: this.$t(`clinical360.flowsheets.forms.mobility.options.functional_activities.${id}`)
+      }))
+    },
+    mobilityBarriers() {
+      return this.mobilityBarrierIds.map(id => ({
+        id,
+        label: this.$t(`clinical360.flowsheets.forms.mobility.options.barriers.${id}`)
+      }))
+    }
+  },
+  created() {
+    this.form.assistanceRequired = 'None'
+    this.form.fallRiskLevel = 'Low'
+    Object.keys(this.form.functionStatus).forEach(key => {
+      this.form.functionStatus[key] = 'Independent'
+    })
   },
   methods: {
     ...mapActions('flowsheets', ['createFlowsheetEntry']),
@@ -262,7 +316,7 @@ export default {
         this.$emit('save', this.form)
       } catch (error) {
         console.error('Error saving mobility assessment:', error)
-        alert('Error saving mobility assessment')
+        alert(this.$t('clinical360.flowsheets.forms.mobility.save_error'))
       }
     }
   }

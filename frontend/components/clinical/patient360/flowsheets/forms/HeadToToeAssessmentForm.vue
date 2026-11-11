@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-human</v-icon>
-        <span>Head-to-Toe Assessment</span>
+        <span>{{ $t('clinical360.flowsheets.forms.head_to_toe.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -16,189 +16,189 @@
         <form @submit.prevent="submitForm">
           <!-- HEAD & NEURO -->
           <section class="form-section">
-            <h3 class="section-title">👁️ Head & Neurological</h3>
+            <h3 class="section-title">👁️ {{ $t('clinical360.flowsheets.forms.head_to_toe.section_head_neuro') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Eyes</label>
-                <v-text-field v-model="form.eyes" placeholder="PERRL, any drainage, conjunctivitis..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_eyes') }}</label>
+                <v-text-field v-model="form.eyes" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_eyes')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Ears/Nose</label>
-                <v-text-field v-model="form.ears" placeholder="Cerumen, drainage, septum deviation..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_ears') }}</label>
+                <v-text-field v-model="form.ears" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_ears')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Mouth/Teeth</label>
-                <v-text-field v-model="form.mouth" placeholder="Dentition, oral hygiene, ulcers..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_mouth') }}</label>
+                <v-text-field v-model="form.mouth" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_mouth')" outlined dense />
               </div>
               <div class="form-group">
-                <label>GCS Score</label>
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_gcs') }}</label>
                 <v-text-field v-model="form.gcs" type="number" min="3" max="15" outlined dense />
               </div>
               <div class="form-group">
-                <label>Speech</label>
-                <v-select v-model="form.speech" :items="['Clear', 'Slurred', 'Aphasia', 'Dysarthria']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_speech') }}</label>
+                <v-select v-model="form.speech" :items="speechOptions" item-value="value" item-text="text" outlined dense />
               </div>
               <div class="form-group">
-                <label>Mental Status</label>
-                <v-select v-model="form.mentalStatus" :items="['Alert', 'Oriented x3', 'Confused', 'Lethargic', 'Unresponsive']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_mental_status') }}</label>
+                <v-select v-model="form.mentalStatus" :items="mentalStatusOptions" item-value="value" item-text="text" outlined dense />
               </div>
             </div>
           </section>
 
           <!-- NECK & LYMPH -->
           <section class="form-section">
-            <h3 class="section-title">🔗 Neck & Lymph Nodes</h3>
+            <h3 class="section-title">🔗 {{ $t('clinical360.flowsheets.forms.head_to_toe.section_neck_lymph') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Neck ROM</label>
-                <v-select v-model="form.neckRom" :items="['Full', 'Limited', 'Stiff', 'Pain with movement']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_neck_rom') }}</label>
+                <v-select v-model="form.neckRom" :items="neckRomOptions" item-value="value" item-text="text" outlined dense />
               </div>
               <div class="form-group">
-                <label>Lymph Nodes</label>
-                <v-text-field v-model="form.lymphNodes" placeholder="Size, location, tender/fixed..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_lymph_nodes') }}</label>
+                <v-text-field v-model="form.lymphNodes" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_lymph_nodes')" outlined dense />
               </div>
               <div class="form-group">
-                <label>JVD/Carotid</label>
-                <v-text-field v-model="form.jvd" placeholder="No JVD, carotid bruits..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_jvd') }}</label>
+                <v-text-field v-model="form.jvd" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_jvd')" outlined dense />
               </div>
             </div>
           </section>
 
           <!-- CHEST & LUNGS -->
           <section class="form-section">
-            <h3 class="section-title">💨 Chest & Respiratory</h3>
+            <h3 class="section-title">💨 {{ $t('clinical360.flowsheets.forms.head_to_toe.section_chest_respiratory') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Breath Sounds</label>
-                <v-select v-model="form.breathSounds" :items="['Clear bilaterally', 'Wheezes', 'Crackles', 'Diminished', 'Absent']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_breath_sounds') }}</label>
+                <v-select v-model="form.breathSounds" :items="breathSoundsOptions" item-value="value" item-text="text" outlined dense />
               </div>
               <div class="form-group">
-                <label>Work of Breathing</label>
-                <v-select v-model="form.wob" :items="['Easy', 'Labored', 'With retractions', 'Pursed-lip breathing']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_wob') }}</label>
+                <v-select v-model="form.wob" :items="wobOptions" item-value="value" item-text="text" outlined dense />
               </div>
               <div class="form-group">
-                <label>Chest Wall</label>
-                <v-text-field v-model="form.chestWall" placeholder="Symmetric, no scars, lesions..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_chest_wall') }}</label>
+                <v-text-field v-model="form.chestWall" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_chest_wall')" outlined dense />
               </div>
             </div>
           </section>
 
           <!-- CARDIAC -->
           <section class="form-section">
-            <h3 class="section-title">❤️ Cardiac</h3>
+            <h3 class="section-title">❤️ {{ $t('clinical360.flowsheets.forms.head_to_toe.section_cardiac') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Heart Sounds</label>
-                <v-select v-model="form.heartSounds" :items="['RRR', 'S3', 'S4', 'Murmur', 'Irregular']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_heart_sounds') }}</label>
+                <v-select v-model="form.heartSounds" :items="heartSoundsOptions" item-value="value" item-text="text" outlined dense />
               </div>
               <div class="form-group">
-                <label>Murmurs/Rubs</label>
-                <v-text-field v-model="form.murmurs" placeholder="Location, timing, grade..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_murmurs') }}</label>
+                <v-text-field v-model="form.murmurs" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_murmurs')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Edema</label>
-                <v-select v-model="form.edema" :items="['None', '1+', '2+', '3+', '4+']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_edema') }}</label>
+                <v-select v-model="form.edema" :items="edemaOptions" item-value="value" item-text="text" outlined dense />
               </div>
               <div class="form-group">
-                <label>Pulses</label>
-                <v-text-field v-model="form.pulses" placeholder="2+ bilateral, equal, no bruits..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_pulses') }}</label>
+                <v-text-field v-model="form.pulses" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_pulses')" outlined dense />
               </div>
             </div>
           </section>
 
           <!-- ABDOMEN -->
           <section class="form-section">
-            <h3 class="section-title">🫀 Abdomen</h3>
+            <h3 class="section-title">🫀 {{ $t('clinical360.flowsheets.forms.head_to_toe.section_abdomen') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Shape/Appearance</label>
-                <v-select v-model="form.abdomenShape" :items="['Flat', 'Rounded', 'Distended', 'Obese', 'Scaphoid']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_abdomen_shape') }}</label>
+                <v-select v-model="form.abdomenShape" :items="abdomenShapeOptions" item-value="value" item-text="text" outlined dense />
               </div>
               <div class="form-group">
-                <label>Bowel Sounds</label>
-                <v-select v-model="form.bowelSounds" :items="['Active all quadrants', 'Hypoactive', 'Hyperactive', 'Absent']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_bowel_sounds') }}</label>
+                <v-select v-model="form.bowelSounds" :items="bowelSoundsOptions" item-value="value" item-text="text" outlined dense />
               </div>
               <div class="form-group">
-                <label>Tenderness</label>
-                <v-text-field v-model="form.tenderness" placeholder="Location, severity, guarding..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_tenderness') }}</label>
+                <v-text-field v-model="form.tenderness" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_tenderness')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Organomegaly</label>
-                <v-text-field v-model="form.organomegaly" placeholder="None palpable, liver border, etc..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_organomegaly') }}</label>
+                <v-text-field v-model="form.organomegaly" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_organomegaly')" outlined dense />
               </div>
             </div>
           </section>
 
           <!-- EXTREMITIES -->
           <section class="form-section">
-            <h3 class="section-title">🦵 Extremities</h3>
+            <h3 class="section-title">🦵 {{ $t('clinical360.flowsheets.forms.head_to_toe.section_extremities') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Upper Extremities</label>
-                <v-text-field v-model="form.upperExtremities" placeholder="Strength 5/5, no tremor, warm..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_upper_extremities') }}</label>
+                <v-text-field v-model="form.upperExtremities" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_upper_extremities')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Lower Extremities</label>
-                <v-text-field v-model="form.lowerExtremities" placeholder="ROM intact, no calf tenderness..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_lower_extremities') }}</label>
+                <v-text-field v-model="form.lowerExtremities" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_lower_extremities')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Skin</label>
-                <v-text-field v-model="form.skin" placeholder="Color, turgor, lesions, bruises..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_skin') }}</label>
+                <v-text-field v-model="form.skin" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_skin')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Nails</label>
-                <v-text-field v-model="form.nails" placeholder="Color, capillary refill, clubbing..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_nails') }}</label>
+                <v-text-field v-model="form.nails" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_nails')" outlined dense />
               </div>
             </div>
           </section>
 
           <!-- NEURO CHECKS -->
           <section class="form-section">
-            <h3 class="section-title">🧠 Neurological Findings</h3>
+            <h3 class="section-title">🧠 {{ $t('clinical360.flowsheets.forms.head_to_toe.section_neuro_findings') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Motor Strength (4 extremities)</label>
-                <v-text-field v-model="form.motorStrength" placeholder="5/5 throughout, no drift..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_motor_strength') }}</label>
+                <v-text-field v-model="form.motorStrength" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_motor_strength')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Sensory</label>
-                <v-select v-model="form.sensory" :items="['Intact', 'Decreased', 'Absent', 'Hyperesthesia']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_sensory') }}</label>
+                <v-select v-model="form.sensory" :items="sensoryOptions" item-value="value" item-text="text" outlined dense />
               </div>
               <div class="form-group">
-                <label>Reflexes</label>
-                <v-text-field v-model="form.reflexes" placeholder="2+ throughout, no Babinski..." outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_reflexes') }}</label>
+                <v-text-field v-model="form.reflexes" :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_reflexes')" outlined dense />
               </div>
               <div class="form-group">
-                <label>Coordination</label>
-                <v-select v-model="form.coordination" :items="['Normal', 'Ataxia', 'Tremor', 'Dysmetria']" outlined dense />
+                <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_coordination') }}</label>
+                <v-select v-model="form.coordination" :items="coordinationOptions" item-value="value" item-text="text" outlined dense />
               </div>
             </div>
           </section>
 
           <!-- SUMMARY -->
           <section class="form-section">
-            <h3 class="section-title">Summary & Abnormal Findings</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.head_to_toe.section_summary') }}</h3>
             <div class="form-group">
-              <label>Abnormal Findings</label>
+              <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_abnormal_findings') }}</label>
               <v-textarea
                 v-model="form.abnormalFindings"
-                placeholder="List any abnormal findings for follow-up..."
+                :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_abnormal_findings')"
                 outlined dense rows="4"
               />
             </div>
             <div class="form-group">
-              <label>Clinical Impression</label>
+              <label>{{ $t('clinical360.flowsheets.forms.head_to_toe.label_clinical_impression') }}</label>
               <v-textarea
                 v-model="form.clinicalImpression"
-                placeholder="Overall assessment and plan..."
+                :placeholder="$t('clinical360.flowsheets.forms.head_to_toe.placeholder_clinical_impression')"
                 outlined dense rows="4"
               />
             </div>
           </section>
 
           <div class="form-actions">
-            <v-btn type="button" outlined @click="$emit('close')">Cancel</v-btn>
-            <v-btn type="submit" color="primary" dark>Save Assessment</v-btn>
+            <v-btn type="button" outlined @click="$emit('close')">{{ $t('clinical360.flowsheets.forms.head_to_toe.cancel') }}</v-btn>
+            <v-btn type="submit" color="primary" dark>{{ $t('clinical360.flowsheets.forms.head_to_toe.save') }}</v-btn>
           </div>
         </form>
       </v-card-text>
@@ -229,6 +229,57 @@ export default {
       }
     }
   },
+  computed: {
+    speechOptions() {
+      return [['clear', 'Clear'], ['slurred', 'Slurred'], ['aphasia', 'Aphasia'], ['dysarthria', 'Dysarthria']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.speech.${k}`) }))
+    },
+    mentalStatusOptions() {
+      return [['alert', 'Alert'], ['oriented_x3', 'Oriented x3'], ['confused', 'Confused'], ['lethargic', 'Lethargic'], ['unresponsive', 'Unresponsive']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.mental_status.${k}`) }))
+    },
+    neckRomOptions() {
+      return [['full', 'Full'], ['limited', 'Limited'], ['stiff', 'Stiff'], ['pain_with_movement', 'Pain with movement']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.neck_rom.${k}`) }))
+    },
+    breathSoundsOptions() {
+      return [['clear_bilaterally', 'Clear bilaterally'], ['wheezes', 'Wheezes'], ['crackles', 'Crackles'], ['diminished', 'Diminished'], ['absent', 'Absent']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.breath_sounds.${k}`) }))
+    },
+    wobOptions() {
+      return [['easy', 'Easy'], ['labored', 'Labored'], ['with_retractions', 'With retractions'], ['pursed_lip_breathing', 'Pursed-lip breathing']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.wob.${k}`) }))
+    },
+    heartSoundsOptions() {
+      return [['rrr', 'RRR'], ['s3', 'S3'], ['s4', 'S4'], ['murmur', 'Murmur'], ['irregular', 'Irregular']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.heart_sounds.${k}`) }))
+    },
+    edemaOptions() {
+      return [
+        { value: 'None', text: this.$t('clinical360.flowsheets.forms.head_to_toe.options.edema.none') },
+        { value: '1+', text: '1+' },
+        { value: '2+', text: '2+' },
+        { value: '3+', text: '3+' },
+        { value: '4+', text: '4+' }
+      ]
+    },
+    abdomenShapeOptions() {
+      return [['flat', 'Flat'], ['rounded', 'Rounded'], ['distended', 'Distended'], ['obese', 'Obese'], ['scaphoid', 'Scaphoid']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.abdomen_shape.${k}`) }))
+    },
+    bowelSoundsOptions() {
+      return [['active_all_quadrants', 'Active all quadrants'], ['hypoactive', 'Hypoactive'], ['hyperactive', 'Hyperactive'], ['absent', 'Absent']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.bowel_sounds.${k}`) }))
+    },
+    sensoryOptions() {
+      return [['intact', 'Intact'], ['decreased', 'Decreased'], ['absent', 'Absent'], ['hyperesthesia', 'Hyperesthesia']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.sensory.${k}`) }))
+    },
+    coordinationOptions() {
+      return [['normal', 'Normal'], ['ataxia', 'Ataxia'], ['tremor', 'Tremor'], ['dysmetria', 'Dysmetria']].map(([k, value]) =>
+        ({ value, text: this.$t(`clinical360.flowsheets.forms.head_to_toe.options.coordination.${k}`) }))
+    }
+  },
   methods: {
     ...mapActions('flowsheets', ['createFlowsheetEntry']),
     async submitForm() {
@@ -243,7 +294,7 @@ export default {
         })
         this.$emit('save', this.form)
       } catch (error) {
-        alert('Error saving assessment')
+        alert(this.$t('clinical360.flowsheets.forms.head_to_toe.save_error'))
       }
     }
   }

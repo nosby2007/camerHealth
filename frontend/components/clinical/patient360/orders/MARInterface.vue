@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-pill</v-icon>
-        <span>Medication Administration Record (MAR)</span>
+        <span>{{ $t('clinical360.orders.mar_interface.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -15,7 +15,7 @@
       <v-card-text class="form-body">
         <!-- Medication Selection -->
         <section class="form-section">
-          <h3 class="section-title">Select Medication to Administer</h3>
+          <h3 class="section-title">{{ $t('clinical360.orders.mar_interface.select_medication') }}</h3>
           <div class="medication-selector">
             <div v-for="med in activeMedications" :key="med.id" class="medication-card" :class="{ selected: selectedMedId === med.id }" @click="selectMedication(med)">
               <div class="med-info">
@@ -24,7 +24,7 @@
                 <small>{{ med.frequency }}</small>
               </div>
               <div class="med-status" :class="med.lastAdministered ? 'recent' : 'due'">
-                {{ med.lastAdministered ? `Last: ${formatTime(med.lastAdministered)}` : 'DUE' }}
+                {{ med.lastAdministered ? $t('clinical360.orders.mar_interface.last_administered', { time: formatTime(med.lastAdministered) }) : $t('clinical360.orders.mar_interface.due') }}
               </div>
             </div>
           </div>
@@ -32,11 +32,11 @@
 
         <!-- MAR Entry Form -->
         <section v-if="selectedMed" class="form-section">
-          <h3 class="section-title">Administration Details</h3>
+          <h3 class="section-title">{{ $t('clinical360.orders.mar_interface.administration_details') }}</h3>
 
           <div class="form-grid">
             <div class="form-group">
-              <label>Medication *</label>
+              <label>{{ $t('clinical360.orders.mar_interface.medication') }}</label>
               <v-text-field
                 :value="`${selectedMed.name} ${selectedMed.strength} - ${selectedMed.route}`"
                 outlined
@@ -46,7 +46,7 @@
             </div>
 
             <div class="form-group">
-              <label>Dose Ordered *</label>
+              <label>{{ $t('clinical360.orders.mar_interface.dose_ordered') }}</label>
               <v-text-field
                 :value="selectedMed.dose"
                 outlined
@@ -56,10 +56,10 @@
             </div>
 
             <div class="form-group">
-              <label>Dose Administered *</label>
+              <label>{{ $t('clinical360.orders.mar_interface.dose_administered') }}</label>
               <v-text-field
                 v-model="marEntry.doseAdministered"
-                placeholder="e.g., 1 tablet, 10mL"
+                :placeholder="$t('clinical360.orders.mar_interface.dose_administered_placeholder')"
                 outlined
                 dense
                 required
@@ -67,10 +67,12 @@
             </div>
 
             <div class="form-group">
-              <label>Route *</label>
+              <label>{{ $t('clinical360.orders.mar_interface.route') }}</label>
               <v-select
                 v-model="marEntry.route"
-                :items="['Oral', 'IV', 'IM', 'SC', 'Topical', 'Inhaled', 'Sublingual', 'Rectal']"
+                :items="routeOptions"
+                item-value="value"
+                item-text="text"
                 outlined
                 dense
                 required
@@ -78,7 +80,7 @@
             </div>
 
             <div class="form-group">
-              <label>Administration Time *</label>
+              <label>{{ $t('clinical360.orders.mar_interface.administration_time') }}</label>
               <v-text-field
                 v-model="marEntry.administrationTime"
                 type="time"
@@ -89,10 +91,10 @@
             </div>
 
             <div class="form-group">
-              <label>Administered By *</label>
+              <label>{{ $t('clinical360.orders.mar_interface.administered_by') }}</label>
               <v-text-field
                 v-model="marEntry.administeredBy"
-                placeholder="Nurse name/ID"
+                :placeholder="$t('clinical360.orders.mar_interface.administered_by_placeholder')"
                 outlined
                 dense
                 required
@@ -100,17 +102,17 @@
             </div>
 
             <div class="form-group">
-              <label>Site (if applicable)</label>
+              <label>{{ $t('clinical360.orders.mar_interface.site') }}</label>
               <v-text-field
                 v-model="marEntry.site"
-                placeholder="e.g., Right arm, Left buttock"
+                :placeholder="$t('clinical360.orders.mar_interface.site_placeholder')"
                 outlined
                 dense
               />
             </div>
 
             <div class="form-group">
-              <label>Lot/Serial Number</label>
+              <label>{{ $t('clinical360.orders.mar_interface.lot_number') }}</label>
               <v-text-field
                 v-model="marEntry.lotNumber"
                 outlined
@@ -120,7 +122,7 @@
           </div>
 
           <section class="form-section">
-            <h3 class="section-title">Administration Status</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.mar_interface.administration_status') }}</h3>
             <div class="status-options">
               <button
                 v-for="status in administrationStatuses"
@@ -136,53 +138,55 @@
           </section>
 
           <section v-if="marEntry.status === 'refused' || marEntry.status === 'held'" class="form-section">
-            <h3 class="section-title">Reason</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.mar_interface.reason') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Reason for {{ marEntry.status === 'refused' ? 'Refusal' : 'Hold' }} *</label>
+                <label>{{ marEntry.status === 'refused' ? $t('clinical360.orders.mar_interface.reason_for_refusal') : $t('clinical360.orders.mar_interface.reason_for_hold') }}</label>
                 <v-text-field
                   v-model="marEntry.reason"
-                  placeholder="Why was medication refused/held?"
+                  :placeholder="$t('clinical360.orders.mar_interface.reason_placeholder')"
                   outlined
                   dense
                   required
                 />
               </div>
               <div class="form-group">
-                <label>Notify Provider</label>
+                <label>{{ $t('clinical360.orders.mar_interface.notify_provider') }}</label>
                 <v-checkbox v-model="marEntry.notifyProvider" />
               </div>
             </div>
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Patient Response</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.mar_interface.patient_response_title') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Patient Tolerance/Response</label>
+                <label>{{ $t('clinical360.orders.mar_interface.patient_tolerance_response') }}</label>
                 <v-select
                   v-model="marEntry.patientResponse"
-                  :items="['Well tolerated', 'Mild side effect', 'Moderate side effect', 'Severe reaction', 'N/A']"
+                  :items="patientResponseOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Adverse Effects</label>
+                <label>{{ $t('clinical360.orders.mar_interface.adverse_effects') }}</label>
                 <v-text-field
                   v-model="marEntry.adverseEffects"
-                  placeholder="Any adverse reactions noted..."
+                  :placeholder="$t('clinical360.orders.mar_interface.adverse_effects_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Clinical Effect</label>
+                <label>{{ $t('clinical360.orders.mar_interface.clinical_effect') }}</label>
                 <v-text-field
                   v-model="marEntry.clinicalEffect"
-                  placeholder="e.g., Pain reduced to 3/10, fever down to 38.5°C"
+                  :placeholder="$t('clinical360.orders.mar_interface.clinical_effect_placeholder')"
                   outlined
                   dense
                 />
@@ -191,40 +195,40 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Medication Scan Verification</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.mar_interface.scan_verification') }}</h3>
             <div class="verification-checklist">
               <label class="checklist-item">
                 <v-checkbox v-model="marEntry.verification.rightPatient" />
-                <span>Right Patient</span>
+                <span>{{ $t('clinical360.orders.mar_interface.right_patient') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="marEntry.verification.rightMedication" />
-                <span>Right Medication</span>
+                <span>{{ $t('clinical360.orders.mar_interface.right_medication') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="marEntry.verification.rightDose" />
-                <span>Right Dose</span>
+                <span>{{ $t('clinical360.orders.mar_interface.right_dose') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="marEntry.verification.rightRoute" />
-                <span>Right Route</span>
+                <span>{{ $t('clinical360.orders.mar_interface.right_route') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="marEntry.verification.rightTime" />
-                <span>Right Time</span>
+                <span>{{ $t('clinical360.orders.mar_interface.right_time') }}</span>
               </label>
             </div>
           </section>
 
           <div class="form-actions">
             <v-btn type="button" outlined @click="clearForm">
-              Clear
+              {{ $t('clinical360.orders.mar_interface.clear') }}
             </v-btn>
             <v-btn type="button" outlined @click="$emit('close')">
-              Cancel
+              {{ $t('clinical360.orders.mar_interface.cancel') }}
             </v-btn>
             <v-btn type="button" color="success" dark @click="submitMAR" :disabled="!allVerificationsChecked">
-              Document Administration
+              {{ $t('clinical360.orders.mar_interface.document_administration') }}
             </v-btn>
           </div>
         </section>
@@ -267,12 +271,6 @@ export default {
           rightTime: false
         }
       },
-      administrationStatuses: [
-        { id: 'given', label: 'Given', icon: 'mdi-check-circle' },
-        { id: 'refused', label: 'Refused', icon: 'mdi-close-circle' },
-        { id: 'held', label: 'Held', icon: 'mdi-pause-circle' },
-        { id: 'not_available', label: 'Not Available', icon: 'mdi-alert-circle' }
-      ],
       activeMedications: [
         {
           id: 'med-1',
@@ -308,6 +306,35 @@ export default {
     allVerificationsChecked() {
       const v = this.marEntry.verification
       return v.rightPatient && v.rightMedication && v.rightDose && v.rightRoute && v.rightTime
+    },
+    administrationStatuses() {
+      return [
+        { id: 'given', label: this.$t('clinical360.orders.mar_interface.status_given'), icon: 'mdi-check-circle' },
+        { id: 'refused', label: this.$t('clinical360.orders.mar_interface.status_refused'), icon: 'mdi-close-circle' },
+        { id: 'held', label: this.$t('clinical360.orders.mar_interface.status_held'), icon: 'mdi-pause-circle' },
+        { id: 'not_available', label: this.$t('clinical360.orders.mar_interface.status_not_available'), icon: 'mdi-alert-circle' }
+      ]
+    },
+    routeOptions() {
+      return [
+        ['Oral', 'Oral'],
+        ['IV', 'IV'],
+        ['IM', 'IM'],
+        ['SC', 'SC'],
+        ['Topical', 'Topical'],
+        ['Inhaled', 'Inhaled'],
+        ['Sublingual', 'Sublingual'],
+        ['Rectal', 'Rectal']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.orders.mar_interface.route_${k.toLowerCase()}`) }))
+    },
+    patientResponseOptions() {
+      return [
+        ['well_tolerated', 'Well tolerated'],
+        ['mild_side_effect', 'Mild side effect'],
+        ['moderate_side_effect', 'Moderate side effect'],
+        ['severe_reaction', 'Severe reaction'],
+        ['na', 'N/A']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.orders.mar_interface.response_${k}`) }))
     }
   },
   methods: {
@@ -345,7 +372,7 @@ export default {
     },
     async submitMAR() {
       if (!this.selectedMed || !this.marEntry.administeredBy) {
-        alert('Please fill in required fields')
+        alert(this.$t('clinical360.orders.mar_interface.alert_required_fields'))
         return
       }
 
@@ -363,7 +390,7 @@ export default {
         this.clearForm()
       } catch (error) {
         console.error('Error recording medication administration:', error)
-        alert('Error recording medication administration')
+        alert(this.$t('clinical360.orders.mar_interface.alert_record_error'))
       }
     }
   }

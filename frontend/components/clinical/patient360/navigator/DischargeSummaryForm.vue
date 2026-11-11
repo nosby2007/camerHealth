@@ -2,7 +2,7 @@
   <div class="discharge-form">
     <v-card>
       <v-card-title class="form-header">
-        <span>Discharge Summary & Instructions</span>
+        <span>{{ $t('clinical360.navigator.discharge_summary.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -18,11 +18,11 @@
           </v-alert>
           <!-- Discharge Planning -->
           <section class="form-section">
-            <h3 class="section-title">Discharge Planning</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.discharge_summary.section_planning_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>Discharge Date & Time</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.discharge_datetime_label') }}</label>
                 <v-text-field
                   v-model="form.dischargeDateTime"
                   type="datetime-local"
@@ -33,10 +33,12 @@
               </div>
 
               <div class="form-group">
-                <label>Discharge Disposition</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.disposition_label') }}</label>
                 <v-select
                   v-model="form.dischargeDisposition"
-                  :items="['Home', 'Home with Services', 'Rehabilitation', 'Skilled Nursing', 'Assisted Living', 'Hospice', 'Transfer to Another Facility', 'AMA']"
+                  :items="dispositionItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                   required
@@ -44,20 +46,20 @@
               </div>
 
               <div class="form-group">
-                <label>Discharging Provider</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.discharging_provider_label') }}</label>
                 <v-text-field
                   v-model="form.dischargingProvider"
-                  placeholder="Provider name"
+                  :placeholder="$t('clinical360.navigator.discharge_summary.discharging_provider_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Primary Diagnosis at Discharge</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.primary_diagnosis_label') }}</label>
                 <v-text-field
                   v-model="form.primaryDiagnosis"
-                  placeholder="e.g., Pneumonia, resolved"
+                  :placeholder="$t('clinical360.navigator.discharge_summary.primary_diagnosis_placeholder')"
                   outlined
                   dense
                 />
@@ -67,41 +69,47 @@
 
           <!-- Clinical Condition at Discharge -->
           <section class="form-section">
-            <h3 class="section-title">Patient Status at Discharge</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.discharge_summary.section_status_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>General Condition</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.general_condition_label') }}</label>
                 <v-select
                   v-model="form.generalCondition"
-                  :items="['Stable', 'Improved', 'Good', 'Fair', 'Critical']"
+                  :items="generalConditionItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Mental Status</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.mental_status_label') }}</label>
                 <v-select
                   v-model="form.mentalStatus"
-                  :items="['Alert & Oriented x3', 'Alert & Oriented x2', 'Confused', 'Lethargic', 'Unresponsive']"
+                  :items="mentalStatusItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Functional Ability</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.functional_ability_label') }}</label>
                 <v-select
                   v-model="form.functionalAbility"
-                  :items="['Independent', 'Assistance of 1', 'Assistance of 2+', 'Bedbound']"
+                  :items="functionalAbilityItems"
+                  item-text="text"
+                  item-value="value"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Pain Level (0-10) at Discharge</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.pain_level_label') }}</label>
                 <v-text-field
                   v-model="form.painAtDischarge"
                   type="number"
@@ -115,10 +123,10 @@
 
             <div class="form-grid" style="margin-top: 16px">
               <div class="form-group">
-                <label>Condition Summary</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.condition_summary_label') }}</label>
                 <v-textarea
                   v-model="form.conditionSummary"
-                  placeholder="Summary of clinical status at time of discharge..."
+                  :placeholder="$t('clinical360.navigator.discharge_summary.condition_summary_placeholder')"
                   outlined
                   dense
                   rows="4"
@@ -129,29 +137,29 @@
 
           <!-- Medications at Discharge -->
           <section class="form-section">
-            <h3 class="section-title">Medications</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.discharge_summary.section_medications_title') }}</h3>
 
             <div class="checklist">
               <label class="checklist-item">
                 <v-checkbox v-model="form.medicationReconciliation" />
-                <span>Medication Reconciliation Completed</span>
+                <span>{{ $t('clinical360.navigator.discharge_summary.medication_reconciliation') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.medicationsProvided" />
-                <span>Discharge Medications Provided to Patient</span>
+                <span>{{ $t('clinical360.navigator.discharge_summary.medications_provided') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.medicationInstructions" />
-                <span>Medication Instructions Reviewed</span>
+                <span>{{ $t('clinical360.navigator.discharge_summary.medication_instructions_reviewed') }}</span>
               </label>
             </div>
 
             <div class="form-grid" style="margin-top: 16px">
               <div class="form-group">
-                <label>Medications to Continue at Home</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.medications_at_home_label') }}</label>
                 <v-textarea
                   v-model="form.medicationsAtHome"
-                  placeholder="e.g., Amoxicillin 500mg TID x7 days, Ibuprofen 400mg QID PRN"
+                  :placeholder="$t('clinical360.navigator.discharge_summary.medications_at_home_placeholder')"
                   outlined
                   dense
                   rows="4"
@@ -159,10 +167,10 @@
               </div>
 
               <div class="form-group">
-                <label>Medications Discontinued</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.discontinued_meds_label') }}</label>
                 <v-textarea
                   v-model="form.discontinuedMeds"
-                  placeholder="List any meds stopped..."
+                  :placeholder="$t('clinical360.navigator.discharge_summary.discontinued_meds_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -173,14 +181,14 @@
 
           <!-- Discharge Instructions -->
           <section class="form-section">
-            <h3 class="section-title">Discharge Instructions</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.discharge_summary.section_instructions_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>Activity Restrictions</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.activity_restrictions_label') }}</label>
                 <v-textarea
                   v-model="form.activityRestrictions"
-                  placeholder="e.g., No heavy lifting, rest as tolerated"
+                  :placeholder="$t('clinical360.navigator.discharge_summary.activity_restrictions_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -188,10 +196,10 @@
               </div>
 
               <div class="form-group">
-                <label>Diet/Nutrition</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.diet_nutrition_label') }}</label>
                 <v-textarea
                   v-model="form.dietInstructions"
-                  placeholder="e.g., Clear liquids, high protein diet"
+                  :placeholder="$t('clinical360.navigator.discharge_summary.diet_nutrition_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -199,10 +207,10 @@
               </div>
 
               <div class="form-group">
-                <label>Wound Care/Special Instructions</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.wound_care_label') }}</label>
                 <v-textarea
                   v-model="form.woundCare"
-                  placeholder="Detailed care instructions..."
+                  :placeholder="$t('clinical360.navigator.discharge_summary.wound_care_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -210,10 +218,10 @@
               </div>
 
               <div class="form-group">
-                <label>Return Precautions</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.return_precautions_label') }}</label>
                 <v-textarea
                   v-model="form.returnPrecautions"
-                  placeholder="When to seek immediate care, red flags..."
+                  :placeholder="$t('clinical360.navigator.discharge_summary.return_precautions_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -224,44 +232,44 @@
 
           <!-- Follow-up Arrangements -->
           <section class="form-section">
-            <h3 class="section-title">Follow-up Arrangements</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.discharge_summary.section_follow_up_title') }}</h3>
 
             <div class="form-grid">
               <div class="form-group">
-                <label>Primary Care Follow-up</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.primary_care_follow_up_label') }}</label>
                 <v-text-field
                   v-model="form.primaryCareFollowup"
-                  placeholder="Provider name, date, location"
+                  :placeholder="$t('clinical360.navigator.discharge_summary.follow_up_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Specialist Follow-up</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.specialist_follow_up_label') }}</label>
                 <v-text-field
                   v-model="form.specialistFollowup"
-                  placeholder="Provider name, date, location"
+                  :placeholder="$t('clinical360.navigator.discharge_summary.follow_up_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Lab/Imaging Follow-up</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.lab_follow_up_label') }}</label>
                 <v-text-field
                   v-model="form.labFollowup"
-                  placeholder="e.g., X-ray in 2 weeks"
+                  :placeholder="$t('clinical360.navigator.discharge_summary.lab_follow_up_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Other Services Arranged</label>
+                <label>{{ $t('clinical360.navigator.discharge_summary.other_services_label') }}</label>
                 <v-text-field
                   v-model="form.otherServices"
-                  placeholder="e.g., Home health, PT/OT"
+                  :placeholder="$t('clinical360.navigator.discharge_summary.other_services_placeholder')"
                   outlined
                   dense
                 />
@@ -271,7 +279,7 @@
 
           <!-- Patient/Family Education -->
           <section class="form-section">
-            <h3 class="section-title">Patient & Family Education</h3>
+            <h3 class="section-title">{{ $t('clinical360.navigator.discharge_summary.section_education_title') }}</h3>
 
             <div class="checklist">
               <label v-for="item in educationItems" :key="item.id" class="checklist-item">
@@ -288,14 +296,14 @@
               outlined
               @click="$emit('close')"
             >
-              Cancel
+              {{ $t('clinical360.navigator.discharge_summary.cancel_btn') }}
             </v-btn>
             <v-btn
               type="submit"
               color="primary"
               dark
             >
-              Complete Discharge
+              {{ $t('clinical360.navigator.discharge_summary.complete_discharge_btn') }}
             </v-btn>
           </div>
         </form>
@@ -345,38 +353,80 @@ export default {
           appointment_importance: false,
           support_resources: false
         }
-      },
-      educationItems: [
-        { id: 'disease_process', label: 'Disease Process & Prognosis' },
-        { id: 'medication_use', label: 'Proper Medication Use' },
-        { id: 'activity_level', label: 'Activity Restrictions' },
-        { id: 'diet_restrictions', label: 'Diet & Nutrition' },
-        { id: 'when_to_call', label: 'When to Call Provider' },
-        { id: 'appointment_importance', label: 'Importance of Follow-up' },
-        { id: 'support_resources', label: 'Community Resources/Support' }
+      }
+    }
+  },
+  computed: {
+    dispositionItems() {
+      return [
+        { text: this.$t('clinical360.navigator.discharge_summary.disposition_home'), value: 'Home' },
+        { text: this.$t('clinical360.navigator.discharge_summary.disposition_home_with_services'), value: 'Home with Services' },
+        { text: this.$t('clinical360.navigator.discharge_summary.disposition_rehabilitation'), value: 'Rehabilitation' },
+        { text: this.$t('clinical360.navigator.discharge_summary.disposition_skilled_nursing'), value: 'Skilled Nursing' },
+        { text: this.$t('clinical360.navigator.discharge_summary.disposition_assisted_living'), value: 'Assisted Living' },
+        { text: this.$t('clinical360.navigator.discharge_summary.disposition_hospice'), value: 'Hospice' },
+        { text: this.$t('clinical360.navigator.discharge_summary.disposition_transfer'), value: 'Transfer to Another Facility' },
+        { text: this.$t('clinical360.navigator.discharge_summary.disposition_ama'), value: 'AMA' }
+      ]
+    },
+    generalConditionItems() {
+      return [
+        { text: this.$t('clinical360.navigator.discharge_summary.condition_stable'), value: 'Stable' },
+        { text: this.$t('clinical360.navigator.discharge_summary.condition_improved'), value: 'Improved' },
+        { text: this.$t('clinical360.navigator.discharge_summary.condition_good'), value: 'Good' },
+        { text: this.$t('clinical360.navigator.discharge_summary.condition_fair'), value: 'Fair' },
+        { text: this.$t('clinical360.navigator.discharge_summary.condition_critical'), value: 'Critical' }
+      ]
+    },
+    mentalStatusItems() {
+      return [
+        { text: this.$t('clinical360.navigator.discharge_summary.mental_status_aox3'), value: 'Alert & Oriented x3' },
+        { text: this.$t('clinical360.navigator.discharge_summary.mental_status_aox2'), value: 'Alert & Oriented x2' },
+        { text: this.$t('clinical360.navigator.discharge_summary.mental_status_confused'), value: 'Confused' },
+        { text: this.$t('clinical360.navigator.discharge_summary.mental_status_lethargic'), value: 'Lethargic' },
+        { text: this.$t('clinical360.navigator.discharge_summary.mental_status_unresponsive'), value: 'Unresponsive' }
+      ]
+    },
+    functionalAbilityItems() {
+      return [
+        { text: this.$t('clinical360.navigator.discharge_summary.functional_independent'), value: 'Independent' },
+        { text: this.$t('clinical360.navigator.discharge_summary.functional_assistance_1'), value: 'Assistance of 1' },
+        { text: this.$t('clinical360.navigator.discharge_summary.functional_assistance_2plus'), value: 'Assistance of 2+' },
+        { text: this.$t('clinical360.navigator.discharge_summary.functional_bedbound'), value: 'Bedbound' }
+      ]
+    },
+    educationItems() {
+      return [
+        { id: 'disease_process', label: this.$t('clinical360.navigator.discharge_summary.education_disease_process') },
+        { id: 'medication_use', label: this.$t('clinical360.navigator.discharge_summary.education_medication_use') },
+        { id: 'activity_level', label: this.$t('clinical360.navigator.discharge_summary.education_activity_level') },
+        { id: 'diet_restrictions', label: this.$t('clinical360.navigator.discharge_summary.education_diet_restrictions') },
+        { id: 'when_to_call', label: this.$t('clinical360.navigator.discharge_summary.education_when_to_call') },
+        { id: 'appointment_importance', label: this.$t('clinical360.navigator.discharge_summary.education_appointment_importance') },
+        { id: 'support_resources', label: this.$t('clinical360.navigator.discharge_summary.education_support_resources') }
       ]
     }
   },
   methods: {
     submitForm() {
       const requiredText = [
-        ['discharge date and time', this.form.dischargeDateTime],
-        ['disposition', this.form.dischargeDisposition],
-        ['primary diagnosis', this.form.primaryDiagnosis],
-        ['condition summary', this.form.conditionSummary],
-        ['return precautions', this.form.returnPrecautions]
+        [this.$t('clinical360.navigator.discharge_summary.field_discharge_datetime'), this.form.dischargeDateTime],
+        [this.$t('clinical360.navigator.discharge_summary.field_disposition'), this.form.dischargeDisposition],
+        [this.$t('clinical360.navigator.discharge_summary.field_primary_diagnosis'), this.form.primaryDiagnosis],
+        [this.$t('clinical360.navigator.discharge_summary.field_condition_summary'), this.form.conditionSummary],
+        [this.$t('clinical360.navigator.discharge_summary.field_return_precautions'), this.form.returnPrecautions]
       ]
       const missing = requiredText.filter(([, value]) => !String(value || '').trim()).map(([label]) => label)
       if (missing.length) {
-        this.validationError = `Complete the required fields: ${missing.join(', ')}.`
+        this.validationError = this.$t('clinical360.navigator.discharge_summary.error_required_fields', { fields: missing.join(', ') })
         return
       }
       if (!this.form.medicationReconciliation) {
-        this.validationError = 'Medication reconciliation must be completed before discharge.'
+        this.validationError = this.$t('clinical360.navigator.discharge_summary.error_medication_reconciliation')
         return
       }
       if (!Object.values(this.form.education).some(Boolean)) {
-        this.validationError = 'Document at least one patient or family education topic.'
+        this.validationError = this.$t('clinical360.navigator.discharge_summary.error_education_topic')
         return
       }
 

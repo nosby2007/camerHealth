@@ -4,30 +4,30 @@
     <div class="education-toolbar">
       <div class="toolbar-actions">
         <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="showAddTitleDialog = true">
-          <v-icon x-small left>mdi-plus</v-icon>Add Title
+          <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.education.tab.add_title') }}
         </v-btn>
         <v-btn v-if="!readOnly" x-small text @click="showAddPointDialog = true">
-          <v-icon x-small left>mdi-plus</v-icon>Add Point
+          <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.education.tab.add_point') }}
         </v-btn>
       </div>
 
       <div class="toolbar-controls">
-        <v-checkbox v-model="showActive" dense label="Active Only" class="mt-0" />
-        <v-checkbox v-model="hideDescriptions" dense label="Hide Descriptions" class="mt-0" />
+        <v-checkbox v-model="showActive" dense :label="$t('clinical360.education.tab.active_only')" class="mt-0" />
+        <v-checkbox v-model="hideDescriptions" dense :label="$t('clinical360.education.tab.hide_descriptions')" class="mt-0" />
       </div>
     </div>
 
     <div v-if="readOnly" class="read-only-notice">
       <v-icon x-small>mdi-lock-outline</v-icon>
-      Discharged chart. Education records are available in read-only mode.
+      {{ $t('clinical360.education.tab.read_only_notice') }}
     </div>
 
-    <div class="education-summary" aria-label="Patient education summary">
-      <div><v-icon small color="#0f766e">mdi-book-open-page-variant-outline</v-icon><span>Topics</span><strong>{{ educationSummary.titleCount }}</strong></div>
-      <div><v-icon small color="#0369a1">mdi-format-list-checks</v-icon><span>Teaching points</span><strong>{{ educationSummary.pointCount }}</strong></div>
-      <div><v-icon small color="#15803d">mdi-check-decagram-outline</v-icon><span>Completed</span><strong>{{ educationSummary.completedCount }}</strong></div>
-      <div><v-icon small color="#7c3aed">mdi-account-heart-outline</v-icon><span>Family sessions</span><strong>{{ educationSummary.familyEducationCount }}</strong></div>
-      <div class="completion-cell"><span>Overall completion</span><strong>{{ completionRate }}%</strong><i><b :style="{ width: `${completionRate}%` }"></b></i></div>
+    <div class="education-summary" :aria-label="$t('clinical360.education.tab.summary_aria_label')">
+      <div><v-icon small color="#0f766e">mdi-book-open-page-variant-outline</v-icon><span>{{ $t('clinical360.education.tab.topics') }}</span><strong>{{ educationSummary.titleCount }}</strong></div>
+      <div><v-icon small color="#0369a1">mdi-format-list-checks</v-icon><span>{{ $t('clinical360.education.tab.teaching_points') }}</span><strong>{{ educationSummary.pointCount }}</strong></div>
+      <div><v-icon small color="#15803d">mdi-check-decagram-outline</v-icon><span>{{ $t('clinical360.education.tab.completed') }}</span><strong>{{ educationSummary.completedCount }}</strong></div>
+      <div><v-icon small color="#7c3aed">mdi-account-heart-outline</v-icon><span>{{ $t('clinical360.education.tab.family_sessions') }}</span><strong>{{ educationSummary.familyEducationCount }}</strong></div>
+      <div class="completion-cell"><span>{{ $t('clinical360.education.tab.overall_completion') }}</span><strong>{{ completionRate }}%</strong><i><b :style="{ width: `${completionRate}%` }"></b></i></div>
     </div>
 
     <!-- Main Content -->
@@ -35,8 +35,8 @@
       <!-- Left: Education Tree -->
       <div class="education-tree-panel" v-if="!treeCollapsed">
         <div class="tree-header">
-          <h4>Topics</h4>
-          <button class="collapse-btn" @click="treeCollapsed = true" title="Collapse sidebar">
+          <h4>{{ $t('clinical360.education.tab.topics') }}</h4>
+          <button class="collapse-btn" @click="treeCollapsed = true" :title="$t('clinical360.education.tab.collapse_sidebar')">
             <v-icon x-small>mdi-chevron-left</v-icon>
           </button>
         </div>
@@ -47,7 +47,7 @@
           @select-point="selectedPointId = $event"
         />
       </div>
-      <button v-else class="expand-tree-btn" @click="treeCollapsed = false" title="Expand sidebar">
+      <button v-else class="expand-tree-btn" @click="treeCollapsed = false" :title="$t('clinical360.education.tab.expand_sidebar')">
         <v-icon x-small>mdi-chevron-right</v-icon>
       </button>
 
@@ -69,15 +69,15 @@
           </div>
         </div>
         <div v-else class="empty">
-          Select an education title to view points.
+          {{ $t('clinical360.education.tab.select_title_prompt') }}
         </div>
       </div>
 
       <!-- Right: Patient Materials -->
       <div class="materials-panel">
-        <h4>Patient Materials</h4>
+        <h4>{{ $t('clinical360.education.tab.patient_materials') }}</h4>
         <v-btn v-if="!readOnly" x-small text color="#0f766e" @click="showAddMaterialDialog = true">
-          <v-icon x-small left>mdi-plus</v-icon>Add Material
+          <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.education.tab.add_material') }}
         </v-btn>
 
         <div class="materials-list">
@@ -87,7 +87,7 @@
               <v-icon x-small>mdi-close</v-icon>
             </v-btn>
           </div>
-          <div v-if="!assignedMaterials.length" class="materials-empty">No material assigned to the discharge packet.</div>
+          <div v-if="!assignedMaterials.length" class="materials-empty">{{ $t('clinical360.education.tab.no_material_assigned') }}</div>
         </div>
       </div>
     </div>
@@ -95,31 +95,31 @@
     <!-- Dialogs -->
     <v-dialog v-model="showAddTitleDialog" max-width="400">
       <v-card>
-        <v-card-title>Add Education Title</v-card-title>
+        <v-card-title>{{ $t('clinical360.education.tab.add_education_title') }}</v-card-title>
         <v-card-text>
-          <v-text-field v-model="newTitle" label="Title" outlined dense />
-          <v-select v-model="newCategory" label="Category" :items="categories" outlined dense />
+          <v-text-field v-model="newTitle" :label="$t('clinical360.education.tab.title_label')" outlined dense />
+          <v-select v-model="newCategory" :label="$t('clinical360.education.tab.category')" :items="categories" item-value="value" item-text="text" outlined dense />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text small @click="showAddTitleDialog = false">Cancel</v-btn>
-          <v-btn depressed color="#0f766e" dark small @click="addTitle">Add</v-btn>
+          <v-btn text small @click="showAddTitleDialog = false">{{ $t('clinical360.education.tab.cancel') }}</v-btn>
+          <v-btn depressed color="#0f766e" dark small @click="addTitle">{{ $t('clinical360.education.tab.add') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <v-dialog v-model="showAddPointDialog" max-width="400">
       <v-card>
-        <v-card-title>Add Education Point</v-card-title>
+        <v-card-title>{{ $t('clinical360.education.tab.add_education_point') }}</v-card-title>
         <v-card-text>
-          <v-select v-model="newPointTitleId" label="Title" :items="titles" item-text="title" item-value="id" outlined dense />
-          <v-text-field v-model="newPointLabel" label="Label" outlined dense />
-          <v-text-field v-model="newPointTopic" label="Topic" outlined dense />
+          <v-select v-model="newPointTitleId" :label="$t('clinical360.education.tab.title_label')" :items="titles" item-text="title" item-value="id" outlined dense />
+          <v-text-field v-model="newPointLabel" :label="$t('clinical360.education.tab.label_field')" outlined dense />
+          <v-text-field v-model="newPointTopic" :label="$t('clinical360.education.tab.topic_field')" outlined dense />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text small @click="showAddPointDialog = false">Cancel</v-btn>
-          <v-btn depressed color="#0f766e" dark small @click="addPoint">Add</v-btn>
+          <v-btn text small @click="showAddPointDialog = false">{{ $t('clinical360.education.tab.cancel') }}</v-btn>
+          <v-btn depressed color="#0f766e" dark small @click="addPoint">{{ $t('clinical360.education.tab.add') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -127,19 +127,19 @@
     <v-dialog v-model="showAddMaterialDialog" max-width="560" persistent>
       <v-card>
         <v-card-title class="material-dialog-title">
-          <div><span>PATIENT EDUCATION</span><strong>Add material to discharge packet</strong></div>
+          <div><span>{{ $t('clinical360.education.tab.patient_education_eyebrow') }}</span><strong>{{ $t('clinical360.education.tab.add_material_to_packet') }}</strong></div>
           <v-btn icon small @click="showAddMaterialDialog = false"><v-icon small>mdi-close</v-icon></v-btn>
         </v-card-title>
         <v-card-text class="pt-5">
-          <v-text-field v-model.trim="materialForm.title" label="Material title" dense outlined :rules="[requiredRule]" />
+          <v-text-field v-model.trim="materialForm.title" :label="$t('clinical360.education.tab.material_title')" dense outlined :rules="[requiredRule]" />
           <div class="material-form-grid">
-            <v-select v-model="materialForm.language" :items="['French', 'English', 'Bilingual', 'Local language / interpreter']" label="Language" dense outlined />
-            <v-select v-model="materialForm.format" :items="['Verbal', 'Printed handout', 'Visual demonstration', 'Verbal + printed', 'Caregiver demonstration']" label="Format" dense outlined />
+            <v-select v-model="materialForm.language" :items="languageOptions" item-value="value" item-text="text" :label="$t('clinical360.education.tab.language')" dense outlined />
+            <v-select v-model="materialForm.format" :items="formatOptions" item-value="value" item-text="text" :label="$t('clinical360.education.tab.format')" dense outlined />
           </div>
-          <v-textarea v-model.trim="materialForm.instructions" label="Key instructions / adaptation for patient literacy" rows="3" dense outlined />
-          <v-checkbox v-model="materialForm.addToAvs" dense hide-details label="Include in discharge / after-visit packet" />
+          <v-textarea v-model.trim="materialForm.instructions" :label="$t('clinical360.education.tab.key_instructions')" rows="3" dense outlined />
+          <v-checkbox v-model="materialForm.addToAvs" dense hide-details :label="$t('clinical360.education.tab.include_in_packet')" />
         </v-card-text>
-        <v-card-actions><v-spacer /><v-btn text small @click="showAddMaterialDialog = false">Cancel</v-btn><v-btn depressed dark color="#0f766e" small :loading="savingMaterial" @click="saveMaterial">Add material</v-btn></v-card-actions>
+        <v-card-actions><v-spacer /><v-btn text small @click="showAddMaterialDialog = false">{{ $t('clinical360.education.tab.cancel') }}</v-btn><v-btn depressed dark color="#0f766e" small :loading="savingMaterial" @click="saveMaterial">{{ $t('clinical360.education.tab.add_material_button') }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -195,14 +195,43 @@ export default {
       newPointTitleId: null,
       newPointLabel: '',
       newPointTopic: '',
-      categories: ['general', 'infection', 'safety', 'wound', 'discharge', 'pain', 'nutrition'],
       treeCollapsed: false,
       savingMaterial: false,
-      requiredRule: value => Boolean(String(value || '').trim()) || 'Required',
       materialForm: { title: '', language: 'French', format: 'Verbal + printed', instructions: '', addToAvs: true }
     }
   },
   computed: {
+    requiredRule() {
+      return value => Boolean(String(value || '').trim()) || this.$t('clinical360.education.tab.required')
+    },
+    categories() {
+      return [
+        ['general', 'general'],
+        ['infection', 'infection'],
+        ['safety', 'safety'],
+        ['wound', 'wound'],
+        ['discharge', 'discharge'],
+        ['pain', 'pain'],
+        ['nutrition', 'nutrition']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.tab.category_${k}`) }))
+    },
+    languageOptions() {
+      return [
+        ['french', 'French'],
+        ['english', 'English'],
+        ['bilingual', 'Bilingual'],
+        ['local_interpreter', 'Local language / interpreter']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.tab.material_language_${k}`) }))
+    },
+    formatOptions() {
+      return [
+        ['verbal', 'Verbal'],
+        ['printed_handout', 'Printed handout'],
+        ['visual_demonstration', 'Visual demonstration'],
+        ['verbal_printed', 'Verbal + printed'],
+        ['caregiver_demonstration', 'Caregiver demonstration']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.education.tab.material_format_${k}`) }))
+    },
     titles() {
       return this.$store.getters['education/educationTitlesForPatient']?.(this.patientId) || []
     },
@@ -229,33 +258,41 @@ export default {
     }
   },
   methods: {
-    addTitle() {
+    async addTitle() {
       if (this.readOnly) return
-      this.$store.dispatch('education/addEducationTitle', {
-        patientId: this.patientId,
-        encounterId: this.encounterId,
-        admissionId: this.admissionId,
-        title: this.newTitle,
-        category: this.newCategory
-      })
-      this.showAddTitleDialog = false
-      this.newTitle = ''
-      this.$toast?.success('Title added')
+      try {
+        await this.$store.dispatch('education/addEducationTitle', {
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          admissionId: this.admissionId,
+          title: this.newTitle,
+          category: this.newCategory
+        })
+        this.showAddTitleDialog = false
+        this.newTitle = ''
+        this.$toast?.success(this.$t('clinical360.education.tab.toast_title_added'))
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || this.$t('clinical360.education.tab.toast_title_add_error'))
+      }
     },
-    addPoint() {
+    async addPoint() {
       if (this.readOnly) return
-      this.$store.dispatch('education/addEducationPoint', {
-        titleId: this.newPointTitleId,
-        patientId: this.patientId,
-        encounterId: this.encounterId,
-        admissionId: this.admissionId,
-        label: this.newPointLabel,
-        topic: this.newPointTopic
-      })
-      this.showAddPointDialog = false
-      this.newPointLabel = ''
-      this.newPointTopic = ''
-      this.$toast?.success('Point added')
+      try {
+        await this.$store.dispatch('education/addEducationPoint', {
+          titleId: this.newPointTitleId,
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          admissionId: this.admissionId,
+          label: this.newPointLabel,
+          topic: this.newPointTopic
+        })
+        this.showAddPointDialog = false
+        this.newPointLabel = ''
+        this.newPointTopic = ''
+        this.$toast?.success(this.$t('clinical360.education.tab.toast_point_added'))
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || this.$t('clinical360.education.tab.toast_point_add_error'))
+      }
     },
     documentPoint(point) {
       if (this.readOnly) return
@@ -264,30 +301,38 @@ export default {
     },
     async fileEducation(data) {
       if (this.readOnly) return
-      const doc = await this.$store.dispatch('education/documentEducationPoint', {
-        pointId: this.selectedPointId,
-        titleId: this.selectedTitleId,
-        patientId: this.patientId,
-        encounterId: this.encounterId,
-        ...data
-      })
-      if (data.resolveAfterFile) {
-        await this.$store.dispatch('education/fileAndResolveEducationDocumentation', {
-          documentationId: doc.id,
+      try {
+        const doc = await this.$store.dispatch('education/documentEducationPoint', {
           pointId: this.selectedPointId,
+          titleId: this.selectedTitleId,
+          patientId: this.patientId,
+          encounterId: this.encounterId,
+          ...data
+        })
+        if (data.resolveAfterFile) {
+          await this.$store.dispatch('education/fileAndResolveEducationDocumentation', {
+            documentationId: doc.id,
+            pointId: this.selectedPointId,
+            patientId: this.patientId
+          })
+        }
+        this.showDocumentDialog = false
+        this.$toast?.success(this.$t('clinical360.education.tab.toast_education_documented'))
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || this.$t('clinical360.education.tab.toast_document_error'))
+      }
+    },
+    async removeMaterialFromAvs(assignmentId) {
+      if (this.readOnly) return
+      try {
+        await this.$store.dispatch('education/removeMaterialFromAvs', {
+          assignmentId,
           patientId: this.patientId
         })
+        this.$toast?.success(this.$t('clinical360.education.tab.toast_material_removed'))
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || this.$t('clinical360.education.tab.toast_material_remove_error'))
       }
-      this.showDocumentDialog = false
-      this.$toast?.success('Education documented')
-    },
-    removeMaterialFromAvs(assignmentId) {
-      if (this.readOnly) return
-      this.$store.dispatch('education/removeMaterialFromAvs', {
-        assignmentId,
-        patientId: this.patientId
-      })
-      this.$toast?.success('Material removed')
     },
     openMaterialDialog() {
       if (!this.readOnly) this.showAddMaterialDialog = true
@@ -312,7 +357,9 @@ export default {
         }
         this.materialForm = { title: '', language: 'French', format: 'Verbal + printed', instructions: '', addToAvs: true }
         this.showAddMaterialDialog = false
-        this.$toast?.success('Education material added')
+        this.$toast?.success(this.$t('clinical360.education.tab.toast_material_added'))
+      } catch (err) {
+        this.$toast?.error(err.response?.data?.error || err.message || this.$t('clinical360.education.tab.toast_material_add_error'))
       } finally {
         this.savingMaterial = false
       }

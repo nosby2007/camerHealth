@@ -59,7 +59,10 @@ export default {
       ]
     }
   },
-  mounted() { this.$store.commit('nursing/LOAD_FROM_STORAGE') },
+  mounted() {
+    this.$store.commit('nursing/LOAD_FROM_STORAGE')
+    this.$store.dispatch('nursing/loadPatientChart', this.patientId)
+  },
   methods: { updateTaskStatus(payload) { this.$store.dispatch('nursing/updateTaskStatus', payload) } }
 }
 </script>

@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-plus-circle-outline</v-icon>
-        <span>New Order</span>
+        <span>{{ $t('clinical360.orders.order_entry.new_order') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -16,7 +16,7 @@
         <form @submit.prevent="submitForm">
           <!-- Order Type Selection -->
           <section class="form-section">
-            <h3 class="section-title">Order Type *</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.order_entry.order_type') }}</h3>
             <div class="order-type-selector">
               <button
                 v-for="type in orderTypes"
@@ -33,13 +33,13 @@
 
           <!-- Common Order Fields -->
           <section class="form-section">
-            <h3 class="section-title">Order Details</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.order_entry.order_details') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Ordering Provider *</label>
+                <label>{{ $t('clinical360.orders.order_entry.ordering_provider') }}</label>
                 <v-text-field
                   v-model="form.orderingProvider"
-                  placeholder="Provider name or ID"
+                  :placeholder="$t('clinical360.orders.order_entry.ordering_provider_placeholder')"
                   outlined
                   dense
                   required
@@ -47,7 +47,7 @@
               </div>
 
               <div class="form-group">
-                <label>Priority *</label>
+                <label>{{ $t('clinical360.orders.order_entry.priority') }}</label>
                 <v-select
                   v-model="form.priority"
                   :items="['Routine', 'Urgent', 'STAT', 'Timed']"
@@ -58,7 +58,7 @@
               </div>
 
               <div class="form-group">
-                <label>Frequency</label>
+                <label>{{ $t('clinical360.orders.order_entry.frequency') }}</label>
                 <v-select
                   v-model="form.frequency"
                   :items="['Once', 'Daily', 'BID', 'TID', 'QID', 'Q4H', 'Q6H', 'Q8H', 'Q12H', 'Weekly', 'As needed']"
@@ -68,7 +68,7 @@
               </div>
 
               <div class="form-group">
-                <label>Start Date/Time</label>
+                <label>{{ $t('clinical360.orders.order_entry.start_datetime') }}</label>
                 <v-text-field
                   v-model="form.startDateTime"
                   type="datetime-local"
@@ -81,13 +81,13 @@
 
           <!-- Medication Order Fields -->
           <section v-if="form.orderType === 'medication'" class="form-section">
-            <h3 class="section-title">Medication Details</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.order_entry.medication_details') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Medication Name *</label>
+                <label>{{ $t('clinical360.orders.order_entry.medication_name') }}</label>
                 <v-text-field
                   v-model="form.medication.name"
-                  placeholder="e.g., Amoxicillin"
+                  :placeholder="$t('clinical360.orders.order_entry.medication_name_placeholder')"
                   outlined
                   dense
                   required
@@ -95,10 +95,10 @@
               </div>
 
               <div class="form-group">
-                <label>Strength *</label>
+                <label>{{ $t('clinical360.orders.order_entry.strength') }}</label>
                 <v-text-field
                   v-model="form.medication.strength"
-                  placeholder="e.g., 500mg"
+                  :placeholder="$t('clinical360.orders.order_entry.strength_placeholder')"
                   outlined
                   dense
                   required
@@ -106,7 +106,7 @@
               </div>
 
               <div class="form-group">
-                <label>Route *</label>
+                <label>{{ $t('clinical360.orders.order_entry.route') }}</label>
                 <v-select
                   v-model="form.medication.route"
                   :items="['Oral', 'IV', 'IM', 'SC', 'Topical', 'Inhaled', 'Sublingual', 'Rectal', 'Transdermal', 'Nasal']"
@@ -117,10 +117,10 @@
               </div>
 
               <div class="form-group">
-                <label>Dose *</label>
+                <label>{{ $t('clinical360.orders.order_entry.dose') }}</label>
                 <v-text-field
                   v-model="form.medication.dose"
-                  placeholder="e.g., 1-2 tablets"
+                  :placeholder="$t('clinical360.orders.order_entry.dose_placeholder')"
                   outlined
                   dense
                   required
@@ -128,37 +128,37 @@
               </div>
 
               <div class="form-group">
-                <label>Indication/Reason</label>
+                <label>{{ $t('clinical360.orders.order_entry.indication_reason') }}</label>
                 <v-text-field
                   v-model="form.medication.indication"
-                  placeholder="e.g., Infection, Pain relief"
+                  :placeholder="$t('clinical360.orders.order_entry.indication_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Special Instructions</label>
+                <label>{{ $t('clinical360.orders.order_entry.special_instructions') }}</label>
                 <v-text-field
                   v-model="form.medication.instructions"
-                  placeholder="e.g., With food, Do not crush"
+                  :placeholder="$t('clinical360.orders.order_entry.special_instructions_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Duration</label>
+                <label>{{ $t('clinical360.orders.order_entry.duration') }}</label>
                 <v-text-field
                   v-model="form.medication.duration"
-                  placeholder="e.g., 7 days, 2 weeks"
+                  :placeholder="$t('clinical360.orders.order_entry.duration_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Refills Allowed</label>
+                <label>{{ $t('clinical360.orders.order_entry.refills_allowed') }}</label>
                 <v-text-field
                   v-model="form.medication.refills"
                   type="number"
@@ -173,32 +173,32 @@
             <div class="checklist" style="margin-top: 16px">
               <label class="checklist-item">
                 <v-checkbox v-model="form.medication.flags.allergiesChecked" />
-                <span>Allergies checked</span>
+                <span>{{ $t('clinical360.orders.order_entry.allergies_checked') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.medication.flags.drugInteractionsChecked" />
-                <span>Drug interactions checked</span>
+                <span>{{ $t('clinical360.orders.order_entry.drug_interactions_checked') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.medication.flags.renalDosingConsideration" />
-                <span>Renal dosing consideration</span>
+                <span>{{ $t('clinical360.orders.order_entry.renal_dosing_consideration') }}</span>
               </label>
               <label class="checklist-item">
                 <v-checkbox v-model="form.medication.flags.hepaticDosingConsideration" />
-                <span>Hepatic dosing consideration</span>
+                <span>{{ $t('clinical360.orders.order_entry.hepatic_dosing_consideration') }}</span>
               </label>
             </div>
           </section>
 
           <!-- Lab Order Fields -->
           <section v-if="form.orderType === 'lab'" class="form-section">
-            <h3 class="section-title">Lab Order Details</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.order_entry.lab_order_details') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Lab Test Name *</label>
+                <label>{{ $t('clinical360.orders.order_entry.lab_test_name') }}</label>
                 <v-text-field
                   v-model="form.lab.testName"
-                  placeholder="e.g., Complete Blood Count"
+                  :placeholder="$t('clinical360.orders.order_entry.lab_test_name_placeholder')"
                   outlined
                   dense
                   required
@@ -206,7 +206,7 @@
               </div>
 
               <div class="form-group">
-                <label>Specimen Type *</label>
+                <label>{{ $t('clinical360.orders.order_entry.specimen_type') }}</label>
                 <v-select
                   v-model="form.lab.specimenType"
                   :items="['Blood', 'Urine', 'Stool', 'Sputum', 'CSF', 'Tissue', 'Other']"
@@ -217,20 +217,20 @@
               </div>
 
               <div class="form-group">
-                <label>Collection Instructions</label>
+                <label>{{ $t('clinical360.orders.order_entry.collection_instructions') }}</label>
                 <v-text-field
                   v-model="form.lab.collectionInstructions"
-                  placeholder="e.g., Fasting required, 24-hour collection"
+                  :placeholder="$t('clinical360.orders.order_entry.collection_instructions_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Reference Range Notes</label>
+                <label>{{ $t('clinical360.orders.order_entry.reference_range_notes') }}</label>
                 <v-text-field
                   v-model="form.lab.referenceNotes"
-                  placeholder="Special considerations"
+                  :placeholder="$t('clinical360.orders.order_entry.reference_range_notes_placeholder')"
                   outlined
                   dense
                 />
@@ -240,13 +240,13 @@
 
           <!-- Imaging Order Fields -->
           <section v-if="form.orderType === 'imaging'" class="form-section">
-            <h3 class="section-title">Imaging Order Details</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.order_entry.imaging_order_details') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Imaging Study *</label>
+                <label>{{ $t('clinical360.orders.order_entry.imaging_study') }}</label>
                 <v-text-field
                   v-model="form.imaging.study"
-                  placeholder="e.g., Chest X-ray, CT scan"
+                  :placeholder="$t('clinical360.orders.order_entry.imaging_study_placeholder')"
                   outlined
                   dense
                   required
@@ -254,10 +254,10 @@
               </div>
 
               <div class="form-group">
-                <label>Body Part/Area *</label>
+                <label>{{ $t('clinical360.orders.order_entry.body_part_area') }}</label>
                 <v-text-field
                   v-model="form.imaging.bodyPart"
-                  placeholder="e.g., Right knee, Abdomen"
+                  :placeholder="$t('clinical360.orders.order_entry.body_part_area_placeholder')"
                   outlined
                   dense
                   required
@@ -265,22 +265,22 @@
               </div>
 
               <div class="form-group">
-                <label>Clinical Indication</label>
+                <label>{{ $t('clinical360.orders.order_entry.clinical_indication') }}</label>
                 <v-text-field
                   v-model="form.imaging.indication"
-                  placeholder="e.g., Rule out fracture"
+                  :placeholder="$t('clinical360.orders.order_entry.clinical_indication_placeholder')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Contrast Needed</label>
+                <label>{{ $t('clinical360.orders.order_entry.contrast_needed') }}</label>
                 <v-checkbox v-model="form.imaging.contrastNeeded" />
               </div>
 
               <div v-if="form.imaging.contrastNeeded" class="form-group">
-                <label>Contrast Type</label>
+                <label>{{ $t('clinical360.orders.order_entry.contrast_type') }}</label>
                 <v-select
                   v-model="form.imaging.contrastType"
                   :items="['Iodine-based', 'Gadolinium', 'Barium']"
@@ -290,10 +290,10 @@
               </div>
 
               <div class="form-group">
-                <label>Special Instructions</label>
+                <label>{{ $t('clinical360.orders.order_entry.special_instructions') }}</label>
                 <v-text-field
                   v-model="form.imaging.instructions"
-                  placeholder="e.g., NPO 4 hours prior"
+                  :placeholder="$t('clinical360.orders.order_entry.imaging_instructions_placeholder')"
                   outlined
                   dense
                 />
@@ -303,13 +303,13 @@
 
           <!-- General Instructions -->
           <section class="form-section">
-            <h3 class="section-title">Order Instructions</h3>
+            <h3 class="section-title">{{ $t('clinical360.orders.order_entry.order_instructions') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Additional Notes</label>
+                <label>{{ $t('clinical360.orders.order_entry.additional_notes') }}</label>
                 <v-textarea
                   v-model="form.notes"
-                  placeholder="Any additional instructions or notes for the order..."
+                  :placeholder="$t('clinical360.orders.order_entry.additional_notes_placeholder')"
                   outlined
                   dense
                   rows="3"
@@ -320,10 +320,10 @@
 
           <div class="form-actions">
             <v-btn type="button" outlined @click="$emit('close')">
-              Cancel
+              {{ $t('clinical360.orders.order_entry.cancel') }}
             </v-btn>
             <v-btn type="submit" color="primary" dark>
-              Create Order
+              {{ $t('clinical360.orders.order_entry.create_order') }}
             </v-btn>
           </div>
         </form>
@@ -380,12 +380,16 @@ export default {
           contrastType: '',
           instructions: ''
         }
-      },
-      orderTypes: [
-        { id: 'medication', label: 'Medication', icon: 'mdi-pills' },
-        { id: 'lab', label: 'Lab', icon: 'mdi-flask' },
-        { id: 'imaging', label: 'Imaging', icon: 'mdi-image' },
-        { id: 'procedure', label: 'Procedure', icon: 'mdi-hospital-box' }
+      }
+    }
+  },
+  computed: {
+    orderTypes() {
+      return [
+        { id: 'medication', label: this.$t('clinical360.orders.order_entry.order_type_medication'), icon: 'mdi-pills' },
+        { id: 'lab', label: this.$t('clinical360.orders.order_entry.order_type_lab'), icon: 'mdi-flask' },
+        { id: 'imaging', label: this.$t('clinical360.orders.order_entry.order_type_imaging'), icon: 'mdi-image' },
+        { id: 'procedure', label: this.$t('clinical360.orders.order_entry.order_type_procedure'), icon: 'mdi-hospital-box' }
       ]
     }
   },
@@ -393,7 +397,7 @@ export default {
     ...mapActions('nursing', ['createOrder']),
     async submitForm() {
       if (!this.form.orderingProvider || !this.form.orderType) {
-        alert('Please fill in required fields')
+        alert(this.$t('clinical360.orders.order_entry.alert_required_fields'))
         return
       }
 
@@ -423,7 +427,7 @@ export default {
         this.$emit('save', orderData)
       } catch (error) {
         console.error('Error creating order:', error)
-        alert('Error creating order')
+        alert(this.$t('clinical360.orders.order_entry.alert_create_error'))
       }
     }
   }

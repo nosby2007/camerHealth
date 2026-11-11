@@ -1,41 +1,43 @@
 <template>
   <section class="team-workspace">
-    <header class="module-header"><div><span>CARE COORDINATION</span><h2>Care Team</h2><p>Current accountability, interdisciplinary coverage and handoff contacts.</p></div><div class="actions"><v-btn v-if="canCreateTask && !readOnly" x-small text color="#0f766e" @click="$emit('new-task')"><v-icon x-small left>mdi-clipboard-plus-outline</v-icon>Assign task</v-btn><v-btn v-if="canManageTeam && !readOnly" x-small depressed color="#0f766e" dark @click="$emit('add-member')"><v-icon x-small left>mdi-account-plus-outline</v-icon>Add member</v-btn></div></header>
-    <div v-if="readOnly" class="read-only"><v-icon x-small>mdi-lock-outline</v-icon> Discharged chart. Care-team records are read only.</div>
+    <header class="module-header"><div><span>{{ $t('clinical360.care_team.tab.eyebrow') }}</span><h2>{{ $t('clinical360.care_team.tab.title') }}</h2><p>{{ $t('clinical360.care_team.tab.subtitle') }}</p></div><div class="actions"><v-btn v-if="canCreateTask && !readOnly" x-small text color="#0f766e" @click="$emit('new-task')"><v-icon x-small left>mdi-clipboard-plus-outline</v-icon>{{ $t('clinical360.care_team.tab.buttons.assign_task') }}</v-btn><v-btn v-if="canManageTeam && !readOnly" x-small depressed color="#0f766e" dark @click="$emit('add-member')"><v-icon x-small left>mdi-account-plus-outline</v-icon>{{ $t('clinical360.care_team.tab.buttons.add_member') }}</v-btn></div></header>
+    <div v-if="readOnly" class="read-only"><v-icon x-small>mdi-lock-outline</v-icon> {{ $t('clinical360.care_team.tab.read_only_note') }}</div>
     <div class="accountability-band">
-      <div><span>Attending / referent</span><strong>{{ attendingName }}</strong><small>{{ patient.service || patient.bed || 'Current service' }}</small></div>
-      <div><span>Bedside coverage</span><strong>{{ bedsideCount }} member(s)</strong><small>Active nursing and support roles</small></div>
-      <div><span>Consults / diagnostics</span><strong>{{ consultCount }} member(s)</strong><small>Interdisciplinary involvement</small></div>
-      <button type="button" @click="$emit('handoff')"><v-icon small>mdi-account-arrow-right-outline</v-icon><span>Shift continuity</span><strong>Open handoff</strong></button>
+      <div><span>{{ $t('clinical360.care_team.tab.band.attending_referent') }}</span><strong>{{ attendingName }}</strong><small>{{ patient.service || patient.bed || $t('clinical360.care_team.tab.band.current_service') }}</small></div>
+      <div><span>{{ $t('clinical360.care_team.tab.band.bedside_coverage') }}</span><strong>{{ $t('clinical360.care_team.tab.band.member_count', { count: bedsideCount }) }}</strong><small>{{ $t('clinical360.care_team.tab.band.bedside_hint') }}</small></div>
+      <div><span>{{ $t('clinical360.care_team.tab.band.consults_diagnostics') }}</span><strong>{{ $t('clinical360.care_team.tab.band.member_count', { count: consultCount }) }}</strong><small>{{ $t('clinical360.care_team.tab.band.consults_hint') }}</small></div>
+      <button type="button" @click="$emit('handoff')"><v-icon small>mdi-account-arrow-right-outline</v-icon><span>{{ $t('clinical360.care_team.tab.band.shift_continuity') }}</span><strong>{{ $t('clinical360.care_team.tab.band.open_handoff') }}</strong></button>
     </div>
-    <div class="team-tools"><div role="group" aria-label="Care team filters"><button v-for="item in filters" :key="item.key" :class="{active:filter===item.key}" @click="filter=item.key">{{ item.label }} <b>{{ item.count }}</b></button></div><label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="search" type="search" placeholder="Search name, role or service" /></label></div>
+    <div class="team-tools"><div role="group" :aria-label="$t('clinical360.care_team.tab.filters.aria_label')"><button v-for="item in filters" :key="item.key" :class="{active:filter===item.key}" @click="filter=item.key">{{ item.label }} <b>{{ item.count }}</b></button></div><label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="search" type="search" :placeholder="$t('clinical360.care_team.tab.search_placeholder')" /></label></div>
     <div class="team-list">
       <article v-for="member in filteredMembers" :key="member.label">
         <div class="avatar">{{ initials(member.label) }}</div>
-        <div class="identity"><strong>{{ member.label }}</strong><span>{{ member.values.Role || 'Care team member' }}</span></div>
-        <div><small>Coverage</small><strong>{{ member.values.Shift || 'Current' }}</strong></div>
-        <div><small>Contact / service</small><strong>{{ member.values.Contact || 'Not listed' }}</strong></div>
+        <div class="identity"><ClinicalHoverCard :title="member.label" :eyebrow="$t('clinical360.care_team.tab.eyebrow')" :details="memberHoverDetails(member)"><template #activator><strong class="detail-trigger">{{ member.label }}</strong></template></ClinicalHoverCard><span>{{ member.values.Role || $t('clinical360.care_team.tab.member.role_fallback') }}</span></div>
+        <div><small>{{ $t('clinical360.care_team.tab.member.coverage_label') }}</small><strong>{{ member.values.Shift || $t('clinical360.care_team.tab.member.current_fallback') }}</strong></div>
+        <div><small>{{ $t('clinical360.care_team.tab.member.contact_label') }}</small><strong>{{ member.values.Contact || $t('clinical360.care_team.tab.member.not_listed') }}</strong></div>
         <b :class="['team-status',memberStatus(member)]">{{ statusLabel(member) }}</b>
       </article>
-      <div v-if="!filteredMembers.length" class="empty"><v-icon size="38" color="#94a3b8">mdi-account-group-outline</v-icon><strong>No care-team member matches this view</strong><span>Add a member or change the filter.</span></div>
+      <div v-if="!filteredMembers.length" class="empty"><v-icon size="38" color="#94a3b8">mdi-account-group-outline</v-icon><strong>{{ $t('clinical360.care_team.tab.empty.title') }}</strong><span>{{ $t('clinical360.care_team.tab.empty.subtitle') }}</span></div>
     </div>
   </section>
 </template>
 <script>
+import ClinicalHoverCard from '../../ClinicalHoverCard.vue'
 export default {
   name:'Patient360CareTeamTab',
+  components:{ClinicalHoverCard},
   props:{members:{type:Array,default:()=>[]},patient:{type:Object,default:()=>({})},role:{type:String,default:''},readOnly:{type:Boolean,default:false}},
   data:()=>({filter:'all',search:''}),
   computed:{
     canManageTeam(){return ['ADMIN','DOCTOR','NP','NURSE','MIDWIFE','MAJOR_SERVICE','NURSING_SUPERVISOR'].includes(this.role)},
     canCreateTask(){return ['ADMIN','DOCTOR','NP','NURSE','CNA','MIDWIFE','MAJOR_SERVICE','NURSING_SUPERVISOR','LAB','IMAGING','PHARMACY','SOCIAL_WORKER','PHYSIOTHERAPIST'].includes(this.role)},
-    attendingName(){return this.members.find(m=>/attending|referent/i.test(String(m.values?.Role||'')))?.label||this.patient.attending||this.patient.provider||'Not assigned'},
+    attendingName(){return this.members.find(m=>/attending|referent/i.test(String(m.values?.Role||'')))?.label||this.patient.attending||this.patient.provider||this.$t('clinical360.care_team.tab.band.not_assigned')},
     bedsideCount(){return this.members.filter(m=>/nurse|midwife|cna|bedside|aide/i.test(String(m.values?.Role||''))).length},
     consultCount(){return this.members.filter(m=>/consult|lab|imaging|pharmacy|diet|social|physio|diagnostic/i.test(String(m.values?.Role||''))).length},
-    filters(){return[{key:'all',label:'All',count:this.members.length},{key:'bedside',label:'Bedside',count:this.bedsideCount},{key:'consults',label:'Consults',count:this.consultCount},{key:'on-call',label:'On call',count:this.members.filter(m=>/on call|requested/i.test(String(m.values?.Shift||''))).length}]},
+    filters(){return[{key:'all',label:this.$t('clinical360.care_team.tab.filters.all'),count:this.members.length},{key:'bedside',label:this.$t('clinical360.care_team.tab.filters.bedside'),count:this.bedsideCount},{key:'consults',label:this.$t('clinical360.care_team.tab.filters.consults'),count:this.consultCount},{key:'on-call',label:this.$t('clinical360.care_team.tab.filters.on_call'),count:this.members.filter(m=>/on call|requested/i.test(String(m.values?.Shift||''))).length}]},
     filteredMembers(){const q=this.search.toLowerCase();return this.members.filter(m=>{const role=String(m.values?.Role||'');const shift=String(m.values?.Shift||'');if(this.filter==='bedside'&&!/nurse|midwife|cna|bedside|aide/i.test(role))return false;if(this.filter==='consults'&&!/consult|lab|imaging|pharmacy|diet|social|physio|diagnostic/i.test(role))return false;if(this.filter==='on-call'&&!/on call|requested/i.test(shift))return false;return !q||`${m.label} ${role} ${m.values?.Contact||''}`.toLowerCase().includes(q)})}
   },
-  methods:{initials(name){return String(name||'?').split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase()},memberStatus(member){return /completed|inactive/i.test(String(member.values?.Shift||''))?'inactive':/on call|requested/i.test(String(member.values?.Shift||''))?'on-call':'active'},statusLabel(member){const state=this.memberStatus(member);return state==='on-call'?'On call':state==='inactive'?'Completed':'Active'}}
+  methods:{initials(name){return String(name||'?').split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase()},memberStatus(member){return /completed|inactive/i.test(String(member.values?.Shift||''))?'inactive':/on call|requested/i.test(String(member.values?.Shift||''))?'on-call':'active'},statusLabel(member){const state=this.memberStatus(member);return state==='on-call'?this.$t('clinical360.care_team.tab.statuses.on_call'):state==='inactive'?this.$t('clinical360.care_team.tab.statuses.completed'):this.$t('clinical360.care_team.tab.statuses.active')},memberHoverDetails(member){return[{label:this.$t('clinical360.care_team.tab.member.role_fallback'),value:member.values?.Role},{label:this.$t('clinical360.care_team.tab.member.coverage_label'),value:member.values?.Shift},{label:this.$t('clinical360.care_team.tab.member.contact_label'),value:member.values?.Contact},{label:this.$t('clinical360.care_team.tab.member.not_listed'),value:this.statusLabel(member)}]}}
 }
 </script>
 <style scoped>

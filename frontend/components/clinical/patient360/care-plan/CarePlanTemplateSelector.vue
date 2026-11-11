@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-file-document-outline</v-icon>
-        <span>Select Care Plan Template</span>
+        <span>{{ $t('clinical360.care_plan.template_selector.select_template') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -17,7 +17,7 @@
         <section class="form-section">
           <v-text-field
             v-model="searchQuery"
-            placeholder="Search templates..."
+            :placeholder="$t('clinical360.care_plan.template_selector.search_placeholder')"
             outlined
             dense
             prepend-icon="mdi-magnify"
@@ -26,7 +26,7 @@
 
         <!-- Template Categories -->
         <section class="form-section">
-          <h3 class="section-title">Quick Start Templates</h3>
+          <h3 class="section-title">{{ $t('clinical360.care_plan.template_selector.quick_start_templates') }}</h3>
           <div class="template-grid">
             <div
               v-for="template in filteredTemplates"
@@ -38,9 +38,9 @@
                 <v-icon large :color="template.color">{{ template.icon }}</v-icon>
               </div>
               <div class="template-info">
-                <strong>{{ template.title }}</strong>
-                <p>{{ template.description }}</p>
-                <small>{{ template.goalCount }} Goals • {{ template.interventionCount }} Interventions</small>
+                <strong>{{ templateTitle(template) }}</strong>
+                <p>{{ templateDescription(template) }}</p>
+                <small>{{ $t('clinical360.care_plan.template_selector.goals_and_interventions_count', { goals: template.goalCount, interventions: template.interventionCount }) }}</small>
               </div>
               <v-icon class="template-arrow">mdi-chevron-right</v-icon>
             </div>
@@ -49,10 +49,10 @@
 
         <!-- Template Preview -->
         <section v-if="selectedTemplate" class="form-section">
-          <h3 class="section-title">Template Preview: {{ selectedTemplate.title }}</h3>
+          <h3 class="section-title">{{ $t('clinical360.care_plan.template_selector.template_preview', { name: templateTitle(selectedTemplate) }) }}</h3>
           <div class="preview-container">
             <div class="preview-section">
-              <h4>Clinical Problems</h4>
+              <h4>{{ $t('clinical360.care_plan.template_selector.clinical_problems') }}</h4>
               <ul>
                 <li v-for="problem in selectedTemplate.problems" :key="problem">
                   {{ problem }}
@@ -61,7 +61,7 @@
             </div>
 
             <div class="preview-section">
-              <h4>Sample Goals</h4>
+              <h4>{{ $t('clinical360.care_plan.template_selector.sample_goals') }}</h4>
               <ul>
                 <li v-for="goal in selectedTemplate.sampleGoals" :key="goal">
                   {{ goal }}
@@ -70,7 +70,7 @@
             </div>
 
             <div class="preview-section">
-              <h4>Sample Interventions</h4>
+              <h4>{{ $t('clinical360.care_plan.template_selector.sample_interventions') }}</h4>
               <ul>
                 <li v-for="intervention in selectedTemplate.sampleInterventions" :key="intervention">
                   {{ intervention }}
@@ -81,10 +81,10 @@
 
           <div class="template-actions">
             <v-btn type="button" outlined @click="selectedTemplate = null">
-              Back
+              {{ $t('clinical360.care_plan.template_selector.back') }}
             </v-btn>
             <v-btn type="button" color="primary" dark @click="useTemplate">
-              Use This Template
+              {{ $t('clinical360.care_plan.template_selector.use_this_template') }}
             </v-btn>
           </div>
         </section>
@@ -334,6 +334,14 @@ export default {
     },
     useTemplate() {
       this.$emit('select', this.selectedTemplate)
+    },
+    templateTitle(template) {
+      const key = `clinical360.care_plan.template_selector.templates.${template.id}.title`
+      return this.$te(key) ? this.$t(key) : template.title
+    },
+    templateDescription(template) {
+      const key = `clinical360.care_plan.template_selector.templates.${template.id}.description`
+      return this.$te(key) ? this.$t(key) : template.description
     }
   }
 }

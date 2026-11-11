@@ -3,8 +3,8 @@
     <v-card class="timed-care-dialog">
       <v-card-title class="dialog-title">
         <div>
-          <span>Flowsheet horodate</span>
-          <strong>Document care, evaluation, plan and education</strong>
+          <span>{{ $t('clinical360.flowsheets.timed_care_dialog.header_title') }}</span>
+          <strong>{{ $t('clinical360.flowsheets.timed_care_dialog.header_subtitle') }}</strong>
         </div>
         <v-spacer />
         <v-btn icon small @click="$emit('update:show', false)">
@@ -28,40 +28,40 @@
         </div>
 
         <div class="dialog-grid three">
-          <v-text-field v-model="form.date" label="Date" type="date" dense outlined />
-          <v-text-field v-model="form.time" label="Time" type="time" dense outlined />
-          <v-select v-model="form.templateId" label="Flowsheet" :items="flowsheetOptions" item-text="label" item-value="id" dense outlined />
+          <v-text-field v-model="form.date" :label="$t('clinical360.flowsheets.timed_care_dialog.date')" type="date" dense outlined />
+          <v-text-field v-model="form.time" :label="$t('clinical360.flowsheets.timed_care_dialog.time')" type="time" dense outlined />
+          <v-select v-model="form.templateId" :label="$t('clinical360.flowsheets.timed_care_dialog.flowsheet')" :items="flowsheetOptions" item-text="label" item-value="id" dense outlined />
         </div>
 
         <div class="dialog-grid two mt-2">
-          <v-text-field v-model="form.carePerformed" label="Care performed" dense outlined />
-          <v-text-field v-model="form.frequency" label="Schedule / frequency" dense outlined />
+          <v-text-field v-model="form.carePerformed" :label="$t('clinical360.flowsheets.timed_care_dialog.care_performed')" dense outlined />
+          <v-text-field v-model="form.frequency" :label="$t('clinical360.flowsheets.timed_care_dialog.schedule_frequency')" dense outlined />
         </div>
 
         <div class="dialog-grid two">
-          <v-textarea v-model="form.patientResponse" label="Patient response / evaluation" rows="2" dense outlined />
-          <v-textarea v-model="form.abnormalFindings" label="Abnormal findings / escalation" rows="2" dense outlined />
+          <v-textarea v-model="form.patientResponse" :label="$t('clinical360.flowsheets.timed_care_dialog.patient_response')" rows="2" dense outlined />
+          <v-textarea v-model="form.abnormalFindings" :label="$t('clinical360.flowsheets.timed_care_dialog.abnormal_findings')" rows="2" dense outlined />
         </div>
 
         <div class="dialog-grid two">
-          <v-select v-model="form.carePlanFocus" label="Care plan focus" :items="carePlanOptions" dense outlined />
-          <v-select v-model="form.educationGiven" label="Education prefilled" :items="educationOptions" dense outlined />
+          <v-select v-model="form.carePlanFocus" :label="$t('clinical360.flowsheets.timed_care_dialog.care_plan_focus')" :items="carePlanOptions" dense outlined />
+          <v-select v-model="form.educationGiven" :label="$t('clinical360.flowsheets.timed_care_dialog.education_prefilled')" :items="educationOptions" dense outlined />
         </div>
 
-        <v-textarea v-model="form.nextDue" label="Next due / handoff" rows="2" dense outlined />
+        <v-textarea v-model="form.nextDue" :label="$t('clinical360.flowsheets.timed_care_dialog.next_due')" rows="2" dense outlined />
 
         <div class="offline-note">
           <v-icon small color="#0f766e">mdi-cloud-sync-outline</v-icon>
-          <span>Saved locally first for low-bandwidth/offline care, then available for sync.</span>
+          <span>{{ $t('clinical360.flowsheets.timed_care_dialog.offline_note') }}</span>
         </div>
       </v-card-text>
 
       <v-card-actions class="dialog-actions">
-        <span>Creates a timestamped flowsheet column and a linked nursing note.</span>
+        <span>{{ $t('clinical360.flowsheets.timed_care_dialog.creates_column_note') }}</span>
         <v-spacer />
-        <v-btn text small @click="$emit('update:show', false)">Cancel</v-btn>
+        <v-btn text small @click="$emit('update:show', false)">{{ $t('clinical360.flowsheets.timed_care_dialog.cancel') }}</v-btn>
         <v-btn depressed color="#0f766e" dark small @click="save">
-          <v-icon x-small left>mdi-content-save</v-icon>File Entry
+          <v-icon x-small left>mdi-content-save</v-icon>{{ $t('clinical360.flowsheets.timed_care_dialog.file_entry') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -72,9 +72,7 @@
 const TEMPLATE_LIBRARY = [
   {
     key: 'routine',
-    label: 'Routine care',
     icon: 'mdi-clock-check-outline',
-    hint: 'Vitals, comfort, response',
     templateId: 'timed-care',
     values: {
       carePerformed: 'Routine nursing care completed',
@@ -88,9 +86,7 @@ const TEMPLATE_LIBRARY = [
   },
   {
     key: 'wound',
-    label: 'Wound care',
     icon: 'mdi-bandage',
-    hint: 'Dressing and skin',
     templateId: 'skin-wound',
     values: {
       carePerformed: 'Wound assessed and dressing care completed',
@@ -104,9 +100,7 @@ const TEMPLATE_LIBRARY = [
   },
   {
     key: 'cna',
-    label: 'Aide-soignant',
     icon: 'mdi-account-heart',
-    hint: 'Hygiene, turn, feed',
     templateId: 'cna-rounds',
     values: {
       carePerformed: 'Basic care round completed',
@@ -120,9 +114,7 @@ const TEMPLATE_LIBRARY = [
   },
   {
     key: 'maternity',
-    label: 'Maternity',
     icon: 'mdi-mother-nurse',
-    hint: 'Mother and newborn',
     templateId: 'maternity-care',
     values: {
       carePerformed: 'Mother and newborn check completed',
@@ -136,9 +128,7 @@ const TEMPLATE_LIBRARY = [
   },
   {
     key: 'discharge',
-    label: 'Discharge prep',
     icon: 'mdi-exit-run',
-    hint: 'Teaching and follow-up',
     templateId: 'timed-care',
     values: {
       carePerformed: 'Discharge readiness review completed',
@@ -192,7 +182,11 @@ export default {
       ]
     },
     templatesLibrary() {
-      return TEMPLATE_LIBRARY
+      return TEMPLATE_LIBRARY.map(template => ({
+        ...template,
+        label: this.$t(`clinical360.flowsheets.timed_care_dialog.templates.${template.key}_label`),
+        hint: this.$t(`clinical360.flowsheets.timed_care_dialog.templates.${template.key}_hint`)
+      }))
     }
   },
   watch: {

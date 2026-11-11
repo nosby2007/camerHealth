@@ -4,49 +4,50 @@
     <v-dialog v-model="dialogs.iv" max-width="600">
       <template #activator="{ on, attrs }">
         <v-btn small depressed color="#0369a1" dark v-bind="attrs" v-on="on">
-          <v-icon small left>mdi-needle</v-icon>IV Line
+          <v-icon small left>mdi-needle</v-icon>{{ $t('clinical360.assessment.device_marker.iv_line') }}
         </v-btn>
       </template>
       <v-card>
-        <v-card-title>IV Line Placement</v-card-title>
+        <v-card-title>{{ $t('clinical360.assessment.device_marker.iv_line_placement') }}</v-card-title>
         <v-card-text>
           <div class="form-group">
-            <label>Site Location *</label>
+            <label>{{ $t('clinical360.assessment.device_marker.site_location') }} *</label>
             <v-select
               v-model="forms.iv.site"
-              :items="['Right arm', 'Left arm', 'Right hand', 'Left hand', 'Right leg', 'Left leg', 'Central line', 'PICC', 'Other']"
+              :items="ivSiteItems"
+              item-value="value" item-text="text"
               outlined dense required
             />
           </div>
           <div class="form-group">
-            <label>Gauge</label>
+            <label>{{ $t('clinical360.assessment.device_marker.gauge') }}</label>
             <v-select v-model="forms.iv.gauge" :items="['18G', '20G', '22G', '24G', '26G']" outlined dense />
           </div>
           <div class="form-group">
-            <label>Type</label>
-            <v-select v-model="forms.iv.type" :items="['Peripheral', 'Central', 'PICC', 'Arterial']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.type') }}</label>
+            <v-select v-model="forms.iv.type" :items="ivTypeItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Status</label>
-            <v-select v-model="forms.iv.status" :items="['Patent', 'Sluggish', 'Occluded', 'Infiltrated', 'Phlebitis']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.status') }}</label>
+            <v-select v-model="forms.iv.status" :items="ivStatusItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Insertion Date</label>
+            <label>{{ $t('clinical360.assessment.device_marker.insertion_date') }}</label>
             <v-text-field v-model="forms.iv.insertionDate" type="date" outlined dense />
           </div>
           <div class="form-group">
-            <label>Dressing Intact</label>
+            <label>{{ $t('clinical360.assessment.device_marker.dressing_intact') }}</label>
             <v-checkbox v-model="forms.iv.dressingIntact" />
           </div>
           <div class="form-group">
-            <label>Notes</label>
+            <label>{{ $t('clinical360.assessment.device_marker.notes') }}</label>
             <v-textarea v-model="forms.iv.notes" outlined dense rows="3" />
           </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="dialogs.iv = false">Close</v-btn>
-          <v-btn color="primary" dark @click="saveDevice('iv')">Save</v-btn>
+          <v-btn text @click="dialogs.iv = false">{{ $t('clinical360.assessment.device_marker.close') }}</v-btn>
+          <v-btn color="primary" dark @click="saveDevice('iv')">{{ $t('clinical360.assessment.device_marker.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -55,49 +56,49 @@
     <v-dialog v-model="dialogs.trach" max-width="600">
       <template #activator="{ on, attrs }">
         <v-btn small depressed color="#7c3aed" dark v-bind="attrs" v-on="on">
-          <v-icon small left>mdi-air-filter</v-icon>Trach
+          <v-icon small left>mdi-air-filter</v-icon>{{ $t('clinical360.assessment.device_marker.trach') }}
         </v-btn>
       </template>
       <v-card>
-        <v-card-title>Tracheostomy Management</v-card-title>
+        <v-card-title>{{ $t('clinical360.assessment.device_marker.trach_management') }}</v-card-title>
         <v-card-text>
           <div class="form-group">
-            <label>Tube Size *</label>
-            <v-text-field v-model="forms.trach.tubeSize" placeholder="e.g., 8mm" outlined dense required />
+            <label>{{ $t('clinical360.assessment.device_marker.tube_size') }} *</label>
+            <v-text-field v-model="forms.trach.tubeSize" :placeholder="$t('clinical360.assessment.device_marker.tube_size_placeholder')" outlined dense required />
           </div>
           <div class="form-group">
-            <label>Type</label>
-            <v-select v-model="forms.trach.type" :items="['Standard cuffed', 'Standard uncuffed', 'Double-lumen', 'Fenestrated']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.type') }}</label>
+            <v-select v-model="forms.trach.type" :items="trachTypeItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Cuff Status</label>
-            <v-select v-model="forms.trach.cuffStatus" :items="['Inflated', 'Deflated']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.cuff_status') }}</label>
+            <v-select v-model="forms.trach.cuffStatus" :items="trachCuffStatusItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Cuff Pressure (cmH2O)</label>
+            <label>{{ $t('clinical360.assessment.device_marker.cuff_pressure') }}</label>
             <v-text-field v-model="forms.trach.cuffPressure" type="number" outlined dense />
           </div>
           <div class="form-group">
-            <label>Secretions</label>
-            <v-select v-model="forms.trach.secretions" :items="['Minimal', 'Moderate', 'Copious', 'Bloody', 'Purulent']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.secretions') }}</label>
+            <v-select v-model="forms.trach.secretions" :items="secretionsItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Last Suctioning</label>
+            <label>{{ $t('clinical360.assessment.device_marker.last_suctioning') }}</label>
             <v-text-field v-model="forms.trach.lastSuctioning" type="datetime-local" outlined dense />
           </div>
           <div class="form-group">
-            <label>Stoma Condition</label>
-            <v-select v-model="forms.trach.stomaCondition" :items="['Clean/dry', 'Redness', 'Drainage', 'Granulation', 'Infection']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.stoma_condition') }}</label>
+            <v-select v-model="forms.trach.stomaCondition" :items="stomaConditionItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Notes</label>
+            <label>{{ $t('clinical360.assessment.device_marker.notes') }}</label>
             <v-textarea v-model="forms.trach.notes" outlined dense rows="3" />
           </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="dialogs.trach = false">Close</v-btn>
-          <v-btn color="primary" dark @click="saveDevice('trach')">Save</v-btn>
+          <v-btn text @click="dialogs.trach = false">{{ $t('clinical360.assessment.device_marker.close') }}</v-btn>
+          <v-btn color="primary" dark @click="saveDevice('trach')">{{ $t('clinical360.assessment.device_marker.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -106,49 +107,49 @@
     <v-dialog v-model="dialogs.foley" max-width="600">
       <template #activator="{ on, attrs }">
         <v-btn small depressed color="#0f766e" dark v-bind="attrs" v-on="on">
-          <v-icon small left>mdi-water</v-icon>Foley
+          <v-icon small left>mdi-water</v-icon>{{ $t('clinical360.assessment.device_marker.foley') }}
         </v-btn>
       </template>
       <v-card>
-        <v-card-title>Foley Catheter</v-card-title>
+        <v-card-title>{{ $t('clinical360.assessment.device_marker.foley_catheter') }}</v-card-title>
         <v-card-text>
           <div class="form-group">
-            <label>Insertion Date *</label>
+            <label>{{ $t('clinical360.assessment.device_marker.insertion_date') }} *</label>
             <v-text-field v-model="forms.foley.insertionDate" type="date" outlined dense required />
           </div>
           <div class="form-group">
-            <label>Catheter Size (Fr) *</label>
-            <v-text-field v-model="forms.foley.size" placeholder="e.g., 18Fr" outlined dense required />
+            <label>{{ $t('clinical360.assessment.device_marker.catheter_size') }} *</label>
+            <v-text-field v-model="forms.foley.size" :placeholder="$t('clinical360.assessment.device_marker.catheter_size_placeholder')" outlined dense required />
           </div>
           <div class="form-group">
-            <label>Urine Color</label>
-            <v-select v-model="forms.foley.urineColor" :items="['Colorless', 'Pale yellow', 'Yellow', 'Dark yellow', 'Amber', 'Red', 'Brown']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.urine_color') }}</label>
+            <v-select v-model="forms.foley.urineColor" :items="urineColorItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Urine Clarity</label>
-            <v-select v-model="forms.foley.urineClarity" :items="['Clear', 'Slightly cloudy', 'Cloudy', 'Very turbid']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.urine_clarity') }}</label>
+            <v-select v-model="forms.foley.urineClarity" :items="urineClarityItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Output (24h) mL</label>
+            <label>{{ $t('clinical360.assessment.device_marker.output_24h') }}</label>
             <v-text-field v-model="forms.foley.output24h" type="number" outlined dense />
           </div>
           <div class="form-group">
-            <label>Catheter Status</label>
-            <v-select v-model="forms.foley.status" :items="['Patent/draining well', 'Sluggish', 'No output', 'Blocked', 'Kinked', 'Removed']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.catheter_status') }}</label>
+            <v-select v-model="forms.foley.status" :items="foleyStatusItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Meatal Care Done</label>
+            <label>{{ $t('clinical360.assessment.device_marker.meatal_care_done') }}</label>
             <v-checkbox v-model="forms.foley.meatialCareDone" />
           </div>
           <div class="form-group">
-            <label>Notes</label>
+            <label>{{ $t('clinical360.assessment.device_marker.notes') }}</label>
             <v-textarea v-model="forms.foley.notes" outlined dense rows="3" />
           </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="dialogs.foley = false">Close</v-btn>
-          <v-btn color="primary" dark @click="saveDevice('foley')">Save</v-btn>
+          <v-btn text @click="dialogs.foley = false">{{ $t('clinical360.assessment.device_marker.close') }}</v-btn>
+          <v-btn color="primary" dark @click="saveDevice('foley')">{{ $t('clinical360.assessment.device_marker.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -157,53 +158,53 @@
     <v-dialog v-model="dialogs.drain" max-width="600">
       <template #activator="{ on, attrs }">
         <v-btn small depressed color="#f97316" dark v-bind="attrs" v-on="on">
-          <v-icon small left>mdi-pipe</v-icon>Drain
+          <v-icon small left>mdi-pipe</v-icon>{{ $t('clinical360.assessment.device_marker.drain') }}
         </v-btn>
       </template>
       <v-card>
-        <v-card-title>Drain Management</v-card-title>
+        <v-card-title>{{ $t('clinical360.assessment.device_marker.drain_management') }}</v-card-title>
         <v-card-text>
           <div class="form-group">
-            <label>Drain Type *</label>
-            <v-select v-model="forms.drain.type" :items="['Jackson-Pratt', 'Penrose', 'Hemovac', 'Chest tube', 'T-tube', 'Other']" outlined dense required />
+            <label>{{ $t('clinical360.assessment.device_marker.drain_type') }} *</label>
+            <v-select v-model="forms.drain.type" :items="drainTypeItems" item-value="value" item-text="text" outlined dense required />
           </div>
           <div class="form-group">
-            <label>Location *</label>
-            <v-text-field v-model="forms.drain.location" placeholder="e.g., Abdomen left lower quadrant" outlined dense required />
+            <label>{{ $t('clinical360.assessment.device_marker.location') }} *</label>
+            <v-text-field v-model="forms.drain.location" :placeholder="$t('clinical360.assessment.device_marker.drain_location_placeholder')" outlined dense required />
           </div>
           <div class="form-group">
-            <label>Drain Size (Fr)</label>
+            <label>{{ $t('clinical360.assessment.device_marker.drain_size') }}</label>
             <v-text-field v-model="forms.drain.size" outlined dense />
           </div>
           <div class="form-group">
-            <label>Output (24h) mL</label>
+            <label>{{ $t('clinical360.assessment.device_marker.output_24h') }}</label>
             <v-text-field v-model="forms.drain.output24h" type="number" outlined dense />
           </div>
           <div class="form-group">
-            <label>Output Characteristics</label>
-            <v-select v-model="forms.drain.characteristics" :items="['Clear', 'Serous', 'Serosanguinous', 'Sanguinous', 'Purulent', 'Other']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.output_characteristics') }}</label>
+            <v-select v-model="forms.drain.characteristics" :items="characteristicsItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Suction Applied</label>
+            <label>{{ $t('clinical360.assessment.device_marker.suction_applied') }}</label>
             <v-checkbox v-model="forms.drain.suctionApplied" />
           </div>
           <div class="form-group">
-            <label>Suction Pressure (mmHg)</label>
+            <label>{{ $t('clinical360.assessment.device_marker.suction_pressure') }}</label>
             <v-text-field v-model="forms.drain.suctionPressure" type="number" outlined dense />
           </div>
           <div class="form-group">
-            <label>Dressing Intact/Secure</label>
+            <label>{{ $t('clinical360.assessment.device_marker.dressing_intact_secure') }}</label>
             <v-checkbox v-model="forms.drain.dressingIntact" />
           </div>
           <div class="form-group">
-            <label>Notes</label>
+            <label>{{ $t('clinical360.assessment.device_marker.notes') }}</label>
             <v-textarea v-model="forms.drain.notes" outlined dense rows="3" />
           </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="dialogs.drain = false">Close</v-btn>
-          <v-btn color="primary" dark @click="saveDevice('drain')">Save</v-btn>
+          <v-btn text @click="dialogs.drain = false">{{ $t('clinical360.assessment.device_marker.close') }}</v-btn>
+          <v-btn color="primary" dark @click="saveDevice('drain')">{{ $t('clinical360.assessment.device_marker.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -212,57 +213,57 @@
     <v-dialog v-model="dialogs.ostomy" max-width="600">
       <template #activator="{ on, attrs }">
         <v-btn small depressed color="#64748b" dark v-bind="attrs" v-on="on">
-          <v-icon small left>mdi-circle-slice-8</v-icon>Ostomy
+          <v-icon small left>mdi-circle-slice-8</v-icon>{{ $t('clinical360.assessment.device_marker.ostomy') }}
         </v-btn>
       </template>
       <v-card>
-        <v-card-title>Ostomy Management</v-card-title>
+        <v-card-title>{{ $t('clinical360.assessment.device_marker.ostomy_management') }}</v-card-title>
         <v-card-text>
           <div class="form-group">
-            <label>Ostomy Type *</label>
-            <v-select v-model="forms.ostomy.type" :items="['Colostomy', 'Ileostomy', 'Urostomy', 'Gastrostomy', 'Jejunostomy']" outlined dense required />
+            <label>{{ $t('clinical360.assessment.device_marker.ostomy_type') }} *</label>
+            <v-select v-model="forms.ostomy.type" :items="ostomyTypeItems" item-value="value" item-text="text" outlined dense required />
           </div>
           <div class="form-group">
-            <label>Location *</label>
-            <v-text-field v-model="forms.ostomy.location" placeholder="e.g., Left abdomen" outlined dense required />
+            <label>{{ $t('clinical360.assessment.device_marker.location') }} *</label>
+            <v-text-field v-model="forms.ostomy.location" :placeholder="$t('clinical360.assessment.device_marker.ostomy_location_placeholder')" outlined dense required />
           </div>
           <div class="form-group">
-            <label>Appliance Type</label>
-            <v-select v-model="forms.ostomy.applianceType" :items="['One-piece', 'Two-piece', 'Pouch-only']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.appliance_type') }}</label>
+            <v-select v-model="forms.ostomy.applianceType" :items="applianceTypeItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Appliance Condition</label>
-            <v-select v-model="forms.ostomy.applianceCondition" :items="['Intact', 'Leaking', 'Odor', 'Needs change']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.appliance_condition') }}</label>
+            <v-select v-model="forms.ostomy.applianceCondition" :items="applianceConditionItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Stoma Color</label>
-            <v-select v-model="forms.ostomy.stomaColor" :items="['Red/pink', 'Dark red', 'Pale', 'Black', 'Other']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.stoma_color') }}</label>
+            <v-select v-model="forms.ostomy.stomaColor" :items="stomaColorItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Stoma Size (mm)</label>
+            <label>{{ $t('clinical360.assessment.device_marker.stoma_size') }}</label>
             <v-text-field v-model="forms.ostomy.stomaSize" type="number" outlined dense />
           </div>
           <div class="form-group">
-            <label>Peristomal Skin</label>
-            <v-select v-model="forms.ostomy.peristomalSkin" :items="['Intact', 'Irritated', 'Breakdown', 'Infection']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.peristomal_skin') }}</label>
+            <v-select v-model="forms.ostomy.peristomalSkin" :items="peristomalSkinItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Output Type</label>
-            <v-select v-model="forms.ostomy.outputType" :items="['Formed stool', 'Loose stool', 'Liquid', 'Urine', 'Mucus']" outlined dense />
+            <label>{{ $t('clinical360.assessment.device_marker.output_type') }}</label>
+            <v-select v-model="forms.ostomy.outputType" :items="outputTypeItems" item-value="value" item-text="text" outlined dense />
           </div>
           <div class="form-group">
-            <label>Patient Education Done</label>
+            <label>{{ $t('clinical360.assessment.device_marker.patient_education_done') }}</label>
             <v-checkbox v-model="forms.ostomy.educationDone" />
           </div>
           <div class="form-group">
-            <label>Notes</label>
+            <label>{{ $t('clinical360.assessment.device_marker.notes') }}</label>
             <v-textarea v-model="forms.ostomy.notes" outlined dense rows="3" />
           </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="dialogs.ostomy = false">Close</v-btn>
-          <v-btn color="primary" dark @click="saveDevice('ostomy')">Save</v-btn>
+          <v-btn text @click="dialogs.ostomy = false">{{ $t('clinical360.assessment.device_marker.close') }}</v-btn>
+          <v-btn color="primary" dark @click="saveDevice('ostomy')">{{ $t('clinical360.assessment.device_marker.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -290,6 +291,169 @@ export default {
       }
     }
   },
+  computed: {
+    ivSiteItems() {
+      return [
+        ['Right arm', 'iv_site_right_arm'],
+        ['Left arm', 'iv_site_left_arm'],
+        ['Right hand', 'iv_site_right_hand'],
+        ['Left hand', 'iv_site_left_hand'],
+        ['Right leg', 'iv_site_right_leg'],
+        ['Left leg', 'iv_site_left_leg'],
+        ['Central line', 'iv_site_central_line'],
+        ['PICC', 'iv_site_picc'],
+        ['Other', 'iv_site_other']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    ivTypeItems() {
+      return [
+        ['Peripheral', 'iv_type_peripheral'],
+        ['Central', 'iv_type_central'],
+        ['PICC', 'iv_type_picc'],
+        ['Arterial', 'iv_type_arterial']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    ivStatusItems() {
+      return [
+        ['Patent', 'iv_status_patent'],
+        ['Sluggish', 'iv_status_sluggish'],
+        ['Occluded', 'iv_status_occluded'],
+        ['Infiltrated', 'iv_status_infiltrated'],
+        ['Phlebitis', 'iv_status_phlebitis']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    trachTypeItems() {
+      return [
+        ['Standard cuffed', 'trach_type_standard_cuffed'],
+        ['Standard uncuffed', 'trach_type_standard_uncuffed'],
+        ['Double-lumen', 'trach_type_double_lumen'],
+        ['Fenestrated', 'trach_type_fenestrated']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    trachCuffStatusItems() {
+      return [
+        ['Inflated', 'trach_cuff_inflated'],
+        ['Deflated', 'trach_cuff_deflated']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    secretionsItems() {
+      return [
+        ['Minimal', 'secretions_minimal'],
+        ['Moderate', 'secretions_moderate'],
+        ['Copious', 'secretions_copious'],
+        ['Bloody', 'secretions_bloody'],
+        ['Purulent', 'secretions_purulent']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    stomaConditionItems() {
+      return [
+        ['Clean/dry', 'stoma_condition_clean_dry'],
+        ['Redness', 'stoma_condition_redness'],
+        ['Drainage', 'stoma_condition_drainage'],
+        ['Granulation', 'stoma_condition_granulation'],
+        ['Infection', 'stoma_condition_infection']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    urineColorItems() {
+      return [
+        ['Colorless', 'urine_color_colorless'],
+        ['Pale yellow', 'urine_color_pale_yellow'],
+        ['Yellow', 'urine_color_yellow'],
+        ['Dark yellow', 'urine_color_dark_yellow'],
+        ['Amber', 'urine_color_amber'],
+        ['Red', 'urine_color_red'],
+        ['Brown', 'urine_color_brown']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    urineClarityItems() {
+      return [
+        ['Clear', 'urine_clarity_clear'],
+        ['Slightly cloudy', 'urine_clarity_slightly_cloudy'],
+        ['Cloudy', 'urine_clarity_cloudy'],
+        ['Very turbid', 'urine_clarity_very_turbid']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    foleyStatusItems() {
+      return [
+        ['Patent/draining well', 'foley_catheter_status_patent_draining_well'],
+        ['Sluggish', 'foley_catheter_status_sluggish'],
+        ['No output', 'foley_catheter_status_no_output'],
+        ['Blocked', 'foley_catheter_status_blocked'],
+        ['Kinked', 'foley_catheter_status_kinked'],
+        ['Removed', 'foley_catheter_status_removed']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    drainTypeItems() {
+      return [
+        ['Jackson-Pratt', 'drain_type_jackson_pratt'],
+        ['Penrose', 'drain_type_penrose'],
+        ['Hemovac', 'drain_type_hemovac'],
+        ['Chest tube', 'drain_type_chest_tube'],
+        ['T-tube', 'drain_type_t_tube'],
+        ['Other', 'drain_type_other']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    characteristicsItems() {
+      return [
+        ['Clear', 'characteristics_clear'],
+        ['Serous', 'characteristics_serous'],
+        ['Serosanguinous', 'characteristics_serosanguinous'],
+        ['Sanguinous', 'characteristics_sanguinous'],
+        ['Purulent', 'characteristics_purulent'],
+        ['Other', 'characteristics_other']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    ostomyTypeItems() {
+      return [
+        ['Colostomy', 'ostomy_type_colostomy'],
+        ['Ileostomy', 'ostomy_type_ileostomy'],
+        ['Urostomy', 'ostomy_type_urostomy'],
+        ['Gastrostomy', 'ostomy_type_gastrostomy'],
+        ['Jejunostomy', 'ostomy_type_jejunostomy']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    applianceTypeItems() {
+      return [
+        ['One-piece', 'appliance_type_one_piece'],
+        ['Two-piece', 'appliance_type_two_piece'],
+        ['Pouch-only', 'appliance_type_pouch_only']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    applianceConditionItems() {
+      return [
+        ['Intact', 'appliance_condition_intact'],
+        ['Leaking', 'appliance_condition_leaking'],
+        ['Odor', 'appliance_condition_odor'],
+        ['Needs change', 'appliance_condition_needs_change']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    stomaColorItems() {
+      return [
+        ['Red/pink', 'stoma_color_red_pink'],
+        ['Dark red', 'stoma_color_dark_red'],
+        ['Pale', 'stoma_color_pale'],
+        ['Black', 'stoma_color_black'],
+        ['Other', 'stoma_color_other']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    peristomalSkinItems() {
+      return [
+        ['Intact', 'peristomal_skin_intact'],
+        ['Irritated', 'peristomal_skin_irritated'],
+        ['Breakdown', 'peristomal_skin_breakdown'],
+        ['Infection', 'peristomal_skin_infection']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    },
+    outputTypeItems() {
+      return [
+        ['Formed stool', 'output_type_formed_stool'],
+        ['Loose stool', 'output_type_loose_stool'],
+        ['Liquid', 'output_type_liquid'],
+        ['Urine', 'output_type_urine'],
+        ['Mucus', 'output_type_mucus']
+      ].map(([value, key]) => ({ value, text: this.$t(`clinical360.assessment.device_marker.${key}`) }))
+    }
+  },
   methods: {
     ...mapActions('nursing', ['createDeviceMarker']),
     async saveDevice(deviceType) {
@@ -301,11 +465,13 @@ export default {
           data: this.forms[deviceType],
           recordedAt: new Date().toISOString()
         })
-        this.$notify({ type: 'success', message: `${deviceType.toUpperCase()} recorded` })
+        const deviceLabel = this.$t(`clinical360.assessment.device_marker.device_type_${deviceType}`)
+        this.$notify({ type: 'success', message: this.$t('clinical360.assessment.device_marker.recorded_message', { device: deviceLabel }) })
         this.dialogs[deviceType] = false
         this.$emit('saved', { type: deviceType, data: this.forms[deviceType] })
       } catch (error) {
-        this.$notify({ type: 'error', message: `Error saving ${deviceType}` })
+        const deviceLabel = this.$t(`clinical360.assessment.device_marker.device_type_${deviceType}`)
+        this.$notify({ type: 'error', message: this.$t('clinical360.assessment.device_marker.error_saving_message', { device: deviceLabel }) })
       }
     }
   }

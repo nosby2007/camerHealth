@@ -4,12 +4,12 @@
     <div class="toolbar">
       <div class="action-group">
         <v-btn x-small depressed color="#0f766e" dark @click="showAddDialog = true">
-          <v-icon x-small left>mdi-plus</v-icon>Add Care Plan
+          <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.care_plan.manage_progress.add_care_plan') }}
         </v-btn>
         <v-menu offset-y>
           <template #activator="{ on, attrs }">
             <v-btn x-small text v-bind="attrs" v-on="on">
-              Apply to all undocumented
+              {{ $t('clinical360.care_plan.manage_progress.apply_to_all_undocumented') }}
               <v-icon x-small>mdi-chevron-down</v-icon>
             </v-btn>
           </template>
@@ -22,14 +22,14 @@
       </div>
 
       <div class="filter-group">
-        <v-checkbox v-model="showActive" dense label="Active Only" class="mt-0" />
+        <v-checkbox v-model="showActive" dense :label="$t('clinical360.care_plan.manage_progress.active_only')" class="mt-0" />
       </div>
     </div>
 
     <!-- Warning Banner -->
     <div v-if="overdueGoals.length > 0" class="warning-banner">
       <v-icon small>mdi-alert</v-icon>
-      {{ overdueGoals.length }} goal(s) have overdue expected end dates.
+      {{ $t('clinical360.care_plan.manage_progress.overdue_goals_warning', { count: overdueGoals.length }) }}
     </div>
 
     <!-- Main Content -->
@@ -38,9 +38,9 @@
       <div v-if="!treeCollapsed" class="tree-panel">
         <div class="tree-header">
           <v-btn x-small text @click="expandAll = !expandAll" class="expand-collapse-all">
-            {{ expandAll ? 'Collapse All' : 'Expand All' }}
+            {{ expandAll ? $t('clinical360.care_plan.manage_progress.collapse_all') : $t('clinical360.care_plan.manage_progress.expand_all') }}
           </v-btn>
-          <button class="collapse-btn" @click="treeCollapsed = true" title="Collapse sidebar">
+          <button class="collapse-btn" @click="treeCollapsed = true" :title="$t('clinical360.care_plan.manage_progress.collapse_sidebar')">
             <v-icon x-small>mdi-chevron-left</v-icon>
           </button>
         </div>
@@ -50,7 +50,7 @@
           @select-goal="selectedGoalId = $event"
         />
       </div>
-      <button v-else class="expand-tree-btn" @click="treeCollapsed = false" title="Expand sidebar">
+      <button v-else class="expand-tree-btn" @click="treeCollapsed = false" :title="$t('clinical360.care_plan.manage_progress.expand_sidebar')">
         <v-icon x-small>mdi-chevron-right</v-icon>
       </button>
 
@@ -73,11 +73,11 @@
           </div>
 
           <div v-if="selectedGoal.lastProgressStatus" class="last-documented">
-            Last documented: {{ selectedGoal.lastDocumentedBy }} on {{ formatDate(selectedGoal.lastDocumentedAt) }}
+            {{ $t('clinical360.care_plan.manage_progress.last_documented', { by: selectedGoal.lastDocumentedBy, date: formatDate(selectedGoal.lastDocumentedAt) }) }}
           </div>
         </div>
         <div v-else class="empty">
-          Select a goal to document progress.
+          {{ $t('clinical360.care_plan.manage_progress.select_goal_hint') }}
         </div>
       </div>
     </div>
@@ -85,26 +85,26 @@
     <!-- Bottom Actions -->
     <div class="bottom-actions">
       <v-btn x-small text @click="markReviewed">
-        <v-icon x-small left>mdi-check-circle</v-icon>Mark as Reviewed
+        <v-icon x-small left>mdi-check-circle</v-icon>{{ $t('clinical360.care_plan.manage_progress.mark_as_reviewed') }}
       </v-btn>
     </div>
 
     <!-- Add Care Plan Dialog -->
     <v-dialog v-model="showAddDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title>Add Care Plan</v-card-title>
+        <v-card-title>{{ $t('clinical360.care_plan.manage_progress.add_care_plan') }}</v-card-title>
         <v-card-text>
-          <v-text-field v-model="newPlan.name" label="Care Plan Name" outlined dense />
-          <v-select v-model="newPlan.type" label="Type" :items="carePlanTypes" outlined dense />
-          <v-textarea v-model="newPlan.problem" label="Problem / diagnosis" rows="2" outlined dense />
-          <v-textarea v-model="newPlan.goal" label="Goal" rows="2" outlined dense />
-          <v-textarea v-model="newPlan.intervention" label="Intervention" rows="2" outlined dense />
-          <v-textarea v-model="newPlan.expectedOutcome" label="Expected outcome" rows="2" outlined dense />
+          <v-text-field v-model="newPlan.name" :label="$t('clinical360.care_plan.manage_progress.care_plan_name')" outlined dense />
+          <v-select v-model="newPlan.type" :label="$t('clinical360.care_plan.manage_progress.type')" :items="carePlanTypeItems" item-value="value" item-text="text" outlined dense />
+          <v-textarea v-model="newPlan.problem" :label="$t('clinical360.care_plan.manage_progress.problem_diagnosis')" rows="2" outlined dense />
+          <v-textarea v-model="newPlan.goal" :label="$t('clinical360.care_plan.manage_progress.goal')" rows="2" outlined dense />
+          <v-textarea v-model="newPlan.intervention" :label="$t('clinical360.care_plan.manage_progress.intervention')" rows="2" outlined dense />
+          <v-textarea v-model="newPlan.expectedOutcome" :label="$t('clinical360.care_plan.manage_progress.expected_outcome')" rows="2" outlined dense />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text small @click="showAddDialog = false">Cancel</v-btn>
-          <v-btn depressed color="#0f766e" dark small @click="addCarePlan">Add</v-btn>
+          <v-btn text small @click="showAddDialog = false">{{ $t('clinical360.care_plan.manage_progress.cancel') }}</v-btn>
+          <v-btn depressed color="#0f766e" dark small @click="addCarePlan">{{ $t('clinical360.care_plan.manage_progress.add') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -142,6 +142,12 @@ export default {
     selectedGoal() {
       if (!this.selectedGoalId) return null
       return this.$store.state.carePlan?.carePlanGoals?.find(g => g.id === this.selectedGoalId)
+    },
+    carePlanTypeItems() {
+      return this.carePlanTypes.map(value => ({
+        value,
+        text: this.$t(`clinical360.care_plan.manage_progress.type_${value}`)
+      }))
     }
   },
   methods: {
@@ -156,7 +162,7 @@ export default {
         progressStatus: status,
         comment: ''
       })
-      this.$toast?.success('Progress documented')
+      this.$toast?.success(this.$t('clinical360.care_plan.manage_progress.progress_documented'))
     },
     applyToAll(status) {
       const plans = (this.$store.state.carePlan?.carePlans || []).filter(plan => plan.patientId === this.patientId)
@@ -168,7 +174,7 @@ export default {
           encounterId: this.encounterId
         })
       })
-      this.$toast?.success('Applied to all undocumented goals')
+      this.$toast?.success(this.$t('clinical360.care_plan.manage_progress.applied_to_all_undocumented'))
     },
     markReviewed() {
       const plans = (this.$store.state.carePlan?.carePlans || []).filter(plan => plan.patientId === this.patientId)
@@ -179,7 +185,7 @@ export default {
           encounterId: this.encounterId,
           comment: ''
         })
-        this.$toast?.success('Care plan marked as reviewed')
+        this.$toast?.success(this.$t('clinical360.care_plan.manage_progress.care_plan_marked_reviewed'))
       }
     },
     async addCarePlan() {
@@ -225,17 +231,18 @@ export default {
       }
       this.showAddDialog = false
       this.newPlan = { name: '', type: 'general', problem: '', goal: '', intervention: '', expectedOutcome: '' }
-      this.$toast?.success('Care plan added')
+      this.$toast?.success(this.$t('clinical360.care_plan.manage_progress.care_plan_added'))
     },
     statusLabel(status) {
-      const labels = {
-        progressing: 'Progressing',
-        not_progressing: 'Not Progressing',
-        adequate_for_discharge: 'Adequate for Discharge',
-        completed: 'Completed',
-        unexpected_discharge_disposition: 'Unexpected Discharge'
+      const keys = {
+        progressing: 'progress_status_progressing',
+        not_progressing: 'progress_status_not_progressing',
+        adequate_for_discharge: 'progress_status_adequate_for_discharge',
+        completed: 'progress_status_completed',
+        unexpected_discharge_disposition: 'progress_status_unexpected_discharge_disposition'
       }
-      return labels[status] || status
+      const key = keys[status]
+      return key ? this.$t(`clinical360.care_plan.manage_progress.${key}`) : status
     },
     formatDate(date) {
       if (!date) return '-'
