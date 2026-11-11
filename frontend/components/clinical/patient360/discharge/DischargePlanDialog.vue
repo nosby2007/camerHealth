@@ -3,7 +3,7 @@
     <v-card class="discharge-dialog">
       <v-card-title class="dialog-title">
         <div>
-          <span>Discharge and continuity</span>
+          <span>{{ $t('clinical360.discharge.plan_dialog.title') }}</span>
           <strong>{{ patientName }}</strong>
         </div>
         <v-btn icon small @click="$emit('close')"><v-icon small>mdi-close</v-icon></v-btn>
@@ -13,38 +13,38 @@
           {{ formError }}
         </v-alert>
         <v-tabs v-model="tab" grow background-color="transparent" color="#0f766e" slider-color="#0f766e">
-          <v-tab>Note</v-tab>
-          <v-tab>Meds</v-tab>
-          <v-tab>Precautions</v-tab>
-          <v-tab>Appointments</v-tab>
+          <v-tab>{{ $t('clinical360.discharge.plan_dialog.tab_note') }}</v-tab>
+          <v-tab>{{ $t('clinical360.discharge.plan_dialog.tab_meds') }}</v-tab>
+          <v-tab>{{ $t('clinical360.discharge.plan_dialog.tab_precautions') }}</v-tab>
+          <v-tab>{{ $t('clinical360.discharge.plan_dialog.tab_appointments') }}</v-tab>
         </v-tabs>
         <v-tabs-items v-model="tab">
           <v-tab-item>
             <div class="discharge-grid">
-              <v-text-field v-model="form.dischargeDateTime" type="datetime-local" label="Discharge date and time" dense outlined required />
-              <v-select v-model="form.dischargeDisposition" :items="dispositionOptions" label="Disposition" dense outlined required />
+              <v-text-field v-model="form.dischargeDateTime" type="datetime-local" :label="$t('clinical360.discharge.plan_dialog.discharge_datetime_label')" dense outlined required />
+              <v-select v-model="form.dischargeDisposition" :items="dispositionOptions" item-text="text" item-value="value" :label="$t('clinical360.discharge.plan_dialog.disposition_label')" dense outlined required />
             </div>
-            <v-textarea v-model="form.note" label="Discharge note" rows="4" dense outlined />
-            <v-textarea v-model="form.handoff" label="Handoff summary" rows="3" dense outlined />
-            <v-select v-model="form.readiness" :items="readinessOptions" label="Readiness" dense outlined />
+            <v-textarea v-model="form.note" :label="$t('clinical360.discharge.plan_dialog.note_label')" rows="4" dense outlined />
+            <v-textarea v-model="form.handoff" :label="$t('clinical360.discharge.plan_dialog.handoff_label')" rows="3" dense outlined />
+            <v-select v-model="form.readiness" :items="readinessOptions" item-text="text" item-value="value" :label="$t('clinical360.discharge.plan_dialog.readiness_label')" dense outlined />
           </v-tab-item>
           <v-tab-item>
-            <v-textarea v-model="form.medsAtDischarge" label="Meds at discharge" rows="5" dense outlined />
+            <v-textarea v-model="form.medsAtDischarge" :label="$t('clinical360.discharge.plan_dialog.meds_at_discharge_label')" rows="5" dense outlined />
           </v-tab-item>
           <v-tab-item>
-            <v-textarea v-model="form.returnPrecautions" label="Return precautions" rows="5" dense outlined />
+            <v-textarea v-model="form.returnPrecautions" :label="$t('clinical360.discharge.plan_dialog.return_precautions_label')" rows="5" dense outlined />
           </v-tab-item>
           <v-tab-item>
-            <v-text-field v-model="form.followUpAppointment" label="Follow-up appointment" dense outlined />
-            <v-textarea v-model="form.appointments" label="Appointment notes" rows="4" dense outlined />
+            <v-text-field v-model="form.followUpAppointment" :label="$t('clinical360.discharge.plan_dialog.follow_up_appointment_label')" dense outlined />
+            <v-textarea v-model="form.appointments" :label="$t('clinical360.discharge.plan_dialog.appointment_notes_label')" rows="4" dense outlined />
           </v-tab-item>
         </v-tabs-items>
       </v-card-text>
       <v-card-actions class="dialog-actions">
         <v-spacer />
-        <v-btn text small @click="$emit('close')">Cancel</v-btn>
+        <v-btn text small @click="$emit('close')">{{ $t('clinical360.discharge.plan_dialog.cancel_btn') }}</v-btn>
         <v-btn depressed color="#0f766e" dark small :loading="saving" @click="save">
-          <v-icon x-small left>mdi-logout-variant</v-icon>Complete discharge
+          <v-icon x-small left>mdi-logout-variant</v-icon>{{ $t('clinical360.discharge.plan_dialog.complete_discharge_btn') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -64,9 +64,28 @@ export default {
       tab: 0,
       saving: false,
       formError: '',
-      readinessOptions: ['Ready now', 'Not yet ready', 'Needs review'],
-      dispositionOptions: ['Home', 'Home with Services', 'Rehabilitation', 'Skilled Nursing', 'Hospice', 'Transfer to Another Facility', 'Against Medical Advice', 'Deceased'],
       form: this.resetForm()
+    }
+  },
+  computed: {
+    readinessOptions() {
+      return [
+        { value: 'Ready now', text: this.$t('clinical360.discharge.plan_dialog.readiness_ready_now') },
+        { value: 'Not yet ready', text: this.$t('clinical360.discharge.plan_dialog.readiness_not_yet_ready') },
+        { value: 'Needs review', text: this.$t('clinical360.discharge.plan_dialog.readiness_needs_review') }
+      ]
+    },
+    dispositionOptions() {
+      return [
+        { value: 'Home', text: this.$t('clinical360.discharge.plan_dialog.disposition_home') },
+        { value: 'Home with Services', text: this.$t('clinical360.discharge.plan_dialog.disposition_home_with_services') },
+        { value: 'Rehabilitation', text: this.$t('clinical360.discharge.plan_dialog.disposition_rehabilitation') },
+        { value: 'Skilled Nursing', text: this.$t('clinical360.discharge.plan_dialog.disposition_skilled_nursing') },
+        { value: 'Hospice', text: this.$t('clinical360.discharge.plan_dialog.disposition_hospice') },
+        { value: 'Transfer to Another Facility', text: this.$t('clinical360.discharge.plan_dialog.disposition_transfer') },
+        { value: 'Against Medical Advice', text: this.$t('clinical360.discharge.plan_dialog.disposition_ama') },
+        { value: 'Deceased', text: this.$t('clinical360.discharge.plan_dialog.disposition_deceased') }
+      ]
     }
   },
   watch: {
@@ -106,7 +125,7 @@ export default {
           patientId,
           encounterId: this.$route.params.encounterId || null,
           noteType: 'discharge_note',
-          title: 'Discharge note',
+          title: this.$t('clinical360.discharge.plan_dialog.discharge_note_title'),
           body: [this.form.note, this.form.handoff].filter(Boolean).join('\n\n'),
           readiness: this.form.readiness,
           recordedAt
@@ -115,7 +134,7 @@ export default {
           await this.$store.dispatch('discharge/addDischargeMedication', {
             patientId,
             encounterId: this.$route.params.encounterId || null,
-            name: 'Discharge medication list',
+            name: this.$t('clinical360.discharge.plan_dialog.discharge_medication_list_name'),
             details: this.form.medsAtDischarge,
             recordedAt
           })
@@ -124,7 +143,7 @@ export default {
           await this.$store.dispatch('discharge/addReturnPrecaution', {
             patientId,
             encounterId: this.$route.params.encounterId || null,
-            title: 'Return precautions',
+            title: this.$t('clinical360.discharge.plan_dialog.return_precautions_title'),
             details: this.form.returnPrecautions,
             recordedAt
           })
@@ -133,7 +152,7 @@ export default {
           await this.$store.dispatch('discharge/addDischargeAppointment', {
             patientId,
             encounterId: this.$route.params.encounterId || null,
-            title: this.form.followUpAppointment || 'Follow-up appointment',
+            title: this.form.followUpAppointment || this.$t('clinical360.discharge.plan_dialog.follow_up_appointment_default_title'),
             notes: this.form.appointments,
             recordedAt
           })
@@ -146,17 +165,17 @@ export default {
         })
         this.$emit('close')
       } catch (error) {
-        this.formError = error.message || 'Discharge could not be completed.'
+        this.formError = error.response?.data?.error || error.message || this.$t('clinical360.discharge.plan_dialog.error_discharge_failed')
       } finally {
         this.saving = false
       }
     },
     validateForm() {
-      if (!this.form.dischargeDateTime || !this.form.dischargeDisposition) return 'Discharge date, time and disposition are required.'
-      if (this.form.readiness !== 'Ready now') return 'The patient must be marked Ready now before discharge.'
-      if (!this.form.note.trim() || !this.form.handoff.trim()) return 'Discharge note and handoff summary are required.'
-      if (!this.form.medsAtDischarge.trim()) return 'Document discharge medications or explicitly record that none are prescribed.'
-      if (!this.form.returnPrecautions.trim()) return 'Return precautions are required.'
+      if (!this.form.dischargeDateTime || !this.form.dischargeDisposition) return this.$t('clinical360.discharge.plan_dialog.error_datetime_disposition_required')
+      if (this.form.readiness !== 'Ready now') return this.$t('clinical360.discharge.plan_dialog.error_readiness_required')
+      if (!this.form.note.trim() || !this.form.handoff.trim()) return this.$t('clinical360.discharge.plan_dialog.error_note_handoff_required')
+      if (!this.form.medsAtDischarge.trim()) return this.$t('clinical360.discharge.plan_dialog.error_medications_required')
+      if (!this.form.returnPrecautions.trim()) return this.$t('clinical360.discharge.plan_dialog.error_return_precautions_required')
       return ''
     },
     validationTab() {

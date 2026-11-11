@@ -45,10 +45,12 @@ export default {
   },
   computed: {
     dialogEyebrow() {
-      return this.authorRole ? `${this.authorRole} documentation` : 'Clinical documentation'
+      return this.authorRole
+        ? this.$t('clinical360.dialogs.note_dialog.role_documentation', { role: this.authorRole })
+        : this.$t('clinical360.dialogs.note_dialog.clinical_documentation')
     },
     dialogHeadline() {
-      return this.dialogTitle || NOTE_TYPE_LABELS[this.noteType] || 'Clinical Note'
+      return this.dialogTitle || this.translatedNoteTypeLabel(this.noteType) || this.$t('clinical360.dialogs.note_dialog.clinical_note')
     }
   },
   watch: {
@@ -60,6 +62,9 @@ export default {
     }
   },
   methods: {
+    translatedNoteTypeLabel(noteType) {
+      return NOTE_TYPE_LABELS[noteType] ? this.$t(`clinical360.dialogs.note_dialog.note_types.${noteType}`) : ''
+    },
     buildDraft() {
       if (this.existingNote) return { ...this.existingNote }
       return {
@@ -71,16 +76,30 @@ export default {
     },
     async handleSave(draft) {
       const payload = { ...draft, patientId: this.patientId, authorRole: this.authorRole }
-      if (payload.id) {
-        this.note = await this.$store.dispatch('nursing/updateClinicalNote', payload)
-      } else {
-        this.note = await this.$store.dispatch('nursing/createClinicalNote', payload)
+      try {
+        if (payload.id) {
+          this.note = await this.$store.dispatch('nursing/updateClinicalNote', payload)
+        } else {
+          this.note = await this.$store.dispatch('nursing/createClinicalNote', payload)
+        }
+        this.$emit('saved', this.note)
+      } catch (err) {
+        this.$emit(
+          'error',
+          err.response?.data?.error || err.message || this.$t('clinical360.dialogs.note_dialog.save_error')
+        )
       }
-      this.$emit('saved', this.note)
     },
     async handleSign(id) {
-      this.note = await this.$store.dispatch('nursing/signClinicalNote', id)
-      this.$emit('saved', this.note)
+      try {
+        this.note = await this.$store.dispatch('nursing/signClinicalNote', id)
+        this.$emit('saved', this.note)
+      } catch (err) {
+        this.$emit(
+          'error',
+          err.response?.data?.error || err.message || this.$t('clinical360.dialogs.note_dialog.sign_error')
+        )
+      }
     }
   }
 }

@@ -2,57 +2,57 @@
   <section class="medication-workspace">
     <header class="module-header">
       <div>
-        <span>MEDICATION SAFETY</span>
-        <h2>Medication Profile and Formulary</h2>
-        <p>Current treatment, dispensing status and prescribing support for this encounter.</p>
+        <span>{{ $t('clinical360.medications.tab.section_label') }}</span>
+        <h2>{{ $t('clinical360.medications.tab.title') }}</h2>
+        <p>{{ $t('clinical360.medications.tab.subtitle') }}</p>
       </div>
       <div class="header-actions">
         <v-btn x-small outlined color="#0f766e" @click="printMedicationList">
-          <v-icon x-small left>mdi-printer</v-icon>Print list
+          <v-icon x-small left>mdi-printer</v-icon>{{ $t('clinical360.medications.tab.print_list') }}
         </v-btn>
         <v-btn v-if="canPrescribe && !readOnly" x-small depressed color="#0f766e" dark @click="view = 'formulary'">
-          <v-icon x-small left>mdi-pill-plus</v-icon>New order
+          <v-icon x-small left>mdi-pill-plus</v-icon>{{ $t('clinical360.medications.tab.new_order') }}
         </v-btn>
       </div>
     </header>
 
-    <div v-if="readOnly" class="read-only"><v-icon x-small>mdi-lock-outline</v-icon> Discharged chart. Medication data is read only.</div>
+    <div v-if="readOnly" class="read-only"><v-icon x-small>mdi-lock-outline</v-icon> {{ $t('clinical360.medications.tab.read_only_notice') }}</div>
 
-    <div class="view-tabs" role="tablist" aria-label="Medication workspace views">
-      <button type="button" :class="{ active: view === 'profile' }" @click="view = 'profile'">Patient medications <strong>{{ medications.length }}</strong></button>
-      <button type="button" :class="{ active: view === 'formulary' }" @click="view = 'formulary'">Formulary and education <strong>{{ catalog.length }}</strong></button>
+    <div class="view-tabs" role="tablist" :aria-label="$t('clinical360.medications.tab.aria_workspace_views')">
+      <button type="button" :class="{ active: view === 'profile' }" @click="view = 'profile'">{{ $t('clinical360.medications.tab.patient_medications') }} <strong>{{ medications.length }}</strong></button>
+      <button type="button" :class="{ active: view === 'formulary' }" @click="view = 'formulary'">{{ $t('clinical360.medications.tab.formulary_and_education') }} <strong>{{ catalog.length }}</strong></button>
     </div>
 
     <template v-if="view === 'profile'">
       <div class="summary-strip">
-        <article><span>Active</span><strong>{{ activeCount }}</strong><small>current orders</small></article>
-        <article><span>Awaiting pharmacy</span><strong>{{ pendingCount }}</strong><small>pending or partial</small></article>
-        <article :class="{ alert: outOfStockCount }"><span>Out of stock</span><strong>{{ outOfStockCount }}</strong><small>requires a plan</small></article>
-        <article><span>Dispensed</span><strong>{{ dispensedCount }}</strong><small>pharmacy completed</small></article>
+        <article><span>{{ $t('clinical360.medications.tab.active') }}</span><strong>{{ activeCount }}</strong><small>{{ $t('clinical360.medications.tab.current_orders') }}</small></article>
+        <article><span>{{ $t('clinical360.medications.tab.awaiting_pharmacy') }}</span><strong>{{ pendingCount }}</strong><small>{{ $t('clinical360.medications.tab.pending_or_partial') }}</small></article>
+        <article :class="{ alert: outOfStockCount }"><span>{{ $t('clinical360.medications.tab.out_of_stock') }}</span><strong>{{ outOfStockCount }}</strong><small>{{ $t('clinical360.medications.tab.requires_a_plan') }}</small></article>
+        <article><span>{{ $t('clinical360.medications.tab.dispensed') }}</span><strong>{{ dispensedCount }}</strong><small>{{ $t('clinical360.medications.tab.pharmacy_completed') }}</small></article>
       </div>
       <div class="filter-bar">
-        <label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="search" type="search" placeholder="Search medication, route or status" /></label>
-        <span>{{ filteredMedications.length }} shown</span>
+        <label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="search" type="search" :placeholder="$t('clinical360.medications.tab.search_placeholder')" /></label>
+        <span>{{ $t('clinical360.medications.tab.shown_count', { count: filteredMedications.length }) }}</span>
       </div>
-      <div class="medication-table" role="table" aria-label="Patient medication list">
-        <div class="medication-head" role="row"><span>Medication</span><span>Dose / route</span><span>Schedule</span><span>Pharmacy</span><span>Education</span></div>
+      <div class="medication-table" role="table" :aria-label="$t('clinical360.medications.tab.aria_medication_list')">
+        <div class="medication-head" role="row"><span>{{ $t('clinical360.medications.tab.col_medication') }}</span><span>{{ $t('clinical360.medications.tab.col_dose_route') }}</span><span>{{ $t('clinical360.medications.tab.col_schedule') }}</span><span>{{ $t('clinical360.medications.tab.col_pharmacy') }}</span><span>{{ $t('clinical360.medications.tab.col_education') }}</span></div>
         <article v-for="med in filteredMedications" :key="med.id" class="medication-row">
-          <span><strong>{{ medicationName(med) }}</strong><small>{{ med.medicationClass || catalogFor(med)?.medicationClass || 'Class not labelled' }}</small></span>
-          <span><strong>{{ med.dose || med.dosage || 'Per order' }}</strong><small>{{ med.route || 'Route not filed' }}</small></span>
-          <span><strong>{{ med.frequency || 'Not scheduled' }}</strong><small>{{ med.status || 'Active' }}</small></span>
-          <span><b :class="['status', pharmacyStatusClass(med)]">{{ pharmacyStatus(med) }}</b><small>{{ med.stockAction || med.dispenseLocation || 'Hospital pharmacy' }}</small></span>
-          <span><strong>{{ educationFor(med) }}</strong><small v-if="sideEffectsFor(med)">Common effects: {{ sideEffectsFor(med) }}</small></span>
+          <span><ClinicalHoverCard :title="medicationName(med)" :eyebrow="$t('clinical360.medications.tab.section_label')" :subtitle="med.frequency || $t('clinical360.medications.tab.not_scheduled')" :details="medicationHoverDetails(med)"><template #activator><strong class="detail-trigger">{{ medicationName(med) }}</strong></template></ClinicalHoverCard><small>{{ med.medicationClass || catalogFor(med)?.medicationClass || $t('clinical360.medications.tab.class_not_labelled') }}</small></span>
+          <span><strong>{{ med.dose || med.dosage || $t('clinical360.medications.tab.per_order') }}</strong><small>{{ med.route || $t('clinical360.medications.tab.route_not_filed') }}</small></span>
+          <span><strong>{{ med.frequency || $t('clinical360.medications.tab.not_scheduled') }}</strong><small>{{ med.status || $t('clinical360.medications.tab.status_active') }}</small></span>
+          <span><b :class="['status', pharmacyStatusClass(med)]">{{ pharmacyStatusLabel(med) }}</b><small>{{ med.stockAction || med.dispenseLocation || $t('clinical360.medications.tab.hospital_pharmacy') }}</small></span>
+          <span><strong>{{ educationFor(med) }}</strong><small v-if="sideEffectsFor(med)">{{ $t('clinical360.medications.tab.common_effects', { effects: sideEffectsFor(med) }) }}</small></span>
         </article>
-        <div v-if="!filteredMedications.length" class="empty-state"><v-icon size="34" color="#94a3b8">mdi-pill-off</v-icon><strong>No medication matches this view</strong></div>
+        <div v-if="!filteredMedications.length" class="empty-state"><v-icon size="34" color="#94a3b8">mdi-pill-off</v-icon><strong>{{ $t('clinical360.medications.tab.empty_state') }}</strong></div>
       </div>
     </template>
 
     <template v-else>
-      <div class="formulary-notice"><v-icon small color="#b45309">mdi-shield-alert-outline</v-icon><span><strong>Prescribing support only.</strong> Verify allergies, pregnancy, weight, renal/hepatic function, interactions, local formulary and the current treatment guideline before signing.</span></div>
+      <div class="formulary-notice"><v-icon small color="#b45309">mdi-shield-alert-outline</v-icon><span><strong>{{ $t('clinical360.medications.tab.prescribing_support_only') }}</strong> {{ $t('clinical360.medications.tab.prescribing_support_detail') }}</span></div>
       <div class="catalog-filters">
-        <label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="catalogSearch" type="search" placeholder="Search generic name, class or clinical need" /></label>
-        <select v-model="selectedClass"><option value="">All classes</option><option v-for="item in classes" :key="item">{{ item }}</option></select>
-        <select v-model="selectedNeed"><option value="">All clinical needs</option><option v-for="item in needs" :key="item">{{ item }}</option></select>
+        <label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="catalogSearch" type="search" :placeholder="$t('clinical360.medications.tab.catalog_search_placeholder')" /></label>
+        <select v-model="selectedClass"><option value="">{{ $t('clinical360.medications.tab.all_classes') }}</option><option v-for="item in classes" :key="item">{{ item }}</option></select>
+        <select v-model="selectedNeed"><option value="">{{ $t('clinical360.medications.tab.all_clinical_needs') }}</option><option v-for="item in needs" :key="item">{{ item }}</option></select>
       </div>
       <div class="catalog-layout">
         <div class="catalog-list">
@@ -60,21 +60,21 @@
             <span><strong>{{ item.genericName }}</strong><small>{{ item.medicationClass }}</small></span>
             <em>{{ item.needs.slice(0, 2).join(' · ') }}</em>
           </button>
-          <div v-if="!filteredCatalog.length" class="empty-state"><strong>No formulary item matches these filters</strong></div>
+          <div v-if="!filteredCatalog.length" class="empty-state"><strong>{{ $t('clinical360.medications.tab.no_formulary_match') }}</strong></div>
         </div>
         <aside class="catalog-detail">
           <template v-if="selectedCatalog">
-            <header><span>GENERIC MEDICATION</span><strong>{{ selectedCatalog.genericName }}</strong><small>{{ selectedCatalog.medicationClass }}</small></header>
+            <header><span>{{ $t('clinical360.medications.tab.generic_medication') }}</span><strong>{{ selectedCatalog.genericName }}</strong><small>{{ selectedCatalog.medicationClass }}</small></header>
             <dl>
-              <div><dt>Clinical needs</dt><dd>{{ selectedCatalog.needs.join(', ') }}</dd></div>
-              <div><dt>Common routes</dt><dd>{{ selectedCatalog.routes.join(', ') }}</dd></div>
-              <div><dt>Common side effects</dt><dd>{{ selectedCatalog.sideEffects }}</dd></div>
-              <div><dt>Patient education</dt><dd>{{ selectedCatalog.education }}</dd></div>
-              <div class="warning"><dt>Safety check</dt><dd>{{ selectedCatalog.warnings }}</dd></div>
+              <div><dt>{{ $t('clinical360.medications.tab.clinical_needs') }}</dt><dd>{{ selectedCatalog.needs.join(', ') }}</dd></div>
+              <div><dt>{{ $t('clinical360.medications.tab.common_routes') }}</dt><dd>{{ selectedCatalog.routes.join(', ') }}</dd></div>
+              <div><dt>{{ $t('clinical360.medications.tab.common_side_effects') }}</dt><dd>{{ selectedCatalog.sideEffects }}</dd></div>
+              <div><dt>{{ $t('clinical360.medications.tab.patient_education') }}</dt><dd>{{ selectedCatalog.education }}</dd></div>
+              <div class="warning"><dt>{{ $t('clinical360.medications.tab.safety_check') }}</dt><dd>{{ selectedCatalog.warnings }}</dd></div>
             </dl>
-            <v-btn v-if="canPrescribe && !readOnly" block small depressed color="#0f766e" dark @click="$emit('prescribe', selectedCatalog)"><v-icon x-small left>mdi-file-document-edit-outline</v-icon>Use in medication order</v-btn>
+            <v-btn v-if="canPrescribe && !readOnly" block small depressed color="#0f766e" dark @click="$emit('prescribe', selectedCatalog)"><v-icon x-small left>mdi-file-document-edit-outline</v-icon>{{ $t('clinical360.medications.tab.use_in_medication_order') }}</v-btn>
           </template>
-          <div v-else class="empty-state">Select a formulary item to review it.</div>
+          <div v-else class="empty-state">{{ $t('clinical360.medications.tab.select_formulary_item') }}</div>
         </aside>
       </div>
     </template>
@@ -82,10 +82,13 @@
 </template>
 
 <script>
+import ClinicalHoverCard from '../../ClinicalHoverCard.vue'
+
 const { MEDICATION_CATALOG, findMedicationCatalogItem } = require('../../../../util/medication-catalog.cjs')
 
 export default {
   name: 'Patient360MedicationTab',
+  components: { ClinicalHoverCard },
   props: {
     medications: { type: Array, default: () => [] },
     patient: { type: Object, default: () => ({}) },
@@ -117,21 +120,36 @@ export default {
     selectedCatalog() { return this.catalog.find(item => item.id === this.selectedCatalogId) || this.filteredCatalog[0] || null }
   },
   methods: {
-    medicationName(med) { return med.drug || med.medication || med.name || 'Medication' },
+    medicationName(med) { return med.drug || med.medication || med.name || this.$t('clinical360.medications.tab.default_medication') },
     catalogFor(med) { return findMedicationCatalogItem(this.medicationName(med)) },
-    educationFor(med) { return med.education || this.catalogFor(med)?.education || 'Education not yet documented.' },
+    educationFor(med) { return med.education || this.catalogFor(med)?.education || this.$t('clinical360.medications.tab.education_not_documented') },
     sideEffectsFor(med) { return med.sideEffects || this.catalogFor(med)?.sideEffects || '' },
     pharmacyStatus(med) { return med.inStock === false ? 'Out of Stock' : (med.dispensingStatus || 'Pending') },
+    pharmacyStatusLabel(med) {
+      const status = this.pharmacyStatus(med)
+      if (status === 'Out of Stock') return this.$t('clinical360.medications.tab.out_of_stock_status')
+      if (status === 'Pending') return this.$t('clinical360.medications.tab.pending_status')
+      return status
+    },
     pharmacyStatusClass(med) { const value = this.pharmacyStatus(med).toLowerCase(); return value.includes('out of stock') ? 'stockout' : value.includes('dispensed') && !value.includes('partial') ? 'complete' : value.includes('partial') ? 'partial' : 'pending' },
+    medicationHoverDetails(med) {
+      return [
+        { label: this.$t('clinical360.medications.tab.col_dose_route'), value: [med.dose || med.dosage, med.route].filter(Boolean).join(' · ') || this.$t('clinical360.medications.tab.per_order') },
+        { label: this.$t('clinical360.medications.tab.col_schedule'), value: med.frequency || this.$t('clinical360.medications.tab.not_scheduled') },
+        { label: this.$t('clinical360.medications.tab.col_pharmacy'), value: this.pharmacyStatusLabel(med) },
+        { label: this.$t('clinical360.medications.tab.col_education'), value: this.educationFor(med) },
+        { label: this.$t('clinical360.medications.tab.common_side_effects'), value: this.sideEffectsFor(med) }
+      ]
+    },
     printMedicationList() {
       if (!process.client) return
       const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]))
-      const rows = this.medications.map(med => `<tr><td>${escape(this.medicationName(med))}</td><td>${escape(med.dose || med.dosage || '-')}</td><td>${escape(med.route || '-')}</td><td>${escape(med.frequency || '-')}</td><td>${escape(med.status || 'Active')}</td><td>${escape(this.pharmacyStatus(med))}</td></tr>`).join('')
-      const patientName = this.patient.name || [this.patient.firstName, this.patient.lastName].filter(Boolean).join(' ') || 'Patient'
+      const rows = this.medications.map(med => `<tr><td>${escape(this.medicationName(med))}</td><td>${escape(med.dose || med.dosage || '-')}</td><td>${escape(med.route || '-')}</td><td>${escape(med.frequency || '-')}</td><td>${escape(med.status || this.$t('clinical360.medications.tab.status_active'))}</td><td>${escape(this.pharmacyStatusLabel(med))}</td></tr>`).join('')
+      const patientName = this.patient.name || [this.patient.firstName, this.patient.lastName].filter(Boolean).join(' ') || this.$t('clinical360.medications.tab.default_patient')
       const mrn = this.patient.mrn || this.patient.MRN || this.patient.id || '-'
       const popup = window.open('', '_blank', 'width=980,height=720')
       if (!popup) return
-      popup.document.write(`<!doctype html><html><head><title>Medication list - ${escape(patientName)}</title><style>body{font-family:Arial,sans-serif;color:#172b31;margin:28px}h1{font-size:20px;margin:0 0 4px}.meta{font-size:12px;margin-bottom:20px;color:#52676c}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #b8c6c8;padding:7px;text-align:left;vertical-align:top}th{background:#e7efef}.footer{margin-top:20px;font-size:10px;color:#64757a}</style></head><body><h1>Medication list</h1><div class="meta"><strong>${escape(patientName)}</strong> · MRN ${escape(mrn)} · Printed ${escape(new Date().toLocaleString())}</div><table><thead><tr><th>Medication</th><th>Dose</th><th>Route</th><th>Frequency</th><th>Clinical status</th><th>Pharmacy</th></tr></thead><tbody>${rows || '<tr><td colspan="6">No medication recorded.</td></tr>'}</tbody></table><div class="footer">Clinical medication list. Verify against the signed prescription and current eMAR before administration.</div></body></html>`)
+      popup.document.write(`<!doctype html><html><head><title>${escape(this.$t('clinical360.medications.tab.print_title', { name: patientName }))}</title><style>body{font-family:Arial,sans-serif;color:#172b31;margin:28px}h1{font-size:20px;margin:0 0 4px}.meta{font-size:12px;margin-bottom:20px;color:#52676c}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #b8c6c8;padding:7px;text-align:left;vertical-align:top}th{background:#e7efef}.footer{margin-top:20px;font-size:10px;color:#64757a}</style></head><body><h1>${escape(this.$t('clinical360.medications.tab.print_heading'))}</h1><div class="meta"><strong>${escape(patientName)}</strong> · ${escape(this.$t('clinical360.medications.tab.print_mrn', { mrn }))} · ${escape(this.$t('clinical360.medications.tab.print_printed', { datetime: new Date().toLocaleString() }))}</div><table><thead><tr><th>${escape(this.$t('clinical360.medications.tab.col_medication'))}</th><th>${escape(this.$t('clinical360.medications.tab.print_col_dose'))}</th><th>${escape(this.$t('clinical360.medications.tab.print_col_route'))}</th><th>${escape(this.$t('clinical360.medications.tab.print_col_frequency'))}</th><th>${escape(this.$t('clinical360.medications.tab.print_col_clinical_status'))}</th><th>${escape(this.$t('clinical360.medications.tab.col_pharmacy'))}</th></tr></thead><tbody>${rows || `<tr><td colspan="6">${escape(this.$t('clinical360.medications.tab.print_no_medication'))}</td></tr>`}</tbody></table><div class="footer">${escape(this.$t('clinical360.medications.tab.print_footer'))}</div></body></html>`)
       popup.document.close()
       popup.focus()
       popup.print()

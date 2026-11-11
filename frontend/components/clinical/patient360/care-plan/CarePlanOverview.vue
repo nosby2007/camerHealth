@@ -3,57 +3,57 @@
     <div class="overview-grid">
       <!-- Left: Problems/Goals Summary -->
       <section class="overview-section">
-        <h3>Care Plan Problems & Goals</h3>
+        <h3>{{ $t('clinical360.care_plan.overview.problems_and_goals') }}</h3>
         <div v-if="overview" class="summary-stats">
           <div class="stat">
-            <span class="label">Care Plans:</span>
+            <span class="label">{{ $t('clinical360.care_plan.overview.care_plans') }}:</span>
             <span class="value">{{ overview.carePlanCount }}</span>
           </div>
           <div class="stat">
-            <span class="label">Problems:</span>
+            <span class="label">{{ $t('clinical360.care_plan.overview.problems') }}:</span>
             <span class="value">{{ overview.problemCount }}</span>
           </div>
           <div class="stat">
-            <span class="label">Goals:</span>
+            <span class="label">{{ $t('clinical360.care_plan.overview.goals') }}:</span>
             <span class="value">{{ overview.goalCount }}</span>
           </div>
           <div class="stat">
-            <span class="label">Progressing:</span>
+            <span class="label">{{ $t('clinical360.care_plan.overview.progressing') }}:</span>
             <span class="value">{{ overview.progressingCount }}</span>
           </div>
           <div class="stat">
-            <span class="label">Adequate for Discharge:</span>
+            <span class="label">{{ $t('clinical360.care_plan.overview.adequate_for_discharge') }}:</span>
             <span class="value">{{ overview.adequateForDischargeCount }}</span>
           </div>
           <div class="stat">
-            <span class="label">Undocumented:</span>
+            <span class="label">{{ $t('clinical360.care_plan.overview.undocumented') }}:</span>
             <span class="value">{{ overview.undocumentedCount }}</span>
           </div>
           <div v-if="overview.overdueCount > 0" class="stat warning">
-            <span class="label">Overdue Goals:</span>
+            <span class="label">{{ $t('clinical360.care_plan.overview.overdue_goals') }}:</span>
             <span class="value">{{ overview.overdueCount }}</span>
           </div>
         </div>
         <v-btn x-small text color="#0f766e" @click="$emit('manage')">
-          View care plan progress
+          {{ $t('clinical360.care_plan.overview.view_care_plan_progress') }}
         </v-btn>
       </section>
 
       <!-- Right: Education Completion -->
       <section class="overview-section">
-        <h3>Education Titles Completion</h3>
+        <h3>{{ $t('clinical360.care_plan.overview.education_titles_completion') }}</h3>
         <div v-for="edu in educationCompletionSummary" :key="edu.titleId" class="education-item">
           <span class="title">{{ edu.title }}</span>
-          <span class="completion">{{ edu.completedCount }} of {{ edu.totalPoints }} complete</span>
+          <span class="completion">{{ $t('clinical360.care_plan.overview.completion_progress', { completed: edu.completedCount, total: edu.totalPoints }) }}</span>
         </div>
       </section>
     </div>
 
     <section class="overview-section full-width">
       <div class="section-heading">
-        <h3>Active and historical care plans</h3>
+        <h3>{{ $t('clinical360.care_plan.overview.active_and_historical') }}</h3>
         <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="$emit('create')">
-          <v-icon x-small left>mdi-plus</v-icon>Add from template
+          <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.care_plan.overview.add_from_template') }}
         </v-btn>
       </div>
       <div v-if="carePlans.length" class="plan-list">
@@ -61,20 +61,20 @@
           <v-icon small color="#0f766e">mdi-clipboard-check-outline</v-icon>
           <span>
             <strong>{{ plan.name || plan.title }}</strong>
-            <small>{{ plan.diagnosis || plan.type || 'Clinical care plan' }}</small>
+            <small>{{ plan.diagnosis || plan.type || $t('clinical360.care_plan.overview.clinical_care_plan') }}</small>
           </span>
           <span class="plan-meta">
-            <b :class="statusClass(plan.status)">{{ plan.status || 'active' }}</b>
+            <b :class="statusClass(plan.status)">{{ plan.status || $t('clinical360.care_plan.overview.status_active') }}</b>
             <small>{{ formatDate(plan.createdAt) }}</small>
           </span>
         </button>
       </div>
-      <div v-else class="empty">No care plan has been created for this encounter.</div>
+      <div v-else class="empty">{{ $t('clinical360.care_plan.overview.no_care_plan_created') }}</div>
     </section>
 
     <!-- Bottom: Most Recent Care Plan Note -->
     <section class="overview-section full-width">
-      <h3>Most Recent Care Plan Note</h3>
+      <h3>{{ $t('clinical360.care_plan.overview.most_recent_note') }}</h3>
       <div v-if="mostRecentNote" class="note-preview">
         <div class="note-header">
           <span class="title">{{ mostRecentNote.title }}</span>
@@ -87,7 +87,7 @@
         <div class="note-body">{{ mostRecentNote.body }}</div>
       </div>
       <div v-else class="empty">
-        No care plan note filed yet.
+        {{ $t('clinical360.care_plan.overview.no_note_filed') }}
       </div>
     </section>
   </div>

@@ -1,5 +1,5 @@
 <template>
-  <nav class="navigator-strip" role="navigation" aria-label="Clinical workflow navigator">
+  <nav class="navigator-strip" role="navigation" :aria-label="$t('clinical360.shell.navigator_strip.aria_navigator')">
     <div class="navigator-container">
       <!-- Current Patient Info -->
       <div class="patient-info">
@@ -11,17 +11,17 @@
       <div class="workflow-state">
         <div class="state-item" :class="{ active: currentState === 'admission' }">
           <div class="state-dot"></div>
-          <span>Admission</span>
+          <span>{{ $t('clinical360.shell.navigator_strip.admission') }}</span>
         </div>
         <div class="state-arrow">→</div>
         <div class="state-item" :class="{ active: currentState === 'active-care' }">
           <div class="state-dot"></div>
-          <span>Active Care</span>
+          <span>{{ $t('clinical360.shell.navigator_strip.active_care') }}</span>
         </div>
         <div class="state-arrow">→</div>
         <div class="state-item" :class="{ active: currentState === 'discharge' }">
           <div class="state-dot"></div>
-          <span>Discharge</span>
+          <span>{{ $t('clinical360.shell.navigator_strip.discharge') }}</span>
         </div>
       </div>
 
@@ -32,10 +32,10 @@
           class="action-btn admission-btn"
           :disabled="!canAdmit"
           @click="openAdmissionChecklist"
-          aria-label="Admission workflow"
+          :aria-label="$t('clinical360.shell.navigator_strip.admission_workflow')"
         >
           <v-icon small>mdi-clipboard-check</v-icon>
-          Admission
+          {{ $t('clinical360.shell.navigator_strip.admission') }}
         </button>
 
         <button
@@ -43,10 +43,10 @@
           class="action-btn transfer-btn"
           :disabled="!canTransfer"
           @click="openTransferChecklist"
-          aria-label="Transfer workflow"
+          :aria-label="$t('clinical360.shell.navigator_strip.transfer_workflow')"
         >
           <v-icon small>mdi-transfer</v-icon>
-          Transfer
+          {{ $t('clinical360.shell.navigator_strip.transfer') }}
         </button>
 
         <button
@@ -54,10 +54,10 @@
           class="action-btn discharge-btn"
           :disabled="!canDischarge"
           @click="openDischargeSummary"
-          aria-label="Discharge workflow"
+          :aria-label="$t('clinical360.shell.navigator_strip.discharge_workflow')"
         >
           <v-icon small>mdi-exit-to-app</v-icon>
-          Discharge
+          {{ $t('clinical360.shell.navigator_strip.discharge') }}
         </button>
       </div>
 
@@ -156,12 +156,16 @@ export default {
       const task = await this.$store.dispatch('clinical/createTask', {
         patientId: this.patientId,
         relatedType: 'admission-checklist',
-        title: 'Admission checklist completed',
+        title: this.$t('clinical360.shell.navigator_strip.admission_checklist_completed'),
         assignedToRole: 'NURSE',
         priority: 'Today',
         actionReason: JSON.stringify(data)
       })
-      await this.$store.dispatch('clinical/updateTaskStatus', { id: task.id, status: 'done', reason: 'Admission checklist filed' })
+      await this.$store.dispatch('clinical/updateTaskStatus', {
+        id: task.id,
+        status: 'done',
+        reason: this.$t('clinical360.shell.navigator_strip.admission_checklist_filed')
+      })
       this.showAdmissionDialog = false
       this.$emit('admission-complete', data)
     },
@@ -169,12 +173,18 @@ export default {
       const task = await this.$store.dispatch('clinical/createTask', {
         patientId: this.patientId,
         relatedType: 'transfer-checklist',
-        title: `Transfer checklist: ${data.transferLocation || 'destination'}`,
+        title: this.$t('clinical360.shell.navigator_strip.transfer_checklist_title', {
+          destination: data.transferLocation || this.$t('clinical360.shell.navigator_strip.destination')
+        }),
         assignedToRole: 'NURSE',
         priority: 'Today',
         actionReason: JSON.stringify(data)
       })
-      await this.$store.dispatch('clinical/updateTaskStatus', { id: task.id, status: 'done', reason: 'Transfer checklist filed' })
+      await this.$store.dispatch('clinical/updateTaskStatus', {
+        id: task.id,
+        status: 'done',
+        reason: this.$t('clinical360.shell.navigator_strip.transfer_checklist_filed')
+      })
       this.showTransferDialog = false
       this.$emit('transfer-complete', data)
     },
@@ -182,12 +192,16 @@ export default {
       const task = await this.$store.dispatch('clinical/createTask', {
         patientId: this.patientId,
         relatedType: 'discharge-summary',
-        title: 'Discharge summary completed',
+        title: this.$t('clinical360.shell.navigator_strip.discharge_summary_completed'),
         assignedToRole: 'NURSE',
         priority: 'Today',
         actionReason: JSON.stringify(data)
       })
-      await this.$store.dispatch('clinical/updateTaskStatus', { id: task.id, status: 'done', reason: 'Discharge summary filed' })
+      await this.$store.dispatch('clinical/updateTaskStatus', {
+        id: task.id,
+        status: 'done',
+        reason: this.$t('clinical360.shell.navigator_strip.discharge_summary_filed')
+      })
       this.showDischargeDialog = false
       this.$emit('discharge-complete', data)
     }

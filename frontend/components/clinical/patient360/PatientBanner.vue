@@ -1,31 +1,31 @@
 <template>
-  <section class="patient-banner" aria-label="Patient safety banner">
+  <section class="patient-banner" :aria-label="$t('clinical360.nursing.patient_context.safety_banner')">
     <div class="patient-banner-identity">
       <strong>{{ patient.name }}</strong>
-      <span>{{ patient.gender }}, {{ patient.age }} y.o.</span>
+      <span>{{ patient.gender }}, {{ patient.age }} {{ $t('clinical360.nursing.patient_context.years_old') }}</span>
       <span>{{ patient.mrn }}</span>
       <span>{{ patient.bed }}</span>
     </div>
     <div class="patient-banner-badges">
       <span class="safety-badge code">
         <v-icon x-small color="#f97316">mdi-heart-pulse</v-icon>
-        Code: {{ patient.codeStatus }}
+        {{ $t('clinical360.nursing.patient_context.code') }} : {{ patient.codeStatus }}
       </span>
       <span class="safety-badge allergy">
         <v-icon x-small color="#be123c">mdi-allergy</v-icon>
-        Allergy: {{ patient.allergies }}
+        {{ $t('clinical360.nursing.patient_context.allergy') }} : {{ patient.allergies }}
       </span>
       <span class="safety-badge isolation">
         <v-icon x-small color="#16a34a">mdi-biohazard</v-icon>
-        Isolation: {{ patient.infectionStatus }}
+        {{ $t('clinical360.nursing.patient_context.isolation') }} : {{ patient.infectionStatus }}
       </span>
       <span class="safety-badge precaution">
         <v-icon x-small color="#0369a1">mdi-shield-alert</v-icon>
-        Precautions: {{ patient.precautions }}
+        {{ $t('clinical360.nursing.patient_context.precautions') }} : {{ patient.precautions }}
       </span>
       <span v-if="fallRisk" class="safety-badge fall-risk">
         <v-icon x-small color="#7c2d12">mdi-walk</v-icon>
-        Fall Risk: {{ fallRisk.value }}
+        {{ $t('clinical360.nursing.patient_context.fall_risk') }} : {{ fallRisk.value }}
       </span>
       <span v-if="skinIntegrity" class="safety-badge wound">
         <v-icon x-small color="#a16207">mdi-bandage</v-icon>
@@ -36,10 +36,12 @@
       v-if="closable"
       type="button"
       class="patient-banner-close"
-      aria-label="Close patient chart and return to patient list"
+      :aria-label="$t('clinical360.nursing.patient_context.close_chart')"
       @click="$emit('close')"
     >
-      <v-icon small>mdi-close</v-icon>
+      <v-icon small>
+        mdi-close
+      </v-icon>
     </button>
   </section>
 </template>

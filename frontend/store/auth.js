@@ -38,6 +38,8 @@ export const state = () => {
     email:           session ? session.email : '',
     institution:     session ? session.institution : '',
     facilityId:      session ? session.facilityId : '',
+    department:      session ? session.department : '',
+    service:         session ? session.service : '',
     permissions:     session ? session.permissions : [],
     loginError:      null,
     loading:         false
@@ -54,6 +56,8 @@ export const mutations = {
     state.email = session ? session.email : ''
     state.institution = session ? session.institution : ''
     state.facilityId = session ? session.facilityId : ''
+    state.department = session ? session.department : ''
+    state.service = session ? session.service : ''
     state.permissions = session ? session.permissions : []
     state.loginError = null
   },
@@ -68,6 +72,8 @@ export const mutations = {
       state.email = session.email
       state.institution = session.institution
       state.facilityId = session.facilityId
+      state.department = session.department || ''
+      state.service = session.service || ''
       state.permissions = session.permissions || []
     }
   },
@@ -87,6 +93,8 @@ export const mutations = {
     state.email = ''
     state.institution = ''
     state.facilityId = ''
+    state.department = ''
+    state.service = ''
     state.permissions = []
     state.loginError = null
     clearSession()
@@ -119,6 +127,8 @@ export const actions = {
         email: staffProfile.email,
         institution: facility.name,
         facilityId: facility.id,
+        department: staffProfile.department || '',
+        service: staffProfile.service || '',
         permissions: data.permissions || []
       }
 
@@ -201,6 +211,8 @@ export const actions = {
             email: staff.email || session.email,
             institution: facility.name || session.institution,
             facilityId: facility.id || staff.facilityId || session.facilityId,
+            department: staff.department || session.department || '',
+            service: staff.service || session.service || '',
             permissions: session.permissions || []
           }
           persistSession(refreshedSession)

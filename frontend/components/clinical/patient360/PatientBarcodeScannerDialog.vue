@@ -3,58 +3,72 @@
     <v-card class="scanner-dialog">
       <v-card-title class="dialog-title">
         <div>
-          <span>Bedside access</span>
-          <strong>Scan bracelet or capture wound photo</strong>
+          <span>{{ $t('clinical360.dialogs.barcode_scanner.eyebrow') }}</span>
+          <strong>{{ $t('clinical360.dialogs.barcode_scanner.title') }}</strong>
         </div>
         <v-btn icon small @click="$emit('close')"><v-icon small>mdi-close</v-icon></v-btn>
       </v-card-title>
       <v-card-text>
         <v-alert dense outlined color="#0f766e" border="left" class="mb-4">
-          Access is checked against the current role before opening the chart or saving a wound photo.
+          {{ $t('clinical360.dialogs.barcode_scanner.access_notice') }}
         </v-alert>
         <div class="scanner-grid">
           <section class="scanner-panel">
-            <h3>Scan patient bracelet</h3>
+            <h3>{{ $t('clinical360.dialogs.barcode_scanner.scan_bracelet') }}</h3>
             <video ref="video" autoplay playsinline muted class="scanner-video"></video>
             <canvas ref="canvas" class="d-none"></canvas>
             <div class="scanner-actions">
               <v-btn small depressed color="#0f766e" dark @click="startCamera">
-                <v-icon x-small left>mdi-camera</v-icon>Start camera
+                <v-icon x-small left>mdi-camera</v-icon>{{ $t('clinical360.dialogs.barcode_scanner.start_camera') }}
               </v-btn>
               <v-btn small outlined color="#0f766e" @click="stopCamera">
-                <v-icon x-small left>mdi-stop</v-icon>Stop
+                <v-icon x-small left>mdi-stop</v-icon>{{ $t('clinical360.dialogs.barcode_scanner.stop') }}
               </v-btn>
             </div>
-            <v-text-field v-model="manualCode" label="Manual barcode / MRN" dense outlined hide-details class="mt-3" />
+            <v-text-field
+              v-model="manualCode"
+              :label="$t('clinical360.dialogs.barcode_scanner.manual_barcode')"
+              dense
+              outlined
+              hide-details
+              class="mt-3"
+            />
             <div class="scanner-actions mt-2">
               <v-btn small depressed color="#003366" dark @click="resolveManualScan">
-                <v-icon x-small left>mdi-barcode-scan</v-icon>Open patient
+                <v-icon x-small left>mdi-barcode-scan</v-icon>{{ $t('clinical360.dialogs.barcode_scanner.open_patient') }}
               </v-btn>
             </div>
           </section>
 
           <section class="scanner-panel">
-            <h3>Capture wound photo</h3>
+            <h3>{{ $t('clinical360.dialogs.barcode_scanner.capture_wound_photo') }}</h3>
             <div class="photo-preview">
-              <img v-if="photoPreview" :src="photoPreview" alt="Wound photo preview">
+              <img v-if="photoPreview" :src="photoPreview" :alt="$t('clinical360.dialogs.barcode_scanner.wound_photo_preview')">
               <div v-else class="photo-empty">
                 <v-icon size="38" color="#94a3b8">mdi-camera-plus</v-icon>
-                <span>Take a photo of the wound or device site.</span>
+                <span>{{ $t('clinical360.dialogs.barcode_scanner.take_photo_hint') }}</span>
               </div>
             </div>
             <input ref="photoInput" class="d-none" type="file" accept="image/*" capture="environment" @change="handleFilePick">
             <div class="scanner-actions">
               <v-btn small depressed color="#0f766e" dark @click="$refs.photoInput.click()">
-                <v-icon x-small left>mdi-camera-plus</v-icon>Take photo
+                <v-icon x-small left>mdi-camera-plus</v-icon>{{ $t('clinical360.dialogs.barcode_scanner.take_photo') }}
               </v-btn>
               <v-btn small outlined color="#0f766e" :disabled="!photoPreview" @click="clearPhoto">
-                <v-icon x-small left>mdi-delete</v-icon>Clear
+                <v-icon x-small left>mdi-delete</v-icon>{{ $t('clinical360.dialogs.barcode_scanner.clear') }}
               </v-btn>
             </div>
-            <v-textarea v-model="photoNote" label="Photo note" rows="2" dense outlined class="mt-3" />
+            <v-textarea
+              v-model="photoNote"
+              :label="$t('clinical360.dialogs.barcode_scanner.photo_note')"
+              rows="2"
+              dense
+              outlined
+              class="mt-3"
+            />
             <div class="scanner-actions">
               <v-btn small depressed color="#003366" dark :disabled="!photoPreview" :loading="savingPhoto" @click="savePhoto">
-                <v-icon x-small left>mdi-content-save</v-icon>Save wound photo
+                <v-icon x-small left>mdi-content-save</v-icon>{{ $t('clinical360.dialogs.barcode_scanner.save_wound_photo') }}
               </v-btn>
             </div>
           </section>
@@ -96,8 +110,6 @@ export default {
   methods: {
     canAccessPatient(patient) {
       if (!patient) return false
-      const profile = this.$store.getters['facility/accessProfileForRole']?.(this.role) || {}
-      if (profile.canOpenChart) return true
       return ['NURSE', 'DOCTOR', 'NP', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'PHARMACY', 'LAB'].includes(this.role)
     },
     patientFromCode(code) {
@@ -156,11 +168,11 @@ export default {
     resolveManualScan(code = this.manualCode) {
       const patient = this.patientFromCode(code)
       if (!patient) {
-        this.$emit('toast', 'Patient not found for scanned code.')
+        this.$emit('toast', this.$t('clinical360.dialogs.barcode_scanner.patient_not_found'))
         return
       }
       if (!this.canAccessPatient(patient)) {
-        this.$emit('toast', 'Access denied for this role.')
+        this.$emit('toast', this.$t('clinical360.dialogs.barcode_scanner.access_denied'))
         return
       }
       this.$emit('patient', patient)
@@ -180,16 +192,16 @@ export default {
       if (!this.photoBlob) return
       this.savingPhoto = true
       try {
-        const patient = this.patientFromCode(this.patientId) || this.patientFromCode(this.manualCode) || this.$store.getters['clinical/getPatientById']?.(this.patientId)
+        const patient = this.patientFromCode(this.patientId) || this.patientFromCode(this.manualCode) || this.$store.getters['clinical/getPatient']?.(this.patientId)
         if (!patient || !this.canAccessPatient(patient)) {
-          this.$emit('toast', 'Unauthorized to save wound photo.')
+          this.$emit('toast', this.$t('clinical360.dialogs.barcode_scanner.unauthorized_photo'))
           return
         }
         const record = await this.$store.dispatch('nursing/addWoundPhoto', {
           patientId: patient.id,
           note: this.photoNote,
           capturedAt: new Date().toISOString(),
-          capturedBy: this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Clinical user',
+          capturedBy: this.$store.state.auth.fullName || this.$store.state.auth.staffId || this.$t('clinical360.dialogs.barcode_scanner.clinical_user'),
           status: 'filed',
           source: 'bedside-camera'
         })

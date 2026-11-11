@@ -1,5 +1,6 @@
 const { assertPatientWritable: assertWritableRecord } = require('../util/patient-360-policy.cjs')
-import { woundCareApi } from '~/services/api'
+const { taskFromProviderOrder, mapSnakeTask } = require('../util/nursing-workflow.cjs')
+import { woundCareApi, taskApi, clinicalNotesApi } from '~/services/api'
 
 const PREFIX = 'camero_health_nursing_'
 
@@ -33,6 +34,18 @@ export const mutations = {
       state[collection].splice(idx, 1, record)
       save(collection, state[collection])
     }
+  },
+  // Upserts one patient's fetched records into a shared collection instead of
+  // replacing it outright — other patients' records (used by facility-wide
+  // aggregates like nurseDashboardMetrics) must survive a per-patient fetch.
+  MERGE_PATIENT_COLLECTION(state, { collection, patientId, records }) {
+    const others = state[collection].filter(item => item.patientId !== patientId)
+    state[collection] = [...others, ...records]
+    save(collection, state[collection])
+  },
+  SET_COLLECTION(state, { collection, records }) {
+    state[collection] = records
+    save(collection, state[collection])
   },
   ADD_AUDIT(state, entry) {
     state.auditLogs.unshift(entry)
@@ -129,14 +142,106 @@ export const actions = {
     dispatch('audit', { action: 'NURSING_ASSESSMENT_CREATED', targetTable: 'nursing_assessments', targetId: record.id, patientId: record.patientId })
     return record
   },
-  createTask({ commit, dispatch, rootState }, task) {
-    assertPatientWritable(rootState, task.patientId)
-    const record = withBase(rootState, { status: 'pending', priority: 'routine', ...task }, 'NTK')
-    commit('ADD_RECORD', { collection: 'tasks', record })
-    dispatch('audit', { action: 'TASK_CREATED', targetTable: 'tasks', targetId: record.id, patientId: record.patientId })
+  // Single entry point every Nurse Command Center patient page calls on
+  // mount — each page only ever showed LOAD_FROM_STORAGE (this browser's own
+  // localStorage cache) before, so a chart opened on a different device or
+  // after a cache clear looked empty even though real data existed.
+  async loadPatientChart({ dispatch }, patientId) {
+    if (!patientId) return
+    await Promise.all([
+      dispatch('fetchWounds', patientId),
+      dispatch('fetchTasks', patientId),
+      dispatch('fetchClinicalNotes', patientId),
+      dispatch('fetchCarePlans', patientId)
+    ])
+  },
+  async fetchWounds({ commit }, patientId) {
+    try {
+      const { data } = await woundCareApi.listForPatient(patientId)
+      const wounds = (data.wounds || []).map(w => ({ ...w, assessments: undefined, photos: undefined }))
+      const assessments = (data.wounds || []).flatMap(w => w.assessments || [])
+      const photos = (data.wounds || []).flatMap(w => w.photos || [])
+      commit('MERGE_PATIENT_COLLECTION', { collection: 'wounds', patientId, records: wounds })
+      commit('MERGE_PATIENT_COLLECTION', { collection: 'woundAssessments', patientId, records: assessments })
+      commit('MERGE_PATIENT_COLLECTION', { collection: 'woundPhotos', patientId, records: photos })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+  async fetchTasks({ commit }, patientId) {
+    try {
+      const { data } = await taskApi.list(patientId ? { patientId } : {})
+      if (patientId) {
+        commit('MERGE_PATIENT_COLLECTION', { collection: 'tasks', patientId, records: data.tasks || [] })
+      } else {
+        commit('SET_COLLECTION', { collection: 'tasks', records: data.tasks || [] })
+      }
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+  async fetchClinicalNotes({ commit }, patientId) {
+    try {
+      const { data } = await clinicalNotesApi.list(patientId)
+      commit('MERGE_PATIENT_COLLECTION', { collection: 'clinicalNotes', patientId, records: data.notes || [] })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+  async fetchCarePlans({ commit }, patientId) {
+    try {
+      const { data } = await clinicalNotesApi.list(patientId, 'plan_of_care')
+      commit('MERGE_PATIENT_COLLECTION', { collection: 'carePlans', patientId, records: data.notes || [] })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+    }
+  },
+  createOrder({ commit, dispatch, rootState }, order) {
+    assertPatientWritable(rootState, order.patientId)
+    const record = withBase(rootState, { status: 'active', ...order }, 'ORD')
+    commit('ADD_RECORD', { collection: 'orders', record })
+    dispatch('audit', { action: 'ORDER_CREATED', targetTable: 'orders', targetId: record.id, patientId: record.patientId })
+    const task = taskFromProviderOrder({
+      id: record.id,
+      patient_id: record.patientId,
+      facility_id: record.facilityId,
+      assigned_role: record.assignedRole,
+      assigned_staff_id: record.assignedStaffId,
+      order_type: record.orderType,
+      title: record.title,
+      priority: record.priority,
+      reason: record.reason,
+      instructions: record.instructions,
+      due_at: record.dueAt
+    })
+    if (task) dispatch('createTask', mapSnakeTask(task))
     return record
   },
-  updateTaskStatus({ state, commit, dispatch, rootState }, { id, status, reason }) {
+  async createTask({ commit, dispatch, rootState }, task) {
+    assertPatientWritable(rootState, task.patientId)
+    const local = withBase(rootState, { status: 'pending', priority: 'routine', ...task }, 'NTK')
+    try {
+      const { data } = await taskApi.create({
+        patientId: task.patientId,
+        relatedType: task.linkedOrderType || task.relatedType,
+        relatedId: task.linkedOrderId || task.relatedId,
+        title: task.title,
+        assignedToRole: task.assignedToRole || rootState.auth.role || 'NURSE',
+        assignedToId: task.assignedNurseId || task.assignedToId,
+        priority: task.priority,
+        dueAt: task.dueAt,
+        actionReason: task.reason
+      })
+      Object.assign(local, data.task)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_RECORD', { collection: 'tasks', record: local })
+    dispatch('audit', { action: 'TASK_CREATED', targetTable: 'tasks', targetId: local.id, patientId: local.patientId })
+    return local
+  },
+  async updateTaskStatus({ state, commit, dispatch, rootState }, { id, status, reason }) {
     const task = state.tasks.find(item => item.id === id)
     if (!task) return null
     assertPatientWritable(rootState, task.patientId)
@@ -154,45 +259,84 @@ export const actions = {
         { action: 'STATUS_CHANGED', status, reason, actor: rootState.auth.fullName || rootState.auth.staffId || 'Unknown', at: now }
       ]
     }
+    try {
+      await taskApi.updateStatus(id, { status, reason })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
     commit('UPDATE_RECORD', { collection: 'tasks', record })
     dispatch('audit', { action: `TASK_${status.toUpperCase()}`, targetTable: 'tasks', targetId: record.id, patientId: record.patientId, detail: reason })
     return record
   },
-  createClinicalNote({ commit, dispatch, rootState }, note) {
+  async createClinicalNote({ commit, dispatch, rootState }, note) {
     assertPatientWritable(rootState, note.patientId)
-    const record = withBase(rootState, { status: 'draft', ...note }, 'CNO')
-    commit('ADD_RECORD', { collection: 'clinicalNotes', record })
-    dispatch('audit', { action: 'NOTE_CREATED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
-    return record
+    const local = withBase(rootState, { status: 'draft', ...note }, 'CNO')
+    try {
+      const { data } = await clinicalNotesApi.create({
+        patientId: note.patientId,
+        encounterId: note.encounterId,
+        noteType: note.noteType || 'nursing_note',
+        title: note.title,
+        body: note.body || note.note || note.text || '',
+        status: note.status || 'draft',
+        authorRole: note.authorRole
+      })
+      Object.assign(local, data.note)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_RECORD', { collection: 'clinicalNotes', record: local })
+    dispatch('audit', { action: 'NOTE_CREATED', targetTable: 'clinical_notes', targetId: local.id, patientId: local.patientId })
+    return local
   },
-  updateClinicalNote({ state, commit, dispatch, rootState }, note) {
+  async updateClinicalNote({ state, commit, dispatch, rootState }, note) {
     const existing = state.clinicalNotes.find(item => item.id === note.id)
     if (!existing || existing.status === 'signed') return null
     assertPatientWritable(rootState, existing.patientId)
     const record = { ...existing, ...note, updatedAt: new Date().toISOString() }
+    try {
+      await clinicalNotesApi.update(existing.id, { title: record.title, body: record.body, status: record.status })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
     commit('UPDATE_RECORD', { collection: 'clinicalNotes', record })
     dispatch('audit', { action: 'NOTE_UPDATED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
     return record
   },
-  signClinicalNote({ state, commit, dispatch, rootState }, id) {
+  async signClinicalNote({ state, commit, dispatch, rootState }, id) {
     const note = state.clinicalNotes.find(item => item.id === id)
     if (!note) return null
     assertPatientWritable(rootState, note.patientId)
     const record = { ...note, status: 'signed', signedAt: new Date().toISOString(), signedBy: rootState.auth.fullName || rootState.auth.staffId }
+    try {
+      await clinicalNotesApi.sign(id)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
     commit('UPDATE_RECORD', { collection: 'clinicalNotes', record })
     dispatch('audit', { action: 'NOTE_SIGNED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
     return record
   },
-  shareClinicalNote({ state, commit, dispatch, rootState }, id) {
+  async shareClinicalNote({ state, commit, dispatch, rootState }, id) {
     const note = state.clinicalNotes.find(item => item.id === id)
     if (!note || note.status === 'draft') return null
     assertPatientWritable(rootState, note.patientId)
     const record = { ...note, sharedWithCareTeam: true, sharedAt: new Date().toISOString(), sharedBy: rootState.auth.fullName || rootState.auth.staffId }
+    try {
+      await clinicalNotesApi.share(id)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
     commit('UPDATE_RECORD', { collection: 'clinicalNotes', record })
     dispatch('audit', { action: 'NOTE_SHARED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
     return record
   },
-  amendClinicalNote({ state, commit, dispatch, rootState }, { id, amendment }) {
+  async amendClinicalNote({ state, commit, dispatch, rootState }, { id, amendment }) {
     const note = state.clinicalNotes.find(item => item.id === id)
     if (!note || note.status !== 'signed') return null
     assertPatientWritable(rootState, note.patientId)
@@ -204,15 +348,14 @@ export const actions = {
         { id: makeId('AMD'), body: amendment, actor: rootState.auth.fullName || rootState.auth.staffId, at: new Date().toISOString() }
       ]
     }
+    try {
+      await clinicalNotesApi.amend(id, amendment)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
     commit('UPDATE_RECORD', { collection: 'clinicalNotes', record })
     dispatch('audit', { action: 'NOTE_AMENDED', targetTable: 'clinical_notes', targetId: record.id, patientId: record.patientId })
-    return record
-  },
-  createOrder({ commit, dispatch, rootState }, order) {
-    assertPatientWritable(rootState, order.patientId)
-    const record = withBase(rootState, { status: 'draft', ...order }, 'ORD')
-    commit('ADD_RECORD', { collection: 'orders', record })
-    dispatch('audit', { action: 'ORDER_CREATED', targetTable: 'orders', targetId: record.id, patientId: record.patientId })
     return record
   },
   signOrder({ state, commit, dispatch, rootState }, id) {
@@ -267,27 +410,60 @@ export const actions = {
     dispatch('audit', { action: 'MEDICATION_RECONCILIATION_COMPLETED', targetTable: 'medication_reconciliations', targetId: record.id, patientId })
     return record
   },
-  createCarePlan({ commit, dispatch, rootState }, carePlan) {
+  // This is a lightweight problem/goal/interventions note (CarePlanDialog.vue),
+  // distinct from the full CarePlan/goals/outcomes structure in store/carePlan.js
+  // — it's filed as a plan_of_care ClinicalNote so it actually persists.
+  async createCarePlan({ commit, dispatch, rootState }, carePlan) {
     assertPatientWritable(rootState, carePlan.patientId)
-    const record = withBase(rootState, { status: 'draft', ...carePlan }, 'CPL')
-    commit('ADD_RECORD', { collection: 'carePlans', record })
-    dispatch('audit', { action: 'CARE_PLAN_CREATED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
-    return record
+    const local = withBase(rootState, { status: 'draft', ...carePlan }, 'CPL')
+    const body = `Problem: ${carePlan.problem || '—'}\nGoal: ${carePlan.goal || '—'}\nInterventions: ${carePlan.interventions || '—'}${carePlan.targetDate ? '\nTarget date: ' + carePlan.targetDate : ''}`
+    try {
+      const { data } = await clinicalNotesApi.create({
+        patientId: carePlan.patientId,
+        noteType: 'plan_of_care',
+        title: carePlan.problem,
+        body,
+        status: 'draft',
+        authorRole: carePlan.authorRole,
+        structuredData: { problem: carePlan.problem, goal: carePlan.goal, interventions: carePlan.interventions, targetDate: carePlan.targetDate }
+      })
+      Object.assign(local, data.note)
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    commit('ADD_RECORD', { collection: 'carePlans', record: local })
+    dispatch('audit', { action: 'CARE_PLAN_CREATED', targetTable: 'care_plans', targetId: local.id, patientId: local.patientId })
+    return local
   },
-  signCarePlan({ state, commit, dispatch, rootState }, id) {
+  async signCarePlan({ state, commit, dispatch, rootState }, id) {
     const plan = state.carePlans.find(item => item.id === id)
     if (!plan) return null
     assertPatientWritable(rootState, plan.patientId)
-    const record = { ...plan, status: 'active', signedAt: new Date().toISOString(), signedBy: rootState.auth.fullName || rootState.auth.staffId }
+    let signedAt = new Date().toISOString()
+    try {
+      const { data } = await clinicalNotesApi.sign(id)
+      signedAt = data.note.signedAt
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
+    const record = { ...plan, status: 'active', signedAt, signedBy: rootState.auth.fullName || rootState.auth.staffId }
     commit('UPDATE_RECORD', { collection: 'carePlans', record })
     dispatch('audit', { action: 'CARE_PLAN_SIGNED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
     return record
   },
-  archiveCarePlan({ state, commit, dispatch, rootState }, id) {
+  async archiveCarePlan({ state, commit, dispatch, rootState }, id) {
     const plan = state.carePlans.find(item => item.id === id)
     if (!plan) return null
     assertPatientWritable(rootState, plan.patientId)
     const record = { ...plan, status: 'archived', archivedAt: new Date().toISOString(), archivedBy: rootState.auth.fullName || rootState.auth.staffId }
+    try {
+      await clinicalNotesApi.update(id, { status: 'archived' })
+    } catch (err) {
+      commit('SET_ERROR', err.response?.data?.error || err.message)
+      throw err
+    }
     commit('UPDATE_RECORD', { collection: 'carePlans', record })
     dispatch('audit', { action: 'CARE_PLAN_ARCHIVED', targetTable: 'care_plans', targetId: record.id, patientId: record.patientId })
     return record

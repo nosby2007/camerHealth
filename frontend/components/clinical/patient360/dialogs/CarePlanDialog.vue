@@ -3,24 +3,24 @@
     <v-card class="care-plan-dialog">
       <v-card-title class="dialog-title">
         <div>
-          <span>Care planning</span>
-          <strong>Add Care Plan</strong>
+          <span>{{ $t('clinical360.dialogs.care_plan_dialog.eyebrow') }}</span>
+          <strong>{{ $t('clinical360.dialogs.care_plan_dialog.title') }}</strong>
         </div>
         <v-btn icon small @click="$emit('close')"><v-icon small>mdi-close</v-icon></v-btn>
       </v-card-title>
       <v-card-text>
         <section v-if="!selectedTemplate">
-          <p class="section-label">Choose a care plan to add</p>
+          <p class="section-label">{{ $t('clinical360.dialogs.care_plan_dialog.choose_plan') }}</p>
           <div class="template-grid">
             <button
               type="button"
               class="template-card custom-card"
               @click="selectCustom"
-              title="Create a custom care plan from scratch"
+              :title="$t('clinical360.dialogs.care_plan_dialog.custom_card_title')"
             >
               <v-icon color="#0f766e" size="28">mdi-plus-circle-outline</v-icon>
-              <strong>Create Custom Care Plan</strong>
-              <span>Define your own care plan</span>
+              <strong>{{ $t('clinical360.dialogs.care_plan_dialog.create_custom') }}</strong>
+              <span>{{ $t('clinical360.dialogs.care_plan_dialog.define_own') }}</span>
             </button>
             <button
               v-for="tpl in templates"
@@ -37,16 +37,28 @@
 
         <section v-else>
           <button type="button" class="back-link" @click="selectedTemplate = null">
-            <v-icon x-small>mdi-arrow-left</v-icon> Choose a different care plan
+            <v-icon x-small>mdi-arrow-left</v-icon> {{ $t('clinical360.dialogs.care_plan_dialog.choose_different') }}
           </button>
-          <v-text-field v-model="form.problem" label="Problem" dense outlined :rules="[requiredRule]" />
-          <v-textarea v-model="form.goal" label="Goal" rows="2" dense outlined />
-          <v-textarea v-model="form.interventions" label="Interventions" rows="3" dense outlined />
+          <v-text-field
+            v-model="form.problem"
+            :label="$t('clinical360.dialogs.care_plan_dialog.problem')"
+            dense
+            outlined
+            :rules="[requiredRule]"
+          />
+          <v-textarea v-model="form.goal" :label="$t('clinical360.dialogs.care_plan_dialog.goal')" rows="2" dense outlined />
+          <v-textarea
+            v-model="form.interventions"
+            :label="$t('clinical360.dialogs.care_plan_dialog.interventions')"
+            rows="3"
+            dense
+            outlined
+          />
           <v-menu ref="dateMenu" v-model="dateMenuOpen" :close-on-content-click="false" offset-y>
             <template #activator="{ on, attrs }">
               <v-text-field
                 :value="formatDateForDisplay(form.targetDate)"
-                label="Target/Reachable Date"
+                :label="$t('clinical360.dialogs.care_plan_dialog.target_date')"
                 readonly
                 dense
                 outlined
@@ -60,9 +72,9 @@
       </v-card-text>
       <v-card-actions v-if="selectedTemplate" class="dialog-actions">
         <v-spacer />
-        <v-btn text small @click="$emit('close')">Cancel</v-btn>
+        <v-btn text small @click="$emit('close')">{{ $t('clinical360.dialogs.care_plan_dialog.cancel') }}</v-btn>
         <v-btn depressed color="#0f766e" dark small :loading="saving" @click="save">
-          <v-icon x-small left>mdi-clipboard-plus</v-icon>Add to Care Plan
+          <v-icon x-small left>mdi-clipboard-plus</v-icon>{{ $t('clinical360.dialogs.care_plan_dialog.add_to_plan') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -199,7 +211,7 @@ export default {
       form: { problem: '', goal: '', interventions: '', targetDate: '' },
       dateMenuOpen: false,
       saving: false,
-      requiredRule: value => Boolean(value) || 'Required'
+      requiredRule: value => Boolean(value) || this.$t('clinical360.dialogs.care_plan_dialog.required')
     }
   },
   watch: {
@@ -222,7 +234,7 @@ export default {
       this.form = { ...this.form, problem: tpl.problem, goal: tpl.goal, interventions: tpl.interventions }
     },
     selectCustom() {
-      this.selectedTemplate = { key: 'custom', label: 'Custom Care Plan' }
+      this.selectedTemplate = { key: 'custom', label: this.$t('clinical360.dialogs.care_plan_dialog.custom_care_plan') }
       this.form = { problem: '', goal: '', interventions: '', targetDate: '' }
     },
     formatDateForDisplay(date) {
@@ -241,6 +253,11 @@ export default {
         })
         this.$emit('saved', record)
         this.$emit('close')
+      } catch (err) {
+        this.$emit(
+          'error',
+          err.response?.data?.error || err.message || this.$t('clinical360.dialogs.care_plan_dialog.save_error')
+        )
       } finally {
         this.saving = false
       }

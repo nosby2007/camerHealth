@@ -35,13 +35,28 @@ export default {
     patient() { return (this.$store.getters['clinical/patientDirectory'] || []).find(item => item.id === this.patientId) || {} },
     chart() { return this.$store.getters['nursing/patientNursing360'](this.patientId) }
   },
-  mounted() { this.$store.commit('nursing/LOAD_FROM_STORAGE') },
+  mounted() {
+    this.$store.commit('nursing/LOAD_FROM_STORAGE')
+    this.$store.dispatch('nursing/loadPatientChart', this.patientId)
+  },
   methods: {
     async saveNote(note) {
-      if (note.id) this.selectedNote = await this.$store.dispatch('nursing/updateClinicalNote', note)
-      else this.selectedNote = await this.$store.dispatch('nursing/createClinicalNote', { ...note, patientId: this.patientId })
+      try {
+        if (note.id) this.selectedNote = await this.$store.dispatch('nursing/updateClinicalNote', note)
+        else this.selectedNote = await this.$store.dispatch('nursing/createClinicalNote', { ...note, patientId: this.patientId })
+        this.$toast.success('Note saved.')
+      } catch (err) {
+        this.$toast.error(err.response?.data?.error || err.message || 'Unable to save this note.')
+      }
     },
-    async signNote(id) { this.selectedNote = await this.$store.dispatch('nursing/signClinicalNote', id) }
+    async signNote(id) {
+      try {
+        this.selectedNote = await this.$store.dispatch('nursing/signClinicalNote', id)
+        this.$toast.success('Note signed.')
+      } catch (err) {
+        this.$toast.error(err.response?.data?.error || err.message || 'Unable to sign this note.')
+      }
+    }
   }
 }
 </script>

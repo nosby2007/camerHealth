@@ -148,7 +148,20 @@ export default {
   computed: {
     google: gmapApi,
     allAlerts() {
-      return [...this.$store.getters['clinical/infectiousAlerts'], ...this.$store.getters['clinical/chronicAlerts']]
+      // clinical/infectiousAlerts and clinical/chronicAlerts never existed —
+      // this threw (spreading undefined) on every render. The real,
+      // already-working alert source for this Ministry surveillance layer
+      // is diseases/getAlerts — but its objects have no id/title (only
+      // type/severity/district/disease/currentCases/baseline/message), so
+      // synthesize the two display fields this template needs rather than
+      // reshape the shared getter (other consumers may depend on its
+      // current shape).
+      const alerts = this.$store.getters['diseases/getAlerts'] || []
+      return alerts.map((alert, index) => ({
+        ...alert,
+        id: `${alert.disease || 'alert'}-${alert.district || index}`,
+        title: `${alert.disease || 'Disease'} — ${alert.district || 'Unknown district'}`
+      }))
     }
   },
   mounted() {

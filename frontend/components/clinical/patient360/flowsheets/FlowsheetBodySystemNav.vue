@@ -1,11 +1,11 @@
 <template>
   <div :class="['body-system-nav', { collapsed: isCollapsed }]">
     <div class="nav-header">
-      <button class="collapse-btn" @click="toggleCollapse" :title="isCollapsed ? 'Expand' : 'Collapse'">
+      <button class="collapse-btn" @click="toggleCollapse" :title="isCollapsed ? $t('clinical360.flowsheets.body_system_nav.expand') : $t('clinical360.flowsheets.body_system_nav.collapse')">
         <v-icon x-small>{{ isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
       </button>
-      <span v-if="!isCollapsed" class="nav-title">Body Systems</span>
-      <button v-if="!isCollapsed && selectedSystems.length > 0" class="clear-btn" @click="clearFilters" title="Clear all filters">
+      <span v-if="!isCollapsed" class="nav-title">{{ $t('clinical360.flowsheets.body_system_nav.body_systems') }}</span>
+      <button v-if="!isCollapsed && selectedSystems.length > 0" class="clear-btn" @click="clearFilters" :title="$t('clinical360.flowsheets.body_system_nav.clear_all_filters')">
         ✕
       </button>
     </div>
@@ -19,7 +19,7 @@
           :checked="selectedSystems.length === uniqueSystems.length && uniqueSystems.length > 0"
           @change="toggleSelectAll"
         />
-        <span>All Systems</span>
+        <span>{{ $t('clinical360.flowsheets.body_system_nav.all_systems') }}</span>
       </label>
 
       <!-- Individual systems -->

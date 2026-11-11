@@ -12,7 +12,7 @@
       <div class="emar-medication">
         <div>
           <v-icon small :color="med.color">{{ med.icon }}</v-icon>
-          <strong>{{ med.label }}</strong>
+          <ClinicalHoverCard :title="med.label" :eyebrow="med.route" :subtitle="med.frequency" :details="medHoverDetails(med)"><template #activator><strong class="detail-trigger">{{ med.label }}</strong></template></ClinicalHoverCard>
         </div>
         <p>{{ med.detail }}</p>
         <div class="emar-med-meta">
@@ -33,6 +33,7 @@
           :key="`${med.id}-${time}`"
           type="button"
           :class="['emar-time-cell', cellFor(med.id, time).statusClass, { focus: focusTime === time }]"
+          :title="cellFor(med.id, time).statusDetail || cellFor(med.id, time).text"
           @click="$emit('cell-click', { medication: med, administration: cellFor(med.id, time).administration, defaultAction: cellFor(med.id, time).defaultAction })"
         >
           <v-icon v-if="cellFor(med.id, time).icon" x-small>{{ cellFor(med.id, time).icon }}</v-icon>
@@ -69,6 +70,7 @@
 </template>
 
 <script>
+import ClinicalHoverCard from '../ClinicalHoverCard.vue'
 // Icon shown once a dose has actually been GIVEN, by dosage form — the user
 // asked specifically for this: what was administered should be visible at a
 // glance, not just a colored square. mdi has no dedicated feeding-tube icon,
@@ -84,6 +86,7 @@ const GIVEN_FORM_ICONS = {
 
 export default {
   name: 'EmarGrid',
+  components: { ClinicalHoverCard },
   props: {
     medications: { type: Array, default: () => [] }, // each: { id, label, detail, route, frequency, dispense, administrationInstructions, education, icon, color, statusClass, form }
     administrations: { type: Array, default: () => [] }, // raw MedicationAdministration rows for the visible patient
@@ -92,6 +95,14 @@ export default {
     showEducation: { type: Boolean, default: false }
   },
   methods: {
+    medHoverDetails(med) {
+      return [
+        { label: 'Dose', value: med.detail },
+        { label: 'Dispense', value: med.dispense },
+        { label: 'Instructions', value: med.administrationInstructions },
+        { label: 'Education', value: med.education }
+      ]
+    },
     formatDisplayTime(time) {
       return time
     },
@@ -117,10 +128,10 @@ export default {
         return { statusClass: 'given', text: 'Given', icon, badge: 'mdi-check-circle', administration, defaultAction: 'details' }
       }
       if (status === 'Held') {
-        return { statusClass: 'held', text: 'Held', icon: '', badge: '', administration, defaultAction: 'details' }
+        return { statusClass: 'held', text: 'Held', icon: 'mdi-pause-circle-outline', badge: 'mdi-information-outline', statusDetail: administration.comment || administration.refusalReason || 'Medication held', administration, defaultAction: 'details' }
       }
       if (status === 'Not Available') {
-        return { statusClass: 'held', text: 'N/A', icon: '', badge: '', administration, defaultAction: 'details' }
+        return { statusClass: 'held', text: 'N/A', icon: 'mdi-alert-circle-outline', badge: '', statusDetail: administration.comment || 'Medication not available', administration, defaultAction: 'details' }
       }
       // Due
       const isPast = new Date(administration.scheduledFor).getTime() <= Date.now()

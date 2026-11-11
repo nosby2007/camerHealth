@@ -8,12 +8,51 @@ const prisma = require('../lib/prisma')
 const { authenticate, authorize } = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { requirePatientForFacility } = require('../lib/tenant')
-const { nextOccurrenceAt, isDiscontinued } = require('../lib/medicationSchedule')
+const { nextOccurrenceAt, occurrencesThrough, isDiscontinued, roundToNextStandardSlot } = require('../lib/medicationSchedule')
 const { NURSE_CHART_ROLES } = require('../lib/clinicalRoles')
 
 const router = Router()
 
 const ADMINISTERED_BY_SELECT = { select: { id: true, fullName: true } }
+
+async function ensureUpcomingAdministrations(facilityId, patientId, medicationId) {
+  if (!patientId) return
+  const medications = await prisma.medication.findMany({
+    where: {
+      facilityId,
+      patientId,
+      ...(medicationId && { id: medicationId })
+    },
+    include: {
+      administrations: { orderBy: { scheduledFor: 'desc' }, take: 1 }
+    }
+  })
+  const horizon = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+  for (const medication of medications) {
+    if (isDiscontinued(medication.status)) continue
+    const latest = medication.administrations[0]
+    if (!latest) continue
+    const occurrences = occurrencesThrough(medication.frequency, latest.scheduledFor, horizon)
+    for (const scheduledFor of occurrences) {
+      const scheduledDate = new Date(scheduledFor)
+      const existing = await prisma.medicationAdministration.findFirst({
+        where: { medicationId: medication.id, scheduledFor: scheduledDate },
+        select: { id: true }
+      })
+      if (existing) continue
+      await prisma.medicationAdministration.create({
+        data: {
+          medicationId: medication.id,
+          patientId: medication.patientId,
+          facilityId,
+          scheduledFor: scheduledDate,
+          status: 'Due'
+        }
+      })
+    }
+  }
+}
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 const createDueSchema = z.object({
@@ -24,14 +63,14 @@ const createDueSchema = z.object({
 
 const administerSchema = z.object({
   status: z.enum(['Given', 'Held', 'Refused', 'Not Available']),
-  administeredAt: z.string().optional(),
-  route: z.string().optional(),
-  doseGiven: z.string().optional(),
-  site: z.string().optional(),
-  lotNumber: z.string().optional(),
-  patientResponse: z.string().optional(),
-  refusalReason: z.string().optional(),
-  comment: z.string().optional()
+  administeredAt: z.string().nullable().optional(),
+  route: z.string().nullable().optional(),
+  doseGiven: z.string().nullable().optional(),
+  site: z.string().nullable().optional(),
+  lotNumber: z.string().nullable().optional(),
+  patientResponse: z.string().nullable().optional(),
+  refusalReason: z.string().nullable().optional(),
+  comment: z.string().nullable().optional()
 })
 
 // ─── GET /medication-administrations?patientId=&medicationId= ──────────────
@@ -43,6 +82,8 @@ router.get('/medication-administrations', authenticate, async (req, res, next) =
     const where = { facilityId: req.user.facilityId }
     if (patientId) where.patientId = patientId
     if (medicationId) where.medicationId = medicationId
+
+    await ensureUpcomingAdministrations(req.user.facilityId, patientId, medicationId)
 
     const administrations = await prisma.medicationAdministration.findMany({
       where,
@@ -129,19 +170,74 @@ router.patch('/medication-administrations/:id', authenticate, authorize('ADMIN',
     if (!isDiscontinued(medication.status)) {
       const nextTime = nextOccurrenceAt(medication.frequency, existing.scheduledFor)
       if (nextTime) {
-        nextDue = await prisma.medicationAdministration.create({
-          data: {
-            medicationId: medication.id,
-            patientId: medication.patientId,
-            facilityId: req.user.facilityId,
-            scheduledFor: new Date(nextTime),
-            status: 'Due'
-          }
+        nextDue = await prisma.medicationAdministration.findFirst({
+          where: { medicationId: medication.id, scheduledFor: new Date(nextTime) }
         })
+        if (!nextDue) {
+          nextDue = await prisma.medicationAdministration.create({
+            data: {
+              medicationId: medication.id,
+              patientId: medication.patientId,
+              facilityId: req.user.facilityId,
+              scheduledFor: new Date(nextTime),
+              status: 'Due'
+            }
+          })
+        }
       }
     }
 
     res.json({ administration, nextDue })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// ─── POST /medication-administrations/backfill ──────────────────────────────
+// One-time maintenance operation: medications prescribed before this eMAR
+// feature shipped have zero MedicationAdministration rows — they never show
+// up in the grid's time columns and can't be administered without hitting
+// the (now-fixed) create-on-demand fallback every single time. This seeds
+// exactly the first "Due" row each such order would have gotten at creation
+// time, using the same non-urgent scheduling rule (POST /medications always
+// treats a backfilled order as routine, never STAT, regardless of the
+// order's own priority — blasting old orders as "due right now" would be
+// clinically wrong). Idempotent: skips any medication that already has at
+// least one administration row, so it's safe to run more than once.
+router.post('/medication-administrations/backfill', authenticate, authorize('ADMIN'), async (req, res, next) => {
+  try {
+    const candidates = await prisma.medication.findMany({
+      where: {
+        facilityId: req.user.facilityId,
+        administrations: { none: {} }
+      }
+    })
+
+    const seeded = []
+    const skipped = []
+    for (const medication of candidates) {
+      if (isDiscontinued(medication.status)) {
+        skipped.push({ medicationId: medication.id, drug: medication.drug, reason: 'discontinued' })
+        continue
+      }
+      const firstDoseAt = roundToNextStandardSlot(medication.frequency, medication.prescribedAt)
+      if (!firstDoseAt) {
+        skipped.push({ medicationId: medication.id, drug: medication.drug, reason: 'prn-or-once' })
+        continue
+      }
+      const administration = await prisma.medicationAdministration.create({
+        data: {
+          medicationId: medication.id,
+          patientId: medication.patientId,
+          facilityId: req.user.facilityId,
+          scheduledFor: new Date(firstDoseAt),
+          status: 'Due'
+        }
+      })
+      seeded.push({ medicationId: medication.id, drug: medication.drug, scheduledFor: administration.scheduledFor })
+    }
+
+    res.json({ seededCount: seeded.length, skippedCount: skipped.length, seeded, skipped })
   } catch (error) {
     next(error)
   }

@@ -2,43 +2,43 @@
   <section class="doctor-center">
     <header class="doctor-brief">
       <div>
-        <span>PHYSICIAN WORKSPACE</span>
-        <h2>Medical decision and follow-up center</h2>
-        <p>Review the complete patient trajectory, act on results and document the clinical plan without leaving Patient 360.</p>
+        <span>{{ $t('clinical360.doctor.command_center.eyebrow') }}</span>
+        <h2>{{ $t('clinical360.doctor.command_center.heading') }}</h2>
+        <p>{{ $t('clinical360.doctor.command_center.subheading') }}</p>
       </div>
       <div class="doctor-actions">
         <v-btn x-small depressed color="#003366" dark :disabled="readOnly" @click="$emit('new-note')">
-          <v-icon x-small left>mdi-note-edit-outline</v-icon>Progress note
+          <v-icon x-small left>mdi-note-edit-outline</v-icon>{{ $t('clinical360.doctor.command_center.progress_note') }}
         </v-btn>
         <v-btn x-small depressed color="#0f766e" dark :disabled="readOnly" @click="$emit('new-order')">
-          <v-icon x-small left>mdi-clipboard-plus-outline</v-icon>New order
+          <v-icon x-small left>mdi-clipboard-plus-outline</v-icon>{{ $t('clinical360.doctor.command_center.new_order') }}
         </v-btn>
       </div>
     </header>
 
     <div class="doctor-metrics">
-      <button type="button" @click="openTab('Lab Results')"><span>Results to review</span><strong>{{ resultsToReview }}</strong><small>Laboratory and imaging</small></button>
-      <button type="button" @click="openTab('Medications')"><span>Active medications</span><strong>{{ activeMedications.length }}</strong><small>Reconcile and monitor</small></button>
-      <button type="button" @click="openTab('Work List')"><span>Open clinical work</span><strong>{{ tasks.length }}</strong><small>Assigned follow-up</small></button>
-      <button type="button" @click="openTab('Care Plan')"><span>Care plans</span><strong>{{ carePlans.length }}</strong><small>Goals and outcomes</small></button>
+      <button type="button" @click="openTab('Lab Results')"><span>{{ $t('clinical360.doctor.command_center.results_to_review') }}</span><strong>{{ resultsToReview }}</strong><small>{{ $t('clinical360.doctor.command_center.laboratory_and_imaging') }}</small></button>
+      <button type="button" @click="openTab('Medications')"><span>{{ $t('clinical360.doctor.command_center.active_medications') }}</span><strong>{{ activeMedications.length }}</strong><small>{{ $t('clinical360.doctor.command_center.reconcile_and_monitor') }}</small></button>
+      <button type="button" @click="openTab('Work List')"><span>{{ $t('clinical360.doctor.command_center.open_clinical_work') }}</span><strong>{{ tasks.length }}</strong><small>{{ $t('clinical360.doctor.command_center.assigned_follow_up') }}</small></button>
+      <button type="button" @click="openTab('Care Plan')"><span>{{ $t('clinical360.doctor.command_center.care_plans') }}</span><strong>{{ carePlans.length }}</strong><small>{{ $t('clinical360.doctor.command_center.goals_and_outcomes') }}</small></button>
     </div>
 
     <div class="doctor-grid">
       <section class="doctor-panel clinical-summary">
-        <header><span>CLINICAL SYNTHESIS</span><strong>Current state</strong></header>
+        <header><span>{{ $t('clinical360.doctor.command_center.clinical_synthesis') }}</span><strong>{{ $t('clinical360.doctor.command_center.current_state') }}</strong></header>
         <dl>
-          <div><dt>Patient</dt><dd>{{ patient.name }}</dd></div>
-          <div><dt>Location</dt><dd>{{ patient.bed || patient.patientClass }}</dd></div>
-          <div><dt>Attending</dt><dd>{{ patient.attending }}</dd></div>
-          <div><dt>Allergies</dt><dd class="alert-value">{{ patient.allergies }}</dd></div>
-          <div><dt>Latest vitals</dt><dd>{{ vitalSummary }}</dd></div>
-          <div><dt>Active problem</dt><dd>{{ latestDiagnosis }}</dd></div>
+          <div><dt>{{ $t('clinical360.doctor.command_center.patient_label') }}</dt><dd>{{ patient.name }}</dd></div>
+          <div><dt>{{ $t('clinical360.doctor.command_center.location_label') }}</dt><dd>{{ patient.bed || patient.patientClass }}</dd></div>
+          <div><dt>{{ $t('clinical360.doctor.command_center.attending_label') }}</dt><dd>{{ patient.attending }}</dd></div>
+          <div><dt>{{ $t('clinical360.doctor.command_center.allergies_label') }}</dt><dd class="alert-value">{{ patient.allergies }}</dd></div>
+          <div><dt>{{ $t('clinical360.doctor.command_center.latest_vitals_label') }}</dt><dd>{{ vitalSummary }}</dd></div>
+          <div><dt>{{ $t('clinical360.doctor.command_center.active_problem_label') }}</dt><dd>{{ latestDiagnosis }}</dd></div>
         </dl>
-        <button type="button" class="panel-link" @click="openTab('Chart Review')">Open longitudinal chart</button>
+        <button type="button" class="panel-link" @click="openTab('Chart Review')">{{ $t('clinical360.doctor.command_center.open_longitudinal_chart') }}</button>
       </section>
 
       <section class="doctor-panel review-queue">
-        <header><span>REVIEW QUEUE</span><strong>Clinical decisions pending</strong></header>
+        <header><span>{{ $t('clinical360.doctor.command_center.review_queue_eyebrow') }}</span><strong>{{ $t('clinical360.doctor.command_center.review_queue_title') }}</strong></header>
         <button v-for="item in reviewQueue" :key="item.label" type="button" @click="openTab(item.tab)">
           <v-icon small :color="item.color">{{ item.icon }}</v-icon>
           <div><strong>{{ item.label }}</strong><span>{{ item.detail }}</span></div>
@@ -47,24 +47,24 @@
       </section>
 
       <section class="doctor-panel recent-notes">
-        <header><span>MEDICAL DOCUMENTATION</span><strong>Recent progress</strong></header>
+        <header><span>{{ $t('clinical360.doctor.command_center.medical_documentation') }}</span><strong>{{ $t('clinical360.doctor.command_center.recent_progress') }}</strong></header>
         <article v-for="note in recentNotes" :key="note.id || note.recordedAt">
-          <div><strong>{{ note.diagnosis || note.title || 'Medical progress note' }}</strong><small>{{ formatDate(note.recordedAt || note.createdAt) }}</small></div>
-          <p>{{ note.plan || note.clinicalFindings || note.progressNote || 'No narrative filed.' }}</p>
+          <div><strong>{{ note.diagnosis || note.title || $t('clinical360.doctor.command_center.medical_progress_note') }}</strong><small>{{ formatDate(note.recordedAt || note.createdAt) }}</small></div>
+          <p>{{ note.plan || note.clinicalFindings || note.progressNote || $t('clinical360.doctor.command_center.no_narrative_filed') }}</p>
         </article>
-        <div v-if="!recentNotes.length" class="doctor-empty">No medical note filed for this patient.</div>
-        <button type="button" class="panel-link" @click="openTab('Notes')">Review all notes</button>
+        <div v-if="!recentNotes.length" class="doctor-empty">{{ $t('clinical360.doctor.command_center.no_medical_note_filed') }}</div>
+        <button type="button" class="panel-link" @click="openTab('Notes')">{{ $t('clinical360.doctor.command_center.review_all_notes') }}</button>
       </section>
 
       <section class="doctor-panel active-orders">
-        <header><span>ORDERS AND THERAPY</span><strong>Active plan</strong></header>
+        <header><span>{{ $t('clinical360.doctor.command_center.orders_and_therapy') }}</span><strong>{{ $t('clinical360.doctor.command_center.active_plan') }}</strong></header>
         <div v-for="item in activePlan" :key="item.key" class="plan-row">
           <v-icon small :color="item.color">{{ item.icon }}</v-icon>
           <div><strong>{{ item.label }}</strong><span>{{ item.detail }}</span></div>
           <b>{{ item.status }}</b>
         </div>
-        <div v-if="!activePlan.length" class="doctor-empty">No active order or medication filed.</div>
-        <button type="button" class="panel-link" @click="openTab('Orders')">Manage orders</button>
+        <div v-if="!activePlan.length" class="doctor-empty">{{ $t('clinical360.doctor.command_center.no_active_order_filed') }}</div>
+        <button type="button" class="panel-link" @click="openTab('Orders')">{{ $t('clinical360.doctor.command_center.manage_orders') }}</button>
       </section>
     </div>
   </section>
@@ -98,11 +98,11 @@ export default {
       if (row.hr || row.pulseRate) parts.push(`HR ${row.hr || row.pulseRate}`)
       if (row.temp || row.temperature) parts.push(`Temp ${row.temp || row.temperature} C`)
       if (row.spo2 || row.oxygenSaturation) parts.push(`SpO2 ${row.spo2 || row.oxygenSaturation}%`)
-      return parts.length ? parts.join(' | ') : 'Not filed'
+      return parts.length ? parts.join(' | ') : this.$t('clinical360.doctor.command_center.vitals_not_filed')
     },
     latestDiagnosis() {
       const note = this.recentNotes[0]
-      return note && (note.diagnosis || note.clinicalFindings) || 'No diagnosis filed'
+      return note && (note.diagnosis || note.clinicalFindings) || this.$t('clinical360.doctor.command_center.no_diagnosis_filed')
     },
     recentNotes() {
       return [...this.medicalNotes]
@@ -112,17 +112,19 @@ export default {
     reviewQueue() {
       const pendingLabs = this.labOrders.filter(item => !/final|complete|cancel/i.test(String(item.status || ''))).length
       const pendingImaging = this.imagingOrders.filter(item => !/final|complete|cancel/i.test(String(item.status || ''))).length
+      const t = key => this.$t(`clinical360.doctor.command_center.${key}`)
       return [
-        { label: 'Laboratory results', detail: `${pendingLabs} order(s) awaiting final review`, badge: pendingLabs ? 'Review' : 'Clear', level: pendingLabs ? 'warning' : 'good', color: '#0369a1', icon: 'mdi-flask-outline', tab: 'Lab Results' },
-        { label: 'Imaging reports', detail: `${pendingImaging} study or report(s) open`, badge: pendingImaging ? 'Review' : 'Clear', level: pendingImaging ? 'warning' : 'good', color: '#7c3aed', icon: 'mdi-radiology-box-outline', tab: 'Lab Results' },
-        { label: 'Medication reconciliation', detail: `${this.activeMedications.length} active medication(s)`, badge: this.activeMedications.length ? 'Verify' : 'None', level: this.activeMedications.length ? 'warning' : 'good', color: '#0f766e', icon: 'mdi-pill-multiple', tab: 'Medications' },
-        { label: 'Disposition readiness', detail: `${this.tasks.length} open task(s) before transition`, badge: this.tasks.length ? 'Open' : 'Ready', level: this.tasks.length ? 'warning' : 'good', color: '#b45309', icon: 'mdi-hospital-exit', tab: 'Handoff' }
+        { label: t('laboratory_results'), detail: t('orders_awaiting_final_review', { count: pendingLabs }), badge: pendingLabs ? t('badge_review') : t('badge_clear'), level: pendingLabs ? 'warning' : 'good', color: '#0369a1', icon: 'mdi-flask-outline', tab: 'Lab Results' },
+        { label: t('imaging_reports'), detail: t('studies_or_reports_open', { count: pendingImaging }), badge: pendingImaging ? t('badge_review') : t('badge_clear'), level: pendingImaging ? 'warning' : 'good', color: '#7c3aed', icon: 'mdi-radiology-box-outline', tab: 'Lab Results' },
+        { label: t('medication_reconciliation'), detail: t('active_medications_count', { count: this.activeMedications.length }), badge: this.activeMedications.length ? t('badge_verify') : t('badge_none'), level: this.activeMedications.length ? 'warning' : 'good', color: '#0f766e', icon: 'mdi-pill-multiple', tab: 'Medications' },
+        { label: t('disposition_readiness'), detail: t('open_tasks_before_transition', { count: this.tasks.length }), badge: this.tasks.length ? t('badge_open') : t('badge_ready'), level: this.tasks.length ? 'warning' : 'good', color: '#b45309', icon: 'mdi-hospital-exit', tab: 'Handoff' }
       ]
     },
     activePlan() {
-      const labs = this.labOrders.slice(0, 2).map(item => ({ key: `lab-${item.id}`, icon: 'mdi-flask-outline', color: '#0369a1', label: item.test || item.testName || 'Laboratory order', detail: item.priority || 'Routine', status: item.status || 'Requested' }))
-      const imaging = this.imagingOrders.slice(0, 2).map(item => ({ key: `img-${item.id}`, icon: 'mdi-radiology-box-outline', color: '#7c3aed', label: item.exam || item.modality || 'Imaging order', detail: item.priority || 'Routine', status: item.status || 'Requested' }))
-      const medications = this.activeMedications.slice(0, 3).map(item => ({ key: `med-${item.id}`, icon: 'mdi-pill', color: '#0f766e', label: item.drug || item.medication || 'Medication', detail: [item.dose, item.route, item.frequency].filter(Boolean).join(' | '), status: item.status || 'Active' }))
+      const t = key => this.$t(`clinical360.doctor.command_center.${key}`)
+      const labs = this.labOrders.slice(0, 2).map(item => ({ key: `lab-${item.id}`, icon: 'mdi-flask-outline', color: '#0369a1', label: item.test || item.testName || t('laboratory_order'), detail: item.priority || t('routine'), status: item.status || t('requested') }))
+      const imaging = this.imagingOrders.slice(0, 2).map(item => ({ key: `img-${item.id}`, icon: 'mdi-radiology-box-outline', color: '#7c3aed', label: item.exam || item.modality || t('imaging_order'), detail: item.priority || t('routine'), status: item.status || t('requested') }))
+      const medications = this.activeMedications.slice(0, 3).map(item => ({ key: `med-${item.id}`, icon: 'mdi-pill', color: '#0f766e', label: item.drug || item.medication || t('medication'), detail: [item.dose, item.route, item.frequency].filter(Boolean).join(' | '), status: item.status || t('active_status') }))
       return [...labs, ...imaging, ...medications]
     }
   },
@@ -131,7 +133,7 @@ export default {
       this.$emit('open-tab', tab)
     },
     formatDate(value) {
-      if (!value) return 'Date not filed'
+      if (!value) return this.$t('clinical360.doctor.command_center.date_not_filed')
       const date = new Date(value)
       return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString()
     }

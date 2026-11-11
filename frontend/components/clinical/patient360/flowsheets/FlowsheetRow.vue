@@ -6,7 +6,7 @@
           v-if="hasChildren"
           class="expand-toggle"
           @click.stop="$emit('toggle-collapse')"
-          :title="isCollapsed ? 'Expand' : 'Collapse'"
+          :title="isCollapsed ? $t('clinical360.flowsheets.row.expand') : $t('clinical360.flowsheets.row.collapse')"
         >
           <v-icon x-small>{{ isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-down' }}</v-icon>
         </button>

@@ -32,10 +32,27 @@ export default {
     patient() { return (this.$store.getters['clinical/patientDirectory'] || []).find(item => item.id === this.patientId) || {} },
     chart() { return this.$store.getters['nursing/patientNursing360'](this.patientId) }
   },
-  mounted() { this.$store.commit('nursing/LOAD_FROM_STORAGE') },
+  mounted() {
+    this.$store.commit('nursing/LOAD_FROM_STORAGE')
+    this.$store.dispatch('nursing/loadPatientChart', this.patientId)
+  },
   methods: {
-    saveTask() { this.$store.dispatch('nursing/createTask', { ...this.form, patientId: this.patientId }); this.form = { title: '', priority: 'routine', reason: '' } },
-    updateTaskStatus(payload) { this.$store.dispatch('nursing/updateTaskStatus', payload) }
+    async saveTask() {
+      try {
+        await this.$store.dispatch('nursing/createTask', { ...this.form, patientId: this.patientId })
+        this.form = { title: '', priority: 'routine', reason: '' }
+        this.$toast.success('Task created.')
+      } catch (err) {
+        this.$toast.error(err.response?.data?.error || err.message || 'Unable to create this task.')
+      }
+    },
+    async updateTaskStatus(payload) {
+      try {
+        await this.$store.dispatch('nursing/updateTaskStatus', payload)
+      } catch (err) {
+        this.$toast.error(err.response?.data?.error || err.message || 'Unable to update this task.')
+      }
+    }
   }
 }
 </script>

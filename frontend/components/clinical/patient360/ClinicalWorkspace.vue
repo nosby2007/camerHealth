@@ -2,7 +2,7 @@
   <div class="clinical-workspace">
     <!-- Header -->
     <v-app-bar color="primary" dark dense>
-      <v-toolbar-title>Patient 360 - Clinical Workspace</v-toolbar-title>
+      <v-toolbar-title>{{ $t('clinical360.legacy.title') }}</v-toolbar-title>
       <v-spacer />
       <v-menu>
         <template #activator="{ on, attrs }">
@@ -12,10 +12,10 @@
         </template>
         <v-list>
           <v-list-item @click="exportData">
-            <v-list-item-title>Export Records</v-list-item-title>
+            <v-list-item-title>{{ $t('clinical360.legacy.export_records') }}</v-list-item-title>
           </v-list-item>
           <v-list-item @click="printRecords">
-            <v-list-item-title>Print Records</v-list-item-title>
+            <v-list-item-title>{{ $t('clinical360.legacy.print_records') }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
@@ -28,88 +28,88 @@
           <!-- Phase 1 -->
           <v-list-item @click="activeTab = 'avatar'">
             <v-list-item-icon><v-icon>mdi-human</v-icon></v-list-item-icon>
-            <v-list-item-title>360° Avatar</v-list-item-title>
+            <v-list-item-title>{{ $t('clinical360.legacy.avatar') }}</v-list-item-title>
           </v-list-item>
 
           <!-- Phase 2 -->
           <v-list-item @click="activeTab = 'navigator'">
             <v-list-item-icon><v-icon>mdi-compass</v-icon></v-list-item-icon>
-            <v-list-item-title>Workflow Navigator</v-list-item-title>
+            <v-list-item-title>{{ $t('clinical360.legacy.workflow_navigator') }}</v-list-item-title>
           </v-list-item>
 
           <!-- Phase 3 -->
           <v-list-group prepend-icon="mdi-chart-line">
             <template #activator>
-              <v-list-item-title>Flowsheet Assessment</v-list-item-title>
+              <v-list-item-title>{{ $t('clinical360.legacy.flowsheet_assessment') }}</v-list-item-title>
             </template>
             <v-list-item @click="openForm('vitals')">
-              <v-list-item-title class="pl-8">Vitals</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.vitals') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('pain')">
-              <v-list-item-title class="pl-8">Pain</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.pain') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('mobility')">
-              <v-list-item-title class="pl-8">Mobility</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.mobility') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('intakeOutput')">
-              <v-list-item-title class="pl-8">Intake/Output</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.intake_output') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('headToToe')">
-              <v-list-item-title class="pl-8">Head-to-Toe</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.head_to_toe') }}</v-list-item-title>
             </v-list-item>
           </v-list-group>
 
           <!-- Phase 4 -->
           <v-list-group prepend-icon="mdi-hospital-box-outline">
             <template #activator>
-              <v-list-item-title>Orders & MAR</v-list-item-title>
+              <v-list-item-title>{{ $t('clinical360.legacy.orders_mar') }}</v-list-item-title>
             </template>
             <v-list-item @click="openForm('orderEntry')">
-              <v-list-item-title class="pl-8">Order Entry</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.order_entry') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('mar')">
-              <v-list-item-title class="pl-8">MAR</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.mar') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('medReconciliation')">
-              <v-list-item-title class="pl-8">Med Reconciliation</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.med_reconciliation') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('deviceMarkers')">
-              <v-list-item-title class="pl-8">Device Markers</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.device_markers') }}</v-list-item-title>
             </v-list-item>
           </v-list-group>
 
           <!-- Phase 5 -->
           <v-list-group prepend-icon="mdi-file-document-outline">
             <template #activator>
-              <v-list-item-title>Care Planning</v-list-item-title>
+              <v-list-item-title>{{ $t('clinical360.legacy.care_planning') }}</v-list-item-title>
             </template>
             <v-list-item @click="openForm('carePlanTemplate')">
-              <v-list-item-title class="pl-8">Templates</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.templates') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('carePlan')">
-              <v-list-item-title class="pl-8">Care Plan</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.care_plan') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('patientEducation')">
-              <v-list-item-title class="pl-8">Education</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.education') }}</v-list-item-title>
             </v-list-item>
           </v-list-group>
 
           <!-- Phase 6 -->
           <v-list-group prepend-icon="mdi-door-open">
             <template #activator>
-              <v-list-item-title>Discharge Planning</v-list-item-title>
+              <v-list-item-title>{{ $t('clinical360.legacy.discharge_planning') }}</v-list-item-title>
             </template>
             <v-list-item @click="openForm('dischargeContinuity')">
-              <v-list-item-title class="pl-8">Continuity</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.continuity') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('followUpTasks')">
-              <v-list-item-title class="pl-8">Follow-up Tasks</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.follow_up_tasks') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('appointments')">
-              <v-list-item-title class="pl-8">Appointments</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.appointments') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="openForm('returnPrecautions')">
-              <v-list-item-title class="pl-8">Return Precautions</v-list-item-title>
+              <v-list-item-title class="pl-8">{{ $t('clinical360.legacy.return_precautions') }}</v-list-item-title>
             </v-list-item>
           </v-list-group>
         </v-list-item-group>
@@ -216,7 +216,7 @@
               :encounter-id="encounterId"
               @saved="onFormSave('deviceMarkers', $event)"
             />
-            <v-btn @click="formDialog.open = false" class="mt-4">Close</v-btn>
+            <v-btn @click="formDialog.open = false" class="mt-4">{{ $t('common.close') }}</v-btn>
           </div>
 
           <!-- Care Plan Template -->
@@ -382,7 +382,7 @@ export default {
       this.formDialog.open = true
     },
     onFormSave(formType, data) {
-      this.notification.message = `${formType} saved successfully`
+      this.notification.message = this.$t('clinical360.legacy.saved_successfully')
       this.notification.color = 'success'
       this.notification.show = true
       this.formDialog.open = false
@@ -392,7 +392,7 @@ export default {
       this.formDialog.type = 'carePlan'
     },
     exportData() {
-      this.$notify({ type: 'info', message: 'Export functionality coming soon' })
+      this.$notify({ type: 'info', message: this.$t('clinical360.legacy.export_coming_soon') })
     },
     printRecords() {
       window.print()

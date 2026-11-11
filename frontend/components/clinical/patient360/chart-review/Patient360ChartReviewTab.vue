@@ -2,21 +2,21 @@
   <section class="chart-review-workspace">
     <header class="chart-review-command">
       <div>
-        <span>Longitudinal chart</span>
-        <strong>One clinical timeline across the current patient record</strong>
-        <p>Review encounters, observations, notes, diagnostics, medications, wounds, education and filed documents without leaving Patient 360.</p>
+        <span>{{ $t('clinical360.chart_review.tab.eyebrow') }}</span>
+        <strong>{{ $t('clinical360.chart_review.tab.title') }}</strong>
+        <p>{{ $t('clinical360.chart_review.tab.subtitle') }}</p>
       </div>
       <div class="chart-review-actions">
         <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="$emit('action', 'notes')">
-          <v-icon x-small left>mdi-note-plus-outline</v-icon>New note
+          <v-icon x-small left>mdi-note-plus-outline</v-icon>{{ $t('clinical360.chart_review.tab.buttons.new_note') }}
         </v-btn>
         <v-btn v-if="!readOnly" x-small depressed color="#003366" dark @click="$emit('action', 'flowsheet')">
-          <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed care
+          <v-icon x-small left>mdi-clock-edit-outline</v-icon>{{ $t('clinical360.chart_review.tab.buttons.timed_care') }}
         </v-btn>
       </div>
     </header>
 
-    <div class="chart-review-metrics" aria-label="Chart review summary">
+    <div class="chart-review-metrics" :aria-label="$t('clinical360.chart_review.tab.aria.summary')">
       <article v-for="metric in metrics" :key="metric.label" :class="['chart-review-metric', metric.status || 'neutral']">
         <v-icon small>{{ metric.icon }}</v-icon>
         <div>
@@ -27,10 +27,10 @@
       </article>
     </div>
 
-    <div v-if="alerts.length" class="chart-review-alerts" aria-label="Items requiring review">
+    <div v-if="alerts.length" class="chart-review-alerts" :aria-label="$t('clinical360.chart_review.tab.aria.attention_required')">
       <div class="chart-review-alert-title">
         <v-icon small color="#be123c">mdi-alert-circle-outline</v-icon>
-        <strong>Attention required</strong>
+        <strong>{{ $t('clinical360.chart_review.tab.attention_required') }}</strong>
       </div>
       <button v-for="alert in alerts.slice(0, 4)" :key="alert.id" type="button" @click="selectAlert(alert)">
         <span>{{ alert.label }}</span>
@@ -41,12 +41,12 @@
     <div class="chart-review-toolbar">
       <label class="chart-review-search">
         <v-icon small>mdi-magnify</v-icon>
-        <input v-model.trim="query" type="search" placeholder="Search chart events, clinician or detail" aria-label="Search chart review">
-        <button v-if="query" type="button" title="Clear search" aria-label="Clear search" @click="query = ''">
+        <input v-model.trim="query" type="search" :placeholder="$t('clinical360.chart_review.tab.search_placeholder')" :aria-label="$t('clinical360.chart_review.tab.aria.search')">
+        <button v-if="query" type="button" :title="$t('clinical360.chart_review.tab.clear_search')" :aria-label="$t('clinical360.chart_review.tab.clear_search')" @click="query = ''">
           <v-icon small>mdi-close</v-icon>
         </button>
       </label>
-      <div class="chart-review-period" role="group" aria-label="Chart review period">
+      <div class="chart-review-period" role="group" :aria-label="$t('clinical360.chart_review.tab.aria.period')">
         <button
           v-for="period in periods"
           :key="period.value"
@@ -59,7 +59,7 @@
       </div>
     </div>
 
-    <div class="chart-review-categories" aria-label="Chart event categories">
+    <div class="chart-review-categories" :aria-label="$t('clinical360.chart_review.tab.aria.categories')">
       <button
         v-for="category in availableCategories"
         :key="category.key"
@@ -74,13 +74,13 @@
     </div>
 
     <div class="chart-review-main">
-      <section class="chart-review-timeline" aria-label="Clinical timeline">
+      <section class="chart-review-timeline" :aria-label="$t('clinical360.chart_review.tab.aria.timeline')">
         <header>
           <div>
             <strong>{{ filteredEvents.length }} event{{ filteredEvents.length === 1 ? '' : 's' }}</strong>
             <span>{{ activeFilterLabel }}</span>
           </div>
-          <button type="button" :title="sortDescending ? 'Show oldest first' : 'Show newest first'" @click="sortDescending = !sortDescending">
+          <button type="button" :title="sortDescending ? $t('clinical360.chart_review.tab.sort.oldest_first') : $t('clinical360.chart_review.tab.sort.newest_first')" @click="sortDescending = !sortDescending">
             <v-icon small>{{ sortDescending ? 'mdi-sort-clock-descending-outline' : 'mdi-sort-clock-ascending-outline' }}</v-icon>
           </button>
         </header>
@@ -100,19 +100,19 @@
                 <time>{{ formatDate(event.at) }}</time>
               </span>
               <b>{{ event.label }}</b>
-              <small>{{ event.summary || event.detail || 'No additional summary filed.' }}</small>
-              <em>{{ event.clinician || 'Clinical record' }}</em>
+              <small>{{ event.summary || event.detail || $t('clinical360.chart_review.tab.no_summary_filed') }}</small>
+              <em>{{ event.clinician || $t('clinical360.chart_review.tab.clinical_record_fallback') }}</em>
             </span>
           </button>
         </div>
         <div v-else class="chart-review-empty">
           <v-icon>mdi-file-search-outline</v-icon>
-          <strong>No chart events match this view</strong>
-          <span>Change the period, category or search terms.</span>
+          <strong>{{ $t('clinical360.chart_review.tab.empty.title') }}</strong>
+          <span>{{ $t('clinical360.chart_review.tab.empty.subtitle') }}</span>
         </div>
       </section>
 
-      <aside class="chart-review-detail" aria-label="Selected chart event detail">
+      <aside class="chart-review-detail" :aria-label="$t('clinical360.chart_review.tab.aria.detail')">
         <template v-if="selectedEvent">
           <header>
             <span :class="['chart-review-detail-icon', selectedEvent.status || 'neutral']">
@@ -127,26 +127,26 @@
 
           <dl>
             <div>
-              <dt>Recorded by</dt>
-              <dd>{{ selectedEvent.clinician || 'Not specified' }}</dd>
+              <dt>{{ $t('clinical360.chart_review.tab.detail.recorded_by') }}</dt>
+              <dd>{{ selectedEvent.clinician || $t('clinical360.chart_review.tab.detail.not_specified') }}</dd>
             </div>
             <div>
-              <dt>Status</dt>
-              <dd>{{ selectedEvent.statusLabel || selectedEvent.status || 'Filed' }}</dd>
+              <dt>{{ $t('clinical360.chart_review.tab.detail.status') }}</dt>
+              <dd>{{ selectedEvent.statusLabel || selectedEvent.status || $t('clinical360.chart_review.tab.detail.filed_fallback') }}</dd>
             </div>
             <div v-if="selectedEvent.sourceLabel">
-              <dt>Source</dt>
+              <dt>{{ $t('clinical360.chart_review.tab.detail.source') }}</dt>
               <dd>{{ selectedEvent.sourceLabel }}</dd>
             </div>
           </dl>
 
           <section>
-            <h3>Clinical summary</h3>
-            <p>{{ selectedEvent.detail || selectedEvent.summary || 'No narrative detail was filed for this event.' }}</p>
+            <h3>{{ $t('clinical360.chart_review.tab.detail.clinical_summary') }}</h3>
+            <p>{{ selectedEvent.detail || selectedEvent.summary || $t('clinical360.chart_review.tab.detail.no_narrative_detail') }}</p>
           </section>
 
           <section v-if="selectedEvent.facts && selectedEvent.facts.length">
-            <h3>Filed values</h3>
+            <h3>{{ $t('clinical360.chart_review.tab.detail.filed_values') }}</h3>
             <ul>
               <li v-for="fact in selectedEvent.facts" :key="fact.label">
                 <span>{{ fact.label }}</span>
@@ -156,18 +156,18 @@
           </section>
 
           <v-btn v-if="selectedEvent.targetTab" small outlined color="#0f766e" @click="$emit('navigate', selectedEvent.targetTab)">
-            Open {{ selectedEvent.targetTab }}
+            {{ $t('clinical360.chart_review.tab.detail.open_tab', { tab: selectedEvent.targetTab }) }}
             <v-icon small right>mdi-arrow-right</v-icon>
           </v-btn>
         </template>
         <div v-else class="chart-review-empty compact">
           <v-icon>mdi-text-box-search-outline</v-icon>
-          <strong>Select a clinical event</strong>
-          <span>Its complete filed context will appear here.</span>
+          <strong>{{ $t('clinical360.chart_review.tab.select_event.title') }}</strong>
+          <span>{{ $t('clinical360.chart_review.tab.select_event.subtitle') }}</span>
         </div>
 
         <section class="chart-review-risks">
-          <h3>Problems and risks</h3>
+          <h3>{{ $t('clinical360.chart_review.tab.problems_and_risks') }}</h3>
           <ul>
             <li v-for="risk in risks" :key="risk.label">
               <span>{{ risk.label }}</span>
@@ -182,16 +182,16 @@
 
 <script>
 const CATEGORY_META = {
-  encounter: { label: 'Encounters', icon: 'mdi-stethoscope' },
-  observation: { label: 'Observations', icon: 'mdi-heart-pulse' },
-  note: { label: 'Notes', icon: 'mdi-note-text-outline' },
-  order: { label: 'Orders', icon: 'mdi-clipboard-list-outline' },
-  result: { label: 'Results', icon: 'mdi-flask-outline' },
-  medication: { label: 'Medications', icon: 'mdi-pill' },
-  wound: { label: 'Wounds', icon: 'mdi-bandage' },
-  care: { label: 'Care', icon: 'mdi-clock-check-outline' },
-  education: { label: 'Education', icon: 'mdi-school-outline' },
-  document: { label: 'Documents', icon: 'mdi-file-document-outline' }
+  encounter: { icon: 'mdi-stethoscope' },
+  observation: { icon: 'mdi-heart-pulse' },
+  note: { icon: 'mdi-note-text-outline' },
+  order: { icon: 'mdi-clipboard-list-outline' },
+  result: { icon: 'mdi-flask-outline' },
+  medication: { icon: 'mdi-pill' },
+  wound: { icon: 'mdi-bandage' },
+  care: { icon: 'mdi-clock-check-outline' },
+  education: { icon: 'mdi-school-outline' },
+  document: { icon: 'mdi-file-document-outline' }
 }
 
 export default {
@@ -209,33 +209,44 @@ export default {
       selectedCategory: 'all',
       selectedPeriod: 'all',
       selectedEventId: '',
-      sortDescending: true,
-      periods: [
-        { label: '24h', value: '24h' },
-        { label: '7d', value: '7d' },
-        { label: '30d', value: '30d' },
-        { label: 'All', value: 'all' }
-      ]
+      sortDescending: true
     }
   },
   computed: {
+    periods() {
+      return [
+        { label: '24h', value: '24h' },
+        { label: '7d', value: '7d' },
+        { label: '30d', value: '30d' },
+        { label: this.$t('clinical360.chart_review.tab.periods.all'), value: 'all' }
+      ]
+    },
     normalizedEvents() {
       return this.events.map((event, index) => {
         const category = CATEGORY_META[event.category] || CATEGORY_META.care
+        const categoryLabel = this.$t(`clinical360.chart_review.tab.categories.${event.category || 'care'}`)
         return {
           ...event,
           id: event.id || `chart-event-${index}`,
           category: event.category || 'care',
-          categoryLabel: event.categoryLabel || category.label,
+          categoryLabel: event.categoryLabel || categoryLabel,
           icon: event.icon || category.icon
         }
       })
     },
     availableCategories() {
       const categories = Object.keys(CATEGORY_META)
-        .map(key => ({ key, ...CATEGORY_META[key], count: this.normalizedEvents.filter(event => event.category === key).length }))
+        .map(key => ({
+          key,
+          ...CATEGORY_META[key],
+          label: this.$t(`clinical360.chart_review.tab.categories.${key}`),
+          count: this.normalizedEvents.filter(event => event.category === key).length
+        }))
         .filter(item => item.count)
-      return [{ key: 'all', label: 'All', icon: 'mdi-view-list-outline', count: this.normalizedEvents.length }, ...categories]
+      return [
+        { key: 'all', label: this.$t('clinical360.chart_review.tab.categories.all'), icon: 'mdi-view-list-outline', count: this.normalizedEvents.length },
+        ...categories
+      ]
     },
     filteredEvents() {
       const now = Date.now()
@@ -267,7 +278,9 @@ export default {
     activeFilterLabel() {
       const category = this.availableCategories.find(item => item.key === this.selectedCategory)
       const period = this.periods.find(item => item.value === this.selectedPeriod)
-      return `${category ? category.label : 'All'} · ${period ? period.label : 'All time'}`
+      const categoryLabel = category ? category.label : this.$t('clinical360.chart_review.tab.categories.all')
+      const periodLabel = period ? period.label : this.$t('clinical360.chart_review.tab.periods.all_time')
+      return `${categoryLabel} · ${periodLabel}`
     }
   },
   watch: {
@@ -291,15 +304,15 @@ export default {
       this.selectedCategory = alert.category || 'all'
     },
     formatDate(value) {
-      if (!value) return 'Date not filed'
+      if (!value) return this.$t('clinical360.chart_review.tab.dates.not_filed')
       const date = new Date(value)
-      if (Number.isNaN(date.getTime())) return 'Date not filed'
+      if (Number.isNaN(date.getTime())) return this.$t('clinical360.chart_review.tab.dates.not_filed')
       return date.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
     },
     formatDateLong(value) {
-      if (!value) return 'Date and time not filed'
+      if (!value) return this.$t('clinical360.chart_review.tab.dates.not_filed_long')
       const date = new Date(value)
-      if (Number.isNaN(date.getTime())) return 'Date and time not filed'
+      if (Number.isNaN(date.getTime())) return this.$t('clinical360.chart_review.tab.dates.not_filed_long')
       return date.toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     }
   }

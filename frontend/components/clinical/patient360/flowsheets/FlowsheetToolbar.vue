@@ -1,42 +1,42 @@
 <template>
   <div class="toolbar">
     <div class="toolbar-section">
-      <v-btn small text @click="$emit('add-rows')" title="Add Rows">
-        <v-icon x-small left>mdi-plus</v-icon>Add Rows
+      <v-btn small text @click="$emit('add-rows')" :title="$t('clinical360.flowsheets.toolbar.add_rows')">
+        <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.flowsheets.toolbar.add_rows') }}
       </v-btn>
-      <v-btn small text @click="insertColumn" title="Add Column">
-        <v-icon x-small left>mdi-plus</v-icon>Add Col
+      <v-btn small text @click="insertColumn" :title="$t('clinical360.flowsheets.toolbar.add_column')">
+        <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.flowsheets.toolbar.add_col') }}
       </v-btn>
-      <v-btn small text @click="insertColumn" title="Insert Column">
-        <v-icon x-small left>mdi-plus</v-icon>Insert Col
+      <v-btn small text @click="insertColumn" :title="$t('clinical360.flowsheets.toolbar.insert_column')">
+        <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.flowsheets.toolbar.insert_col') }}
       </v-btn>
-      <v-btn small :color="isSaving ? 'info' : 'success'" text :disabled="isSaving" @click="fileCurrentColumn" title="File/Save Current Column">
-        <v-icon x-small left>{{ isSaving ? 'mdi-loading' : 'mdi-content-save' }}</v-icon>{{ isSaving ? 'Saving...' : 'File Column' }}
+      <v-btn small :color="isSaving ? 'info' : 'success'" text :disabled="isSaving" @click="fileCurrentColumn" :title="$t('clinical360.flowsheets.toolbar.file_save_current_column')">
+        <v-icon x-small left>{{ isSaving ? 'mdi-loading' : 'mdi-content-save' }}</v-icon>{{ isSaving ? $t('clinical360.flowsheets.toolbar.saving') : $t('clinical360.flowsheets.toolbar.file_column') }}
       </v-btn>
-      <v-btn small depressed color="#0f766e" dark @click="$emit('timed-documentation')" title="Timed care documentation">
-        <v-icon x-small left>mdi-clock-edit-outline</v-icon>Timed Entry
+      <v-btn small depressed color="#0f766e" dark @click="$emit('timed-documentation')" :title="$t('clinical360.flowsheets.toolbar.timed_care_documentation')">
+        <v-icon x-small left>mdi-clock-edit-outline</v-icon>{{ $t('clinical360.flowsheets.toolbar.timed_entry') }}
       </v-btn>
       <div v-if="saveStatus" :class="['save-status', saveError ? 'error' : 'success']">
         <v-icon x-small>{{ saveError ? 'mdi-alert-circle' : 'mdi-check-circle' }}</v-icon>
         <span>{{ saveStatusText }}</span>
       </div>
-      <v-btn small text @click="$emit('device-data')" title="Device Data">
-        <v-icon x-small left>mdi-database</v-icon>Device Data
+      <v-btn small text @click="$emit('device-data')" :title="$t('clinical360.flowsheets.toolbar.device_data')">
+        <v-icon x-small left>mdi-database</v-icon>{{ $t('clinical360.flowsheets.toolbar.device_data') }}
       </v-btn>
     </div>
 
     <div class="toolbar-section">
       <v-btn small text @click="toggleHideCompleted" :color="hideCompleted ? 'primary' : ''">
-        <v-icon x-small left>mdi-eye-off</v-icon>Hide Comp'd
+        <v-icon x-small left>mdi-eye-off</v-icon>{{ $t('clinical360.flowsheets.toolbar.hide_completed') }}
       </v-btn>
       <v-btn small text @click="toggleSmartCollapse" :color="smartCollapse ? 'primary' : ''">
-        <v-icon x-small left>mdi-compress</v-icon>Smart-Collapse
+        <v-icon x-small left>mdi-compress</v-icon>{{ $t('clinical360.flowsheets.toolbar.smart_collapse') }}
       </v-btn>
       <v-btn small text @click="goToLastFiled">
-        <v-icon x-small left>mdi-history</v-icon>Last Filed
+        <v-icon x-small left>mdi-history</v-icon>{{ $t('clinical360.flowsheets.toolbar.last_filed') }}
       </v-btn>
       <v-btn small text @click="goToDate">
-        <v-icon x-small left>mdi-calendar</v-icon>Go to Date
+        <v-icon x-small left>mdi-calendar</v-icon>{{ $t('clinical360.flowsheets.toolbar.go_to_date') }}
       </v-btn>
     </div>
 
@@ -44,26 +44,26 @@
       <v-menu offset-y>
         <template #activator="{ on, attrs }">
           <v-btn small text v-bind="attrs" v-on="on">
-            <v-icon x-small left>mdi-account</v-icon>Responsible
+            <v-icon x-small left>mdi-account</v-icon>{{ $t('clinical360.flowsheets.toolbar.responsible') }}
           </v-btn>
         </template>
         <v-list dense>
           <v-list-item @click="setResponsible('current')">
-            <v-list-item-title>Current User</v-list-item-title>
+            <v-list-item-title>{{ $t('clinical360.flowsheets.toolbar.current_user') }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
       <v-btn small text @click="refresh">
-        <v-icon x-small left>mdi-refresh</v-icon>Refresh
+        <v-icon x-small left>mdi-refresh</v-icon>{{ $t('clinical360.flowsheets.toolbar.refresh') }}
       </v-btn>
       <v-btn small text @click="$emit('flowsheet-history')">
-        <v-icon x-small left>mdi-history</v-icon>History
+        <v-icon x-small left>mdi-history</v-icon>{{ $t('clinical360.flowsheets.toolbar.history') }}
       </v-btn>
       <v-btn small text @click="$emit('chart-correction')">
-        <v-icon x-small left>mdi-pencil</v-icon>Chart Correction
+        <v-icon x-small left>mdi-pencil</v-icon>{{ $t('clinical360.flowsheets.toolbar.chart_correction') }}
       </v-btn>
       <v-btn small text @click="openGraph">
-        <v-icon x-small left>mdi-chart-line</v-icon>Graph
+        <v-icon x-small left>mdi-chart-line</v-icon>{{ $t('clinical360.flowsheets.toolbar.graph') }}
       </v-btn>
     </div>
   </div>
@@ -106,10 +106,10 @@ export default {
       return this.saveError || this.lastSavedAt
     },
     saveStatusText() {
-      if (this.saveError) return `Error: ${this.saveError}`
+      if (this.saveError) return this.$t('clinical360.flowsheets.toolbar.save_error', { error: this.saveError })
       if (this.lastSavedAt) {
         const time = new Date(this.lastSavedAt)
-        return `Saved at ${time.toLocaleTimeString()}`
+        return this.$t('clinical360.flowsheets.toolbar.saved_at', { time: time.toLocaleTimeString() })
       }
       return ''
     }
@@ -146,7 +146,7 @@ export default {
     },
     async fileCurrentColumn() {
       if (!this.selectedColumnId) {
-        alert('Please select a column to file')
+        alert(this.$t('clinical360.flowsheets.toolbar.select_column_to_file'))
         return
       }
       try {

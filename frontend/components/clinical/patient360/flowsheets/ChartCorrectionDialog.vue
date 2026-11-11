@@ -1,12 +1,12 @@
 <template>
   <v-dialog :value="show" max-width="600" persistent @input="$emit('update:show', $event)">
     <v-card>
-      <v-card-title>Chart Correction</v-card-title>
+      <v-card-title>{{ $t('clinical360.flowsheets.chart_correction_dialog.title') }}</v-card-title>
       <v-card-text>
-        <p class="subtitle">Create a non-destructive correction to a filed entry.</p>
+        <p class="subtitle">{{ $t('clinical360.flowsheets.chart_correction_dialog.subtitle') }}</p>
 
         <div class="form-section">
-          <label class="label">Select Entry to Correct</label>
+          <label class="label">{{ $t('clinical360.flowsheets.chart_correction_dialog.select_entry') }}</label>
           <div class="entries-list">
             <div
               v-for="entry in recentEntries"
@@ -16,7 +16,7 @@
             >
               <div class="entry-info">
                 <div class="entry-row">{{ entry.rowLabel }}</div>
-                <div class="entry-value">Current Value: {{ entry.value }}</div>
+                <div class="entry-value">{{ $t('clinical360.flowsheets.chart_correction_dialog.current_value', { value: entry.value }) }}</div>
               </div>
               <div class="entry-date">{{ formatDate(entry.documentedAt) }}</div>
             </div>
@@ -26,26 +26,26 @@
         <div v-if="selectedEntry" class="form-section">
           <v-text-field
             v-model="newValue"
-            label="Corrected Value"
+            :label="$t('clinical360.flowsheets.chart_correction_dialog.corrected_value')"
             outlined
             dense
           />
 
           <v-textarea
             v-model="reason"
-            label="Reason for Correction"
+            :label="$t('clinical360.flowsheets.chart_correction_dialog.reason_for_correction')"
             outlined
             dense
             rows="3"
-            placeholder="Explain why this correction is needed..."
+            :placeholder="$t('clinical360.flowsheets.chart_correction_dialog.reason_placeholder')"
           />
         </div>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text small @click="$emit('update:show', false)">Cancel</v-btn>
+        <v-btn text small @click="$emit('update:show', false)">{{ $t('clinical360.flowsheets.chart_correction_dialog.cancel') }}</v-btn>
         <v-btn depressed color="#0f766e" dark small @click="submitCorrection" :disabled="!selectedEntry || !newValue || !reason">
-          Create Correction
+          {{ $t('clinical360.flowsheets.chart_correction_dialog.create_correction') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -79,7 +79,7 @@ export default {
           return {
             id: cell.id,
             rowId: cell.rowId,
-            rowLabel: row?.label || 'Unknown',
+            rowLabel: row?.label || this.$t('clinical360.flowsheets.chart_correction_dialog.unknown_row'),
             value: cell.displayValue,
             documentedAt: cell.documentedAt,
             documentedBy: cell.documentedBy

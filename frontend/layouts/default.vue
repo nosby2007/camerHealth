@@ -9,7 +9,7 @@
         </v-avatar>
         <div class="line-height-1">
           <div class="text-caption font-weight-black grey--text text--lighten-1 ls-1 uppercase">CameroHealth</div>
-          <div class="text-subtitle-2 font-weight-black white--text uppercase ls-tight">Digitalising Health, Improving Care</div>
+          <div class="text-subtitle-2 font-weight-black white--text uppercase ls-tight">{{ $t('shell.tagline') }}</div>
         </div>
       </div>
 
@@ -20,7 +20,7 @@
           <v-list-item :key="'item-'+i" :to="item.to" router exact active-class="gov-active-item">
             <v-list-item-icon><v-icon>{{ item.icon }}</v-icon></v-list-item-icon>
             <v-list-item-content>
-              <v-list-item-title class="font-weight-medium uppercase">{{ item.titleKey.includes('menu') ? $t(item.titleKey) : item.titleKey }}</v-list-item-title>
+              <v-list-item-title class="font-weight-medium uppercase">{{ $t(item.titleKey) }}</v-list-item-title>
             </v-list-item-content>
           </v-list-item>
         </template>
@@ -37,14 +37,14 @@
 
     <!-- Hospital-Grade App Bar -->
     <v-app-bar flat fixed app color="white" height="72" class="gov-navbar b-bottom">
-      <v-btn icon aria-label="Toggle navigation" title="Toggle navigation" @click.stop="drawer = !drawer" class="gov-nav-toggle mr-2">
+      <v-btn icon :aria-label="$t('shell.toggle_navigation')" :title="$t('shell.toggle_navigation')" @click.stop="drawer = !drawer" class="gov-nav-toggle mr-2">
          <v-icon class="gov-navbar-icon">mdi-menu-open</v-icon>
       </v-btn>
 
       <div class="ml-4 d-none d-md-flex flex-column">
-        <span class="text-caption font-weight-black grey--text text--darken-1 mb-n1 mt-1">CameroHealth - {{ isClinical ? 'Clinical Layer' : 'National Health Statistics' }}</span>
+        <span class="text-caption font-weight-black grey--text text--darken-1 mb-n1 mt-1">CameroHealth - {{ isClinical ? $t('shell.clinical_layer') : $t('shell.national_statistics') }}</span>
         <span class="text-subtitle-2 font-weight-bold gov-primary--text">
-          {{ isClinical ? institution : 'Ministry of Public Health - Surveillance Portal' }}
+          {{ isClinical ? institution : $t('shell.ministry_portal') }}
         </span>
       </div>
       
@@ -52,7 +52,7 @@
 
       <v-chip v-if="pendingSyncCount > 0" small label color="warning" text-color="white" class="mr-4 font-weight-bold">
         <v-icon left small>mdi-cloud-sync-outline</v-icon>
-        Offline — {{ pendingSyncCount }} pending sync
+        {{ $t('shell.offline_sync', { count: pendingSyncCount }) }}
       </v-chip>
 
       <!-- Language Selector (CRITICAL UPDATE) -->
@@ -65,10 +65,10 @@
         </template>
         <v-list dense tile class="pa-0 b-1">
            <v-list-item @click="setLang('en')" class="py-2">
-              <v-list-item-title class="font-weight-bold text-caption">ENGLISH</v-list-item-title>
+              <v-list-item-title class="font-weight-bold text-caption">{{ $t('lang.english').toUpperCase() }}</v-list-item-title>
            </v-list-item>
            <v-list-item @click="setLang('fr')" class="py-2">
-              <v-list-item-title class="font-weight-bold text-caption">FRANÇAIS</v-list-item-title>
+              <v-list-item-title class="font-weight-bold text-caption">{{ $t('lang.french').toUpperCase() }}</v-list-item-title>
            </v-list-item>
         </v-list>
       </v-menu>
@@ -79,7 +79,7 @@
         <template v-slot:activator="{ on }">
           <v-btn text class="gov-session-trigger pa-2" v-on="on">
             <div class="text-right mr-3 d-none d-sm-block">
-              <div class="text-caption font-weight-black grey--text mb-n1 uppercase">SESSION: {{ isClinical ? 'STAFF' : 'OFFICER' }}</div>
+              <div class="text-caption font-weight-black grey--text mb-n1 uppercase">{{ $t('shell.session') }} : {{ isClinical ? $t('shell.staff') : $t('shell.officer') }}</div>
               <div class="text-body-2 font-weight-black gov-primary--text">{{ displayName }}</div>
             </div>
             <v-avatar size="40" color="#F5F7F6" class="b-1 gov-session-avatar">
@@ -91,13 +91,13 @@
            <v-list-item class="bg-grey lighten-4 py-2 border-bottom">
               <v-list-item-content>
                  <v-list-item-title class="font-weight-black text-caption">{{ institution }}</v-list-item-title>
-                 <v-list-item-subtitle class="text-caption">STAFF ID: {{ $store.state.auth.staffId }}</v-list-item-subtitle>
-                 <v-list-item-subtitle v-if="userRole !== 'ADMIN' && userDepartment" class="text-caption font-weight-bold teal--text text--darken-2">DEPT: {{ userDepartment }} | WARD: {{ userWard }}</v-list-item-subtitle>
+                 <v-list-item-subtitle class="text-caption">{{ $t('shell.staff_id') }} : {{ $store.state.auth.staffId }}</v-list-item-subtitle>
+                 <v-list-item-subtitle v-if="userRole !== 'ADMIN' && userDepartment" class="text-caption font-weight-bold teal--text text--darken-2">{{ $t('shell.department') }} : {{ userDepartment }} | {{ $t('shell.ward') }} : {{ userWard }}</v-list-item-subtitle>
               </v-list-item-content>
            </v-list-item>
            <v-list-item @click="logout" class="py-2">
               <v-list-item-icon class="mr-2"><v-icon small color="error">mdi-power</v-icon></v-list-item-icon>
-              <v-list-item-title class="font-weight-bold text-caption error--text">TERMINATE AUTH SESSION</v-list-item-title>
+              <v-list-item-title class="font-weight-bold text-caption error--text">{{ $t('shell.terminate_session') }}</v-list-item-title>
            </v-list-item>
         </v-list>
       </v-menu>
@@ -108,7 +108,7 @@
       <v-alert v-if="criticalAlert" tile :type="criticalAlert.type" color="#00A99D" dark class="ma-0 font-weight-black text-caption px-10 gov-alert">
          <v-icon left small>mdi-bullhorn-variant</v-icon>{{ criticalAlert.message }}
          <template v-slot:append>
-            <v-btn x-small text class="font-weight-black ml-4" @click="criticalAlert = null">DISMISS</v-btn>
+            <v-btn x-small text class="font-weight-black ml-4" @click="criticalAlert = null">{{ $t('shell.dismiss') }}</v-btn>
          </template>
       </v-alert>
 
@@ -137,29 +137,29 @@ export default {
         { icon: 'mdi-map',              titleKey: 'menu.map',          to: '/maps',                  roles: ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'] },
         { icon: 'mdi-file-chart',       titleKey: 'menu.reports',      to: '/reports',               roles: ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'] },
         // ── Admin Layer ──
-        { icon: 'mdi-shield-account',   titleKey: 'Admin Dashboard',   to: '/admin',                 roles: ['ADMIN'] },
-        { icon: 'mdi-account-multiple', titleKey: 'Staff Accounts',    to: '/admin/staff',           roles: ['ADMIN'] },
-        { icon: 'mdi-history',          titleKey: 'Audit Log',         to: '/admin/audit',           roles: ['ADMIN'] },
-        { icon: 'mdi-shield-crown',     titleKey: 'Super Admin',       to: '/super-admin',           roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN'] },
-        { icon: 'mdi-account-plus',     titleKey: 'Sales Pipeline',    to: '/super-admin/pipeline',  roles: ['SUPER_ADMIN', 'SALES'] },
-        { icon: 'mdi-account-supervisor-circle', titleKey: 'Team Access', to: '/super-admin/team',   roles: ['SUPER_ADMIN'] },
-        { icon: 'mdi-file-chart-check', titleKey: 'Submit RMA',        to: '/admin/rma',              roles: ['ADMIN'] },
-        { icon: 'mdi-monitor-dashboard', titleKey: 'EMR Command Center', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
+        { icon: 'mdi-shield-account',   titleKey: 'shell.nav.admin_dashboard',   to: '/admin',                 roles: ['ADMIN'] },
+        { icon: 'mdi-account-multiple', titleKey: 'shell.nav.staff_accounts',    to: '/admin/staff',           roles: ['ADMIN'] },
+        { icon: 'mdi-history',          titleKey: 'shell.nav.audit_log',         to: '/admin/audit',           roles: ['ADMIN'] },
+        { icon: 'mdi-shield-crown',     titleKey: 'shell.nav.super_admin',       to: '/super-admin',           roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN'] },
+        { icon: 'mdi-account-plus',     titleKey: 'shell.nav.sales_pipeline',    to: '/super-admin/pipeline',  roles: ['SUPER_ADMIN', 'SALES'] },
+        { icon: 'mdi-account-supervisor-circle', titleKey: 'shell.nav.team_access', to: '/super-admin/team',   roles: ['SUPER_ADMIN'] },
+        { icon: 'mdi-file-chart-check', titleKey: 'shell.nav.submit_rma',        to: '/admin/rma',              roles: ['ADMIN'] },
+        { icon: 'mdi-monitor-dashboard', titleKey: 'shell.nav.emr_command_center', to: '/clinical/patients', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'LAB', 'IMAGING', 'PHARMACY', 'RECORDS', 'FRONT_DESK', 'SOCIAL_WORKER', 'PHYSIOTHERAPIST'] },
         // ── Patient Modules ──
-        { icon: 'mdi-account-group',    titleKey: 'Patient Listing',   to: '/clinical/patients',     roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS', 'FRONT_DESK'] },
-        { icon: 'mdi-account-plus',     titleKey: 'New Patient',       to: '/clinical/patients/new', roles: ['ADMIN', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },
-        { icon: 'mdi-clipboard-list',   titleKey: 'Outpatient',        to: '/clinical/visits',       roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },
-        { icon: 'mdi-bed',               titleKey: 'Inpatient',         to: '/clinical/inpatient',    roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },
-        { icon: 'mdi-calendar-clock',   titleKey: 'Appointments',      to: '/clinical/appointments', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },
-        { icon: 'mdi-pill',             titleKey: 'Medications',       to: '/clinical/medications',  roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'PHARMACY'] },
-        { icon: 'mdi-printer-check',    titleKey: 'Report Center',     to: '/clinical/report-center', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS'] },
+        { icon: 'mdi-account-group',    titleKey: 'shell.nav.patient_listing',   to: '/clinical/patients',     roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'CNA', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS', 'FRONT_DESK'] },
+        { icon: 'mdi-account-plus',     titleKey: 'shell.nav.new_patient',       to: '/clinical/patients/new', roles: ['ADMIN', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },
+        { icon: 'mdi-clipboard-list',   titleKey: 'shell.nav.outpatient',        to: '/clinical/visits',       roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },
+        { icon: 'mdi-bed',               titleKey: 'shell.nav.inpatient',         to: '/clinical/inpatient',    roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR'] },
+        { icon: 'mdi-calendar-clock',   titleKey: 'shell.nav.appointments',      to: '/clinical/appointments', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'FRONT_DESK'] },
+        { icon: 'mdi-pill',             titleKey: 'shell.nav.medications',       to: '/clinical/medications',  roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'PHARMACY'] },
+        { icon: 'mdi-printer-check',    titleKey: 'shell.nav.report_center',     to: '/clinical/report-center', roles: ['ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE', 'MAJOR_SERVICE', 'NURSING_SUPERVISOR', 'RECORDS'] },
         { icon: 'mdi-file-export',      titleKey: 'menu.field_input',  to: '/clinical/reports',      roles: ['ADMIN'] },
         // ── Lab & Imaging ──
-        { icon: 'mdi-flask',            titleKey: 'Laboratory',        to: '/clinical/lab',          roles: ['LAB', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] },
-        { icon: 'mdi-radiology-box',    titleKey: 'Imaging',           to: '/clinical/imaging',      roles: ['IMAGING', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] },
-        { icon: 'mdi-cash-register',    titleKey: 'Cash Office',       to: '/clinical/billing',      roles: ['BILLING', 'ADMIN'] },
-        { icon: 'mdi-format-list-bulleted', titleKey: 'Price List',      to: '/clinical/catalog',      roles: ['BILLING', 'ADMIN'] },
-        { icon: 'mdi-tag-multiple',      titleKey: 'Price Catalog',     to: '/admin/tarification',    roles: ['ADMIN'] }
+        { icon: 'mdi-flask',            titleKey: 'shell.nav.laboratory',        to: '/clinical/lab',          roles: ['LAB', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] },
+        { icon: 'mdi-radiology-box',    titleKey: 'shell.nav.imaging',           to: '/clinical/imaging',      roles: ['IMAGING', 'ADMIN', 'DOCTOR', 'NP', 'NURSE', 'MIDWIFE'] },
+        { icon: 'mdi-cash-register',    titleKey: 'shell.nav.cash_office',       to: '/clinical/billing',      roles: ['BILLING', 'ADMIN'] },
+        { icon: 'mdi-format-list-bulleted', titleKey: 'shell.nav.price_list',      to: '/clinical/catalog',      roles: ['BILLING', 'ADMIN'] },
+        { icon: 'mdi-tag-multiple',      titleKey: 'shell.nav.price_catalog',     to: '/admin/tarification',    roles: ['ADMIN'] }
       ]
     };
   },
@@ -173,7 +173,7 @@ export default {
       setTimeout(() => {
         const infectious = this.$store.getters['clinical/infectiousAlerts'];
         if (infectious.length > 0) {
-          this.criticalAlert = { type: 'error', message: `CRITICAL ALERT: ${infectious[0].title.toUpperCase()} PROTOCOL ACTIVE` };
+          this.criticalAlert = { type: 'error', message: this.$t('shell.critical_protocol_active', { name: infectious[0].title.toUpperCase() }) };
         }
       }, 2000);
     }
@@ -190,7 +190,7 @@ export default {
   computed: {
     admin() { return this.$store.state.auth.user; },
     pendingSyncCount() { return this.$store.state.offlineQueue?.pendingCount || 0; },
-    displayName() { return this.$store.state.auth.fullName || this.$store.state.auth.staffId || 'Authorized User'; },
+    displayName() { return this.$store.state.auth.fullName || this.$store.state.auth.staffId || this.$t('shell.authorized_user'); },
     userRole() { return this.$store.state.auth.role || 'GUEST'; },
     institution() { return this.$store.state.auth.institution; },
     userDepartment() {
@@ -209,7 +209,7 @@ export default {
     },
     isClinical() { return ['ADMIN','DOCTOR','NP','NURSE','CNA','MIDWIFE','MAJOR_SERVICE','NURSING_SUPERVISOR','LAB','IMAGING','PHARMACY','BILLING','RECORDS','FRONT_DESK','SOCIAL_WORKER','PHYSIOTHERAPIST'].includes(this.userRole); },
     isMinistry() { return ['PUBLIC_HEALTH_OFFICER', 'EPIDEMIOLOGIST'].includes(this.userRole); },
-    currentLangName() { return this.$store.state.locale === 'fr' ? 'FRANÇAIS' : 'ENGLISH'; },
+    currentLangName() { return this.$t(this.$store.state.locale === 'fr' ? 'lang.french' : 'lang.english').toUpperCase(); },
     filteredNavItems() { return this.navItems.filter(item => item.roles.includes(this.userRole)); }
   }
 };

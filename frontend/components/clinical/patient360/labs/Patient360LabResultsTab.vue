@@ -2,28 +2,28 @@
   <section class="lab-workspace">
     <header class="module-header">
       <div>
-        <span>DIAGNOSTICS</span>
-        <h2>{{ mode === 'lab' ? 'Laboratory Results' : 'Imaging Results' }}</h2>
-        <p>{{ mode === 'lab' ? 'Specimen progress, validated results and abnormal findings for this encounter.' : 'Imaging requests, acquisition status, reports and clinical recommendations.' }}</p>
+        <span>{{ $t('clinical360.labs.tab.section_label') }}</span>
+        <h2>{{ mode === 'lab' ? $t('clinical360.labs.tab.title_lab') : $t('clinical360.labs.tab.title_imaging') }}</h2>
+        <p>{{ mode === 'lab' ? $t('clinical360.labs.tab.subtitle_lab') : $t('clinical360.labs.tab.subtitle_imaging') }}</p>
       </div>
       <div class="header-actions">
         <v-btn v-if="canOrder && !readOnly" x-small text color="#0369a1" @click="newOrder">
-          <v-icon x-small left>mdi-plus</v-icon>New order
+          <v-icon x-small left>mdi-plus</v-icon>{{ $t('clinical360.labs.tab.new_order') }}
         </v-btn>
         <v-btn v-if="canResult && !readOnly" x-small depressed color="#0369a1" dark @click="recordSelected">
-          <v-icon x-small left>{{ mode === 'lab' ? 'mdi-flask-check-outline' : 'mdi-radiology-box' }}</v-icon>{{ mode === 'lab' ? 'Record result' : 'File report' }}
+          <v-icon x-small left>{{ mode === 'lab' ? 'mdi-flask-check-outline' : 'mdi-radiology-box' }}</v-icon>{{ mode === 'lab' ? $t('clinical360.labs.tab.record_result') : $t('clinical360.labs.tab.file_report') }}
         </v-btn>
       </div>
     </header>
 
-    <div v-if="readOnly" class="read-only"><v-icon x-small>mdi-lock-outline</v-icon> Discharged chart. Diagnostic data is read only.</div>
+    <div v-if="readOnly" class="read-only"><v-icon x-small>mdi-lock-outline</v-icon> {{ $t('clinical360.labs.tab.read_only_notice') }}</div>
 
-    <div class="diagnostic-tabs" role="tablist" aria-label="Diagnostic result type">
-      <button type="button" :class="{ active: mode === 'lab' }" @click="switchMode('lab')"><v-icon x-small>mdi-flask-outline</v-icon>Laboratory <strong>{{ orders.length }}</strong></button>
-      <button type="button" :class="{ active: mode === 'imaging' }" @click="switchMode('imaging')"><v-icon x-small>mdi-radiology-box</v-icon>Imaging <strong>{{ imagingOrders.length }}</strong></button>
+    <div class="diagnostic-tabs" role="tablist" :aria-label="$t('clinical360.labs.tab.diagnostic_result_type')">
+      <button type="button" :class="{ active: mode === 'lab' }" @click="switchMode('lab')"><v-icon x-small>mdi-flask-outline</v-icon>{{ $t('clinical360.labs.tab.laboratory') }} <strong>{{ orders.length }}</strong></button>
+      <button type="button" :class="{ active: mode === 'imaging' }" @click="switchMode('imaging')"><v-icon x-small>mdi-radiology-box</v-icon>{{ $t('clinical360.labs.tab.imaging') }} <strong>{{ imagingOrders.length }}</strong></button>
     </div>
 
-    <div class="summary-strip" aria-label="Diagnostic summary">
+    <div class="summary-strip" :aria-label="$t('clinical360.labs.tab.aria_diagnostic_summary')">
       <button v-for="item in summary" :key="item.key" type="button" :class="{ active: filter === item.key }" @click="filter = item.key">
         <v-icon small :color="item.color">{{ item.icon }}</v-icon>
         <span>{{ item.label }}</span>
@@ -32,52 +32,55 @@
     </div>
 
     <div class="filter-bar">
-      <label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="search" type="search" :placeholder="mode === 'lab' ? 'Search test, specimen or result' : 'Search exam, body region or report'" /></label>
-      <span>{{ filteredOrders.length }} shown</span>
+      <label><v-icon x-small>mdi-magnify</v-icon><input v-model.trim="search" type="search" :placeholder="mode === 'lab' ? $t('clinical360.labs.tab.search_placeholder_lab') : $t('clinical360.labs.tab.search_placeholder_imaging')" /></label>
+      <span>{{ $t('clinical360.labs.tab.shown_count', { count: filteredOrders.length }) }}</span>
     </div>
 
     <div class="lab-layout">
-      <div class="results-list" role="table" :aria-label="mode === 'lab' ? 'Laboratory orders and results' : 'Imaging orders and reports'">
+      <div class="results-list" role="table" :aria-label="mode === 'lab' ? $t('clinical360.labs.tab.aria_lab_orders') : $t('clinical360.labs.tab.aria_imaging_orders')">
         <div class="result-head" role="row">
-          <span>{{ mode === 'lab' ? 'Test / specimen' : 'Exam / body region' }}</span><span>Priority</span><span>Status</span><span>{{ mode === 'lab' ? 'Result' : 'Impression' }}</span><span>{{ mode === 'lab' ? 'Collected / resulted' : 'Ordered / reported' }}</span>
+          <span>{{ mode === 'lab' ? $t('clinical360.labs.tab.col_test_specimen') : $t('clinical360.labs.tab.col_exam_region') }}</span><span>{{ $t('clinical360.labs.tab.col_priority') }}</span><span>{{ $t('clinical360.labs.tab.col_status') }}</span><span>{{ mode === 'lab' ? $t('clinical360.labs.tab.col_result') : $t('clinical360.labs.tab.col_impression') }}</span><span>{{ mode === 'lab' ? $t('clinical360.labs.tab.col_collected_resulted') : $t('clinical360.labs.tab.col_ordered_reported') }}</span>
         </div>
         <button v-for="order in filteredOrders" :key="order.id" type="button" class="result-row" :class="{ selected: selectedId === order.id }" @click="selectedId = order.id">
-          <span><strong>{{ testName(order) }}</strong><small>{{ specimen(order) }}</small></span>
-          <span><b :class="['priority', priorityClass(order.priority)]">{{ order.priority || 'Routine' }}</b></span>
-          <span><b :class="['status', statusClass(order)]">{{ order.status || 'Requested' }}</b></span>
+          <span><ClinicalHoverCard :title="testName(order)" :eyebrow="mode === 'lab' ? $t('clinical360.labs.tab.laboratory') : $t('clinical360.labs.tab.imaging')" :subtitle="order.status || $t('clinical360.labs.tab.requested')" :details="orderHoverDetails(order)"><template #activator><strong class="detail-trigger">{{ testName(order) }}</strong></template></ClinicalHoverCard><small>{{ specimen(order) }}</small></span>
+          <span><b :class="['priority', priorityClass(order.priority)]">{{ order.priority || $t('clinical360.labs.tab.routine') }}</b></span>
+          <span><b :class="['status', statusClass(order)]">{{ order.status || $t('clinical360.labs.tab.requested') }}</b></span>
           <span><strong :class="flagClass(order)">{{ resultText(order) }}</strong><small>{{ referenceText(order) }}</small></span>
           <span><small>{{ timingText(order) }}</small></span>
         </button>
         <div v-if="!filteredOrders.length" class="empty-state">
           <v-icon size="36" color="#94a3b8">{{ mode === 'lab' ? 'mdi-flask-empty-outline' : 'mdi-image-search-outline' }}</v-icon>
-          <strong>No {{ mode === 'lab' ? 'laboratory' : 'imaging' }} item matches this view</strong>
-          <span>Place an order or change the filter.</span>
+          <strong>{{ mode === 'lab' ? $t('clinical360.labs.tab.empty_state_lab') : $t('clinical360.labs.tab.empty_state_imaging') }}</strong>
+          <span>{{ $t('clinical360.labs.tab.empty_state_hint') }}</span>
         </div>
       </div>
 
       <aside class="result-detail">
         <template v-if="selectedOrder">
-          <header><v-icon color="#0369a1">{{ mode === 'lab' ? 'mdi-flask-outline' : 'mdi-radiology-box' }}</v-icon><div><span>{{ mode === 'lab' ? 'SELECTED RESULT' : 'SELECTED REPORT' }}</span><strong>{{ testName(selectedOrder) }}</strong></div></header>
+          <header><v-icon color="#0369a1">{{ mode === 'lab' ? 'mdi-flask-outline' : 'mdi-radiology-box' }}</v-icon><div><span>{{ mode === 'lab' ? $t('clinical360.labs.tab.selected_result') : $t('clinical360.labs.tab.selected_report') }}</span><strong>{{ testName(selectedOrder) }}</strong></div></header>
           <dl>
-            <div><dt>Order status</dt><dd>{{ selectedOrder.status || 'Requested' }}</dd></div>
-            <div><dt>{{ mode === 'lab' ? 'Specimen' : 'Body region' }}</dt><dd>{{ specimen(selectedOrder) }}</dd></div>
-            <div><dt>Priority</dt><dd>{{ selectedOrder.priority || 'Routine' }}</dd></div>
-            <div><dt>Result</dt><dd :class="flagClass(selectedOrder)">{{ resultText(selectedOrder) }}</dd></div>
-            <div v-if="mode === 'lab'"><dt>Reference</dt><dd>{{ selectedOrder.referenceRange || 'Not supplied' }}</dd></div>
-            <div><dt>{{ mode === 'lab' ? 'Comment' : 'Findings / recommendation' }}</dt><dd>{{ detailText(selectedOrder) }}</dd></div>
+            <div><dt>{{ $t('clinical360.labs.tab.order_status') }}</dt><dd>{{ selectedOrder.status || $t('clinical360.labs.tab.requested') }}</dd></div>
+            <div><dt>{{ mode === 'lab' ? $t('clinical360.labs.tab.specimen') : $t('clinical360.labs.tab.body_region') }}</dt><dd>{{ specimen(selectedOrder) }}</dd></div>
+            <div><dt>{{ $t('clinical360.labs.tab.col_priority') }}</dt><dd>{{ selectedOrder.priority || $t('clinical360.labs.tab.routine') }}</dd></div>
+            <div><dt>{{ $t('clinical360.labs.tab.col_result') }}</dt><dd :class="flagClass(selectedOrder)">{{ resultText(selectedOrder) }}</dd></div>
+            <div v-if="mode === 'lab'"><dt>{{ $t('clinical360.labs.tab.reference') }}</dt><dd>{{ selectedOrder.referenceRange || $t('clinical360.labs.tab.not_supplied') }}</dd></div>
+            <div><dt>{{ mode === 'lab' ? $t('clinical360.labs.tab.comment') : $t('clinical360.labs.tab.findings_recommendation') }}</dt><dd>{{ detailText(selectedOrder) }}</dd></div>
           </dl>
-          <div v-if="isCritical(selectedOrder)" class="critical-note"><v-icon x-small color="#be123c">mdi-alert</v-icon> Critical result requires documented communication.</div>
-          <v-btn v-if="canResult && !readOnly" block small depressed color="#0369a1" dark @click="recordSelected">{{ mode === 'lab' ? 'Record / validate result' : 'File imaging report' }}</v-btn>
+          <div v-if="isCritical(selectedOrder)" class="critical-note"><v-icon x-small color="#be123c">mdi-alert</v-icon> {{ $t('clinical360.labs.tab.critical_note') }}</div>
+          <v-btn v-if="canResult && !readOnly" block small depressed color="#0369a1" dark @click="recordSelected">{{ mode === 'lab' ? $t('clinical360.labs.tab.record_validate_result') : $t('clinical360.labs.tab.file_imaging_report') }}</v-btn>
         </template>
-        <div v-else class="detail-empty">Select a diagnostic item to review details.</div>
+        <div v-else class="detail-empty">{{ $t('clinical360.labs.tab.select_diagnostic_item') }}</div>
       </aside>
     </div>
   </section>
 </template>
 
 <script>
+import ClinicalHoverCard from '../../ClinicalHoverCard.vue'
+
 export default {
   name: 'Patient360LabResultsTab',
+  components: { ClinicalHoverCard },
   props: {
     orders: { type: Array, default: () => [] },
     imagingOrders: { type: Array, default: () => [] },
@@ -92,10 +95,10 @@ export default {
     selectedOrder() { return this.activeOrders.find(item => item.id === this.selectedId) || this.filteredOrders[0] || null },
     summary() {
       return [
-        { key: 'all', label: this.mode === 'lab' ? 'All tests' : 'All exams', value: this.activeOrders.length, icon: this.mode === 'lab' ? 'mdi-flask-outline' : 'mdi-radiology-box', color: '#0369a1' },
-        { key: 'pending', label: 'Pending', value: this.activeOrders.filter(item => !this.isComplete(item)).length, icon: 'mdi-clock-outline', color: '#b45309' },
-        { key: 'abnormal', label: this.mode === 'lab' ? 'Abnormal' : 'Significant', value: this.activeOrders.filter(item => this.isAbnormal(item)).length, icon: 'mdi-trending-up', color: '#c2410c' },
-        { key: 'critical', label: 'Critical', value: this.activeOrders.filter(item => this.isCritical(item)).length, icon: 'mdi-alert-octagon-outline', color: '#be123c' }
+        { key: 'all', label: this.mode === 'lab' ? this.$t('clinical360.labs.tab.all_tests') : this.$t('clinical360.labs.tab.all_exams'), value: this.activeOrders.length, icon: this.mode === 'lab' ? 'mdi-flask-outline' : 'mdi-radiology-box', color: '#0369a1' },
+        { key: 'pending', label: this.$t('clinical360.labs.tab.pending'), value: this.activeOrders.filter(item => !this.isComplete(item)).length, icon: 'mdi-clock-outline', color: '#b45309' },
+        { key: 'abnormal', label: this.mode === 'lab' ? this.$t('clinical360.labs.tab.abnormal') : this.$t('clinical360.labs.tab.significant'), value: this.activeOrders.filter(item => this.isAbnormal(item)).length, icon: 'mdi-trending-up', color: '#c2410c' },
+        { key: 'critical', label: this.$t('clinical360.labs.tab.critical'), value: this.activeOrders.filter(item => this.isCritical(item)).length, icon: 'mdi-alert-octagon-outline', color: '#be123c' }
       ]
     },
     filteredOrders() {
@@ -113,20 +116,30 @@ export default {
   },
   methods: {
     switchMode(mode) { this.mode = mode; this.filter = 'all'; this.search = ''; this.selectedId = '' },
-    testName(order) { return this.mode === 'lab' ? (order.test || order.testName || order.orderName || order.title || 'Laboratory test') : (order.exam || order.modality || order.study || order.orderName || order.title || 'Imaging exam') },
-    specimen(order) { return this.mode === 'lab' ? (order.specimen || order.specimenType || order.sample || 'Specimen not documented') : (order.bodyPart || order.region || order.anatomicalRegion || order.indication || 'Body region not documented') },
-    resultText(order) { return this.mode === 'lab' ? ([order.result || order.value, order.unit].filter(Boolean).join(' ') || 'Pending') : (order.impression || order.result || order.report || 'Report pending') },
-    referenceText(order) { return order.referenceRange ? `Reference ${order.referenceRange}` : (order.flag || '') },
-    detailText(order) { return this.mode === 'lab' ? (order.comment || order.instructions || 'No laboratory comment.') : ([order.findings, order.recommendation, order.instructions].filter(Boolean).join(' · ') || 'No imaging findings filed.') },
-    timingText(order) { const value = this.mode === 'lab' ? (order.resultedAt || order.collectedAt || order.updatedAt || order.createdAt) : (order.reportedAt || order.performedAt || order.updatedAt || order.createdAt); return value ? new Date(value).toLocaleString() : (this.mode === 'lab' ? 'Not collected' : 'Not performed') },
+    testName(order) { return this.mode === 'lab' ? (order.test || order.testName || order.orderName || order.title || this.$t('clinical360.labs.tab.default_laboratory_test')) : (order.exam || order.modality || order.study || order.orderName || order.title || this.$t('clinical360.labs.tab.default_imaging_exam')) },
+    specimen(order) { return this.mode === 'lab' ? (order.specimen || order.specimenType || order.sample || this.$t('clinical360.labs.tab.specimen_not_documented')) : (order.bodyPart || order.region || order.anatomicalRegion || order.indication || this.$t('clinical360.labs.tab.body_region_not_documented')) },
+    resultText(order) { return this.mode === 'lab' ? ([order.result || order.value, order.unit].filter(Boolean).join(' ') || this.$t('clinical360.labs.tab.pending')) : (order.impression || order.result || order.report || this.$t('clinical360.labs.tab.report_pending')) },
+    referenceText(order) { return order.referenceRange ? this.$t('clinical360.labs.tab.reference_value', { range: order.referenceRange }) : (order.flag || '') },
+    detailText(order) { return this.mode === 'lab' ? (order.comment || order.instructions || this.$t('clinical360.labs.tab.no_lab_comment')) : ([order.findings, order.recommendation, order.instructions].filter(Boolean).join(' · ') || this.$t('clinical360.labs.tab.no_imaging_findings')) },
+    timingText(order) { const value = this.mode === 'lab' ? (order.resultedAt || order.collectedAt || order.updatedAt || order.createdAt) : (order.reportedAt || order.performedAt || order.updatedAt || order.createdAt); return value ? new Date(value).toLocaleString() : (this.mode === 'lab' ? this.$t('clinical360.labs.tab.not_collected') : this.$t('clinical360.labs.tab.not_performed')) },
     isComplete(order) { return /complete|result|validated|reported|cancel/i.test(String(order.status || '')) || Boolean(order.result || order.value || order.report || order.findings || order.impression) },
-    isAbnormal(order) { return /low|high|abnormal|critical|important|urgent|significant/i.test(`${order.flag || ''} ${order.urgency || ''} ${order.status || ''} ${order.impression || ''}`) },
-    isCritical(order) { return /critical|panic/i.test(`${order.flag || ''} ${order.urgency || ''} ${order.status || ''} ${order.comment || ''} ${order.impression || ''}`) },
+    resultSignals(order) { return `${order.interpretation || ''} ${order.flag || ''} ${order.severity || ''} ${order.urgency || ''} ${order.status || ''} ${order.result || order.value || ''} ${order.comment || order.notes || ''} ${order.findings || ''} ${order.impression || ''}` },
+    isAbnormal(order) { return /low|high|abnormal|critical|panic|important|urgent|significant|positive|detected|reactive/i.test(this.resultSignals(order)) },
+    isCritical(order) { return /critical|panic|life[- ]?threatening|anaphyl|severe/i.test(this.resultSignals(order)) },
     statusClass(order) { return this.isCritical(order) ? 'critical' : this.isComplete(order) ? 'complete' : /collect|progress/i.test(String(order.status || '')) ? 'progress' : 'pending' },
     flagClass(order) { return this.isCritical(order) ? 'critical-text' : this.isAbnormal(order) ? 'abnormal-text' : '' },
     priorityClass(priority) { return /stat|urgent/i.test(String(priority || '')) ? 'urgent' : '' },
     newOrder() { this.$emit(this.mode === 'lab' ? 'new-order' : 'new-imaging-order') },
     recordSelected() { this.$emit(this.mode === 'lab' ? 'record-result' : 'record-imaging-result', { orderId: this.selectedOrder?.id || '' }) }
+    ,orderHoverDetails(order) {
+      return [
+        { label: this.$t('clinical360.labs.tab.order_status'), value: order.status || this.$t('clinical360.labs.tab.requested') },
+        { label: this.mode === 'lab' ? this.$t('clinical360.labs.tab.specimen') : this.$t('clinical360.labs.tab.body_region'), value: this.specimen(order) },
+        { label: this.$t('clinical360.labs.tab.col_priority'), value: order.priority || this.$t('clinical360.labs.tab.routine') },
+        { label: this.mode === 'lab' ? this.$t('clinical360.labs.tab.col_result') : this.$t('clinical360.labs.tab.col_impression'), value: this.resultText(order) },
+        { label: this.$t('clinical360.labs.tab.comment'), value: this.detailText(order) }
+      ]
+    }
   }
 }
 </script>

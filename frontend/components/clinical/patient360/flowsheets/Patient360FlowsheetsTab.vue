@@ -14,16 +14,16 @@
 
     <div v-if="readOnly" class="read-only-notice">
       <v-icon x-small>mdi-lock-outline</v-icon>
-      Discharged chart. Timestamped care and assessments are available in read-only mode.
+      {{ $t('clinical360.flowsheets.tab.read_only_notice') }}
     </div>
 
     <div class="timed-care-summary">
       <div>
-        <span>Care documentation</span>
-        <strong>Timestamped care, evaluation, care plan and education</strong>
+        <span>{{ $t('clinical360.flowsheets.tab.care_documentation') }}</span>
+        <strong>{{ $t('clinical360.flowsheets.tab.care_documentation_desc') }}</strong>
       </div>
       <v-btn v-if="!readOnly" x-small depressed color="#0f766e" dark @click="showTimedCareDialog = true">
-        <v-icon x-small left>mdi-clock-edit-outline</v-icon>New timed entry
+        <v-icon x-small left>mdi-clock-edit-outline</v-icon>{{ $t('clinical360.flowsheets.tab.new_timed_entry') }}
       </v-btn>
     </div>
 
@@ -66,7 +66,7 @@
         </div>
 
         <div :class="['flowsheet-right-panel', { collapsed: isRightPanelCollapsed }]">
-          <button class="panel-collapse-btn" @click="isRightPanelCollapsed = !isRightPanelCollapsed" :title="isRightPanelCollapsed ? 'Expand' : 'Collapse'">
+          <button class="panel-collapse-btn" @click="isRightPanelCollapsed = !isRightPanelCollapsed" :title="isRightPanelCollapsed ? $t('clinical360.flowsheets.tab.expand') : $t('clinical360.flowsheets.tab.collapse')">
             <v-icon x-small>{{ isRightPanelCollapsed ? 'mdi-chevron-left' : 'mdi-chevron-right' }}</v-icon>
           </button>
           <div v-if="!isRightPanelCollapsed" class="panel-content">
@@ -278,7 +278,7 @@ export default {
         admissionId: this.admissionId,
         ...payload
       })
-      this.$toast?.success('Timed care entry filed')
+      this.$toast?.success(this.$t('clinical360.flowsheets.tab.timed_care_filed'))
     },
     openWriteDialog(dialogName) {
       if (this.readOnly) return

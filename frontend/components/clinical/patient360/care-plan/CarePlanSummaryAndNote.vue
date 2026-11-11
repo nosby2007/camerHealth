@@ -3,12 +3,12 @@
     <div class="content-grid">
       <!-- Left: Summary Items -->
       <div class="summary-panel">
-        <h3>Care Plan Documentation Summary</h3>
+        <h3>{{ $t('clinical360.care_plan.summary_note.documentation_summary') }}</h3>
 
         <div class="group-controls">
           <v-radio-group v-model="groupBy" row dense>
-            <v-radio label="By Problem" value="problem" />
-            <v-radio label="By Outcome" value="outcome" />
+            <v-radio :label="$t('clinical360.care_plan.summary_note.by_problem')" value="problem" />
+            <v-radio :label="$t('clinical360.care_plan.summary_note.by_outcome')" value="outcome" />
           </v-radio-group>
         </div>
 
@@ -30,35 +30,35 @@
         </div>
 
         <v-btn x-small text color="#0f766e" @click="addAllToNote">
-          + Add All
+          + {{ $t('clinical360.care_plan.summary_note.add_all') }}
         </v-btn>
       </div>
 
       <!-- Right: Note Editor -->
       <div class="note-panel">
-        <h3>Plan of Care Note</h3>
+        <h3>{{ $t('clinical360.care_plan.summary_note.plan_of_care_note') }}</h3>
 
         <div class="note-controls">
-          <v-text-field v-model="noteDate" label="Date of Service" type="date" dense outlined />
-          <v-text-field v-model="noteTime" label="Time" type="time" dense outlined />
-          <span class="note-type">Type: <strong>Plan of Care</strong></span>
+          <v-text-field v-model="noteDate" :label="$t('clinical360.care_plan.summary_note.date_of_service')" type="date" dense outlined />
+          <v-text-field v-model="noteTime" :label="$t('clinical360.care_plan.summary_note.time')" type="time" dense outlined />
+          <span class="note-type">{{ $t('clinical360.care_plan.summary_note.type_label') }}: <strong>{{ $t('clinical360.care_plan.summary_note.plan_of_care_type') }}</strong></span>
         </div>
 
         <textarea
           v-model="noteBody"
           class="note-editor"
-          placeholder="Enter plan of care note..."
+          :placeholder="$t('clinical360.care_plan.summary_note.note_placeholder')"
         />
 
         <div class="note-actions">
-          <v-btn x-small text @click="noteBody = ''">Clear</v-btn>
+          <v-btn x-small text @click="noteBody = ''">{{ $t('clinical360.care_plan.summary_note.clear') }}</v-btn>
           <v-spacer />
-          <v-btn x-small text @click="$emit('cancel')">Cancel</v-btn>
+          <v-btn x-small text @click="$emit('cancel')">{{ $t('clinical360.care_plan.summary_note.cancel') }}</v-btn>
           <v-btn x-small depressed color="#0f766e" dark :loading="saving" @click="pend">
-            Pend
+            {{ $t('clinical360.care_plan.summary_note.pend') }}
           </v-btn>
           <v-btn x-small depressed color="#16a34a" dark :loading="saving" @click="sign">
-            <v-icon x-small left>mdi-draw-pen</v-icon>Sign
+            <v-icon x-small left>mdi-draw-pen</v-icon>{{ $t('clinical360.care_plan.summary_note.sign') }}
           </v-btn>
         </div>
       </div>
@@ -100,7 +100,7 @@ export default {
       if (!this.selectedItems.includes(item.id)) {
         this.selectedItems.push(item.id)
       }
-      this.$toast?.success('Item added to note')
+      this.$toast?.success(this.$t('clinical360.care_plan.summary_note.item_added_to_note'))
     },
     addAllToNote() {
       this.documentedItems.forEach(item => {
@@ -110,11 +110,11 @@ export default {
           this.selectedItems.push(item.id)
         }
       })
-      this.$toast?.success('All items added to note')
+      this.$toast?.success(this.$t('clinical360.care_plan.summary_note.all_items_added_to_note'))
     },
     async pend() {
       if (!this.noteBody.trim()) {
-        this.$toast?.error('Note body is required')
+        this.$toast?.error(this.$t('clinical360.care_plan.summary_note.note_body_required'))
         return
       }
 
@@ -127,7 +127,7 @@ export default {
           includedGoalIds: this.selectedItems,
           body: this.noteBody
         })
-        this.$toast?.success('Note pended')
+        this.$toast?.success(this.$t('clinical360.care_plan.summary_note.note_pended'))
         this.noteBody = ''
         this.selectedItems = []
       } finally {
@@ -136,7 +136,7 @@ export default {
     },
     async sign() {
       if (!this.noteBody.trim()) {
-        this.$toast?.error('Note body is required')
+        this.$toast?.error(this.$t('clinical360.care_plan.summary_note.note_body_required'))
         return
       }
 
@@ -149,11 +149,11 @@ export default {
           body: this.noteBody,
           linkedCarePlanProgressEntryIds: this.selectedItems
         })
-        this.$toast?.success('Plan of Care note signed')
+        this.$toast?.success(this.$t('clinical360.care_plan.summary_note.note_signed'))
         this.noteBody = ''
         this.selectedItems = []
       } catch (err) {
-        this.$toast?.error('Failed to sign note')
+        this.$toast?.error(this.$t('clinical360.care_plan.summary_note.sign_failed'))
       } finally {
         this.saving = false
       }

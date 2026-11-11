@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="form-header">
         <v-icon small>mdi-alert-circle</v-icon>
-        <span>Pain Assessment</span>
+        <span>{{ $t('clinical360.flowsheets.forms.pain.title') }}</span>
         <v-spacer />
         <button type="button" class="close-btn" @click="$emit('close')">
           <v-icon>mdi-close</v-icon>
@@ -15,7 +15,7 @@
       <v-card-text class="form-body">
         <form @submit.prevent="submitForm">
           <section class="form-section">
-            <h3 class="section-title">Pain Score</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.pain.section_pain_score') }}</h3>
             <div class="pain-scale">
               <div class="scale-visual">
                 <div class="scale-slider">
@@ -31,8 +31,8 @@
                   />
                 </div>
                 <div class="scale-labels">
-                  <span class="no-pain">No pain (0)</span>
-                  <span class="worst-pain">Worst pain (10)</span>
+                  <span class="no-pain">{{ $t('clinical360.flowsheets.forms.pain.no_pain_label') }}</span>
+                  <span class="worst-pain">{{ $t('clinical360.flowsheets.forms.pain.worst_pain_label') }}</span>
                 </div>
               </div>
 
@@ -46,13 +46,13 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Pain Characteristics</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.pain.section_pain_characteristics') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Pain Location *</label>
+                <label>{{ $t('clinical360.flowsheets.forms.pain.label_pain_location') }} *</label>
                 <v-text-field
                   v-model="form.painLocation"
-                  placeholder="e.g., Left shoulder, Abdomen"
+                  :placeholder="$t('clinical360.flowsheets.forms.pain.placeholder_pain_location')"
                   outlined
                   dense
                   required
@@ -60,30 +60,36 @@
               </div>
 
               <div class="form-group">
-                <label>Pain Type</label>
+                <label>{{ $t('clinical360.flowsheets.forms.pain.label_pain_type') }}</label>
                 <v-select
                   v-model="form.painType"
-                  :items="['Sharp', 'Dull', 'Aching', 'Throbbing', 'Burning', 'Shooting', 'Cramping', 'Other']"
+                  :items="painTypeOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Pain Onset</label>
+                <label>{{ $t('clinical360.flowsheets.forms.pain.label_pain_onset') }}</label>
                 <v-select
                   v-model="form.painOnset"
-                  :items="['Sudden', 'Gradual', 'Constant', 'Intermittent', 'Episodic']"
+                  :items="painOnsetOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Pain Duration</label>
+                <label>{{ $t('clinical360.flowsheets.forms.pain.label_pain_duration') }}</label>
                 <v-select
                   v-model="form.painDuration"
-                  :items="['Minutes', 'Hours', 'Days', 'Weeks', 'Chronic']"
+                  :items="painDurationOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
@@ -92,23 +98,25 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Pain Management</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.pain.section_pain_management') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Current Medication</label>
+                <label>{{ $t('clinical360.flowsheets.forms.pain.label_current_medication') }}</label>
                 <v-text-field
                   v-model="form.currentMedication"
-                  placeholder="e.g., Morphine 10mg IV"
+                  :placeholder="$t('clinical360.flowsheets.forms.pain.placeholder_current_medication')"
                   outlined
                   dense
                 />
               </div>
 
               <div class="form-group">
-                <label>Non-pharmacological Interventions</label>
+                <label>{{ $t('clinical360.flowsheets.forms.pain.label_nonpharm_interventions') }}</label>
                 <v-combobox
                   v-model="form.nonPharmInterventions"
-                  :items="['Rest', 'Ice', 'Heat', 'Positioning', 'Massage', 'Distraction', 'Relaxation', 'Music']"
+                  :items="nonpharmOptions"
+                  item-value="value"
+                  item-text="text"
                   multiple
                   outlined
                   dense
@@ -116,10 +124,12 @@
               </div>
 
               <div class="form-group">
-                <label>Intervention Effectiveness</label>
+                <label>{{ $t('clinical360.flowsheets.forms.pain.label_intervention_effectiveness') }}</label>
                 <v-select
                   v-model="form.interventionEffectiveness"
-                  :items="['Not effective', 'Minimally effective', 'Somewhat effective', 'Very effective', 'Completely relieved']"
+                  :items="effectivenessOptions"
+                  item-value="value"
+                  item-text="text"
                   outlined
                   dense
                 />
@@ -128,7 +138,7 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Behavioral Observations</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.pain.section_behavioral_observations') }}</h3>
             <div class="checklist">
               <label v-for="behavior in painBehaviors" :key="behavior.id" class="checklist-item">
                 <v-checkbox v-model="form.behaviors[behavior.id]" />
@@ -138,23 +148,23 @@
           </section>
 
           <section class="form-section">
-            <h3 class="section-title">Assessment Notes</h3>
+            <h3 class="section-title">{{ $t('clinical360.flowsheets.forms.pain.section_assessment_notes') }}</h3>
             <div class="form-grid">
               <div class="form-group">
-                <label>Pain Impact on Function</label>
+                <label>{{ $t('clinical360.flowsheets.forms.pain.label_functional_impact') }}</label>
                 <v-textarea
                   v-model="form.functionalImpact"
-                  placeholder="How does pain affect patient's activities?"
+                  :placeholder="$t('clinical360.flowsheets.forms.pain.placeholder_functional_impact')"
                   outlined
                   dense
                   rows="3"
                 />
               </div>
               <div class="form-group">
-                <label>Nursing Interventions</label>
+                <label>{{ $t('clinical360.flowsheets.forms.pain.label_nursing_interventions') }}</label>
                 <v-textarea
                   v-model="form.nursingInterventions"
-                  placeholder="Actions taken to manage pain..."
+                  :placeholder="$t('clinical360.flowsheets.forms.pain.placeholder_nursing_interventions')"
                   outlined
                   dense
                   rows="3"
@@ -165,10 +175,10 @@
 
           <div class="form-actions">
             <v-btn type="button" outlined @click="$emit('close')">
-              Cancel
+              {{ $t('clinical360.flowsheets.forms.pain.cancel') }}
             </v-btn>
             <v-btn type="submit" color="primary" dark>
-              Save Pain Assessment
+              {{ $t('clinical360.flowsheets.forms.pain.save') }}
             </v-btn>
           </div>
         </form>
@@ -208,34 +218,58 @@ export default {
         functionalImpact: '',
         nursingInterventions: ''
       },
-      painLevels: [
-        { score: 0, label: 'No pain' },
-        { score: 1, label: 'Minimal' },
-        { score: 2, label: 'Very mild' },
-        { score: 3, label: 'Mild' },
-        { score: 4, label: 'Moderate' },
-        { score: 5, label: 'Moderate-severe' },
-        { score: 6, label: 'Severe' },
-        { score: 7, label: 'Very severe' },
-        { score: 8, label: 'Intense' },
-        { score: 9, label: 'Almost unbearable' },
-        { score: 10, label: 'Worst possible pain' }
-      ],
-      painBehaviors: [
-        { id: 'facial_grimace', label: 'Facial grimace/grimacing' },
-        { id: 'guarding', label: 'Guarding/protective behavior' },
-        { id: 'restlessness', label: 'Restlessness' },
-        { id: 'crying', label: 'Crying or moaning' },
-        { id: 'withdrawal', label: 'Withdrawal' },
-        { id: 'reduced_interaction', label: 'Reduced interaction' }
-      ]
+      painLevelKeys: ['no_pain', 'minimal', 'very_mild', 'mild', 'moderate', 'moderate_severe', 'severe', 'very_severe', 'intense', 'almost_unbearable', 'worst_possible'],
+      painBehaviorIds: ['facial_grimace', 'guarding', 'restlessness', 'crying', 'withdrawal', 'reduced_interaction']
+    }
+  },
+  computed: {
+    painLevels() {
+      return this.painLevelKeys.map((k, score) => ({
+        score,
+        label: this.$t(`clinical360.flowsheets.forms.pain.options.pain_levels.${k}`)
+      }))
+    },
+    painBehaviors() {
+      return this.painBehaviorIds.map(id => ({
+        id,
+        label: this.$t(`clinical360.flowsheets.forms.pain.options.behaviors.${id}`)
+      }))
+    },
+    painTypeOptions() {
+      return [
+        ['sharp', 'Sharp'], ['dull', 'Dull'], ['aching', 'Aching'], ['throbbing', 'Throbbing'],
+        ['burning', 'Burning'], ['shooting', 'Shooting'], ['cramping', 'Cramping'], ['other', 'Other']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.pain.options.pain_type.${k}`) }))
+    },
+    painOnsetOptions() {
+      return [
+        ['sudden', 'Sudden'], ['gradual', 'Gradual'], ['constant', 'Constant'], ['intermittent', 'Intermittent'], ['episodic', 'Episodic']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.pain.options.pain_onset.${k}`) }))
+    },
+    painDurationOptions() {
+      return [
+        ['minutes', 'Minutes'], ['hours', 'Hours'], ['days', 'Days'], ['weeks', 'Weeks'], ['chronic', 'Chronic']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.pain.options.pain_duration.${k}`) }))
+    },
+    nonpharmOptions() {
+      return [
+        ['rest', 'Rest'], ['ice', 'Ice'], ['heat', 'Heat'], ['positioning', 'Positioning'],
+        ['massage', 'Massage'], ['distraction', 'Distraction'], ['relaxation', 'Relaxation'], ['music', 'Music']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.pain.options.nonpharm.${k}`) }))
+    },
+    effectivenessOptions() {
+      return [
+        ['not_effective', 'Not effective'], ['minimally_effective', 'Minimally effective'],
+        ['somewhat_effective', 'Somewhat effective'], ['very_effective', 'Very effective'],
+        ['completely_relieved', 'Completely relieved']
+      ].map(([k, value]) => ({ value, text: this.$t(`clinical360.flowsheets.forms.pain.options.effectiveness.${k}`) }))
     }
   },
   methods: {
     ...mapActions('flowsheets', ['createFlowsheetEntry']),
     async submitForm() {
       if (!this.form.painLocation) {
-        alert('Please specify pain location')
+        alert(this.$t('clinical360.flowsheets.forms.pain.location_required_error'))
         return
       }
 
@@ -263,7 +297,7 @@ export default {
         this.$emit('save', this.form)
       } catch (error) {
         console.error('Error saving pain assessment:', error)
-        alert('Error saving pain assessment')
+        alert(this.$t('clinical360.flowsheets.forms.pain.save_error'))
       }
     }
   }
